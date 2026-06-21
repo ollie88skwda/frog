@@ -4,7 +4,8 @@
 // DB, hands the ready DB to the test client, and only THEN renders the real
 // expo-router app. This guarantees the app's synchronous getDb() finds an
 // initialised database. The shipped app uses expo-router/entry directly and never
-// loads this.
+// loads this. (This is the .web variant — native resolves entry.native.ts, which
+// is sql.js-free, so node:fs never enters the native bundle.)
 
 import initSqlJs from "sql.js";
 import {
