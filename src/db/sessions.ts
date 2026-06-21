@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { sessions, sessionExercises, setLogs } from "./schema";
 import { newId } from "../domain/ids";
 
@@ -34,7 +34,9 @@ export function lastSetsForExercise(db: DB, exerciseId: string): { weightKg: num
   const ses = db.select({ id: sessionExercises.id, sessionId: sessionExercises.sessionId, createdAt: sessionExercises.createdAt })
     .from(sessionExercises)
     .where(and(eq(sessionExercises.exerciseId, exerciseId), isNull(sessionExercises.deletedAt)))
-    .orderBy(desc(sessionExercises.createdAt)).all();
+    // createdAt is millisecond-resolution and can tie; rowid desc breaks ties by
+    // true insertion order so the genuinely most-recent session always wins.
+    .orderBy(desc(sessionExercises.createdAt), sql`rowid desc`).all();
   if (ses.length === 0) return [];
   const latest = ses[0];
   const rows = db.select().from(setLogs)
