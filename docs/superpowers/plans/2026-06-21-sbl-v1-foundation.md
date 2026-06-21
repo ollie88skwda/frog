@@ -692,6 +692,19 @@ export function getDb() {
 }
 ```
 
+- [ ] **Step 5b: Configure Metro to bundle `.sql` migrations**
+
+Drizzle's expo migrator imports the generated migration as a `.sql` module, which Metro does NOT bundle by default — without this the app fails to bundle with `Unable to resolve module ./0000_*.sql`. Create `metro.config.js`:
+
+```js
+const { getDefaultConfig } = require("expo/metro-config");
+const config = getDefaultConfig(__dirname);
+config.resolver.sourceExts.push("sql");
+module.exports = config;
+```
+
+After adding it, always restart Metro with a cleared cache: `npx expo start -c`.
+
 - [ ] **Step 6: Wire root layout `app/_layout.tsx`**
 
 ```tsx
