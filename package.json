@@ -1,6 +1,6 @@
 {
   "name": "sbl",
-  "main": "expo-router/entry",
+  "main": "index.js",
   "version": "1.0.0",
   "dependencies": {
     "babel-preset-expo": "~54.0.10",
@@ -25,11 +25,14 @@
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0-alpha-2026-04-14",
     "@types/better-sqlite3": "^7.6.13",
     "@types/react": "~19.1.10",
+    "@types/sql.js": "^1.4.11",
     "babel-plugin-inline-import": "^3.0.0",
     "better-sqlite3": "^12.11.1",
     "drizzle-kit": "^0.31.10",
+    "sql.js": "^1.14.1",
     "typescript": "~5.9.2",
     "vitest": "^4.1.9"
   },
@@ -40,7 +43,10 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "e2e:build": "EXPO_PUBLIC_E2E=1 expo export -p web --output-dir dist-e2e",
+    "e2e": "npm run e2e:build && playwright test -c e2e/playwright.config.ts",
+    "e2e:headed": "npm run e2e:build && playwright test -c e2e/playwright.config.ts --headed"
   },
   "private": true
 }

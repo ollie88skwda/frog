@@ -6,8 +6,15 @@ node_modules/
 # Expo
 .expo/
 dist/
+dist-e2e/
 web-build/
 expo-env.d.ts
+
+# E2E (Playwright) artifacts
+/test-results/
+/playwright-report/
+/.playwright-mcp/
+/blob-report/
 
 # Native
 .kotlin/

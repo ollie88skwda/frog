@@ -10,7 +10,7 @@ export default function Train() {
   const begin = () => { const id = startSession(getDb(), "Session"); router.push(`/session/${id}`); };
   return (
     <Screen>
-      <Pressable onPress={begin} style={{ backgroundColor: t.color.accent, borderRadius: t.radius.lg, padding: t.space[4] }}>
+      <Pressable testID="start-session-btn" onPress={begin} style={{ backgroundColor: t.color.accent, borderRadius: t.radius.lg, padding: t.space[4] }}>
         <Text style={{ color: t.color.bg, fontWeight: "700", textAlign: "center" }}>Start session</Text>
       </Pressable>
     </Screen>

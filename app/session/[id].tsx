@@ -47,7 +47,7 @@ export default function SessionScreen() {
           data={exercises}
           keyExtractor={(e: any) => e.id}
           renderItem={({ item }) => (
-            <Pressable onPress={() => pick(item.id)}>
+            <Pressable testID={`pick-exercise-${item.name}`} onPress={() => pick(item.id)}>
               <Card style={{ marginBottom: t.space[2] }}><Mono>{item.name}</Mono></Card>
             </Pressable>
           )}
@@ -71,6 +71,7 @@ export default function SessionScreen() {
             <View style={{ flexDirection: "row", gap: t.space[2], marginBottom: t.space[2] }}>
               <Mono style={{ color: t.color.soft, width: 20 }}>{i + 1}</Mono>
               <TextInput
+                testID={`set-${i}-weight`}
                 keyboardType="numeric"
                 placeholder={g.weightKg != null ? String(toDisplayWeight(g.weightKg, "lb")) : "lb"}
                 placeholderTextColor={t.color.soft}
@@ -78,6 +79,7 @@ export default function SessionScreen() {
                 style={{ color: t.color.ink, borderColor: t.color.line, borderWidth: 1, borderRadius: t.radius.sm, padding: t.space[2], flex: 1 }}
               />
               <TextInput
+                testID={`set-${i}-reps`}
                 keyboardType="numeric"
                 placeholder={g.reps != null ? String(g.reps) : "reps"}
                 placeholderTextColor={t.color.soft}
