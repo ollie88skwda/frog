@@ -14,26 +14,27 @@ config.resolver.sourceExts.push("sql");
 // can bundle. No effect on native, where SQLite is provided by the OS.
 config.resolver.assetExts.push("wasm");
 
-// E2E web build only (EXPO_PUBLIC_E2E=1): swap the SQLite client for a sql.js
-// backed test client so the app can boot and persist headlessly in a browser
-// (expo-sqlite's synchronous web API times out on boot). The E2E *entry* is
-// selected by index.js (the package.json main), which initialises sql.js before
-// rendering. App source is untouched; this alias is inert in every normal build.
-if (process.env.EXPO_PUBLIC_E2E === "1") {
-  const clientReal = path.resolve(__dirname, "src/db/client.ts");
-  const clientTest = path.resolve(__dirname, "e2e/web/test-client.ts");
-  const upstreamResolveRequest = config.resolver.resolveRequest;
-  config.resolver.resolveRequest = (context, moduleName, platform) => {
-    const def = (upstreamResolveRequest || context.resolveRequest)(
-      context,
-      moduleName,
-      platform
-    );
-    if (def && def.type === "sourceFile" && def.filePath === clientReal) {
-      return { ...def, filePath: clientTest };
-    }
-    return def;
-  };
-}
+// Two resolver concerns, handled in one hook:
+//  1) NATIVE must never pull the web-only sql.js driver — it does require("node:fs"),
+//     which Metro can't resolve for iOS/Android. The E2E suite is web-only, so on
+//     non-web platforms resolve sql.js (and any node: builtin) to an EMPTY module.
+//     This is the hard guarantee that `expo start` for a device/simulator stays clean,
+//     regardless of dev-mode dead-code elimination.
+//  2) E2E web build only (EXPO_PUBLIC_E2E=1): swap the real expo-sqlite client for the
+//     sql.js-backed test client so the app boots/persists headlessly in a browser.
+const isE2E = process.env.EXPO_PUBLIC_E2E === "1";
+const clientReal = path.resolve(__dirname, "src/db/client.ts");
+const clientTest = path.resolve(__dirname, "e2e/web/test-client.ts");
+const defaultResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform !== "web" && (moduleName === "sql.js" || moduleName.startsWith("node:"))) {
+    return { type: "empty" };
+  }
+  const def = (defaultResolveRequest || context.resolveRequest)(context, moduleName, platform);
+  if (isE2E && def && def.type === "sourceFile" && def.filePath === clientReal) {
+    return { ...def, filePath: clientTest };
+  }
+  return def;
+};
 
 module.exports = config;
