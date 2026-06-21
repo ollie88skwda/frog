@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
 import { sessions, sessionExercises, setLogs } from "./schema";
 import { newId } from "../domain/ids";
 
@@ -30,10 +30,14 @@ export function logSet(db: DB, sessionExerciseId: string, set: { weightKg: numbe
 }
 
 // Most recent PRIOR session's sets for an exercise (for ghost prefill).
-export function lastSetsForExercise(db: DB, exerciseId: string): { weightKg: number | null; reps: number | null }[] {
+// Pass the current session-exercise id to exclude it, so the ghost shows the previous
+// session rather than the empty one being logged right now.
+export function lastSetsForExercise(db: DB, exerciseId: string, excludeSessionExerciseId?: string): { weightKg: number | null; reps: number | null }[] {
+  const conds = [eq(sessionExercises.exerciseId, exerciseId), isNull(sessionExercises.deletedAt)];
+  if (excludeSessionExerciseId) conds.push(ne(sessionExercises.id, excludeSessionExerciseId));
   const ses = db.select({ id: sessionExercises.id, sessionId: sessionExercises.sessionId, createdAt: sessionExercises.createdAt })
     .from(sessionExercises)
-    .where(and(eq(sessionExercises.exerciseId, exerciseId), isNull(sessionExercises.deletedAt)))
+    .where(and(...conds))
     // createdAt is millisecond-resolution and can tie; rowid desc breaks ties by
     // true insertion order so the genuinely most-recent session always wins.
     .orderBy(desc(sessionExercises.createdAt), sql`rowid desc`).all();

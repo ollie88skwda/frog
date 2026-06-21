@@ -7,14 +7,11 @@ import { test, expect, type Page } from "@playwright/test";
 // sql.js bytes are persisted to localStorage, so a page reload is the web analogue
 // of an app relaunch.
 //
-// WEB COVERAGE NOTE: react-native-web does not implement TextInput's
-// `onEndEditing` (verified: 0 references in react-native-web). The session screen
-// logs sets via `onEndEditing`, so set-logging — and the ghost prefill that
-// depends on logged sets — cannot be driven through the real UI on web. Those two
-// steps are covered on-device by the Maestro flow (e2e/flows/core-loop.yaml) and at
-// the unit level by Vitest (logSet / lastSetsForExercise / session-reducer). This
-// spec verifies every core-loop step that web faithfully supports AND asserts the
-// set-logging gap so a future fix (web blur handling) flips the xfail to a pass.
+// WEB COVERAGE NOTE: react-native-web does not implement TextInput's `onEndEditing`,
+// so the session screen also persists on `onBlur` (and keeps state via onChangeText).
+// That makes the FULL core loop — add exercise, log sets, ghost prefill, persistence —
+// drivable through the real UI on web. The Maestro device flow (e2e/flows/core-loop.yaml)
+// and Vitest still cover the same logic at the device/unit level.
 
 const RAW = "window.__SBL_RAW_DB__";
 
@@ -76,39 +73,35 @@ test("core loop (web-supported steps): add exercise, pick in session, persistenc
   expect(await rowCount(page, "sessions")).toBe(1);
 });
 
-// Documents the known RN-web gap so it can't regress silently and so a future web
-// blur fix turns this green. Filling the set inputs and blurring should — but on
-// web does NOT — write a set_logs row, because react-native-web ignores
-// onEndEditing.
-test("KNOWN WEB GAP: set logging via onEndEditing does not fire on react-native-web", async ({
+// Set logging + ghost prefill now work on web: onChangeText keeps reducer state in
+// sync and onBlur persists the row (since react-native-web ignores onEndEditing).
+test("log sets persists to set_logs, and ghost prefill shows the prior session", async ({
   page,
 }) => {
-  const EX = `Gap ${Date.now()}`;
+  const EX = `Log ${Date.now()}`;
 
+  // Add the exercise.
   await page.goto("/library");
   await waitForBoot(page);
   await page.getByTestId("exercise-name-input").fill(EX);
   await page.getByTestId("add-exercise-btn").click();
 
+  // Session 1: log one set (135 lb x 5).
   await page.goto("/");
   await waitForBoot(page);
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
+  await page.getByTestId("set-0-weight").fill("135");
+  await page.getByTestId("set-0-weight").blur();
+  await page.getByTestId("set-0-reps").fill("5");
+  await page.getByTestId("set-0-reps").blur();
+  await expect.poll(() => rowCount(page, "set_logs")).toBe(1);
 
-  const w = page.getByTestId("set-0-weight");
-  const r = page.getByTestId("set-0-reps");
-  await w.click();
-  await w.fill("135");
-  await w.blur();
-  await r.click();
-  await r.fill("5");
-  await r.blur();
-
-  // If react-native-web ever wires blur -> onEndEditing (or the app adds onBlur),
-  // this becomes 1 and the assertion below should be updated to expect a logged
-  // set + ghost prefill. Today it is 0.
-  expect(
-    await rowCount(page, "set_logs"),
-    "onEndEditing is unsupported on web; no set is logged (device-only step)"
-  ).toBe(0);
+  // Session 2: ghost prefill surfaces the prior set's values as input placeholders.
+  await page.goto("/");
+  await waitForBoot(page);
+  await page.getByTestId("start-session-btn").click();
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+  await expect(page.getByTestId("set-0-weight")).toHaveAttribute("placeholder", "135");
+  await expect(page.getByTestId("set-0-reps")).toHaveAttribute("placeholder", "5");
 });

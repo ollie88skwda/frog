@@ -31,4 +31,17 @@ describe("sessions db", () => {
       clock.mockRestore();
     }
   });
+
+  it("ghost prefill excludes the current session-exercise (shows the PRIOR one)", () => {
+    const db = makeTestDb();
+    const ex = createExercise(db, "Incline Press");
+    const s1 = addExerciseToSession(db, startSession(db), ex);
+    logSet(db, s1, { weightKg: 60, reps: 8 });
+    // The in-progress session: a fresh, still-empty session-exercise.
+    const sCurrent = addExerciseToSession(db, startSession(db), ex);
+    // Excluding the current one surfaces session 1's sets...
+    expect(lastSetsForExercise(db, ex, sCurrent)).toEqual([{ weightKg: 60, reps: 8 }]);
+    // ...whereas NOT excluding returns the most-recent (empty current) -> [].
+    expect(lastSetsForExercise(db, ex)).toEqual([]);
+  });
 });

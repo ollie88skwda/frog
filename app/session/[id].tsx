@@ -15,26 +15,37 @@ export default function SessionScreen() {
   const exercises = useMemo(() => listExercises(db), [db]);
   const [exId, setExId] = useState<string | null>(null);
   const [seId, setSeId] = useState<string | null>(null);
-  const prev = useMemo(() => (exId ? lastSetsForExercise(db, exId) : []), [db, exId]);
+  // Ghost prefill = the PRIOR session's sets. Exclude the current session-exercise
+  // (created by pick() below), or the ghost would read the empty in-progress session.
+  const prev = useMemo(
+    () => (exId ? lastSetsForExercise(db, exId, seId ?? undefined) : []),
+    [db, exId, seId]
+  );
   const [state, dispatch] = useReducer(reducer, { sets: [] });
   const logged = useRef<Record<number, boolean>>({});
+  const drafts = useRef<DraftSet[]>([]);
 
   const pick = (exerciseId: string) => {
     setExId(exerciseId);
     setSeId(addExerciseToSession(db, id as string, exerciseId));
     logged.current = {};
+    drafts.current = [];
     dispatch({ type: "addSet" });
   };
 
-  // Merge the edited field with the row's existing draft, then persist once BOTH
-  // weight and reps are present. The two inputs fire independently, so we read the
-  // current row from reducer state instead of trusting a single event. `logged`
-  // guards against double-writing the same row.
-  const onField = (i: number, patch: Partial<DraftSet>) => {
+  // onChangeText updates BOTH the reducer (for rendering) and a ref (read synchronously,
+  // independent of React render timing). persist() — fired on blur AND endEditing, since
+  // react-native-web ignores onEndEditing — logs a row once weight+reps are both present.
+  // `logged` guards against double-writes.
+  const setField = (i: number, patch: Partial<DraftSet>) => {
+    const cur = drafts.current[i] ?? { weightKg: null, reps: null };
+    drafts.current[i] = { ...cur, ...patch };
     dispatch({ type: "editSet", index: i, patch });
-    const merged = { ...state.sets[i], ...patch };
-    if (seId && merged.weightKg != null && merged.reps != null && !logged.current[i]) {
-      logSet(db, seId, { weightKg: merged.weightKg, reps: merged.reps });
+  };
+  const persist = (i: number) => {
+    const row = drafts.current[i];
+    if (seId && row?.weightKg != null && row?.reps != null && !logged.current[i]) {
+      logSet(db, seId, { weightKg: row.weightKg, reps: row.reps });
       logged.current[i] = true;
     }
   };
@@ -75,7 +86,9 @@ export default function SessionScreen() {
                 keyboardType="numeric"
                 placeholder={g.weightKg != null ? String(toDisplayWeight(g.weightKg, "lb")) : "lb"}
                 placeholderTextColor={t.color.soft}
-                onEndEditing={(e) => onField(i, { weightKg: e.nativeEvent.text ? lbToKg(Number(e.nativeEvent.text)) : null })}
+                onChangeText={(text) => setField(i, { weightKg: text ? lbToKg(Number(text)) : null })}
+                onEndEditing={() => persist(i)}
+                onBlur={() => persist(i)}
                 style={{ color: t.color.ink, borderColor: t.color.line, borderWidth: 1, borderRadius: t.radius.sm, padding: t.space[2], flex: 1 }}
               />
               <TextInput
@@ -83,7 +96,9 @@ export default function SessionScreen() {
                 keyboardType="numeric"
                 placeholder={g.reps != null ? String(g.reps) : "reps"}
                 placeholderTextColor={t.color.soft}
-                onEndEditing={(e) => onField(i, { reps: e.nativeEvent.text ? Number(e.nativeEvent.text) : null })}
+                onChangeText={(text) => setField(i, { reps: text ? Number(text) : null })}
+                onEndEditing={() => persist(i)}
+                onBlur={() => persist(i)}
                 style={{ color: t.color.ink, borderColor: t.color.line, borderWidth: 1, borderRadius: t.radius.sm, padding: t.space[2], flex: 1 }}
               />
             </View>
