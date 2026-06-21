@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SBL — Data Schema</title>
+<style>
+  :root { --bg:#0B1A2B; --surf:#121C2B; --line:rgba(94,178,222,0.15); --ink:#E3F0FB; --soft:#84AACB; --accent:#38BDF8; --pos:#34D399; --neg:#FB7185; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: system-ui, -apple-system, sans-serif; font-size: 15px; line-height: 1.6; padding: 2rem; max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 1.6rem; margin-bottom: .25rem; }
+  .subtitle { color: var(--soft); margin-bottom: 2rem; font-size: .9rem; }
+  h2 { font-size: 1.1rem; color: var(--accent); margin: 2rem 0 .75rem; border-bottom: 1px solid var(--line); padding-bottom: .4rem; }
+  h3 { font-size: .95rem; color: var(--soft); margin: 1.25rem 0 .5rem; }
+  p { margin-bottom: .75rem; color: var(--soft); }
+  code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: .82rem; background: var(--surf); padding: .1em .4em; border-radius: 4px; color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; }
+  th { text-align: left; padding: .4rem .8rem; background: var(--surf); color: var(--soft); font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--line); }
+  td { padding: .4rem .8rem; border-bottom: 1px solid var(--line); font-size: .88rem; vertical-align: top; }
+  td:first-child { font-family: 'JetBrains Mono', monospace; color: var(--accent); white-space: nowrap; }
+  td.type { color: #f0a; white-space: nowrap; }
+  .tag { display: inline-block; font-size: .72rem; padding: .1em .4em; border-radius: 3px; margin-left: .3em; }
+  .tag-pk { background: rgba(56,189,248,.15); color: var(--accent); }
+  .tag-fk { background: rgba(52,211,153,.15); color: var(--pos); }
+  .tag-json { background: rgba(240,160,0,.15); color: #f0a; }
+  .section-note { background: var(--surf); border: 1px solid var(--line); border-radius: 8px; padding: .75rem 1rem; margin-bottom: 1.25rem; color: var(--soft); font-size: .88rem; }
+  .base-note { color: #84AACB; font-style: italic; font-size: .82rem; }
+</style>
+</head>
+<body>
+<h1>SBL — Data Schema</h1>
+<p class="subtitle">SQLite database via Drizzle ORM · Source: <code>src/db/schema.ts</code> · Last updated: 2026-06-21</p>
+
+<div class="section-note">
+  <strong>Every table inherits five base columns</strong> (not repeated in each table below):
+  <code>id</code> TEXT PRIMARY KEY (UUID v4),
+  <code>created_at</code> INTEGER (Unix ms),
+  <code>updated_at</code> INTEGER (Unix ms),
+  <code>deleted_at</code> INTEGER nullable (soft-delete: NULL = active),
+  <code>dirty</code> INTEGER 0|1 (sync flag: 1 = needs push to cloud).
+</div>
+
+<h2>exercises</h2>
+<p>The user's exercise library. Built-in exercises (future) have <code>is_custom = 0</code>; all user-created ones default to 1.</p>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+  <tr><td>name</td><td class="type">TEXT NOT NULL</td><td>Display name, e.g. "Incline Press (Machine)"</td></tr>
+  <tr><td>tags</td><td class="type">TEXT <span class="tag tag-json">JSON</span></td><td>Optional <code>string[]</code> for light categorisation (e.g. <code>["chest","push"]</code>)</td></tr>
+  <tr><td>is_custom</td><td class="type">INTEGER</td><td>0 = built-in, 1 = user-created (default 1)</td></tr>
+  <tr><td>owner_id</td><td class="type">TEXT</td><td>Supabase user UUID (null until cloud sync)</td></tr>
+</table>
+
+<h2>metrics</h2>
+<p>User-defined tracking variables. Session-scoped metrics become condition fields (sleep, stress, etc.); set-scoped metrics extend each set row (RPE override, form note, etc.).</p>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+  <tr><td>name</td><td class="type">TEXT NOT NULL</td><td>Display label, e.g. "Sleep (h)" or "Stress (1-10)"</td></tr>
+  <tr><td>type</td><td class="type">TEXT NOT NULL</td><td><code>'number'</code> | <code>'scale'</code> (1–10 integer) | <code>'text'</code> | <code>'checkbox'</code></td></tr>
+  <tr><td>scope</td><td class="type">TEXT NOT NULL</td><td><code>'session'</code> = logged once per session (conditions); <code>'set'</code> = per set row</td></tr>
+  <tr><td>owner_id</td><td class="type">TEXT</td><td>Supabase user UUID (null until cloud sync)</td></tr>
+</table>
+
+<h2>sessions</h2>
+<p>A single training session (workout). Starts when the user taps "Start session"; ends when they finish. Conditions (sleep, stress, etc.) are stored as a JSON blob keyed by metric ID.</p>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+  <tr><td>title</td><td class="type">TEXT</td><td>Optional freeform name, e.g. "Push A" or "FBEOD Day 1"</td></tr>
+  <tr><td>started_at</td><td class="type">INTEGER NOT NULL</td><td>Unix ms — when the user tapped "Start"</td></tr>
+  <tr><td>ended_at</td><td class="type">INTEGER</td><td>Unix ms — null while session is in progress</td></tr>
+  <tr><td>condition_values</td><td class="type">TEXT <span class="tag tag-json">JSON</span></td><td><code>Record&lt;metricId, number|string|boolean&gt;</code> — typed by each metric's <code>type</code> field</td></tr>
+</table>
+
+<h2>session_exercises</h2>
+<p>Junction between a session and an exercise. One row per exercise performed in a session; <code>order_index</code> preserves the sequence the user added them.</p>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+  <tr><td>session_id</td><td class="type">TEXT NOT NULL <span class="tag tag-fk">→ sessions</span></td><td></td></tr>
+  <tr><td>exercise_id</td><td class="type">TEXT NOT NULL <span class="tag tag-fk">→ exercises</span></td><td></td></tr>
+  <tr><td>order_index</td><td class="type">INTEGER NOT NULL</td><td>0-based position in this session's exercise list</td></tr>
+</table>
+
+<h2>set_logs</h2>
+<p>One row per set. Weight is always stored in <strong>kilograms</strong>; the UI converts to the user's chosen unit on display. Metric values (per-set custom variables) are a JSON blob keyed by metric ID.</p>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+  <tr><td>session_exercise_id</td><td class="type">TEXT NOT NULL <span class="tag tag-fk">→ session_exercises</span></td><td></td></tr>
+  <tr><td>set_no</td><td class="type">INTEGER NOT NULL</td><td>0-based set index within this session_exercise</td></tr>
+  <tr><td>weight_kg</td><td class="type">REAL</td><td>Canonical storage unit. Convert lbs at entry/display time.</td></tr>
+  <tr><td>reps</td><td class="type">INTEGER</td><td>Null for time-based or bodyweight sets</td></tr>
+  <tr><td>rir</td><td class="type">INTEGER</td><td>Reps in Reserve (0 = technical failure, null = not logged)</td></tr>
+  <tr><td>note</td><td class="type">TEXT</td><td>Freeform set note</td></tr>
+  <tr><td>metric_values</td><td class="type">TEXT <span class="tag tag-json">JSON</span></td><td><code>Record&lt;metricId, number|string|boolean&gt;</code> — per-set custom metrics</td></tr>
+  <tr><td>completed</td><td class="type">INTEGER NOT NULL</td><td>0 = planned (not yet done), 1 = completed. Default 1 for now.</td></tr>
+</table>
+
+<h2>Relationships</h2>
+<pre style="background:var(--surf);border:1px solid var(--line);border-radius:8px;padding:1rem;font-size:.82rem;overflow-x:auto;color:var(--soft)">
+sessions ──┬──&lt; session_exercises &gt;── exercises
+           │         │
+           │         └──&lt; set_logs
+           │
+           └── condition_values (JSON blob, keys = metrics.id where scope='session')
+
+set_logs.metric_values (JSON blob, keys = metrics.id where scope='set')
+</pre>
+
+<h2>Domain module map</h2>
+<table>
+  <tr><th>Module</th><th>Purpose</th></tr>
+  <tr><td><code>src/domain/units.ts</code></td><td>kg ↔ lb conversion, display formatting, round-to-0.5</td></tr>
+  <tr><td><code>src/domain/ids.ts</code></td><td><code>newId()</code> — UUID v4, portable across Hermes + Node</td></tr>
+  <tr><td><code>src/domain/e1rm.ts</code></td><td>Epley estimated 1RM formula</td></tr>
+  <tr><td><code>src/domain/progression.ts</code></td><td>Outlier-robust trend verdict (PROGRESSING / PLATEAU / REGRESSING / INSUFFICIENT) + MAD isOutlier</td></tr>
+  <tr><td><code>src/domain/findings.ts</code></td><td>Holistic findings engine: per-exercise verdict with r², off-day detection, weight outlier scan, spike-revert detection</td></tr>
+  <tr><td><code>src/domain/conditions.ts</code></td><td>Encode/decode/validate condition values (the JSON blob on sessions)</td></tr>
+  <tr><td><code>src/domain/session-reducer.ts</code></td><td>Pure state machine for the active session UI (add/edit/remove sets, ghost prefill)</td></tr>
+  <tr><td><code>src/domain/export.ts</code></td><td>Build export rows from session data; serialize to CSV or JSON</td></tr>
+  <tr><td><code>src/db/schema.ts</code></td><td>Drizzle table definitions (shared by app + tests)</td></tr>
+  <tr><td><code>src/db/exercises.ts</code></td><td>createExercise, listExercises</td></tr>
+  <tr><td><code>src/db/sessions.ts</code></td><td>startSession, addExerciseToSession, logSet, lastSetsForExercise (ghost prefill)</td></tr>
+  <tr><td><code>src/db/metrics.ts</code></td><td>createMetric, listMetrics, listMetricsByScope, session condition value persistence</td></tr>
+</table>
+
+<h2>Export format</h2>
+<p>The <code>export.ts</code> module produces rows in this shape (CSV headers / JSON keys):</p>
+<table>
+  <tr><th>Field</th><th>Type</th><th>Notes</th></tr>
+  <tr><td>date</td><td class="type">string</td><td>YYYY-MM-DD (UTC)</td></tr>
+  <tr><td>sessionTitle</td><td class="type">string</td><td>Empty string if no title was set</td></tr>
+  <tr><td>exercise</td><td class="type">string</td><td>Exercise name</td></tr>
+  <tr><td>setNo</td><td class="type">number</td><td>0-based set index</td></tr>
+  <tr><td>weightKg</td><td class="type">number | null</td><td>Canonical weight in kg</td></tr>
+  <tr><td>weightLb</td><td class="type">number | null</td><td>Rounded to 1 decimal place</td></tr>
+  <tr><td>reps</td><td class="type">number | null</td><td></td></tr>
+  <tr><td>rir</td><td class="type">number | null</td><td></td></tr>
+  <tr><td>e1rm</td><td class="type">number | null</td><td>Epley in kg, 1 decimal — null if weight or reps missing</td></tr>
+</table>
+
+<h2>Sync strategy (future — Plan 4)</h2>
+<p>Every row carries <code>dirty = 1</code> on write. A background sync job pushes dirty rows to Supabase Postgres and clears the flag on acknowledgment. Conflicts are resolved last-write-wins using <code>updated_at</code>. Deletes are soft: <code>deleted_at</code> is set rather than removing the row, so the cloud can propagate the delete to other devices.</p>
+
+</body>
+</html>
