@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SBL · The Lab Notebook Direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --page-bg:#0a0c10; --page-text:#e9edf2; --page-muted:#828d9e; --page-line:rgba(255,255,255,.08);
+    --accent:#22d3ee; --pos:#34d399; --neg:#fb7185; --warn:#fbbf24;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--page-bg);color:var(--page-text);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{padding:40px 24px 80px}
+  .wrap{max-width:1100px;margin:0 auto}
+  .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--page-muted);font-weight:600}
+  h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:8px 0}
+  .lede{color:var(--page-muted);font-size:15px;max-width:760px;line-height:1.55}
+  .lede b{color:#e9edf2}
+  .concept{margin:22px 0 34px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+  .ccard{border:1px solid var(--page-line);border-radius:13px;padding:14px 15px;background:#11151c}
+  .ccard .k{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  .ccard .v{font-size:13.5px;color:var(--page-muted);line-height:1.5;margin-top:7px}
+  .ccard .v b{color:#e9edf2}
+
+  .grid{display:flex;gap:38px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{width:360px}
+  .col h2{font-size:16px;font-weight:700;margin-bottom:4px}
+  .col p{color:var(--page-muted);font-size:13px;line-height:1.5;margin-bottom:15px;min-height:38px}
+
+  /* phone shell */
+  .phone{width:360px;height:770px;border-radius:46px;padding:11px;background:#000;box-shadow:0 0 0 2px #24272d,0 30px 60px -20px rgba(0,0,0,.85)}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;position:relative;display:flex;flex-direction:column;background:#0a0e14;color:#eef2f7}
+  .island{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:104px;height:26px;background:#000;border-radius:16px;z-index:40}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:14px 24px 6px;font-size:13px;font-weight:600}
+  .sb-right{display:flex;gap:6px;align-items:center}
+  .ic{width:16px;height:16px;flex:none}.ic-lg{width:18px;height:18px}
+  .content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+  .num{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums}
+  .scaps{font-size:10px;letter-spacing:.16em;text-transform:uppercase;font-weight:700}
+
+  /* graph-paper texture (headers / empty areas only) */
+  .graph{background-image:
+      linear-gradient(rgba(34,211,238,.05) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(34,211,238,.05) 1px,transparent 1px);
+    background-size:18px 18px;background-position:-1px -1px}
+
+  /* entry header */
+  .ehead{padding:8px 22px 14px;display:flex;align-items:flex-start;justify-content:space-between}
+  .ehead .date{color:#22d3ee;font-weight:700}
+  .ehead .ttl{font-size:21px;font-weight:700;letter-spacing:-.01em;margin-top:3px}
+  .ehead .meta{color:#7e8b9e;font-size:12px;margin-top:3px}
+  .ehead .entry{text-align:right}
+  .ehead .entry .n{font-size:13px;color:#7e8b9e}
+  .ehead .entry .t{font-size:13px;color:#eef2f7;margin-top:8px}
+
+  /* conditions block */
+  .cond{margin:0 18px 16px;border:1px solid rgba(34,211,238,.22);border-radius:16px;overflow:hidden}
+  .cond .top{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.06)}
+  .cond .top .l{color:#67e8f9;display:flex;align-items:center;gap:7px}
+  .cond .top .r{color:#7e8b9e;font-size:11px;display:flex;align-items:center;gap:5px}
+  .vargrid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(255,255,255,.05)}
+  .var{background:#0d1219;padding:11px 14px}
+  .var .vl{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#6b788c;font-weight:600}
+  .var .vv{font-size:17px;font-weight:600;margin-top:3px}
+  .var .vu{font-size:11px;color:#7e8b9e;font-weight:500}
+  .cond .annot{padding:10px 14px;background:#0d1219;color:#5f93a0;font-family:'JetBrains Mono',monospace;font-size:12px}
+  .cond .annot b{color:#22d3ee;font-weight:500}
+
+  .sectlbl{margin:0 22px 10px;color:#6b788c;display:flex;align-items:center;gap:9px}
+  .sectlbl .ln{flex:1;height:1px;background:rgba(255,255,255,.08)}
+
+  /* exercise card */
+  .card{margin:0 18px 14px;background:#121821;border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden}
+  .exhead{padding:14px 16px 12px}
+  .exname{font-size:17px;font-weight:700;letter-spacing:-.01em}
+  .tags{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px}
+  .tag{background:rgba(255,255,255,.06);color:#aab6c6}
+  .setup{background:rgba(34,211,238,.10);color:#67e8f9}
+  .target{margin-top:11px;display:flex;gap:8px;align-items:flex-start;padding:9px 11px;border-radius:10px;background:rgba(34,211,238,.08);border:1px solid rgba(34,211,238,.20)}
+  .target .t{font-size:12px;line-height:1.45;color:#a5e9f5}
+  .target .t b{color:#22d3ee;font-weight:700}
+  .thead{display:grid;grid-template-columns:26px 1fr 1fr 50px 24px;gap:6px;padding:8px 16px;color:#5f6b7d;border-top:1px solid rgba(255,255,255,.06)}
+  .set{display:grid;grid-template-columns:26px 1fr 1fr 50px 24px;gap:6px;align-items:center;padding:11px 16px;border-top:1px solid rgba(255,255,255,.05)}
+  .set .sx{font-family:'JetBrains Mono',monospace;font-size:13px;color:#7e8b9e}
+  .set .v{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600}
+  .set .u{font-size:11px;color:#5f6b7d}
+  .set .rir{font-family:'JetBrains Mono',monospace;font-size:14px;color:#cdd6e2;text-align:center}
+  .set.ghost .v,.set.ghost .rir{color:#46535f}
+  .set .chk{width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#22d3ee;color:#05222a}
+  .set .chk.empty{background:transparent;border:1.5px solid #2b3947}
+  .annotrow{padding:9px 16px 13px;background:rgba(255,255,255,.02);font-family:'JetBrains Mono',monospace;font-size:12px;color:#5f93a0}
+  .annotrow b{color:#67e8f9;font-weight:500}
+  .addset{margin:0 18px;padding:12px;border-radius:12px;border:1px dashed rgba(255,255,255,.14);color:#7e8b9e;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:7px}
+
+  /* findings screen */
+  .fhead{padding:10px 22px 6px}
+  .fhead .ttl{font-size:22px;font-weight:700;letter-spacing:-.01em}
+  .fhead .sub{color:#7e8b9e;font-size:12.5px;margin-top:4px}
+  .seg{margin:14px 18px 18px;display:flex;background:#121821;border:1px solid rgba(255,255,255,.08);border-radius:11px;padding:3px}
+  .seg div{flex:1;text-align:center;font-size:12px;font-weight:600;padding:7px;border-radius:8px;color:#7e8b9e}
+  .seg div.on{background:#1d2935;color:#67e8f9}
+  .finding{margin:0 18px 12px;background:#121821;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 15px}
+  .finding .row{display:flex;align-items:center;justify-content:space-between}
+  .finding .cond-l{font-size:13.5px;font-weight:600}
+  .finding .cond-l .q{color:#7e8b9e;font-weight:500}
+  .finding .delta{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700}
+  .finding.pos .delta{color:#34d399}
+  .finding.neg .delta{color:#fb7185}
+  .finding .out{font-size:12px;color:#7e8b9e;margin-top:5px}
+  .finding .bar{margin-top:11px;height:6px;border-radius:3px;background:rgba(255,255,255,.06);overflow:hidden;position:relative}
+  .finding .bar i{position:absolute;top:0;bottom:0;left:50%;width:1px;background:rgba(255,255,255,.22)}
+  .finding .bar b{position:absolute;top:0;bottom:0;border-radius:3px;display:block}
+  .finding.pos .bar b{left:50%;background:#34d399}
+  .finding.neg .bar b{right:50%;background:#fb7185}
+  .finding .conf{display:flex;align-items:center;gap:6px;margin-top:9px;font-size:10.5px;color:#6b788c}
+  .dot{width:5px;height:5px;border-radius:50%;background:#34d399}.dot.off{background:#2b3947}
+  .chartcard{margin:6px 18px 14px;background:#121821;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 15px}
+  .chartcard .cl{font-size:12px;color:#7e8b9e;margin-bottom:10px;display:flex;justify-content:space-between}
+  .ffoot{margin:2px 22px 0;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#5f6b7d;line-height:1.5}
+
+  .tabbar{margin-top:auto;display:flex;justify-content:space-around;padding:12px 8px 26px;border-top:1px solid rgba(255,255,255,.07);background:#0a0e14}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;color:#5c6677;font-weight:600}
+  .tab.on{color:#22d3ee}
+
+  .foot{margin-top:46px;border-top:1px solid var(--page-line);padding-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:22px}
+  .foot h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .foot p{font-size:13px;color:var(--page-muted);line-height:1.55}
+  .foot code{font-family:'JetBrains Mono',monospace;font-size:12px;color:#cdd6e2;background:#11151c;padding:1px 6px;border-radius:5px;border:1px solid var(--page-line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">SBL · Direction 1 evolved</div>
+  <h1>The Lab Notebook</h1>
+  <p class="lede">Same Quiet-Instrument foundation, reframed as a <b>science notebook</b>: every session is a dated <b>experiment entry</b> — <b>Conditions</b> (the inputs you controlled) at the top, the <b>procedure</b> (your sets) below, and <b>Findings</b> (correlations across your history) as the payoff. The cues are borrowed from outside fitness — lab notebooks, terminals, Bearable/Oura — so it reads as an instrument, not another gym app. It still collapses to dead-simple: log nothing and it's a clean tracker; log everything and it's a controlled experiment.</p>
+
+  <div class="concept">
+    <div class="ccard"><div class="k">Cue · Structure</div><div class="v"><b>Conditions → Procedure → Findings.</b> The scientific method as the app's spine. Inputs vs. outputs, made visual.</div></div>
+    <div class="ccard"><div class="k">Cue · Type</div><div class="v"><b>Mono numerals + units always shown</b> (kg, g, h, mg). Reads like an instrument readout. Small-caps figure labels.</div></div>
+    <div class="ccard"><div class="k">Cue · Annotation</div><div class="v">Notes render as <b>// comments</b> — the lab/code-notebook tell. Quiet, optional, unmistakably "logbook".</div></div>
+    <div class="ccard"><div class="k">Cue · Texture</div><div class="v"><b>Faint graph-paper grid</b> on headers only — engineering-pad feel, never behind data (keeps numbers legible).</div></div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ============ SCREEN A — SESSION ENTRY ============ -->
+    <div class="col">
+      <h2>Session entry · logging</h2>
+      <p>Conditions block (shown expanded) sits above the work. Default state: collapses to one chip like <code style="font-size:11px">7.5h · 82kg · 90g · stress 3</code>.</p>
+      <div class="phone"><div class="screen"><div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span class="sb-right">
+          <svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M2 17h2v-5H2v5zm4 0h2V9H6v8zm4 0h2V5h-2v12zm4 0h2v-9h-2v9zm4 0h2v-4h-2v4z"/></svg>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="18" height="10" rx="2"/><rect x="4" y="9" width="12" height="6" rx="1" fill="currentColor"/><path d="M22 10v4"/></svg>
+        </span></div>
+        <div class="content">
+          <div class="ehead graph">
+            <div>
+              <div class="date scaps">Fri · Jun 20</div>
+              <div class="ttl">Push A</div>
+              <div class="meta num">42:18 elapsed · 2 of 5</div>
+            </div>
+            <div class="entry">
+              <div class="n num">#047</div>
+              <div class="t scaps" style="color:#22d3ee">Finish</div>
+            </div>
+          </div>
+
+          <div class="cond">
+            <div class="top">
+              <span class="l scaps"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3v6l-5 9a2 2 0 002 2h12a2 2 0 002-2l-5-9V3"/><path d="M8 3h8"/></svg>Conditions · Inputs</span>
+              <span class="r"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M12 5v14M5 12h14"/></svg>Edit</span>
+            </div>
+            <div class="vargrid">
+              <div class="var"><div class="vl">Sleep</div><div class="vv num">7.5<span class="vu"> h</span></div></div>
+              <div class="var"><div class="vl">Bodyweight</div><div class="vv num">82.1<span class="vu"> kg</span></div></div>
+              <div class="var"><div class="vl">Pre-carbs</div><div class="vv num">90<span class="vu"> g</span></div></div>
+              <div class="var"><div class="vl">Caffeine</div><div class="vv num">200<span class="vu"> mg</span></div></div>
+              <div class="var"><div class="vl">Stress</div><div class="vv num">3<span class="vu"> / 10</span></div></div>
+              <div class="var"><div class="vl">Last meal</div><div class="vv num">90<span class="vu"> m ago</span></div></div>
+            </div>
+            <div class="annot">// <b>meal:</b> oats + whey, banana. felt fueled.</div>
+          </div>
+
+          <div class="sectlbl scaps"><span>Procedure</span><span class="ln"></span></div>
+
+          <div class="card">
+            <div class="exhead">
+              <div class="exname">Incline DB Press</div>
+              <div class="tags">
+                <span class="pill tag">Horizontal Adduction</span>
+                <span class="pill tag">Elbow Extension</span>
+              </div>
+              <div class="tags"><span class="pill setup"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Seat 4 · Back 2</span></div>
+              <div class="target">
+                <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2" style="margin-top:1px"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+                <div class="t">Well-slept + fueled today. Last set had 1 RIR — <b>target 33.5kg × 9</b>.</div>
+              </div>
+            </div>
+            <div class="thead scaps"><span></span><span>Weight</span><span>Reps</span><span>RIR</span><span></span></div>
+            <div class="set"><span class="sx">1</span><span><span class="v">33.5</span> <span class="u">kg</span></span><span><span class="v">10</span></span><span class="rir">2</span><span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></span></div>
+            <div class="set"><span class="sx">2</span><span><span class="v">33.5</span> <span class="u">kg</span></span><span><span class="v">9</span></span><span class="rir">1</span><span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></span></div>
+            <div class="annotrow">// <b>set 2:</b> smooth, slight L-shoulder pinch at lockout · RPE 8</div>
+            <div class="set ghost"><span class="sx">3</span><span><span class="v">33.5</span> <span class="u">kg</span></span><span><span class="v">9</span></span><span class="rir">—</span><span class="chk empty"></span></div>
+          </div>
+          <div class="addset"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add set</div>
+
+          <div class="tabbar">
+            <div class="tab on"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h3v16H6zM15 4h3v16h-3zM3 9h3M3 15h3M18 9h3M18 15h3"/></svg>Train</div>
+            <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Library</div>
+            <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>Programs</div>
+            <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18l5-6 4 3 6-8"/><circle cx="20" cy="6" r="1.6" fill="currentColor"/></svg>Findings</div>
+            <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>You</div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ============ SCREEN B — FINDINGS ============ -->
+    <div class="col">
+      <h2>Findings · the payoff</h2>
+      <p>The thing no lifting app does: your own inputs correlated against your outputs. Honest about confidence and causation.</p>
+      <div class="phone"><div class="screen"><div class="island"></div>
+        <div class="statusbar"><span>9:41</span><span class="sb-right">
+          <svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M2 17h2v-5H2v5zm4 0h2V9H6v8zm4 0h2V5h-2v12zm4 0h2v-9h-2v9zm4 0h2v-4h-2v4z"/></svg>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="18" height="10" rx="2"/><rect x="4" y="9" width="12" height="6" rx="1" fill="currentColor"/><path d="M22 10v4"/></svg>
+        </span></div>
+        <div class="content">
+          <div class="fhead graph">
+            <div class="ttl">Findings</div>
+            <div class="sub num">47 sessions analyzed · updated today</div>
+          </div>
+          <div class="seg">
+            <div class="on">Inputs → Outputs</div>
+            <div>By exercise</div>
+            <div>Volume</div>
+          </div>
+
+          <div class="finding pos">
+            <div class="row">
+              <div class="cond-l">Sleep <span class="q">≥ 7h</span></div>
+              <div class="delta">+6.2%</div>
+            </div>
+            <div class="out">est. 1RM vs. your nights under 7h</div>
+            <div class="bar"><i></i><b style="width:31%"></b></div>
+            <div class="conf"><span class="scaps" style="letter-spacing:.1em">Confidence</span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot off"></span><span style="margin-left:auto">n = 41</span></div>
+          </div>
+
+          <div class="finding pos">
+            <div class="row">
+              <div class="cond-l">Pre-carbs <span class="q">≥ 80g</span></div>
+              <div class="delta">+0.8</div>
+            </div>
+            <div class="out">extra reps on top set, on average</div>
+            <div class="bar"><i></i><b style="width:22%"></b></div>
+            <div class="conf"><span class="scaps" style="letter-spacing:.1em">Confidence</span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot off"></span><span style="margin-left:auto">n = 38</span></div>
+          </div>
+
+          <div class="finding neg">
+            <div class="row">
+              <div class="cond-l">Stress <span class="q">≥ 7/10</span></div>
+              <div class="delta">−4.1%</div>
+            </div>
+            <div class="out">total session volume vs. low-stress days</div>
+            <div class="bar"><i></i><b style="width:20%"></b></div>
+            <div class="conf"><span class="scaps" style="letter-spacing:.1em">Confidence</span><span class="dot"></span><span class="dot"></span><span class="dot off"></span><span class="dot off"></span><span style="margin-left:auto">n = 22</span></div>
+          </div>
+
+          <div class="chartcard">
+            <div class="cl"><span class="scaps" style="letter-spacing:.12em">est. 1RM · 12 weeks</span><span class="num" style="color:#22d3ee">▲ trending</span></div>
+            <svg viewBox="0 0 300 90" style="width:100%;height:78px">
+              <polyline fill="none" stroke="#22d3ee" stroke-width="2" points="4,72 32,68 60,60 88,63 116,52 144,48 172,50 200,40 228,34 256,30 284,22"/>
+              <circle cx="116" cy="52" r="3.2" fill="#34d399"/><circle cx="200" cy="40" r="3.2" fill="#34d399"/><circle cx="256" cy="30" r="3.2" fill="#34d399"/>
+              <circle cx="88" cy="63" r="3.2" fill="#fb7185"/>
+            </svg>
+            <div class="num" style="font-size:10px;color:#5f6b7d;display:flex;gap:14px"><span style="color:#34d399">● good-sleep day</span><span style="color:#fb7185">● high-stress day</span></div>
+          </div>
+
+          <div class="ffoot">// correlation, not causation. updates<br>&nbsp;&nbsp;&nbsp;automatically as you log more sessions.</div>
+
+          <div class="tabbar">
+            <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h3v16H6zM15 4h3v16h-3zM3 9h3M3 15h3M18 9h3M18 15h3"/></svg>Train</div>
+            <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Library</div>
+            <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>Programs</div>
+            <div class="tab on"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18l5-6 4 3 6-8"/><circle cx="20" cy="6" r="1.6" fill="currentColor"/></svg>Findings</div>
+            <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>You</div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    <div><h3>What changed vs. the first mockup</h3><p>Same dark instrument base, but the structure now <b style="color:#e9edf2">tells a scientific story</b>: a Conditions header, <code>//</code> annotations, graph-paper headers, a cyan "signal" accent, and a new <b style="color:#e9edf2">Findings</b> tab that turns logged variables into correlations.</p></div>
+    <div><h3>Accent shift</h3><p>Swapped the warm fitness-orange for a clinical <b style="color:#e9edf2">signal cyan</b> <code>#22D3EE</code>, with green/red reserved for positive/negative correlations. Reads "instrument," not "gym." (Orange is still on the table.)</p></div>
+    <div><h3>Scope note</h3><p><b style="color:#e9edf2">Logging conditions = MVP</b> (custom, typed, collapsible — like the per-set metrics). The <b style="color:#e9edf2">Findings/correlation engine</b> is a fast-follow: it needs accumulated history to say anything, so it naturally arrives after you've logged a few weeks.</p></div>
+    <div><h3>Stays simple</h3><p>Every science feature is opt-in. A user who logs only reps×weight sees a clean tracker. The notebook depth reveals itself only to those who want to control their variables.</p></div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SBL — Product Requirements (PRD) · v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+<style>
+  :root{--bg:#fbfaf4;--ink:#1b2330;--soft:#5c6675;--line:rgba(27,35,48,.12);--accent:#0e7490;--cyan:#0e7490}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;line-height:1.6}
+  .wrap{max-width:820px;margin:0 auto;padding:56px 26px 120px}
+  h1{font-family:'Fraunces',serif;font-size:38px;font-weight:600;letter-spacing:-.02em;margin:0 0 4px}
+  .sub{color:var(--soft);font-size:15px;margin-bottom:6px}
+  .meta{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--soft);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:10px 0;margin:18px 0 28px;display:flex;flex-wrap:wrap;gap:16px}
+  h2{font-family:'Fraunces',serif;font-size:25px;font-weight:600;letter-spacing:-.01em;margin:46px 0 6px;padding-top:18px;border-top:2px solid var(--ink)}
+  h2 .n{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--accent);font-weight:500;margin-right:10px}
+  h3{font-size:16px;font-weight:700;margin:24px 0 6px}
+  p{margin:8px 0}ul,ol{margin:8px 0;padding-left:22px}li{margin:5px 0}b{color:#0c1320}
+  code{font-family:'JetBrains Mono',monospace;font-size:12.5px;background:#eef0e9;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:#0c2a30}
+  .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;letter-spacing:.04em}
+  .p0{background:#fde9d6;color:#9a4f08}.v1{background:#d8f0e4;color:#0c5b3d}.vx{background:#fdeecb;color:#8a5b07}.v2{background:#e6e3f5;color:#4a3d8a}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14px}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:#f1f1ea;font-weight:600}
+  .callout{border-left:3px solid var(--accent);background:#eef5f6;padding:12px 16px;border-radius:0 8px 8px 0;margin:16px 0;font-size:14px}
+  .star{border-left:3px solid #c98a1a;background:#fdf6e8;padding:12px 16px;border-radius:0 8px 8px 0;margin:16px 0;font-size:14px}
+  .entity{font-family:'JetBrains Mono',monospace;font-size:13px;background:#0d1219;color:#e6edf3;border-radius:10px;padding:14px 16px;margin:10px 0;overflow:auto}
+  .entity .e{color:#7ee0f0;font-weight:600}.entity .f{color:#c9d4e0}.entity .c{color:#6b7c8c}
+  a{color:var(--cyan)}
+</style>
+</head>
+<body><div class="wrap">
+
+<h1>SBL</h1>
+<div class="sub">A training <em>lab notebook</em> — control your variables, find what moves the needle, and own your data in code.</div>
+<div class="meta">
+  <span>PRD · v2 (revised after council)</span><span>2026-06-20</span><span>solo dev</span><span>iOS + Android</span>
+</div>
+
+<div class="callout"><b>What changed in v2:</b> reprioritized around the differentiator per the council review. The Findings (correlation) idea now ships as a teaser <em>at launch</em>, not deferred; v1 is deliberately narrow; the <b>developer/integration layer is a core pillar</b> (a stated major focus); generic-tracker features are <b>deferred, not deleted</b>; and a <b>Phase 0 validation spike</b> precedes any app code. Council artifacts: <code>docs/council/council-report-2026-06-20.html</code>.</div>
+
+<h2><span class="n">01</span>Vision &amp; Positioning</h2>
+<p>Existing gym apps are <b>trackers</b>: record sets, see last time. SBL is a <b>lab notebook</b>: every session is a controlled experiment where you log the work <em>and</em> the <b>conditions</b> around it (sleep, bodyweight, pre-workout carbs, caffeine, stress, meal timing), then learn which inputs correlate with better output. Two things make it genuinely different from everything on the market:</p>
+<ol>
+  <li><b>Input→output correlation ("Findings")</b> — quantified-self-style insight no mainstream lifting app offers. Lifters complain the science-based apps won't let them dig into their own data.</li>
+  <li><b>Open, code-accessible data</b> — export + a documented API + an MCP server + AI-buildable docs, so technical users plug their own data into their own dashboards and AI. This is a moat a "tracker that added a sleep field" can't easily copy.</li>
+</ol>
+<p><b>Design soul:</b> a scientific instrument that stays dead-simple. Power is one tap away, never in your face.</p>
+
+<h2><span class="n">02</span>Target User</h2>
+<p>Intermediate-to-advanced lifters who autoregulate (RIR), care about machine setups, and want to control variables — and, prominently, the <b>quantified-self / technical</b> slice of them who build dashboards and run their own AI analysis. We lean into power; a minimalist who only wants reps×weight still gets a clean, fast tracker.</p>
+
+<h2><span class="n">03</span>Top Priority: Lightweight &amp; Fast</h2>
+<p>A first-class product requirement, not a nice-to-have (see <code>CLAUDE.md</code>). Speed comes from architecture, not language:</p>
+<ul>
+  <li><b>Local-first</b> — all reads/writes hit on-device SQLite instantly; never block UI on network; sync in background.</li>
+  <li><b>Optimistic UI</b>; visual feedback within ~100ms; animations on the UI thread (Reanimated), 60fps.</li>
+  <li><b>Minimal dependencies</b> (audit before adding); watch bundle size + cold start; lazy-load non-critical screens; virtualize long lists; memoize hot paths.</li>
+  <li><b>Offline-first</b> is mandatory (gyms have no signal).</li>
+</ul>
+
+<h2><span class="n">04</span>Goals &amp; Non-Goals</h2>
+<h3>Goals</h3>
+<ul>
+  <li>Make logging a set <b>faster</b> than incumbents while supporting far more depth on demand.</li>
+  <li>Treat everything trackable (reps, weight, RIR, notes, custom metrics, conditions) as <b>opt-in, typed data</b>.</li>
+  <li>Ship the <b>differentiator at launch</b> (at least a primitive Findings surface).</li>
+  <li>Make data <b>code-accessible and AI-buildable</b> from early on.</li>
+</ul>
+<h3>Non-Goals (v1)</h3>
+<ul>
+  <li>No social feed/following/public sharing.</li>
+  <li>No nutrition database / calorie counting (carbs etc. are simple manual numbers).</li>
+  <li>No wearable/HealthKit auto-import in v1 (manual entry; later candidate).</li>
+  <li>No AI/ML programming. Progression and findings are transparent, rules-/stats-based.</li>
+  <li>No Rust; one TypeScript stack across app, CLI, MCP.</li>
+</ul>
+
+<h2><span class="n">05</span>Scope &amp; Phasing</h2>
+<table>
+  <tr><th>Phase</th><th>Contents</th></tr>
+  <tr><td><span class="tag p0">Phase 0</span></td><td><b>Validation spike (no app code).</b> Prove the correlation engine yields a real, non-spurious insight on mocked ~8 weeks of data + the founder's own training log, in a spreadsheet/notebook, with basic statistical guardrails. Go/no-go gate.</td></tr>
+  <tr><td><span class="tag v1">v1</span></td><td>Narrow, fast, local-first. Fast logging (reps×weight inline; RIR/notes/custom metrics behind one-tap expand; ghost prefill; rest timer); session <b>conditions</b> logging (collapsible); custom exercises (minimal tagging); <b>Findings teaser</b> at launch; <b>API-first documented data layer + export + personal-token read API + MCP server + AI-buildable docs</b>; account optional + private last-write-wins sync.</td></tr>
+  <tr><td><span class="tag vx">v1.x</span></td><td>Full <b>Findings</b> engine (richer correlations + guardrails). Deepen dev layer: write-access API, CLI, webhooks.</td></tr>
+  <tr><td><span class="tag v2">v2</span></td><td>Deferred-not-deleted: program builder, joint-action controlled vocabulary, progression engine, seat/setup recall. Plus: public/community exercise library; optional public OAuth API for third-party apps; HealthKit/Google Fit import.</td></tr>
+</table>
+
+<h2><span class="n">06</span>v1 Feature Detail</h2>
+
+<h3>6.1 Fast logging</h3>
+<p>Start a session freestyle. Per set: <b>reps × weight inline</b>; RIR, notes, custom metrics behind a <b>one-tap expand</b>. <b>Ghost prefill</b> of last session's values (tap to accept). <b>Rest timer</b> auto-starts on logging a set. Tap-and-go is the 90% path. Delivers immediate value <em>before</em> Findings exists (retention bridge).</p>
+
+<h3>6.2 Session conditions (the lab-notebook inputs)</h3>
+<p>Session-level <b>typed, custom condition variables</b> (sleep h, bodyweight, pre-carbs g, caffeine mg, stress 1–10, last-meal timing, free-text meal note). <b>Collapsed by default</b> to a one-line chip (<code>7.5h · 82kg · 90g · stress 3</code>); expands to log/edit. Must be <b>dead-simple</b> (a few taps) or it won't be sustained. Scales get <b>defined anchors</b> (e.g. stress 1–10 with guidance) to reduce noisy self-report.</p>
+
+<h3>6.3 Custom metrics</h3>
+<p>Everything logged is a <b>metric</b>. Built-ins: reps, weight, RIR, notes. Custom typed metrics (<code>number</code> / <code>scale</code> / <code>text</code> / <code>checkbox</code>) enabled per exercise. Progressive disclosure keeps defaults minimal.</p>
+
+<h3>6.4 Findings teaser <span class="tag v1">at launch</span></h3>
+<p>A <b>visible, honest</b> insight surface from day one — even heuristic ("your top sets average heavier on 7h+ sleep") — with a countdown ("3 sessions until your first finding"), a confidence indicator, and explicit <b>"correlation, not causation."</b> The full engine is v1.x; the <em>presence</em> of the payoff at launch is non-negotiable.</p>
+
+<h3>6.5 Custom exercises (minimal)</h3>
+<p>Create unlimited exercises so you have something to log against. A small pre-seeded list ships for convenience. <b>Light optional tagging only</b> in v1 — the full controlled-vocabulary joint-action system + program builder are deferred to v2.</p>
+
+<h2><span class="n">07</span>Developer &amp; Integration Layer <span class="tag v1">core pillar</span></h2>
+<div class="star"><b>A stated major focus.</b> "Make the data so cleanly accessible and documented that someone can point their own AI at it and build a dashboard." Built <b>API-first</b>: the documented data layer is the canonical interface; the app is its first client.</div>
+<ul>
+  <li><b>Export</b> — JSON / CSV / raw SQLite, offline, for analysis. Solid in v1.</li>
+  <li><b>Personal read API</b> — Supabase auto-generated, row-level-secured REST, accessed via a <b>personal access token</b>.</li>
+  <li><b>MCP server</b> (TypeScript) — thin wrapper so a user's AI client queries their sessions/conditions/sets and runs its own analysis. The centerpiece for "build using AI."</li>
+  <li><b>AI-buildable docs</b> — documented stable schema + <code>llms.txt</code> + copy-paste examples, so a coding agent can build an integration from the docs.</li>
+  <li><b>Scope:</b> v1 targets <b>individual power users building against their own data</b> (personal token + MCP). A <b>public OAuth API</b> for third-party apps serving other users is a larger v2 commitment.</li>
+  <li>API/CLI/MCP read from the cloud → require an account + sync. Export works offline from the device.</li>
+</ul>
+
+<h2><span class="n">08</span>Data Model (API-first, documented)</h2>
+<p>Designed now for external consumption: <b>stable, durable IDs</b>, typed metrics, documented fields. Every table carries <code>id</code>, <code>updated_at</code>, soft-delete <code>deleted_at</code>, and a sync <code>dirty</code> flag (last-write-wins).</p>
+<div class="entity">
+<span class="e">Exercise</span> <span class="f">name, tags[]?, enabledMetricIds[], isCustom, ownerId?</span><br>
+<span class="e">Metric</span> <span class="f">name, type(number|scale|text|checkbox), scope(set|session), ownerId?</span><br>
+<span class="e">Session</span> <span class="f">date, startedAt, endedAt, conditionValues{metricId:value}</span><br>
+<span class="e">SessionExercise</span> <span class="f">sessionId, exerciseId, order</span><br>
+<span class="e">SetLog</span> <span class="f">sessionExerciseId, setNo, reps, weight, rir?, note?, metricValues{} (JSON), completed</span><br>
+<span class="c">// deferred to v2: JointAction (controlled vocab), GoalMap, Routine/RoutineDay/RoutineExercise, SetupField</span>
+</div>
+<div class="callout"><b>Decision:</b> custom metric/condition values as JSON blobs on parent rows for MVP speed; promote heavily-queried ones to columns when the full Findings engine needs aggregation.</div>
+
+<h2><span class="n">09</span>Architecture</h2>
+<ul>
+  <li><b>App:</b> Expo (React Native) → iOS + Android via EAS. UI: NativeWind + <code>react-native-reusables</code> + Reanimated.</li>
+  <li><b>Local store (source of truth):</b> SQLite via Drizzle → fully offline.</li>
+  <li><b>Cloud:</b> Supabase (Auth + Postgres + auto REST API + RLS). Account optional; sign in to enable sync + API access.</li>
+  <li><b>Sync:</b> last-write-wins per record (<code>updated_at</code> + soft-delete + dirty flag), background.</li>
+  <li><b>One language:</b> TypeScript across app, CLI, and MCP server. <b>No Rust.</b></li>
+  <li>Keep correlation/sync logic in <b>clean, isolated modules</b> (portable, testable; extractable later if ever needed).</li>
+  <li><b>Units:</b> kg/lb user setting; stored canonically, displayed per preference.</li>
+</ul>
+
+<h2><span class="n">10</span>Design System — "The Lab Notebook"</h2>
+<p>A dark "instrument" look evolved into a science/lab-notebook identity; references pulled from outside fitness (lab notebooks, blueprints, terminals, Bearable/Oura, Notion/Bear).</p>
+<ul>
+  <li><b>Graph paper is a surface, not décor:</b> inputs/sections are <b>discrete boxes whose interior is graph paper</b>, the grid filling each box edge-to-edge — <b>one clean grid per box</b>, no second/overlapping grid bleeding through.</li>
+  <li><b>Mono numerals, units always shown</b> (tabular figures, columns never shift); notes as <code>// comments</code>; small-caps figure labels; conditions as fill-in lines.</li>
+  <li><b>Progressive disclosure</b> everywhere; reduce cognitive load; <b>no glassmorphism/translucency behind data.</b></li>
+</ul>
+<table>
+  <tr><th></th><th>Blueprint (dark, default)</th><th>Graph paper (light, toggle)</th></tr>
+  <tr><td>Surface</td><td><code>#0B1A2B</code></td><td><code>#FBFAF4</code></td></tr>
+  <tr><td>Accent</td><td><code>#38BDF8</code> cyan</td><td><code>#2F6DF0</code> ink blue</td></tr>
+  <tr><td>Pos / Neg</td><td colspan="2"><code>#34D399</code> / <code>#FB7185</code> (always paired with text)</td></tr>
+</table>
+<p>Type: <b>Inter</b> (UI), <b>JetBrains Mono</b> (numbers), <b>Fraunces</b> (optional display). Theme = blueprint default + light toggle; accent cyan. Living reference: <code>/mockups/*.html</code>.</p>
+
+<h2><span class="n">11</span>Key Risks &amp; Mitigations <span class="tag vx">from council</span></h2>
+<ul>
+  <li><b>Statistical validity</b> (n-of-1, noisy, low-n → spurious correlations, confounds, multiple comparisons). <em>Mitigate:</em> minimum-n thresholds before showing a finding, visible confidence, conservative effect-size display, honest causation caveats. Phase 0 tests this before we build.</li>
+  <li><b>Garbage-in</b> (self-reported sleep/stress is noisy). <em>Mitigate:</em> defined scale anchors, fast consistent entry, and the dev layer lets power users export raw data and run their own rigorous analysis.</li>
+  <li><b>Retention before Findings matures.</b> <em>Mitigate:</em> fast logging + ghost prefill deliver value immediately; Findings teaser + countdown create anticipation.</li>
+  <li><b>Competitive copy</b> ("Hevy adds a conditions field"). <em>Mitigate:</em> the moat is the open/code-accessible data + MCP + notebook identity + depth, not the conditions field alone.</li>
+</ul>
+
+<h2><span class="n">12</span>Next Steps</h2>
+<ol>
+  <li><b>Phase 0 — validation spike:</b> correlation engine on mocked + real data; go/no-go.</li>
+  <li>On "go" → <b>implementation plan</b> (writing-plans) for the narrow v1 above.</li>
+  <li>Build v1 → ship Findings teaser + dev layer → v1.x full engine.</li>
+</ol>
+
+</div></body></html>

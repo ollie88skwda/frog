@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Council Verdict · SBL build plan</title>
+<style>
+  :root{--bg:#f7f7f5;--card:#fff;--ink:#1a1d24;--soft:#5d6470;--line:#e4e4df;--accent:#0e7490;--good:#0f8a5f;--bad:#c0413b}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;line-height:1.6}
+  .wrap{max-width:780px;margin:0 auto;padding:48px 22px 110px}
+  .kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  h1{font-size:30px;letter-spacing:-.02em;margin:6px 0 4px}
+  .q{background:#eef5f6;border-left:3px solid var(--accent);padding:14px 16px;border-radius:0 10px 10px 0;font-size:14px;color:#23424a;margin:18px 0 30px}
+  h2{font-size:20px;margin:34px 0 8px;padding-top:18px;border-top:1px solid var(--line)}
+  .verdict{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 22px 18px;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+  h3{font-size:15px;margin:20px 0 6px}
+  p{margin:7px 0}ul{margin:7px 0;padding-left:20px}li{margin:5px 0}
+  .rec{background:#eafaf2;border:1px solid #bfe9d4;border-radius:12px;padding:16px 18px;margin:14px 0}
+  .first{background:#fff7e8;border:1px solid #f0dcae;border-radius:12px;padding:16px 18px;margin:14px 0}
+  .first b,.rec b{color:#10131a}
+  .spectrum{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 0}
+  .lane{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .lane h4{margin:0 0 6px;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--soft)}
+  .chip{display:inline-block;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;margin:3px 4px 0 0;background:#eef0ee;color:#3a3f48}
+  .chip.g{background:#e2f5ea;color:#0f6b48}.chip.b{background:#fbe6e4;color:#9c322d}
+  details{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:8px 0}
+  summary{cursor:pointer;font-weight:600;font-size:14px}
+  details p{font-size:13.5px;color:#33373f}
+  .adv{font-size:12px;color:var(--soft);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+  footer{margin-top:40px;color:var(--soft);font-size:12px;border-top:1px solid var(--line);padding-top:16px}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="kicker">The Gang · Council Verdict</div>
+<h1>Should we build SBL's v1 as specced?</h1>
+<div class="q"><b>Question:</b> Is the v1 MVP scoped/sequenced correctly for a solo dev, what should be built/validated first, what are the biggest risks, and is deferring the "Findings" correlation engine to v1.x a mistake?</div>
+
+<div class="verdict">
+<h2 style="border:0;padding:0">Verdict</h2>
+
+<h3>Where the gang agrees (high confidence)</h3>
+<ul>
+  <li><b>The Findings engine is the actual product; conditions logging is the behavior that feeds it.</b> Everything else (logging, RIR, ghost prefill, program builder) is table stakes the incumbents already do well. (Mean Mark, Simple Simon, What-If Willy, Clueless Chris, Do-It Dora — all five.)</li>
+  <li><b>Deferring Findings to v1.x is a mistake.</b> At launch you'd be a generic tracker with <em>extra</em> logging friction — the data-entry tax of the moat with none of the payoff. Users log on faith for weeks, see nothing, churn. <b>Ship at least a primitive/teaser Findings from day one.</b></li>
+  <li><b>v1 is too big and mis-prioritized for a solo dev.</b> Strong consensus to cut from v1: program builder, joint-action controlled vocabulary, progression engine, seat/setup recall (Simple Simon also cuts cloud sync).</li>
+  <li><b>Validate the correlation engine before building the app</b> — on a spreadsheet with mocked + your own real training data. "Build the magic trick before the stage."</li>
+  <li><b>Conditions logging must be dead-simple</b> (a few taps) or nobody sustains it — and then there's no data.</li>
+</ul>
+
+<h3>Where the gang clashes</h3>
+<ul>
+  <li><b>Habit-first vs. proof-first.</b> What-If Willy says build the conditions-logging <em>habit</em> first (assumes the engine will work). Mean Mark / Do-It Dora / Simple Simon say <em>prove the math works first</em> — it may produce only noise on tiny, noisy data. Same coin, opposite starting move.</li>
+  <li><b>Ambition.</b> What-If Willy alone wants to frame it as a platform (n-of-1 experimentation beyond the gym — running, cuts, sleep, biohacking). Everyone else says narrow and validate before dreaming.</li>
+  <li><b>Cloud sync in v1?</b> Simple Simon cuts it; the others leave it.</li>
+</ul>
+
+<h3>Blind spots the peer review caught</h3>
+<ul>
+  <li><b>Statistical validity.</b> No advisor seriously stress-tested the science: n-of-1 over a few dozen noisy sessions invites confounding, multiple-comparisons false positives, and reverse causality. Spurious "findings" shown to a rigor-obsessed audience is a <em>credibility</em> risk. Needs guardrails: minimum n, confidence display, honest "correlation ≠ causation."</li>
+  <li><b>Garbage-in.</b> Self-reported sleep/stress/carbs are noisy and biased — bad inputs doom Findings even if the math is perfect. Input accuracy is a data-validity threat, not just friction.</li>
+  <li><b>Retention, distribution, business model.</b> Unexamined: who the user is and how they're acquired, App-Store economics for a niche audience, switching cost / history import from Hevy, and the obvious competitive response — <em>Hevy just adds a "conditions" field.</em></li>
+</ul>
+
+<div class="rec">
+<h3 style="margin-top:4px">The recommendation</h3>
+<p><b>Don't build v1 as specced. Reorder around the thesis.</b></p>
+<ol>
+  <li><b>Validate the engine first</b> (days, ~zero cost): mock ~8 weeks of sessions + use your own real log in a spreadsheet, write the correlation logic, and judge whether it yields a genuine "huh, interesting" insight that survives basic statistical guardrails. This could save months.</li>
+  <li><b>If it holds, build a deliberately narrow v1:</b> fast logging (ghost prefill, RIR) + dead-simple conditions capture + a <b>visible, honest Findings surface from day one</b> (heuristic/teaser is fine: "3 sessions until your first finding," with confidence + causation caveats).</li>
+  <li><b>Defer the tracker table-stakes</b> (program builder, joint-action vocab, progression engine, seat recall); reconsider whether sync is even v1.</li>
+</ol>
+<p>Keep the lab-notebook <em>design identity</em> (it's good and cheap) — but flip the <em>feature</em> priority so the differentiator is present at launch.</p>
+</div>
+
+<div class="first">
+<h3 style="margin-top:4px">The one thing to do first</h3>
+<p><b>Before any app code:</b> open a spreadsheet, enter a mix of mocked 8-week data and your own real training sessions with conditions, write the correlation query, and decide honestly — is the output a revelation or noise dressed as science? If revelation → build the narrow v1 around it. If noise → the premise needs rework, and you just saved yourself months.</p>
+</div>
+</div>
+
+<h2>Who aligned with what</h2>
+<div class="spectrum">
+  <div class="lane"><h4>Validate engine first</h4><span class="chip">Mean Mark</span><span class="chip">Simple Simon</span><span class="chip">Do-It Dora</span></div>
+  <div class="lane"><h4>Build logging habit first</h4><span class="chip">What-If Willy</span></div>
+  <div class="lane"><h4>Findings must ship at launch</h4><span class="chip">all five</span></div>
+  <div class="lane"><h4>Cut tracker table-stakes from v1</h4><span class="chip">Simple Simon</span><span class="chip">Do-It Dora</span><span class="chip">What-If Willy</span><span class="chip">Mean Mark</span></div>
+  <div class="lane"><h4>Peer-review pick: strongest</h4><span class="chip g">Do-It Dora (Response B)</span></div>
+  <div class="lane"><h4>Peer-review pick: biggest blind spot</h4><span class="chip b">What-If Willy (Response A)</span></div>
+</div>
+
+<h2>Full advisor responses</h2>
+<details><summary><span class="adv">Mean Mark · The Contrarian</span></summary>
+<p>The fatal flaw: you're building a tracker for people who already have one (Hevy/Strong = muscle memory). High switching cost for a promissory note. Deferring Findings guts it — the differentiator IS the engine; everything else is table stakes a solo dev won't beat in v1. Conditions logging is pure tax until Findings ships; users won't log on faith, then Findings launches on low-n data and surfaces spurious correlations — a liability that looks unscientific to a rigor audience. Scope too big AND mis-prioritized. Build first: a dead-simple conditions+Findings prototype on your OWN training data. If correlations are garbage (biology is noisy, n is tiny), the premise is dead. Validate the thesis, not the app.</p></details>
+<details><summary><span class="adv">Simple Simon · First Principles</span></summary>
+<p>Lifters don't think "I want to log conditions" — they think "why did today suck when last week felt easy?" The product is the answer to that; everything else is plumbing. The differentiator is the Findings engine, and you've deferred the one thing that IS the product. At launch: all the data-entry tax, none of the payoff — log for 4 days, no insight, quit. Cut from v1: program builder, joint-action vocab, progression engine, seat recall, cloud sync. Keep: fast logging, conditions capture, a primitive Findings view (even hardcoded heuristics) — insight on day 10 not week 12. Validate the math in a spreadsheet on your own log first; if it doesn't yield "huh, interesting," the premise is dead.</p></details>
+<details><summary><span class="adv">What-If Willy · The Expansionist</span></summary>
+<p>Everyone will tell you to cut scope; I'll tell you the opposite about the one thing that matters. Conditions logging IS the product — build it first, not buried at step 5. The differentiator is the habit of logging conditions; Findings monetizes a behavior you bootstrap from day one. Upside being undervalued: this isn't a lifting app, it's a personal n-of-1 experimentation engine — extends to running, cuts, sleep, biohacking. "Lab notebook for your body" is a platform; gym is the wedge. Don't defer Findings entirely — ship a teaser (one hardcoded insight at week 3 = addiction loop + screenshot-able viral moment = free growth). Cut program builder and joint-action tags from v1.</p></details>
+<details><summary><span class="adv">Clueless Chris · The Outsider</span></summary>
+<p>The "lab notebook" idea is the only interesting part — but v1 is mostly a normal tracker, so the idea is buried; a normal person sees a tracker that also nags about sleep. Build the one thing nobody else does: conditions logging, dead simple (more than a few taps = people skip it = no data). Confusing assumption: serious people logging six extra things every session forever before any payoff — that's a lot of homework. And how do I score "stress 1-10"? Says who? Missing: a reason to come back before Findings exists. Delaying Findings is a real mistake — even a dumb version ("your last 5 workouts next to how you slept") lets people SEE the point.</p></details>
+<details><summary><span class="adv">Do-It Dora · The Executor</span></summary>
+<p>You don't validate a correlation engine by building a tracker and waiting six weeks — validate it now in a spreadsheet before writing code. Mock 8 weeks (sleep, carbs, caffeine, RIR, e1RM), write the correlation logic, look at the output: revelation or noise dressed as science? If a solo dev can't make it land on hand-picked data, it never will on messy low-n data. v1 too big, differentiator buried. Cut: program builder, progression engine, joint-action tags, seat/setup recall. Ship: fast logging + conditions + ghost prefill + a visible running Findings teaser. Deferring Findings guts you. Monday: open Sheets, fake data, write the query. If it lands, build around it; if not, you saved four months.</p></details>
+
+<h2>Peer-review highlights</h2>
+<details><summary>Three reviewers, anonymized cross-read</summary>
+<p><b>Strongest (unanimous): Do-It Dora.</b> The only response that converts the debate into a cheap, falsifiable Monday-morning test and separates <em>thesis risk</em> from <em>app risk</em>.</p>
+<p><b>Biggest blind spot (unanimous): What-If Willy.</b> Assumes the premise works and races to platform vision while everyone else is correctly cutting and validating; bets the company on unvalidated math.</p>
+<p><b>What all five missed:</b> (1) statistical validity of n-of-1 on noisy low-n data — confounds, multiple comparisons, reverse causality; (2) self-reported input accuracy (garbage in → garbage findings); (3) retention/distribution/business model + competitive response (Hevy could just add a conditions field) + switching cost/import.</p></details>
+
+<footer>Generated 2026-06-20 · The Gang (LLM Council) · Topic: SBL v1 build plan &amp; scope · Advisors: Mean Mark, Simple Simon, What-If Willy, Clueless Chris, Do-It Dora · Chair: Leader Larry</footer>
+
+</div></body></html>

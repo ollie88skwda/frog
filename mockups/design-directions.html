@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SBL · Design Direction Comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --page-bg:#0e1013; --page-panel:#16191e; --page-text:#e9edf2; --page-muted:#8b94a3;
+    --page-line:rgba(255,255,255,.08);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--page-bg);color:var(--page-text);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  body{padding:40px 24px 80px}
+  .wrap{max-width:1240px;margin:0 auto}
+
+  /* ---------- page header ---------- */
+  .masthead{margin-bottom:8px}
+  .masthead .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--page-muted);font-weight:600}
+  .masthead h1{font-size:30px;font-weight:700;letter-spacing:-.02em;margin-top:8px}
+  .masthead p{color:var(--page-muted);font-size:15px;max-width:760px;margin-top:10px;line-height:1.55}
+  .verdict{margin:24px 0 34px;padding:16px 18px;border:1px solid var(--page-line);border-radius:14px;background:linear-gradient(180deg,rgba(249,115,22,.08),transparent);display:flex;gap:14px;align-items:flex-start}
+  .verdict .dot{flex:none;width:9px;height:9px;border-radius:50%;background:#f97316;margin-top:6px;box-shadow:0 0 12px #f97316}
+  .verdict b{color:#fff}
+  .verdict span{color:var(--page-muted);font-size:14px;line-height:1.55}
+
+  /* ---------- phone grid ---------- */
+  .grid{display:flex;gap:34px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .col{flex:0 0 auto;width:360px}
+  .col-cap{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .col-cap h2{font-size:17px;font-weight:700;letter-spacing:-.01em}
+  .badge{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;background:#f97316;color:#1a1003}
+  .badge.alt{background:transparent;color:var(--page-muted);border:1px solid var(--page-line)}
+  .col-note{color:var(--page-muted);font-size:13px;line-height:1.5;margin-bottom:16px;min-height:56px}
+
+  /* ---------- phone shell ---------- */
+  .phone{width:360px;height:760px;border-radius:46px;padding:11px;background:#000;box-shadow:0 0 0 2px #2a2d33, 0 30px 60px -20px rgba(0,0,0,.8);position:relative}
+  .screen{width:100%;height:100%;border-radius:36px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+  .island{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:104px;height:26px;background:#000;border-radius:16px;z-index:40}
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:14px 26px 6px;font-size:13px;font-weight:600}
+  .sb-right{display:flex;gap:6px;align-items:center}
+  .content{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+  /* shared atoms (themed via vars) */
+  .scr{--accent:#f97316;--good:#34d399;display:flex;flex-direction:column;height:100%}
+  .num{font-variant-numeric:tabular-nums}
+  .row{display:flex;align-items:center}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 9px;border-radius:999px}
+  .ic{width:16px;height:16px;flex:none;display:inline-block;vertical-align:middle}
+  .ic-lg{width:18px;height:18px}
+
+  /* ===================================================================
+     THEME 1 — QUIET INSTRUMENT (dark, data-forward)
+     =================================================================== */
+  .t1{background:#0b0f17;color:#f4f7fb;font-family:Inter,sans-serif}
+  .t1 .statusbar{color:#f4f7fb}
+  .t1 .appbar{display:flex;align-items:center;justify-content:space-between;padding:6px 20px 14px}
+  .t1 .appbar .title{font-size:19px;font-weight:700;letter-spacing:-.01em}
+  .t1 .appbar .sub{font-size:12px;color:#8a97ab;margin-top:2px}
+  .t1 .timer{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#f4f7fb;background:#131a26;border:1px solid rgba(255,255,255,.08);padding:6px 10px;border-radius:10px}
+  .t1 .rest{margin:0 20px 14px;display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-radius:14px;background:rgba(52,211,153,.10);border:1px solid rgba(52,211,153,.25)}
+  .t1 .rest .lab{font-size:12px;color:#8df2cf;font-weight:600;display:flex;align-items:center;gap:7px}
+  .t1 .rest .val{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:#34d399}
+  .t1 .card{margin:0 20px 16px;background:#131a26;border:1px solid rgba(255,255,255,.08);border-radius:18px;overflow:hidden}
+  .t1 .ex-head{padding:15px 16px 13px}
+  .t1 .ex-name{font-size:17px;font-weight:700;letter-spacing:-.01em}
+  .t1 .tags{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .t1 .tag{background:rgba(255,255,255,.06);color:#aab6c6;border:1px solid rgba(255,255,255,.06)}
+  .t1 .setup{background:rgba(255,255,255,.04);color:#cdd6e2}
+  .t1 .nudge{margin-top:12px;display:flex;gap:9px;align-items:flex-start;padding:10px 11px;border-radius:11px;background:rgba(249,115,22,.10);border:1px solid rgba(249,115,22,.22)}
+  .t1 .nudge .t{font-size:12px;line-height:1.45;color:#f6c8a3}
+  .t1 .nudge .t b{color:#fdba74;font-weight:700}
+  .t1 .thead{display:grid;grid-template-columns:30px 1fr 1fr 56px 26px;gap:6px;padding:9px 16px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#6b788c;border-top:1px solid rgba(255,255,255,.06)}
+  .t1 .set{display:grid;grid-template-columns:30px 1fr 1fr 56px 26px;gap:6px;align-items:center;padding:12px 16px;border-top:1px solid rgba(255,255,255,.05)}
+  .t1 .set .sx{font-family:'JetBrains Mono',monospace;font-size:13px;color:#8a97ab}
+  .t1 .set .v{font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600}
+  .t1 .set .unit{font-size:11px;color:#6b788c;font-weight:500}
+  .t1 .set .rir{font-family:'JetBrains Mono',monospace;font-size:14px;color:#cdd6e2;text-align:center}
+  .t1 .set.ghost .v,.t1 .set.ghost .rir{color:#4a5567}
+  .t1 .set .chk{width:22px;height:22px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#34d399;color:#07261b}
+  .t1 .set .chk.empty{background:transparent;border:1.5px solid #2c3848}
+  .t1 .expand{padding:0 16px 14px;background:rgba(255,255,255,.02)}
+  .t1 .exp-row{display:flex;gap:8px;margin-top:10px}
+  .t1 .field{flex:1;background:#0b0f17;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 10px}
+  .t1 .field .fl{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#6b788c}
+  .t1 .field .fv{font-size:13px;color:#e9edf2;margin-top:3px}
+  .t1 .field .fv.mono{font-family:'JetBrains Mono',monospace}
+  .t1 .addset{margin:0 20px;padding:12px;border-radius:13px;border:1px dashed rgba(255,255,255,.14);color:#8a97ab;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:7px}
+  .t1 .tabbar{margin-top:auto;display:flex;justify-content:space-around;padding:12px 10px 26px;border-top:1px solid rgba(255,255,255,.07);background:#0b0f17}
+  .t1 .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;color:#5c6677;font-weight:600}
+  .t1 .tab.on{color:#f97316}
+
+  /* ===================================================================
+     THEME 2 — CLEAN EDITORIAL (warm light, typographic)
+     =================================================================== */
+  .t2{background:#f6f2ec;color:#1a1714;font-family:Inter,sans-serif}
+  .t2 .statusbar{color:#1a1714}
+  .t2 .appbar{padding:6px 22px 16px;display:flex;align-items:flex-end;justify-content:space-between}
+  .t2 .appbar .title{font-family:'Fraunces',serif;font-size:24px;font-weight:600;letter-spacing:-.01em}
+  .t2 .appbar .sub{font-size:12px;color:#8a8178;margin-top:3px}
+  .t2 .timer{font-size:13px;font-weight:600;color:#5a534b;border:1px solid rgba(20,16,12,.12);padding:6px 11px;border-radius:999px}
+  .t2 .rest{margin:0 22px 18px;display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid rgba(20,16,12,.10);border-bottom:1px solid rgba(20,16,12,.10)}
+  .t2 .rest .lab{font-size:12px;color:#8a8178;font-weight:600;letter-spacing:.02em}
+  .t2 .rest .val{font-size:18px;font-weight:600;color:#156350;font-variant-numeric:tabular-nums}
+  .t2 .block{margin:0 22px 20px}
+  .t2 .ex-name{font-family:'Fraunces',serif;font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1.15}
+  .t2 .tags{display:flex;gap:14px;margin-top:8px;flex-wrap:wrap}
+  .t2 .tag{font-size:11.5px;color:#8a8178;font-weight:500;border-bottom:1px dotted rgba(20,16,12,.25);padding-bottom:1px}
+  .t2 .setup{font-size:12px;color:#5a534b;margin-top:12px;display:flex;align-items:center;gap:7px}
+  .t2 .nudge{margin-top:14px;font-size:13px;line-height:1.5;color:#5a534b;padding-left:13px;border-left:2px solid #156350}
+  .t2 .nudge b{color:#156350;font-weight:600}
+  .t2 .thead{display:grid;grid-template-columns:24px 1fr 1fr 48px 24px;gap:8px;margin-top:20px;padding-bottom:8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#a89f93;border-bottom:1px solid rgba(20,16,12,.12)}
+  .t2 .set{display:grid;grid-template-columns:24px 1fr 1fr 48px 24px;gap:8px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(20,16,12,.08)}
+  .t2 .set .sx{font-size:13px;color:#a89f93;font-weight:600;font-variant-numeric:tabular-nums}
+  .t2 .set .v{font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+  .t2 .set .unit{font-size:11px;color:#a89f93;font-weight:500}
+  .t2 .set .rir{font-size:14px;color:#5a534b;text-align:center;font-variant-numeric:tabular-nums}
+  .t2 .set.ghost .v,.t2 .set.ghost .rir{color:#c3bbb0}
+  .t2 .set .chk{width:21px;height:21px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#156350;color:#fff}
+  .t2 .set .chk.empty{background:transparent;border:1.5px solid #cfc6ba}
+  .t2 .expand{padding:4px 0 6px;display:flex;gap:18px}
+  .t2 .field .fl{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#a89f93}
+  .t2 .field .fv{font-size:13px;color:#3a342d;margin-top:3px}
+  .t2 .addset{margin:18px 22px 0;font-size:13px;font-weight:600;color:#156350;display:flex;align-items:center;gap:7px}
+  .t2 .tabbar{margin-top:auto;display:flex;justify-content:space-around;padding:14px 10px 26px;border-top:1px solid rgba(20,16,12,.10);background:#f6f2ec}
+  .t2 .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;color:#a89f93;font-weight:600}
+  .t2 .tab.on{color:#1a1714}
+
+  /* ===================================================================
+     THEME 3 — BOLD ATHLETIC (high-energy, condensed)
+     =================================================================== */
+  .t3{background:#0a0a0b;color:#fff;font-family:Inter,sans-serif}
+  .t3 .statusbar{color:#fff}
+  .t3 .appbar{padding:4px 18px 14px;display:flex;align-items:center;justify-content:space-between}
+  .t3 .appbar .title{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;text-transform:uppercase;letter-spacing:.01em;line-height:1}
+  .t3 .appbar .sub{font-size:11px;color:#9a9aa2;margin-top:3px;text-transform:uppercase;letter-spacing:.1em;font-weight:600}
+  .t3 .timer{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:#0a0a0b;background:#d7ff3e;padding:5px 11px;border-radius:8px;font-variant-numeric:tabular-nums}
+  .t3 .rest{margin:0 18px 16px;display:flex;align-items:center;justify-content:space-between;padding:12px 15px;border-radius:12px;background:#141416;border:1px solid rgba(255,255,255,.10)}
+  .t3 .rest .lab{font-family:'Barlow Condensed',sans-serif;font-size:14px;color:#d7ff3e;font-weight:700;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:7px}
+  .t3 .rest .val{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums}
+  .t3 .card{margin:0 18px 16px;background:#141416;border:1px solid rgba(255,255,255,.10);border-radius:16px;overflow:hidden}
+  .t3 .ex-head{padding:15px 16px 14px;border-left:4px solid #d7ff3e}
+  .t3 .ex-name{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:700;text-transform:uppercase;letter-spacing:.01em;line-height:1}
+  .t3 .tags{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .t3 .tag{background:rgba(215,255,62,.12);color:#d7ff3e;font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:10px}
+  .t3 .setup{background:rgba(255,255,255,.08);color:#dcdce0;text-transform:uppercase;letter-spacing:.04em;font-size:10px;font-weight:700}
+  .t3 .nudge{margin-top:12px;display:flex;gap:9px;align-items:center;padding:10px 12px;border-radius:10px;background:#d7ff3e}
+  .t3 .nudge .t{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:600;color:#0a0a0b;text-transform:uppercase;letter-spacing:.02em}
+  .t3 .nudge .t b{font-weight:700}
+  .t3 .thead{display:grid;grid-template-columns:28px 1fr 1fr 52px 26px;gap:6px;padding:9px 16px;font-family:'Barlow Condensed',sans-serif;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#7c7c84;border-top:1px solid rgba(255,255,255,.08)}
+  .t3 .set{display:grid;grid-template-columns:28px 1fr 1fr 52px 26px;gap:6px;align-items:center;padding:12px 16px;border-top:1px solid rgba(255,255,255,.06)}
+  .t3 .set .sx{font-family:'Barlow Condensed',sans-serif;font-size:17px;font-weight:700;color:#9a9aa2}
+  .t3 .set .v{font-family:'Barlow Condensed',sans-serif;font-size:23px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+  .t3 .set .unit{font-size:10px;color:#7c7c84;font-weight:700;text-transform:uppercase}
+  .t3 .set .rir{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;color:#dcdce0;text-align:center}
+  .t3 .set.ghost .v,.t3 .set.ghost .rir{color:#46464d}
+  .t3 .set .chk{width:23px;height:23px;border-radius:7px;display:flex;align-items:center;justify-content:center;background:#d7ff3e;color:#0a0a0b}
+  .t3 .set .chk.empty{background:transparent;border:2px solid #303036}
+  .t3 .expand{padding:0 16px 14px;background:rgba(255,255,255,.03)}
+  .t3 .exp-row{display:flex;gap:8px;margin-top:10px}
+  .t3 .field{flex:1;background:#0a0a0b;border:1px solid rgba(255,255,255,.10);border-radius:9px;padding:8px 10px}
+  .t3 .field .fl{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#7c7c84;font-weight:700}
+  .t3 .field .fv{font-size:13px;color:#fff;margin-top:3px;font-weight:500}
+  .t3 .addset{margin:0 18px;padding:13px;border-radius:11px;background:#d7ff3e;color:#0a0a0b;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;justify-content:center;gap:7px}
+  .t3 .tabbar{margin-top:auto;display:flex;justify-content:space-around;padding:12px 10px 26px;border-top:1px solid rgba(255,255,255,.08);background:#0a0a0b}
+  .t3 .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9px;color:#5c5c63;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+  .t3 .tab.on{color:#d7ff3e}
+
+  .legend{margin-top:48px;border-top:1px solid var(--page-line);padding-top:24px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:22px}
+  .legend h3{font-size:13px;font-weight:700;margin-bottom:8px}
+  .legend p{font-size:13px;color:var(--page-muted);line-height:1.55}
+  .legend code{font-family:'JetBrains Mono',monospace;font-size:12px;color:#cdd6e2;background:#16191e;padding:1px 6px;border-radius:5px;border:1px solid var(--page-line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="masthead">
+    <div class="eyebrow">SBL · Gym Tracker</div>
+    <h1>Design Direction — Same Screen, Three Ways</h1>
+    <p>Each phone shows the <b style="color:#e9edf2">active-workout logging screen</b> (the heart of the app): an exercise with joint-action tags, the saved machine setup, last-session ghost values, a progression nudge, an expanded set with RIR + a custom metric, and a running rest timer. The screen is identical in content — only the design language changes.</p>
+  </div>
+
+  <div class="verdict">
+    <span class="dot"></span>
+    <span><b>My pick: Direction 1 — Quiet Instrument.</b> The design intelligence backs it: a Dark-Mode (OLED) system scores <i>Excellent</i> performance + WCAG&nbsp;AAA and is rated best for low-light, glanceable, data-heavy use — exactly a phone held mid-set under harsh gym lighting. Tabular monospaced numerals keep weight/reps/RIR columns rock-steady, and a single orange accent means the one thing that matters (your next action) is the only thing that glows. Direction 3 is the strong runner-up for energy; Direction 2 is beautiful but light mode fights gym readability.</span>
+  </div>
+
+  <div class="grid">
+
+    <!-- ============ DIRECTION 1 ============ -->
+    <div class="col">
+      <div class="col-cap"><h2>1 · Quiet Instrument</h2><span class="badge">Recommended</span></div>
+      <div class="col-note">Near-black OLED surfaces, one orange accent, monospaced tabular numbers. Calm, precise, premium — the data does the talking.</div>
+      <div class="phone"><div class="screen"><div class="island"></div>
+        <div class="scr t1">
+          <div class="statusbar"><span>9:41</span><span class="sb-right">
+            <svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M2 17h2v-5H2v5zm4 0h2V9H6v8zm4 0h2V5h-2v12zm4 0h2v-9h-2v9zm4 0h2v-4h-2v4z"/></svg>
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="18" height="10" rx="2"/><rect x="4" y="9" width="12" height="6" rx="1" fill="currentColor"/><path d="M22 10v4"/></svg>
+          </span></div>
+          <div class="content">
+            <div class="appbar">
+              <div><div class="title">Push Day A</div><div class="sub">Exercise 2 of 5 · 4 exercises logged</div></div>
+              <div class="timer row" style="gap:6px"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>42:18</div>
+            </div>
+            <div class="rest">
+              <span class="lab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/></svg>Rest</span>
+              <span class="val num">1:24</span>
+            </div>
+            <div class="card">
+              <div class="ex-head">
+                <div class="ex-name">Incline DB Press</div>
+                <div class="tags">
+                  <span class="pill tag">Horizontal Adduction</span>
+                  <span class="pill tag">Elbow Extension</span>
+                </div>
+                <div class="tags"><span class="pill setup"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Seat 4 · Back 2</span></div>
+                <div class="nudge">
+                  <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="#fdba74" stroke-width="2" style="margin-top:1px"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+                  <div class="t">Last: <b class="num">32.5kg × 9 @ 2 RIR</b>. You had reps in reserve — <b>push for +1 rep</b>.</div>
+                </div>
+              </div>
+              <div class="thead"><span></span><span>Weight</span><span>Reps</span><span>RIR</span><span></span></div>
+              <div class="set">
+                <span class="sx">1</span>
+                <span><span class="v">32.5</span> <span class="unit">kg</span></span>
+                <span><span class="v">10</span></span>
+                <span class="rir">2</span>
+                <span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></span>
+              </div>
+              <div class="set">
+                <span class="sx">2</span>
+                <span><span class="v">32.5</span> <span class="unit">kg</span></span>
+                <span><span class="v">9</span></span>
+                <span class="rir">2</span>
+                <span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></span>
+              </div>
+              <div class="set">
+                <span class="sx">3</span>
+                <span><span class="v">32.5</span> <span class="unit">kg</span></span>
+                <span><span class="v">9</span></span>
+                <span class="rir">1</span>
+                <span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></span>
+              </div>
+              <div class="set ghost">
+                <span class="sx">4</span>
+                <span><span class="v">32.5</span> <span class="unit">kg</span></span>
+                <span><span class="v">9</span></span>
+                <span class="rir">—</span>
+                <span class="chk empty"></span>
+              </div>
+              <div class="expand">
+                <div class="exp-row">
+                  <div class="field"><div class="fl">Note</div><div class="fv">Felt smooth, slight L shoulder pinch on lockout</div></div>
+                </div>
+                <div class="exp-row">
+                  <div class="field"><div class="fl">RPE (1–10)</div><div class="fv mono">8</div></div>
+                  <div class="field"><div class="fl">Tempo</div><div class="fv mono">3-1-1</div></div>
+                </div>
+              </div>
+            </div>
+            <div class="addset"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add set</div>
+            <div class="tabbar">
+              <div class="tab on"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h3v16H6zM15 4h3v16h-3zM3 9h3M3 15h3M18 9h3M18 15h3"/></svg>Train</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Library</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>Programs</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18l5-6 4 3 6-8M4 4v16h16"/></svg>Progress</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>You</div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ============ DIRECTION 2 ============ -->
+    <div class="col">
+      <div class="col-cap"><h2>2 · Clean Editorial</h2><span class="badge alt">Alternative</span></div>
+      <div class="col-note">Warm paper background, serif headings, generous whitespace, hairline dividers. Calm and refined — but light mode is harder under bright gym lights.</div>
+      <div class="phone"><div class="screen"><div class="island"></div>
+        <div class="scr t2">
+          <div class="statusbar"><span>9:41</span><span class="sb-right">
+            <svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M2 17h2v-5H2v5zm4 0h2V9H6v8zm4 0h2V5h-2v12zm4 0h2v-9h-2v9zm4 0h2v-4h-2v4z"/></svg>
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="18" height="10" rx="2"/><rect x="4" y="9" width="12" height="6" rx="1" fill="currentColor"/><path d="M22 10v4"/></svg>
+          </span></div>
+          <div class="content">
+            <div class="appbar">
+              <div><div class="title">Push Day A</div><div class="sub">Exercise 2 of 5</div></div>
+              <div class="timer num">42:18</div>
+            </div>
+            <div class="rest"><span class="lab">Resting</span><span class="val num">1:24</span></div>
+            <div class="block">
+              <div class="ex-name">Incline DB Press</div>
+              <div class="tags"><span class="tag">Horizontal Adduction</span><span class="tag">Elbow Extension</span></div>
+              <div class="setup"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Seat 4 · Back 2</div>
+              <div class="nudge">Last time: <b class="num">32.5 kg × 9 @ 2 RIR</b>. Reps left in the tank — <b>aim for one more</b>.</div>
+              <div class="thead"><span></span><span>Weight</span><span>Reps</span><span>RIR</span><span></span></div>
+              <div class="set">
+                <span class="sx">1</span><span><span class="v">32.5</span> <span class="unit">kg</span></span><span><span class="v">10</span></span><span class="rir">2</span>
+                <span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></span>
+              </div>
+              <div class="set">
+                <span class="sx">2</span><span><span class="v">32.5</span> <span class="unit">kg</span></span><span><span class="v">9</span></span><span class="rir">2</span>
+                <span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></span>
+              </div>
+              <div class="set">
+                <span class="sx">3</span><span><span class="v">32.5</span> <span class="unit">kg</span></span><span><span class="v">9</span></span><span class="rir">1</span>
+                <span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></span>
+              </div>
+              <div class="set ghost">
+                <span class="sx">4</span><span><span class="v">32.5</span> <span class="unit">kg</span></span><span><span class="v">9</span></span><span class="rir">—</span>
+                <span class="chk empty"></span>
+              </div>
+              <div class="expand">
+                <div class="field"><div class="fl">RPE</div><div class="fv">8 / 10</div></div>
+                <div class="field"><div class="fl">Tempo</div><div class="fv">3-1-1</div></div>
+                <div class="field"><div class="fl">Note</div><div class="fv">Smooth</div></div>
+              </div>
+              <div class="addset"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>Add set</div>
+            </div>
+            <div class="tabbar">
+              <div class="tab on"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h3v16H6zM15 4h3v16h-3zM3 9h3M3 15h3M18 9h3M18 15h3"/></svg>Train</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Library</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>Programs</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18l5-6 4 3 6-8M4 4v16h16"/></svg>Progress</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>You</div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ============ DIRECTION 3 ============ -->
+    <div class="col">
+      <div class="col-cap"><h2>3 · Bold Athletic</h2><span class="badge alt">Runner-up</span></div>
+      <div class="col-note">Condensed uppercase type, electric-lime accent, chunky controls. Motivating and energetic — risks fighting the "minimal" goal if overused.</div>
+      <div class="phone"><div class="screen"><div class="island"></div>
+        <div class="scr t3">
+          <div class="statusbar"><span>9:41</span><span class="sb-right">
+            <svg class="ic" viewBox="0 0 24 24" fill="currentColor"><path d="M2 17h2v-5H2v5zm4 0h2V9H6v8zm4 0h2V5h-2v12zm4 0h2v-9h-2v9zm4 0h2v-4h-2v4z"/></svg>
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="18" height="10" rx="2"/><rect x="4" y="9" width="12" height="6" rx="1" fill="currentColor"/><path d="M22 10v4"/></svg>
+          </span></div>
+          <div class="content">
+            <div class="appbar">
+              <div><div class="title">Push Day A</div><div class="sub">Exercise 2 / 5</div></div>
+              <div class="timer num">42:18</div>
+            </div>
+            <div class="rest"><span class="lab"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/></svg>Rest</span><span class="val num">1:24</span></div>
+            <div class="card">
+              <div class="ex-head">
+                <div class="ex-name">Incline DB Press</div>
+                <div class="tags"><span class="pill tag">Horiz. Adduction</span><span class="pill tag">Elbow Ext.</span></div>
+                <div class="tags"><span class="pill setup">Seat 4 · Back 2</span></div>
+              </div>
+              <div style="padding:0 16px 14px">
+                <div class="nudge"><svg class="ic" viewBox="0 0 24 24" fill="#0a0a0b" stroke="#0a0a0b" stroke-width="1"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg><div class="t">Reps in reserve — <b>push for +1</b></div></div>
+              </div>
+              <div class="thead"><span></span><span>KG</span><span>Reps</span><span>RIR</span><span></span></div>
+              <div class="set">
+                <span class="sx">1</span><span><span class="v">32.5</span></span><span><span class="v">10</span></span><span class="rir">2</span>
+                <span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></span>
+              </div>
+              <div class="set">
+                <span class="sx">2</span><span><span class="v">32.5</span></span><span><span class="v">9</span></span><span class="rir">2</span>
+                <span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></span>
+              </div>
+              <div class="set">
+                <span class="sx">3</span><span><span class="v">32.5</span></span><span><span class="v">9</span></span><span class="rir">1</span>
+                <span class="chk"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 6"/></svg></span>
+              </div>
+              <div class="set ghost">
+                <span class="sx">4</span><span><span class="v">32.5</span></span><span><span class="v">9</span></span><span class="rir">—</span>
+                <span class="chk empty"></span>
+              </div>
+              <div class="expand">
+                <div class="exp-row">
+                  <div class="field"><div class="fl">RPE</div><div class="fv">8</div></div>
+                  <div class="field"><div class="fl">Tempo</div><div class="fv">3-1-1</div></div>
+                  <div class="field"><div class="fl">Note</div><div class="fv">Smooth</div></div>
+                </div>
+              </div>
+            </div>
+            <div class="addset"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>Add set</div>
+            <div class="tabbar">
+              <div class="tab on"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h3v16H6zM15 4h3v16h-3zM3 9h3M3 15h3M18 9h3M18 15h3"/></svg>Train</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Library</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 4v16"/></svg>Programs</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 18l5-6 4 3 6-8M4 4v16h16"/></svg>Progress</div>
+              <div class="tab"><svg class="ic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>You</div>
+            </div>
+          </div>
+        </div>
+      </div></div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div>
+      <h3>The decision, scored</h3>
+      <p>Across the five things that matter for a phone used mid-set — <b style="color:#e9edf2">glanceability, gym-lighting legibility, data density, power-user feel, distinctiveness</b> — Direction&nbsp;1 wins on the first four. Dark OLED + tabular mono is purpose-built for "read a number in half a second."</p>
+    </div>
+    <div>
+      <h3>Recommended tokens (Dir. 1)</h3>
+      <p>BG <code>#0B0F17</code> · Surface <code>#131A26</code> · Line <code>rgba(255,255,255,.08)</code> · Text <code>#F4F7FB</code> · Muted <code>#8A97AB</code> · Accent <code>#F97316</code> · Good <code>#34D399</code>.</p>
+    </div>
+    <div>
+      <h3>Type pairing</h3>
+      <p>UI: <b style="color:#e9edf2">Inter</b> (400–700). Numbers: <b style="color:#e9edf2">JetBrains Mono</b> with tabular figures so columns never shift. Both ship free and load fast in Expo.</p>
+    </div>
+    <div>
+      <h3>Note</h3>
+      <p>These are static comparison mockups (one screen). They show <i>look &amp; feel</i>, not final spacing or every state. Once you pick, the winner's tokens go into the spec as the design system.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>
