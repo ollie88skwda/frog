@@ -692,9 +692,13 @@ export function getDb() {
 }
 ```
 
-- [ ] **Step 5b: Configure Metro to bundle `.sql` migrations**
+- [ ] **Step 5b: Make drizzle's `.sql` migrations bundle (TWO files — both required)**
 
-Drizzle's expo migrator imports the generated migration as a `.sql` module, which Metro does NOT bundle by default — without this the app fails to bundle with `Unable to resolve module ./0000_*.sql`. Create `metro.config.js`:
+The expo-sqlite migrator does `import m0000 from "./0000_*.sql"`. That needs both a Metro resolver ext AND a Babel transform that inlines the SQL as a string — with only one, the app fails to bundle (`Unable to resolve module ./0000_*.sql`).
+
+Install the plugin: `npm i -D babel-plugin-inline-import`
+
+Create `metro.config.js`:
 
 ```js
 const { getDefaultConfig } = require("expo/metro-config");
@@ -703,7 +707,19 @@ config.resolver.sourceExts.push("sql");
 module.exports = config;
 ```
 
-After adding it, always restart Metro with a cleared cache: `npx expo start -c`.
+Create `babel.config.js`:
+
+```js
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: ["babel-preset-expo"],
+    plugins: [["inline-import", { extensions: [".sql"] }]],
+  };
+};
+```
+
+After adding these, ALWAYS restart Metro with a cleared cache: `npx expo start -c`.
 
 - [ ] **Step 6: Wire root layout `app/_layout.tsx`**
 
