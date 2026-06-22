@@ -1,5 +1,5 @@
 import { asc, eq, isNull, and } from "drizzle-orm";
-import { metrics, sessions } from "./schema";
+import { metrics, sessions, setLogs } from "./schema";
 import { newId } from "../domain/ids";
 import type { MetricType, MetricScope, ConditionMap } from "../domain/conditions";
 import { decodeConditions, encodeConditions } from "../domain/conditions";
@@ -41,5 +41,25 @@ export function saveSessionConditionValues(db: DB, sessionId: string, values: Co
     .update(sessions)
     .set({ conditionValues: encodeConditions(values), updatedAt: now, dirty: 1 })
     .where(eq(sessions.id, sessionId))
+    .run();
+}
+
+/** Reads the metric_values JSON blob from a specific set log row. */
+export function getSetMetricValues(db: DB, setLogId: string): ConditionMap {
+  const row = db
+    .select({ metricValues: setLogs.metricValues })
+    .from(setLogs)
+    .where(eq(setLogs.id, setLogId))
+    .get();
+  return decodeConditions(row?.metricValues ?? null);
+}
+
+/** Overwrites the metric_values JSON blob on a specific set log row. */
+export function saveSetMetricValues(db: DB, setLogId: string, values: ConditionMap): void {
+  const now = Date.now();
+  db
+    .update(setLogs)
+    .set({ metricValues: encodeConditions(values), updatedAt: now, dirty: 1 })
+    .where(eq(setLogs.id, setLogId))
     .run();
 }
