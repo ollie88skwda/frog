@@ -4,12 +4,25 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { exercises, sessions, sessionExercises, setLogs } from "./schema";
 import { decodeConditions } from "../domain/conditions";
+import { listMetrics } from "./metrics";
+import type { ConditionMap } from "../domain/conditions";
 import type { ExportSession } from "../domain/export";
 
 type DB = any;
 
+// Remaps ConditionMap keys from metric IDs to friendly metric names where known.
+// Keys not found in the lookup (e.g. legacy string keys) are passed through unchanged.
+function remapConditionKeys(map: ConditionMap, nameById: Map<string, string>): ConditionMap {
+  const out: ConditionMap = {};
+  for (const [k, v] of Object.entries(map)) {
+    out[nameById.get(k) ?? k] = v;
+  }
+  return out;
+}
+
 // Returns one ExportSession row per set, ordered by session start → exercise order → set number.
 // Condition values (session-level) and set metric values (set-level) are included when present.
+// Metric IDs in condition keys are resolved to their friendly names via the metrics table.
 export function buildExportSessions(db: DB): ExportSession[] {
   const rows = db
     .select({
@@ -39,9 +52,12 @@ export function buildExportSessions(db: DB): ExportSession[] {
     .orderBy(asc(sessions.startedAt), asc(sessionExercises.orderIndex), asc(setLogs.setNo))
     .all();
 
+  const metricRows = listMetrics(db);
+  const nameById = new Map<string, string>(metricRows.map((m: any) => [m.id as string, m.name as string]));
+
   return rows.map((r: any) => {
-    const condVals   = decodeConditions(r.conditionValues);
-    const metricVals = decodeConditions(r.metricValues);
+    const condVals   = remapConditionKeys(decodeConditions(r.conditionValues), nameById);
+    const metricVals = remapConditionKeys(decodeConditions(r.metricValues), nameById);
     return {
       date: r.startedAt as number,
       title: r.sessionTitle ?? null,

@@ -8,6 +8,7 @@ export default function RootLayout() {
       headerStyle: { backgroundColor: "#0B1A2B" }, headerTintColor: "#E3F0FB" }}>
       <Tabs.Screen name="index" options={{ title: "Train" }} />
       <Tabs.Screen name="library" options={{ title: "Library" }} />
+      <Tabs.Screen name="findings" options={{ title: "Findings" }} />
       <Tabs.Screen name="session/[id]" options={{ href: null, title: "Session" }} />
     </Tabs>
   );

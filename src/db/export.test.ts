@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { makeTestDb } from "./test-db";
 import { createExercise } from "./exercises";
 import { startSession, addExerciseToSession, logSet } from "./sessions";
-import { saveSessionConditionValues, saveSetMetricValues } from "./metrics";
+import { createMetric, saveSessionConditionValues, saveSetMetricValues } from "./metrics";
 import { buildExportSessions } from "./export";
 import { buildExportRows, toCSV, toJSON } from "../domain/export";
 
@@ -108,5 +108,19 @@ describe("buildExportSessions", () => {
     expect(parsed).toHaveLength(3);
     // First row should have conditions
     expect(parsed[0].conditions).toMatchObject({ sleep: 8 });
+  });
+
+  it("resolves metric IDs to friendly names in condition keys", () => {
+    const db = makeTestDb();
+    const metricId = createMetric(db, "Sleep Quality", "number", "session");
+    const ex = createExercise(db, "Deadlift");
+    const s = startSession(db, "Pull");
+    const se = addExerciseToSession(db, s, ex);
+    logSet(db, se, { weightKg: 150, reps: 3 });
+    saveSessionConditionValues(db, s, { [metricId]: 7 });
+    const rows = buildExportSessions(db);
+    // Key should be the friendly name, not the UUID
+    expect(rows[0].conditionValues?.["Sleep Quality"]).toBe(7);
+    expect(rows[0].conditionValues?.[metricId]).toBeUndefined();
   });
 });

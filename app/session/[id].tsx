@@ -8,6 +8,7 @@ import { listExercises } from "../../src/db/exercises";
 import { addExerciseToSession, logSet, lastSetsForExercise } from "../../src/db/sessions";
 import { reducer, ghostFor, type DraftSet } from "../../src/domain/session-reducer";
 import { toDisplayWeight, lbToKg } from "../../src/domain/units";
+import { SessionConditionsEntry } from "../../src/ui/SessionConditionsEntry";
 
 export default function SessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -42,6 +43,7 @@ export default function SessionScreen() {
   if (!exId)
     return (
       <Screen>
+        <SessionConditionsEntry db={db} sessionId={id as string} />
         <Mono style={{ marginBottom: t.space[3], color: t.color.soft }}>Pick an exercise</Mono>
         <FlatList
           data={exercises}
