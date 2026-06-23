@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import { sessions, sessionExercises, setLogs } from "./schema";
 import { newId } from "../domain/ids";
 
@@ -43,4 +43,8 @@ export function lastSetsForExercise(db: DB, exerciseId: string): { weightKg: num
     .where(and(eq(setLogs.sessionExerciseId, latest.id), isNull(setLogs.deletedAt)))
     .orderBy(setLogs.setNo).all();
   return rows.map((r: any) => ({ weightKg: r.weightKg, reps: r.reps }));
+}
+
+export function listSessions(db: DB) {
+  return db.select().from(sessions).where(isNull(sessions.deletedAt)).orderBy(asc(sessions.startedAt)).all();
 }

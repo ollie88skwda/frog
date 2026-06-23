@@ -101,3 +101,59 @@ describe("toJSON", () => {
     expect(parsed[0]).toHaveProperty("weightLb");
   });
 });
+
+describe("condition columns in export", () => {
+  it("buildExportRows merges conditionValues and setMetricValues into 'conditions'", () => {
+    const s: ExportSession[] = [
+      {
+        date: BASE_DATE,
+        title: "Push",
+        exercise: "Bench",
+        setNo: 0,
+        weightKg: 100,
+        reps: 5,
+        rir: null,
+        conditionValues: { sleep: 8, stress: 2 },
+        setMetricValues: { rir_override: 1 },
+      },
+    ];
+    const rows = buildExportRows(s);
+    expect(rows[0].conditions).toEqual({ sleep: 8, stress: 2, rir_override: 1 });
+  });
+
+  it("toCSV adds condition keys as extra columns (alpha sorted)", () => {
+    const s: ExportSession[] = [
+      {
+        date: BASE_DATE, title: null, exercise: "Squat", setNo: 0,
+        weightKg: 120, reps: 5, rir: null,
+        conditionValues: { stress: 3, sleep: 7 },
+      },
+    ];
+    const csv = toCSV(buildExportRows(s));
+    const header = csv.split("\n")[0];
+    // Should appear in alpha order after fixed columns
+    const cols = header.split(",");
+    const sleepIdx  = cols.indexOf("sleep");
+    const stressIdx = cols.indexOf("stress");
+    expect(sleepIdx).toBeGreaterThan(0);
+    expect(stressIdx).toBeGreaterThan(sleepIdx); // alpha: sleep < stress
+  });
+
+  it("toCSV with no conditions matches the original fixed-column header", () => {
+    const csv = toCSV(buildExportRows(sessions));
+    const header = csv.split("\n")[0];
+    expect(header).toBe("date,sessionTitle,exercise,setNo,weightKg,weightLb,reps,rir,e1rm");
+  });
+
+  it("rows missing a condition key get an empty field", () => {
+    const s: ExportSession[] = [
+      { date: BASE_DATE, title: null, exercise: "A", setNo: 0, weightKg: 100, reps: 5, rir: null, conditionValues: { sleep: 8 } },
+      { date: BASE_DATE, title: null, exercise: "B", setNo: 0, weightKg: 100, reps: 5, rir: null }, // no conditions
+    ];
+    const csv = toCSV(buildExportRows(s));
+    const lines = csv.split("\n");
+    // Row 2 (exercise B) should have an empty sleep field
+    const row2 = lines[2];
+    expect(row2.endsWith(",")).toBe(true); // trailing comma = empty last field
+  });
+});

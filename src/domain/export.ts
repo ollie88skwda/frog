@@ -1,5 +1,6 @@
 import { kgToLb } from "./units";
 import { epley } from "./e1rm";
+import type { ConditionMap } from "./conditions";
 
 export type ExportSession = {
   date: number;          // Unix ms
@@ -9,6 +10,8 @@ export type ExportSession = {
   weightKg: number | null;
   reps: number | null;
   rir: number | null;
+  conditionValues?: ConditionMap;   // session-level conditions (same for all sets in session)
+  setMetricValues?: ConditionMap;   // per-set custom metric values
 };
 
 export type ExportRow = {
@@ -21,6 +24,7 @@ export type ExportRow = {
   reps: number | null;
   rir: number | null;
   e1rm: number | null;   // Epley estimated 1RM in kg, rounded to 1 decimal
+  conditions: ConditionMap; // merged session conditions + set metric values
 };
 
 export function buildExportRows(rows: ExportSession[]): ExportRow[] {
@@ -36,11 +40,12 @@ export function buildExportRows(rows: ExportSession[]): ExportRow[] {
       reps: s.reps,
       rir: s.rir,
       e1rm: rawE1rm != null ? Math.round(rawE1rm * 10) / 10 : null,
+      conditions: { ...(s.conditionValues ?? {}), ...(s.setMetricValues ?? {}) },
     };
   });
 }
 
-const CSV_COLS = [
+const FIXED_COLS = [
   "date",
   "sessionTitle",
   "exercise",
@@ -59,10 +64,15 @@ function csvEsc(v: unknown): string {
   return s;
 }
 
+// Builds CSV with fixed columns first, then dynamic condition columns (alpha sorted).
 export function toCSV(rows: ExportRow[]): string {
-  const lines = [CSV_COLS.join(",")];
+  const condKeys = [...new Set(rows.flatMap((r) => Object.keys(r.conditions)))].sort();
+  const header = [...FIXED_COLS, ...condKeys].join(",");
+  const lines = [header];
   for (const r of rows) {
-    lines.push(CSV_COLS.map((col) => csvEsc(r[col])).join(","));
+    const fixed = FIXED_COLS.map((col) => csvEsc(r[col]));
+    const conds = condKeys.map((k) => csvEsc(r.conditions[k] ?? ""));
+    lines.push([...fixed, ...conds].join(","));
   }
   return lines.join("\n");
 }
