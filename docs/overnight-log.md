@@ -128,3 +128,59 @@ None blocking.
 2. **`src/db/export.ts`:** a DB-level query function `buildExportSessions(db)` that joins all tables into `ExportSession[]` (including condition values + set metric values), so export can be done in one call.
 3. **Hevy import DB writer:** a function `importHevySessions(db, sessions: ExportSession[])` that upserts the parsed rows into the DB (creates exercises by name if not found, creates sessions, adds sets). This completes the backfill loop.
 4. **Plan 2 UI groundwork (minimal):** unstyled Conditions entry on the Session screen — a flat list of session-scope metrics with typed inputs that call `saveSessionConditionValues`. No visual design; just wires the DB functions to the screen so the data can be logged.
+
+---
+
+## 2026-06-23 — Run 3
+
+### Orientation
+- Resumed from Run 2. Baseline on `overnight` branch: **117 tests passing**, TypeScript clean.
+- Priorities from Run 2: export with conditions, DB export assembly, Hevy import DB writer.
+- NOTE: An earlier session this run started from the wrong baseline (no overnight log visible) and duplicated some work with different interfaces. That duplicate work was discarded; this run continues cleanly from Run 2.
+
+### Work completed
+All work done on the `overnight` branch. Commit: `f4d899e`.
+
+**1. `src/domain/export.ts` — export with conditions**
+- `ExportSession` gained two optional fields: `conditionValues?: ConditionMap` (session-level) and `setMetricValues?: ConditionMap` (set-level).
+- `ExportRow` gained `conditions: ConditionMap` — a merged view of both.
+- `buildExportRows` merges session + set conditions into `conditions`.
+- `toCSV` auto-detects all unique condition keys across all rows and appends them as extra columns (alpha-sorted) after the 9 fixed columns. Sessions/rows without a given condition key get an empty field. CSV output with no conditions is unchanged from Run 2.
+- 4 new tests covering condition merging, dynamic column order, no-condition backward compat, and empty-field handling.
+
+**2. `src/db/export.ts` + `src/db/export.test.ts`** — DB-level export assembly
+- `buildExportSessions(db)` joins `set_logs → session_exercises → sessions → exercises` in one query.
+- Includes `conditionValues` from `sessions.condition_values` and `setMetricValues` from `set_logs.metric_values` via `decodeConditions`.
+- Omits both fields when empty (clean JSON/CSV output for plain sessions).
+- 9 tests covering: empty DB, row count, core field values, conditions, set metrics, ordering, CSV integration.
+
+**3. `src/db/import.ts` + `src/db/import.test.ts`** — Hevy import DB writer
+- `importHevySessions(db, rows)` takes `ExportSession[]` (from `parseHevyCSV`) and writes to the DB.
+- Groups rows by `(date, title)` to reconstruct sessions.
+- Idempotent: skips sessions whose `startedAt` already exists (safe to re-run on same file).
+- Resolves exercise names by lookup; creates new exercises only when name is new.
+- Converts Hevy 1-indexed `setNo` to SBL 0-indexed on insert.
+- 8 tests covering: empty input, classic CSV parse→import, exercise creation/reuse, duplicate-skip idempotency, title/timestamp preservation, lbs→kg conversion, kg passthrough, round-trip exercise names.
+- Added `listSessions` helper to `sessions.ts` (needed for test assertions + future UI).
+
+### Final health gates
+- **Tests:** 139 passing (was 117; +22 new tests in 2 new test files)
+- **TypeScript:** clean (`npx tsc --noEmit` exits 0)
+- **Branch:** `overnight`
+
+### Commits
+- `f4d899e` feat: export with conditions, DB export assembly, and Hevy import writer (Run 3)
+
+### Open questions / decisions for the user
+None blocking.
+
+**FYI items:**
+- `importHevySessions` skips duplicate sessions by `startedAt` exact match. If a Hevy export has two sessions on the same second (unlikely but possible), they'd collide. For now this is acceptable; a more robust dedup key could be `(startedAt, title, setCount)`.
+- The Hevy `setNo` → SBL `setNo` conversion (`Hevy 1-indexed → SBL 0-indexed`) is `Math.max(0, row.setNo - 1)`. If Hevy set orders are ever non-sequential (e.g. 1,3,5), the SBL set numbers will have gaps but will still be ordered correctly.
+- `toCSV` with conditions: metric IDs (not metric names) are used as column headers (since `ConditionMap` is keyed by metric ID). Until a "friendly name" mapping is added, users will see UUID-like column headers for custom metrics in the CSV export. Consider resolving metric names in `buildExportSessions` in a future run.
+
+### Next run priorities
+1. **Resolve metric IDs → names in export CSV:** `buildExportSessions` currently passes raw metric IDs as condition keys. A `listMetrics(db)` call to build an `id → name` map, then apply it when building `conditionValues` / `setMetricValues`, would make the CSV human-readable.
+2. **Findings screen teaser (Plan 3 start):** a minimal unstyled screen that calls `buildExerciseMap(db)` → `holistic()` → `summarizeReport()` and renders the headline + per-exercise verdict. No visual design — just the data pipeline wired to a screen so the feature can be demoed.
+3. **`progressionSummary` + Findings hook:** expose `summarizeReport` via a `useFindings(db)` hook (or just an inline `useMemo` in the screen) so the Findings screen is reactive to new sessions.
+4. **Conditions entry (Plan 2, minimal):** unstyled `SessionConditionsEntry` component that renders session-scope metrics as typed inputs and calls `saveSessionConditionValues`. Needed before any real findings-condition correlation can be observed.
