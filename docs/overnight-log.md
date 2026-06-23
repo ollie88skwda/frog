@@ -184,3 +184,58 @@ None blocking.
 2. **Findings screen teaser (Plan 3 start):** a minimal unstyled screen that calls `buildExerciseMap(db)` → `holistic()` → `summarizeReport()` and renders the headline + per-exercise verdict. No visual design — just the data pipeline wired to a screen so the feature can be demoed.
 3. **`progressionSummary` + Findings hook:** expose `summarizeReport` via a `useFindings(db)` hook (or just an inline `useMemo` in the screen) so the Findings screen is reactive to new sessions.
 4. **Conditions entry (Plan 2, minimal):** unstyled `SessionConditionsEntry` component that renders session-scope metrics as typed inputs and calls `saveSessionConditionValues`. Needed before any real findings-condition correlation can be observed.
+
+---
+
+## 2026-06-23 — Run 4
+
+### Orientation
+- Resumed from Run 3. Baseline on `overnight` branch: **139 tests passing**, TypeScript clean.
+- All four priorities from Run 3 completed this session.
+
+### Work completed
+All work done on the `overnight` branch. Commit: `b373e4b`.
+
+**1. `src/db/export.ts` — metric ID → friendly name resolution**
+- Added `remapConditionKeys(map, nameById)` helper — remaps known metric IDs to their `name` field; unknown keys pass through unchanged (backward compat with arbitrary string keys in tests / legacy data).
+- `buildExportSessions` now calls `listMetrics(db)` to build a `Map<id, name>` and applies it to both `conditionValues` and `setMetricValues` before returning rows.
+- CSV export columns now show metric names (e.g. "Sleep Quality") instead of UUIDs.
+- 1 new test: creates a metric by name, stores a condition under its ID, verifies the exported row carries the name as the key.
+
+**2. `src/db/use-findings.ts` — Findings hook (new)**
+- `useFindings(db)` wraps the full pipeline: `buildExerciseMap(db)` → `holistic()` → `summarizeReport()`.
+- Returns `[ProgressionSummary, refetch]` via `useQueryFn`, making the Findings screen reactive (re-runs on explicit `refetch()` call — swap for live query later if needed).
+
+**3. `app/findings.tsx` — Findings screen (new)**
+- New `"Findings"` tab added to `app/_layout.tsx` and file-routed screen at `app/findings.tsx`.
+- Calls `useFindings(db)` and renders `summary.headline` + `summary.lines` with type-based colour coding (`pos` for progress, `neg` for regressing, `accent` for off-days).
+- No visual design — just the data pipeline wired to the screen.
+
+**4. `src/ui/SessionConditionsEntry.tsx` + `app/session/[id].tsx` — Conditions entry (new)**
+- `SessionConditionsEntry` component: loads `listMetricsByScope(db, "session")` metrics and current `getSessionConditionValues`, renders each as a typed input (`TextInput` for number/scale/text, `Pressable` toggle for checkbox). On `onEndEditing`, validates via `validateConditionValue` and calls `saveSessionConditionValues`.
+- Returns `null` when no session-scope metrics exist (no clutter for users who haven't created any).
+- Wired into the session screen above the exercise picker — conditions can now be logged before or between exercises.
+
+### Final health gates
+- **Tests:** 140 passing (was 139; +1 new test)
+- **TypeScript:** clean (`npx tsc --noEmit` exits 0)
+- **Branch:** `overnight` — pushed to origin; PR #1 updated
+
+### Commits (this run)
+- `b373e4b` feat: metric name resolution in export, Findings screen, conditions entry (Run 4)
+
+### Open questions / decisions for the user
+None blocking.
+
+**FYI items:**
+- `useFindings` uses `useQueryFn` (re-fetches on `refetch()` call only). It will NOT auto-update when a new session is logged in the same app session — the user needs to navigate away and back to the Findings tab, or we wire `refetch` to an app-level event later.
+- `SessionConditionsEntry` initialises `metrics` and `values` once on mount (via `useState(() => ...)`). If new metrics are added while the session screen is open, they won't appear until remount. For now this is fine.
+- The Findings tab colour-codes lines by verdict type, but the exercise names aren't shown yet — the screen only renders the `SummaryLine.text` strings from `summarizeReport`. Per-exercise detail (which lift is progressing/plateauing) is the natural next step.
+
+### Next run priorities
+1. **Per-exercise detail on Findings screen:** `HolisticReport.findings` contains per-exercise verdicts with slopes and r² values. Render a per-exercise breakdown below the headline (exercise name + verdict + sessions logged) so the user can see which lifts are progressing.
+2. **Set-level metric entry in session screen:** add set-scope conditions (RIR override, form score) to the per-set row in the logging UI. Follows the same `SessionConditionsEntry` pattern but scoped to `"set"` and saving via `saveSetMetricValues`.
+3. **Metric creation UI:** a minimal screen (or inline add in Library) that lets users call `createMetric(db, name, type, scope)`. Without this, users can only get conditions data via `importHevySessions` or direct DB calls.
+4. **`useFindings` live reactivity:** connect `refetch` to a coarse app-level "session changed" signal (e.g. focus event on the Findings tab via `useFocusEffect` from expo-router) so findings auto-update after logging.
+
+
