@@ -4,6 +4,68 @@
 
 ---
 
+## 2026-06-24 — Run 5
+
+### Orientation
+- Resumed from Run 4. Baseline on `overnight` branch: **140 tests passing**, TypeScript clean.
+- Priorities from Run 4: per-exercise detail on Findings screen, set-level metric entry, metric creation UI, `useFindings` live reactivity.
+
+### Work completed
+All work on `overnight` branch. Commit: `80585ae`.
+
+**1. `src/db/use-findings.ts` — return full HolisticReport**
+- Changed return type from `[ProgressionSummary, refetch]` to `[{summary, report}, refetch]` so the Findings screen can access both the summary lines and the raw `HolisticReport.findings` for per-exercise detail.
+
+**2. `app/findings.tsx` — per-exercise breakdown + live refresh**
+- Per-exercise `ExerciseRow` cards below the headline: exercise name, verdict badge (colour-coded pos/neg/soft), session count, % change, and e1RM/month rate for PROGRESSING/REGRESSING lifts.
+- Off-day flags section: lists each flagged session day with avg deviation % and exercise count.
+- Data quality flags section: lists weight outliers (with z-score) and spike-revert anomalies.
+- `useFocusEffect` auto-refreshes findings whenever the Findings tab comes into focus — no manual refetch needed after logging a session.
+- Exercise rows sorted: PROGRESSING first, then PLATEAU, REGRESSING, INSUFFICIENT.
+
+**3. `src/ui/SetMetricEntry.tsx` — set-scope metric inputs (new component)**
+- Loads set-scope metrics from `listMetricsByScope(db, "set")` once on mount.
+- Returns `null` when no set-scope metrics are defined (no clutter).
+- For each metric: typed input (numeric for number/scale, text for text, toggle for checkbox).
+- On `onEndEditing`, validates via `validateConditionValue` then calls `saveSetMetricValues`.
+
+**4. `app/session/[id].tsx` — track setLogId, render SetMetricEntry**
+- `loggedIds.current` changed from `Record<number, boolean>` to `Record<number, string>` to track the actual setLogId returned by `logSet`.
+- `SetMetricEntry` renders below each set row once the set has been persisted (i.e., `setLogId` is available).
+
+**5. `app/library.tsx` — metric creation UI**
+- Second section below the exercise list: "Conditions & custom metrics".
+- Name input + type selector (number/scale/text/checkbox toggle buttons) + scope selector (session/per set).
+- "+ Add metric" calls `createMetric(db, name, mType, mScope)` and refreshes the metric list.
+- Existing metrics listed below with type·scope label.
+- Users can now create metrics from the app without direct DB access.
+
+### Final health gates
+- **Tests:** 140 passing (no new test files this run — all changes were UI wiring)
+- **TypeScript:** clean (`npx tsc --noEmit` exits 0)
+- **Playwright E2E:** skipped — browser download blocked in cloud environment
+- **Branch:** `overnight`
+
+### Commits (this run)
+- `80585ae` feat: per-exercise Findings detail, set metric entry, metric creation UI, live refresh (Run 5)
+
+### Open questions / decisions for the user
+None blocking.
+
+**FYI items:**
+- `useFocusEffect` takes a `useCallback` dependency array. The refetch function from `useQueryFn` is stable (wrapped in `useCallback` in `use-live.ts`), so the empty dep array is correct — the effect runs on every focus event.
+- `SetMetricEntry` starts with empty `values` (not pre-loaded from DB). If the user navigates away and returns to a session, metric values already entered won't be shown. A future improvement: initialise from `getSetMetricValues(db, setLogId)` once `setLogId` is known.
+- The Library metric creation UI has no delete/edit — users can create metrics but not remove them from the UI yet. `deleteMetric` (soft-delete) exists in `src/db/metrics.ts` but is not wired to a button.
+
+### Next run priorities
+1. **`useQueryFn` live update on exercise log**: The Findings screen now auto-refreshes on focus, but the Train tab's "Start session" flow doesn't trigger any reactivity elsewhere. This is fine for now since Findings refreshes on focus anyway.
+2. **Metric delete in Library**: Wire a swipe-to-delete or long-press delete to `deleteMetric(db, id)` on the metric list in Library.
+3. **DB migration for metric `min`/`max`**: The `metrics` table lacks `min`/`max` columns. The conditions domain uses defaults (1–10 for scale). If the user wants per-metric scale bounds, a migration is needed. This is a user decision — confirm before adding the migration.
+4. **Hevy import screen**: A minimal import screen that lets the user paste or share a Hevy CSV file and calls `parseHevyCSV` + `importHevySessions`. Unblocked since both functions exist — only needs a UI entry point.
+5. **Export screen**: Surface `buildExportSessions(db)` → `toCSV`/`toJSON` via a Share sheet so users can export their data. A single button on a new Settings/Export screen.
+
+---
+
 ## 2026-06-21 — Run 1 (first overnight run)
 
 ### Orientation
