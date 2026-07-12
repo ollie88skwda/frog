@@ -1,27 +1,30 @@
 # CLAUDE.md — SBL
 
-SBL is a mobile (iOS + Android) **training lab notebook**: log the work *and* the conditions around it (sleep, carbs, stress, etc.), then surface correlations between inputs and outputs. Full spec: `docs/superpowers/specs/2026-06-20-sbl-prd.html`. Project facts live in Claude's project memory (`MEMORY.md`).
+SBL is a **training lab notebook** (web app first; mobile later): log the work *and* the conditions around it (sleep, carbs, stress, etc.), then surface correlations between inputs and outputs. Full spec: `docs/superpowers/specs/2026-06-20-sbl-prd.html`. Architecture + conventions: `AGENTS.md` (read it before coding). Project facts live in Claude's project memory (`MEMORY.md`).
 
 ## Top priority: lightweight & fast
 
-**SBL must be super lightweight and fast.** This is a first-class product requirement, not a nice-to-have — weigh every dependency and screen against it. Speed here comes from architecture, not language:
+**SBL must be super lightweight and fast.** First-class product requirement — weigh every dependency and screen against it:
 
-- **Local-first.** All reads/writes hit on-device SQLite instantly. Never block the UI on the network. Sync runs in the background.
-- **Optimistic UI.** Reflect the user's action immediately; reconcile with sync later.
-- **Interactions feel instant** — visual feedback within ~100ms; animations on the UI thread (Reanimated), target 60fps.
-- **Minimal dependencies.** Audit before adding any library; prefer a few lines over a package. Watch bundle size and cold-start time.
-- **Lazy-load** non-critical screens; **virtualize** long lists; avoid unnecessary re-renders (memoize the hot paths).
-- **Offline-first** is mandatory (gyms have no signal).
-- Measure, don't guess: if a change risks startup time, frame rate, or bundle size, profile it.
+- **Optimistic UI.** Reflect the user's action immediately; logging a set never waits on the network (client-generated IDs, background mutations with retry).
+- **Interactions feel instant** — visual feedback within ~100ms; 100–150ms CSS transitions; nothing animates on the data path.
+- **Minimal dependencies.** Audit before adding any library; prefer a few lines over a package. Initial JS budget ≤220 kB gzipped (CI-gated).
+- **Lazy-load** non-critical routes; **virtualize** long lists only when profiling demands; memoize hot paths.
+- Measure, don't guess: if a change risks bundle size or interaction latency, profile it.
+
+Note: v1 web is **online-first** (Supabase-direct; account required). The PRD's offline mandate is deferred to the mobile phase — the `Repo` interface in `packages/core` is the seam where a local store slots in later. Don't promise offline in UI copy.
 
 ## Stack
 
-- App: **Expo (React Native)** + NativeWind + `react-native-reusables` + Reanimated.
-- Local store (source of truth): **SQLite via Drizzle**.
-- Cloud: **Supabase** (Auth + Postgres + auto REST API), last-write-wins sync.
-- Dev/integration layer (a major focus): export + personal-token API + **MCP server** + AI-buildable docs — all **TypeScript** (one language across app, CLI, MCP). **No Rust.**
+- Monorepo (Bun workspaces): `apps/web` + `packages/core` + `packages/mcp` + `supabase/`.
+- App: **Vite + React SPA**, react-router v7, TanStack Query, Tailwind v4 (CSS-first `@theme`), vendored shadcn/ui.
+- Data: **Supabase** (Postgres + Auth magic-link + RLS + PostgREST) via supabase-js; Drizzle pg-core schema → drizzle-kit → `supabase/migrations/`.
+- Domain logic: framework-free TS in `packages/core` (units, e1rm, progression, session-reducer, findings) — keep it free of React/DOM/supabase imports (except `repo/`).
+- Dev/integration layer (a major focus): export + personal-token API + **MCP server** + AI-buildable docs — all **TypeScript**. **No Rust.**
+- Design: techie-modern **Linear-style** — neutral grays, single indigo accent, 1px borders, dense keyboard-first UI, ⌘K palette, tabular numerals. (The old graph-paper/blueprint direction is retired; legacy app archived on branch `legacy/expo`.)
 
 ## Working style
 
-- This started via the brainstorming flow; design decisions are captured in the PRD and memory — read those before changing direction.
+- Design decisions are captured in the PRD, AGENTS.md, and memory — read those before changing direction.
+- "SBL" is a placeholder name — single source `packages/core/src/config.ts`; never hardcode.
 - Prefer `.html` over `.md` for docs the user will read (per global CLAUDE.md).

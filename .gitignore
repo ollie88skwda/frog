@@ -1,37 +1,19 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-
 # dependencies
 node_modules/
 
-# Expo
-.expo/
+# builds
 dist/
-dist-e2e/
-web-build/
-expo-env.d.ts
+*.tsbuildinfo
+.vite/
 
-# E2E (Playwright) artifacts
+# test artifacts
 /test-results/
 /playwright-report/
-/.playwright-mcp/
 /blob-report/
 
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
+# supabase local
+supabase/.temp/
+supabase/.branches/
 
 # macOS
 .DS_Store
@@ -39,12 +21,9 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
-# typescript
-*.tsbuildinfo
-
-example
-
-# generated native folders
-/ios
-/android
+# secrets
+*.key
+*.p8
+*.p12
