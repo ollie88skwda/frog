@@ -5,4 +5,7 @@ export * from "./domain/ids";
 export * from "./domain/progression";
 export * from "./domain/session-reducer";
 export * from "./domain/units";
+export * from "./findings/conditions";
+export * from "./findings/teaser";
+export * from "./findings/types";
 export * from "./repo/types";
