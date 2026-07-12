@@ -40,7 +40,12 @@ test("custom set metric: create, enable on an exercise, log a value", async ({ p
   await expect(page.getByTestId(`metric-row-${METRIC}`)).toBeVisible();
 
   await page.getByTestId(`exercise-row-${EX}`).click();
-  await page.getByTestId(`enable-metric-${METRIC}-${EX}`).check();
+  // .click() + retrying assertion instead of .check(): the controlled checkbox
+  // re-renders from the query cache one microtask after the click, which
+  // .check()'s instant verification races (app behavior is correct).
+  const enable = page.getByTestId(`enable-metric-${METRIC}-${EX}`);
+  await enable.click();
+  await expect(enable).toBeChecked();
 
   // Log a set carrying the metric value.
   await page.goto("/");

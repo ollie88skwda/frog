@@ -25,8 +25,10 @@ export function useCreateExercise() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (name: string) => repo.createExercise(name),
-    onMutate: async (name) => {
-      await qc.cancelQueries({ queryKey: ["exercises"] });
+    // Synchronous onMutate: the optimistic write must land before React's
+    // next render, or controlled inputs flash back to the stale value.
+    onMutate: (name) => {
+      void qc.cancelQueries({ queryKey: ["exercises"] });
       const prev = qc.getQueryData<Exercise[]>(["exercises"]);
       const now = Date.now();
       const optimistic: Exercise = {
@@ -98,8 +100,10 @@ export function useSetMetricExercises() {
   return useMutation({
     mutationFn: (input: { metricId: string; exerciseIds: string[] }) =>
       repo.setMetricExercises(input.metricId, input.exerciseIds),
-    onMutate: async ({ metricId, exerciseIds }) => {
-      await qc.cancelQueries({ queryKey: ["metrics"] });
+    // Synchronous (see useCreateExercise): controlled checkboxes revert if the
+    // optimistic write lands after React re-renders.
+    onMutate: ({ metricId, exerciseIds }) => {
+      void qc.cancelQueries({ queryKey: ["metrics"] });
       const prev = qc.getQueryData<Metric[]>(["metrics"]);
       qc.setQueryData<Metric[]>(["metrics"], (old = []) =>
         old.map((m) => (m.id === metricId ? { ...m, exerciseIds } : m)),

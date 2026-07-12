@@ -29,7 +29,9 @@ sh("bun run --cwd apps/web build", {
   VITE_SUPABASE_ANON_KEY: seeded.anonKey,
 });
 
-sh("bun x playwright test -c e2e/playwright.config.ts", {
+// Repo-local binary — `bun x` can resolve a global playwright that can't see
+// workspace deps.
+sh("./node_modules/.bin/playwright test -c e2e/playwright.config.ts", {
   E2E_EMAIL: seeded.email,
   E2E_PASSWORD: seeded.password,
   E2E_SUPABASE_URL: seeded.url,

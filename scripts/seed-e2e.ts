@@ -4,9 +4,9 @@
 import { execSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
 
-const status = JSON.parse(
-  execSync("supabase status -o json", { encoding: "utf8" }),
-);
+const raw = execSync("supabase status -o json", { encoding: "utf8" });
+// The CLI may print warnings (e.g. "Stopped services: ...") before the JSON.
+const status = JSON.parse(raw.slice(raw.indexOf("{")));
 const url: string = status.API_URL ?? status.api_url;
 const anonKey: string = status.ANON_KEY ?? status.anon_key;
 const serviceKey: string = status.SERVICE_ROLE_KEY ?? status.service_role_key;
