@@ -9,11 +9,12 @@ import {
 } from "@sbl/core";
 import { useMutation } from "@tanstack/react-query";
 import { Plus, Timer } from "lucide-react";
-import { useEffect, useReducer, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { ConditionsChip } from "@/components/conditions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useHotkeys } from "@/lib/hotkeys";
 import {
   useExercises,
   useGhost,
@@ -64,6 +65,8 @@ export default function SessionScreen() {
     mutationFn: (input: { seId: string; set: CommitInput }) =>
       repo.logSet(input.seId, input.set),
   });
+
+  useHotkeys(useMemo(() => ({ a: () => setPicking(true) }), []));
 
   async function pickExercise(exerciseId: string, name: string) {
     setPicking(false);

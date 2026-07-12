@@ -9,7 +9,10 @@ import {
   Settings,
   Sun,
 } from "lucide-react";
-import { NavLink, Outlet } from "react-router";
+import { useMemo } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router";
+import { useHotkeys } from "@/lib/hotkeys";
+import { useRepo } from "@/lib/repo";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./command-palette";
@@ -24,6 +27,25 @@ const NAV = [
 
 export function AppShell() {
   const { theme, toggle } = useTheme();
+  const navigate = useNavigate();
+  const repo = useRepo();
+
+  useHotkeys(
+    useMemo(
+      () => ({
+        s: () => {
+          void repo
+            .startSession()
+            .then((session) => navigate(`/session/${session.id}`));
+        },
+        l: () => navigate("/library"),
+        h: () => navigate("/history"),
+        f: () => navigate("/findings"),
+      }),
+      [navigate, repo],
+    ),
+  );
+
   return (
     <div className="flex h-dvh">
       <aside className="flex w-52 shrink-0 flex-col border-r border-border bg-surface max-md:hidden">
