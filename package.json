@@ -8,12 +8,16 @@
   ],
   "scripts": {
     "test": "bun run --filter '*' test",
+    "test:integration": "bun run --cwd packages/core test:integration",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "biome check .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "db:generate": "drizzle-kit generate",
+    "db:reset": "supabase db reset"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.13",
+    "drizzle-kit": "^0.31.10",
     "typescript": "~5.9.2"
   }
 }

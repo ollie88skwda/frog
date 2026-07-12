@@ -10,9 +10,15 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/node": "^26.1.1",
     "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.2",
+    "drizzle-orm": "^0.45.2"
   }
 }
