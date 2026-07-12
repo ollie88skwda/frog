@@ -1,10 +1,17 @@
-import type { Exercise, Session } from "../db/schema";
+import type { Exercise, Metric, Session } from "../db/schema";
 
 export type NewSetInput = {
   weightKg: number | null;
   reps: number | null;
   rir?: number | null;
   note?: string | null;
+  metricValues?: Record<string, unknown> | null;
+};
+
+export type NewMetricInput = {
+  name: string;
+  type: "number" | "scale" | "text" | "checkbox";
+  scope: "set" | "session";
 };
 
 export type GhostSet = { weightKg: number | null; reps: number | null };
@@ -41,6 +48,18 @@ export interface Repo {
 
   /** Exercises + logged sets of one session, in order (restores an open session). */
   listSessionExercises(sessionId: string): Promise<SessionExerciseDetail[]>;
+
+  getSession(sessionId: string): Promise<Session | null>;
+  /** Merge-writes session condition values ({metricId: value}). */
+  updateSessionConditions(
+    sessionId: string,
+    values: Record<string, unknown>,
+  ): Promise<void>;
+
+  listMetrics(): Promise<Metric[]>;
+  createMetric(input: NewMetricInput): Promise<Metric>;
+  /** Which exercises a set-scope metric is enabled for (stored on the metric row). */
+  setMetricExercises(metricId: string, exerciseIds: string[]): Promise<void>;
 
   /**
    * Most recent PRIOR session's sets for an exercise (ghost prefill).

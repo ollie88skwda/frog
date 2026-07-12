@@ -1,12 +1,27 @@
-import { type GhostSet, ghostFor, type LoggedSet, newId } from "@sbl/core";
+import {
+  type GhostSet,
+  ghostFor,
+  type LoggedSet,
+  lbToKg,
+  type Metric,
+  newId,
+  toDisplayWeight,
+} from "@sbl/core";
 import { useMutation } from "@tanstack/react-query";
 import { Plus, Timer } from "lucide-react";
 import { useEffect, useReducer, useRef, useState } from "react";
 import { useParams } from "react-router";
+import { ConditionsChip } from "@/components/conditions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useExercises, useGhost, useSessionExercises } from "@/lib/queries";
+import {
+  useExercises,
+  useGhost,
+  useMetrics,
+  useSessionExercises,
+} from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
+import { type Unit, useUnit } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 
 type BlockState = {
@@ -16,10 +31,16 @@ type BlockState = {
   committed: LoggedSet[];
 };
 
+type CommitInput = Omit<LoggedSet, "id" | "setNo"> & {
+  metricValues?: Record<string, unknown> | null;
+};
+
 export default function SessionScreen() {
   const { id: sessionId = "" } = useParams();
   const repo = useRepo();
+  const { unit } = useUnit();
   const { data: restored } = useSessionExercises(sessionId);
+  const { data: metrics = [] } = useMetrics();
 
   const [blocks, setBlocks] = useState<BlockState[] | null>(null);
   const [picking, setPicking] = useState(false);
@@ -40,10 +61,8 @@ export default function SessionScreen() {
   }, [restored, blocks]);
 
   const logSet = useMutation({
-    mutationFn: (input: {
-      seId: string;
-      set: Omit<LoggedSet, "id" | "setNo">;
-    }) => repo.logSet(input.seId, input.set),
+    mutationFn: (input: { seId: string; set: CommitInput }) =>
+      repo.logSet(input.seId, input.set),
   });
 
   async function pickExercise(exerciseId: string, name: string) {
@@ -55,7 +74,7 @@ export default function SessionScreen() {
     ]);
   }
 
-  function commitSet(seId: string, set: Omit<LoggedSet, "id" | "setNo">) {
+  function commitSet(seId: string, set: CommitInput) {
     // Optimistic: the row is already correct locally; persist in the background.
     setBlocks((prev) =>
       (prev ?? []).map((b) =>
@@ -79,9 +98,12 @@ export default function SessionScreen() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <h1 className="text-lg font-semibold tracking-tight">Session</h1>
-        <RestTimer since={lastCommitAt} />
+        <div className="flex min-w-0 items-center gap-2">
+          <ConditionsChip sessionId={sessionId} />
+          <RestTimer since={lastCommitAt} />
+        </div>
       </div>
 
       <div className="mt-5 flex flex-col gap-4">
@@ -89,6 +111,8 @@ export default function SessionScreen() {
           <ExerciseBlock
             key={block.seId}
             block={block}
+            unit={unit}
+            metrics={metrics}
             onCommit={(set) => commitSet(block.seId, set)}
           />
         ))}
@@ -150,13 +174,20 @@ function ExercisePicker({
 
 function ExerciseBlock({
   block,
+  unit,
+  metrics,
   onCommit,
 }: {
   block: BlockState;
-  onCommit: (set: Omit<LoggedSet, "id" | "setNo">) => void;
+  unit: Unit;
+  metrics: Metric[];
+  onCommit: (set: CommitInput) => void;
 }) {
   const { data: ghost = [] } = useGhost(block.exerciseId, block.seId);
   const activeIndex = block.committed.length;
+  const enabledMetrics = metrics.filter(
+    (m) => m.scope === "set" && m.exerciseIds?.includes(block.exerciseId),
+  );
 
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-surface">
@@ -170,7 +201,7 @@ function ExerciseBlock({
 
       <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 px-3.5 py-1.5 text-2xs font-medium tracking-wide text-faint uppercase">
         <span>#</span>
-        <span>kg</span>
+        <span>{unit}</span>
         <span>reps</span>
         <span />
       </div>
@@ -181,7 +212,9 @@ function ExerciseBlock({
           className="commit-flash grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-3.5 py-2"
         >
           <span className="num text-xs text-faint">{set.setNo + 1}</span>
-          <span className="num text-sm">{set.weightKg ?? "—"}</span>
+          <span className="num text-sm">
+            {set.weightKg != null ? toDisplayWeight(set.weightKg, unit) : "—"}
+          </span>
           <span className="num text-sm">{set.reps ?? "—"}</span>
           <span className="num text-2xs text-faint">
             {set.rir != null ? `@${set.rir}` : ""}
@@ -192,8 +225,10 @@ function ExerciseBlock({
       <ActiveRow
         key={activeIndex}
         index={activeIndex}
+        unit={unit}
         ghost={ghostFor(ghost, activeIndex)}
         hasGhost={ghost.length > 0}
+        enabledMetrics={enabledMetrics}
         autoFocusWeight={activeIndex > 0}
         onCommit={onCommit}
       />
@@ -203,36 +238,61 @@ function ExerciseBlock({
 
 function ActiveRow({
   index,
+  unit,
   ghost,
   hasGhost,
+  enabledMetrics,
   autoFocusWeight,
   onCommit,
 }: {
   index: number;
+  unit: Unit;
   ghost: GhostSet;
   hasGhost: boolean;
+  enabledMetrics: Metric[];
   autoFocusWeight: boolean;
-  onCommit: (set: {
-    weightKg: number | null;
-    reps: number | null;
-    rir: number | null;
-    note: string | null;
-  }) => void;
+  onCommit: (set: CommitInput) => void;
 }) {
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [rir, setRir] = useState("");
   const [note, setNote] = useState("");
+  const [metricDraft, setMetricDraft] = useState<Record<string, string>>({});
   const [expanded, toggleExpanded] = useReducer((v: boolean) => !v, false);
   const done = useRef(false);
 
+  const ghostWeight =
+    ghost.weightKg != null ? toDisplayWeight(ghost.weightKg, unit) : null;
+
   function parse(w: string, r: string) {
-    const weightKg = w.trim() === "" ? null : Number.parseFloat(w);
+    const display = w.trim() === "" ? null : Number.parseFloat(w);
     const repsN = r.trim() === "" ? null : Number.parseInt(r, 10);
+    const displayOk =
+      display != null && !Number.isNaN(display) ? display : null;
     return {
-      weightKg: Number.isNaN(weightKg as number) ? null : weightKg,
-      reps: Number.isNaN(repsN as number) ? null : repsN,
+      weightKg:
+        displayOk == null
+          ? null
+          : unit === "lb"
+            ? lbToKg(displayOk)
+            : displayOk,
+      reps: repsN != null && Number.isNaN(repsN) ? null : repsN,
     };
+  }
+
+  function metricValues(): Record<string, unknown> | null {
+    const out: Record<string, unknown> = {};
+    for (const m of enabledMetrics) {
+      const raw = (metricDraft[m.id] ?? "").trim();
+      if (raw === "") continue;
+      out[m.id] =
+        m.type === "number" || m.type === "scale"
+          ? Number.parseFloat(raw)
+          : m.type === "checkbox"
+            ? raw === "true"
+            : raw;
+    }
+    return Object.keys(out).length ? out : null;
   }
 
   function commit(adoptGhost: boolean) {
@@ -250,6 +310,7 @@ function ActiveRow({
       reps: repsN,
       rir: rir.trim() === "" ? null : Number.parseInt(rir, 10),
       note: note.trim() === "" ? null : note.trim(),
+      metricValues: metricValues(),
     });
   }
 
@@ -270,7 +331,7 @@ function ActiveRow({
         <span className="num text-xs text-faint">{index + 1}</span>
         <Input
           inputMode="decimal"
-          placeholder={ghost.weightKg != null ? String(ghost.weightKg) : "kg"}
+          placeholder={ghostWeight != null ? String(ghostWeight) : unit}
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
           onBlur={onBlur}
@@ -292,7 +353,7 @@ function ActiveRow({
         <button
           type="button"
           onClick={toggleExpanded}
-          title="RIR / note"
+          title="RIR / note / metrics"
           className={cn(
             "justify-self-center rounded-md px-1.5 py-1 text-2xs font-medium transition-colors duration-100",
             expanded
@@ -304,26 +365,64 @@ function ActiveRow({
         </button>
       </div>
       {expanded && (
-        <div className="mt-2 grid grid-cols-[2rem_1fr_2fr_2.5rem] items-center gap-x-2">
-          <span />
-          <Input
-            inputMode="numeric"
-            placeholder="RIR"
-            value={rir}
-            onChange={(e) => setRir(e.target.value)}
-            onKeyDown={onKeyDown}
-            className="num h-8"
-            data-testid={`set-${index}-rir`}
-          />
-          <Input
-            placeholder="// note"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            onKeyDown={onKeyDown}
-            className="h-8"
-            data-testid={`set-${index}-note`}
-          />
-          <span />
+        <div className="mt-2 flex flex-col gap-2">
+          <div className="grid grid-cols-[2rem_1fr_2fr_2.5rem] items-center gap-x-2">
+            <span />
+            <Input
+              inputMode="numeric"
+              placeholder="RIR"
+              value={rir}
+              onChange={(e) => setRir(e.target.value)}
+              onKeyDown={onKeyDown}
+              className="num h-8"
+              data-testid={`set-${index}-rir`}
+            />
+            <Input
+              placeholder="// note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              onKeyDown={onKeyDown}
+              className="h-8"
+              data-testid={`set-${index}-note`}
+            />
+            <span />
+          </div>
+          {enabledMetrics.map((m) => (
+            <div
+              key={m.id}
+              className="grid grid-cols-[2rem_1fr_2fr_2.5rem] items-center gap-x-2"
+            >
+              <span />
+              <span className="truncate text-2xs text-faint">{m.name}</span>
+              {m.type === "checkbox" ? (
+                <input
+                  type="checkbox"
+                  checked={metricDraft[m.id] === "true"}
+                  onChange={(e) =>
+                    setMetricDraft((d) => ({
+                      ...d,
+                      [m.id]: e.target.checked ? "true" : "",
+                    }))
+                  }
+                  className="size-4 justify-self-start accent-(--accent)"
+                  data-testid={`set-${index}-metric-${m.id}`}
+                />
+              ) : (
+                <Input
+                  inputMode={m.type === "text" ? undefined : "decimal"}
+                  placeholder={m.type === "text" ? m.name : "0"}
+                  value={metricDraft[m.id] ?? ""}
+                  onChange={(e) =>
+                    setMetricDraft((d) => ({ ...d, [m.id]: e.target.value }))
+                  }
+                  onKeyDown={onKeyDown}
+                  className="num h-8"
+                  data-testid={`set-${index}-metric-${m.id}`}
+                />
+              )}
+              <span />
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -343,7 +442,7 @@ function RestTimer({ since }: { since: number | null }) {
   const m = Math.floor(total / 60);
   const s = String(total % 60).padStart(2, "0");
   return (
-    <span className="num flex items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1 text-xs text-soft">
+    <span className="num flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1 text-xs text-soft">
       <Timer className="size-3.5" />
       {m}:{s}
     </span>

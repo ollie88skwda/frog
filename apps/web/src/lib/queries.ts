@@ -1,4 +1,9 @@
-import { type Exercise, newId } from "@sbl/core";
+import {
+  type Exercise,
+  type Metric,
+  type NewMetricInput,
+  newId,
+} from "@sbl/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRepo } from "./repo";
 
@@ -47,6 +52,59 @@ export function useSessionExercises(sessionId: string) {
     queryKey: ["session-exercises", sessionId],
     queryFn: () => repo.listSessionExercises(sessionId),
     staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+export function useSession(sessionId: string) {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["session", sessionId],
+    queryFn: () => repo.getSession(sessionId),
+  });
+}
+
+export function useUpdateConditions(sessionId: string) {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (values: Record<string, unknown>) =>
+      repo.updateSessionConditions(sessionId, values),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["session", sessionId] }),
+  });
+}
+
+export function useMetrics() {
+  const repo = useRepo();
+  return useQuery({ queryKey: ["metrics"], queryFn: () => repo.listMetrics() });
+}
+
+export function useCreateMetric() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewMetricInput) => repo.createMetric(input),
+    onSettled: () => qc.invalidateQueries({ queryKey: ["metrics"] }),
+  });
+}
+
+export function useSetMetricExercises() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { metricId: string; exerciseIds: string[] }) =>
+      repo.setMetricExercises(input.metricId, input.exerciseIds),
+    onMutate: async ({ metricId, exerciseIds }) => {
+      await qc.cancelQueries({ queryKey: ["metrics"] });
+      const prev = qc.getQueryData<Metric[]>(["metrics"]);
+      qc.setQueryData<Metric[]>(["metrics"], (old = []) =>
+        old.map((m) => (m.id === metricId ? { ...m, exerciseIds } : m)),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["metrics"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["metrics"] }),
   });
 }
 

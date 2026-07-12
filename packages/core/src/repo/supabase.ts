@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Exercise, Session } from "../db/schema";
+import type { Exercise, Metric, Session } from "../db/schema";
 import { newId } from "../domain/ids";
 import type {
   GhostSet,
+  NewMetricInput,
   NewSetInput,
   Repo,
   SessionExerciseDetail,
@@ -36,6 +37,20 @@ function toSession(r: Row): Session {
     endedAt: (r.ended_at as number | null) ?? null,
     conditionValues:
       (r.condition_values as Record<string, unknown> | null) ?? null,
+  };
+}
+
+function toMetric(r: Row): Metric {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: (r.owner_id as string | null) ?? null,
+    name: r.name as string,
+    type: r.type as string,
+    scope: r.scope as string,
+    exerciseIds: (r.exercise_ids as string[] | null) ?? null,
   };
 }
 
@@ -132,6 +147,7 @@ export class SupabaseRepo implements Repo {
       reps: set.reps,
       rir: set.rir ?? null,
       note: set.note ?? null,
+      metric_values: set.metricValues ?? null,
       completed: true,
     };
     const { error } = await this.client.from("set_logs").insert(row);
@@ -168,6 +184,69 @@ export class SupabaseRepo implements Repo {
           note: (s.note as string | null) ?? null,
         })),
     }));
+  }
+
+  async getSession(sessionId: string): Promise<Session | null> {
+    const { data, error } = await this.client
+      .from("sessions")
+      .select()
+      .eq("id", sessionId)
+      .maybeSingle();
+    throwIf(error);
+    return data ? toSession(data as Row) : null;
+  }
+
+  async updateSessionConditions(
+    sessionId: string,
+    values: Record<string, unknown>,
+  ): Promise<void> {
+    const current = await this.getSession(sessionId);
+    const merged = { ...(current?.conditionValues ?? {}), ...values };
+    const { error } = await this.client
+      .from("sessions")
+      .update({ condition_values: merged, updated_at: Date.now() })
+      .eq("id", sessionId);
+    throwIf(error);
+  }
+
+  async listMetrics(): Promise<Metric[]> {
+    const { data, error } = await this.client
+      .from("metrics")
+      .select()
+      .is("deleted_at", null)
+      .order("name");
+    throwIf(error);
+    return (data as Row[]).map(toMetric);
+  }
+
+  async createMetric(input: NewMetricInput): Promise<Metric> {
+    const now = Date.now();
+    const row = {
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      name: input.name,
+      type: input.type,
+      scope: input.scope,
+    };
+    const { data, error } = await this.client
+      .from("metrics")
+      .insert(row)
+      .select()
+      .single();
+    throwIf(error);
+    return toMetric(data as Row);
+  }
+
+  async setMetricExercises(
+    metricId: string,
+    exerciseIds: string[],
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("metrics")
+      .update({ exercise_ids: exerciseIds, updated_at: Date.now() })
+      .eq("id", metricId);
+    throwIf(error);
   }
 
   async lastSetsForExercise(

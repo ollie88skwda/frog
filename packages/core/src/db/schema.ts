@@ -45,6 +45,9 @@ export const metrics = pgTable(
     name: text("name").notNull(),
     type: text("type").notNull(), // 'number' | 'scale' | 'text' | 'checkbox'
     scope: text("scope").notNull(), // 'set' | 'session'
+    // Set-scope metrics: which exercises show this metric. Lives on the metric
+    // (user-owned) rather than the exercise so it works on seed exercises too.
+    exerciseIds: jsonb("exercise_ids").$type<string[]>(),
   },
   (t) => [index("metrics_owner_idx").on(t.ownerId)],
 );
