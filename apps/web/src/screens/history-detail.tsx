@@ -1,16 +1,33 @@
 import { toDisplayWeight } from "@sbl/core";
-import { ArrowLeft } from "lucide-react";
-import { Link, useParams } from "react-router";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { formatDateTime } from "@/lib/format";
 import { useMetrics, useSession, useSessionExercises } from "@/lib/queries";
+import { useRepo } from "@/lib/repo";
 import { useUnit } from "@/lib/settings";
 
 export default function HistoryDetailScreen() {
   const { id = "" } = useParams();
   const { unit } = useUnit();
+  const repo = useRepo();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+  const [confirming, setConfirming] = useState(false);
   const { data: session } = useSession(id);
   const { data: blocks = [] } = useSessionExercises(id);
   const { data: metrics = [] } = useMetrics();
+
+  async function deleteSession() {
+    await repo.deleteSession(id);
+    void qc.invalidateQueries({ queryKey: ["sessions"] });
+    void qc.invalidateQueries({ queryKey: ["findings-data"] });
+    void qc.invalidateQueries({ queryKey: ["active-session"] });
+    navigate("/history");
+  }
 
   const conditions = session?.conditionValues ?? {};
   const conditionLines = metrics
@@ -24,13 +41,49 @@ export default function HistoryDetailScreen() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
-      <Link
-        to="/history"
-        className="flex items-center gap-1 text-xs text-soft transition-colors duration-100 hover:text-ink"
-      >
-        <ArrowLeft className="size-3.5" />
-        History
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          to="/history"
+          className="flex items-center gap-1 text-xs text-soft transition-colors duration-100 hover:text-ink"
+        >
+          <ArrowLeft className="size-3.5" />
+          History
+        </Link>
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={() => setConfirming(true)}
+          data-testid="delete-session-btn"
+        >
+          <Trash2 className="size-3.5" />
+          Delete
+        </Button>
+      </div>
+      <Dialog open={confirming} onOpenChange={setConfirming}>
+        <DialogContent title="Delete this session?">
+          <p className="text-xs text-soft">
+            The session and its sets disappear from history and findings.
+            (Soft-deleted — nothing is destroyed.)
+          </p>
+          <div className="mt-3 flex justify-end gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirming(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={() => void deleteSession()}
+              data-testid="confirm-delete-session-btn"
+            >
+              Delete session
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <h1 className="mt-2 text-lg font-semibold tracking-tight">
         {session?.title ?? "Session"}
       </h1>

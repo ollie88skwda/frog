@@ -7,6 +7,7 @@ import type {
   SetLog,
 } from "../db/schema";
 import type { FindingsSessionInput } from "../findings/types";
+import type { ImportedSession, ImportResult } from "../import/types";
 
 export type ExportBundle = {
   schemaVersion: number;
@@ -63,8 +64,37 @@ export interface Repo {
   listExercises(): Promise<Exercise[]>;
 
   startSession(title?: string): Promise<Session>;
+  /** Stamps ended_at. Active session = ended_at null. */
+  endSession(sessionId: string): Promise<void>;
+  /** Newest open session (ended_at null), if any. */
+  activeSession(): Promise<Session | null>;
   addExerciseToSession(sessionId: string, exerciseId: string): Promise<string>;
   logSet(sessionExerciseId: string, set: NewSetInput): Promise<string>;
+  /** Partial update — only provided fields are written (others preserved). */
+  updateSet(setId: string, patch: Partial<NewSetInput>): Promise<void>;
+
+  // All deletes are soft (deleted_at) — nothing is ever hard-deleted.
+  deleteSet(setId: string): Promise<void>;
+  deleteSessionExercise(id: string): Promise<void>;
+  deleteExercise(id: string): Promise<void>;
+  deleteMetric(id: string): Promise<void>;
+  deleteSession(id: string): Promise<void>;
+
+  /** Light tagging (custom exercises; seeds are read-only under RLS). */
+  setExerciseTags(exerciseId: string, tags: string[]): Promise<void>;
+
+  /**
+   * Bulk history import (Hevy etc.): find-or-create exercises by name,
+   * batched inserts, idempotent — sessions whose started_at already exists
+   * are skipped.
+   */
+  importSessions(sessions: ImportedSession[]): Promise<ImportResult>;
+
+  /**
+   * Fills the seeded Sleep (h) condition on sessions whose local start date
+   * matches; never overwrites an existing value. Returns sessions filled.
+   */
+  applySleep(sleepHoursByDate: Map<string, number>): Promise<number>;
 
   /** Exercises + logged sets of one session, in order (restores an open session). */
   listSessionExercises(sessionId: string): Promise<SessionExerciseDetail[]>;

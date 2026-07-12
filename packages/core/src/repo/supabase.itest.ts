@@ -1,7 +1,9 @@
 import { execSync } from "node:child_process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
+import { SEED_CONDITIONS } from "../db/seed-ids";
 import { newId } from "../domain/ids";
+import type { ImportedSession } from "../import/types";
 import { SupabaseRepo } from "./supabase";
 
 function localStatus(): { url: string; anonKey: string; serviceKey: string } {
@@ -111,6 +113,69 @@ describe("SupabaseRepo (integration, local supabase)", () => {
       { weightKg: 140, reps: 5 },
       { weightKg: 150, reps: 3 },
     ]);
+  });
+
+  it("imports sessions idempotently and applies sleep without overwriting", async () => {
+    const day = 86_400_000;
+    const base = Date.now() - 30 * day;
+    const sessions: ImportedSession[] = [0, 1, 2].map((i) => ({
+      title: `Imported ${i}`,
+      startedAt: base + i * day,
+      endedAt: base + i * day + 3_600_000,
+      exercises: [
+        {
+          name: `Import Lift ${base}`,
+          sets: [
+            { weightKg: 100 + i, reps: 5, rir: 1, note: null },
+            { weightKg: 90, reps: 8, rir: null, note: "backoff" },
+          ],
+        },
+      ],
+    }));
+
+    const first = await repoA.importSessions(sessions);
+    expect(first).toEqual({
+      imported: 3,
+      skipped: 0,
+      sets: 6,
+      exercisesCreated: 1,
+    });
+
+    // Re-import: everything skipped, nothing duplicated.
+    const second = await repoA.importSessions(sessions);
+    expect(second.imported).toBe(0);
+    expect(second.skipped).toBe(3);
+
+    // Sleep applies by local date, fills only sessions lacking a value.
+    const d0 = new Date(base);
+    const iso = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    // Pre-set a sleep value on session 0 — applySleep must not overwrite it.
+    const { data: s0 } = await clientA
+      .from("sessions")
+      .select("id")
+      .eq("started_at", base)
+      .single();
+    await repoA.updateSessionConditions(s0?.id as string, {
+      [SEED_CONDITIONS.sleepH]: 9,
+    });
+
+    const map = new Map<string, number>([
+      [iso(d0), 6.5],
+      [iso(new Date(base + day)), 7.5],
+    ]);
+    const filled = await repoA.applySleep(map);
+    expect(filled).toBe(1); // only session 1 (session 0 already had a value)
+
+    const { data: after } = await clientA
+      .from("sessions")
+      .select("started_at, condition_values")
+      .in("started_at", [base, base + day]);
+    const byStart = new Map(
+      (after ?? []).map((r) => [r.started_at, r.condition_values]),
+    );
+    expect(byStart.get(base)?.[SEED_CONDITIONS.sleepH]).toBe(9);
+    expect(byStart.get(base + day)?.[SEED_CONDITIONS.sleepH]).toBe(7.5);
   });
 
   it("RLS: users cannot see or write each other's data", async () => {

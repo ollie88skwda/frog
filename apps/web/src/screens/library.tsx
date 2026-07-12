@@ -6,8 +6,11 @@ import { Input } from "@/components/ui/input";
 import {
   useCreateExercise,
   useCreateMetric,
+  useDeleteExercise,
+  useDeleteMetric,
   useExercises,
   useMetrics,
+  useSetExerciseTags,
   useSetMetricExercises,
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -93,7 +96,19 @@ function ExerciseRow({
   onToggle: () => void;
 }) {
   const toggleMetric = useSetMetricExercises();
+  const setTags = useSetExerciseTags();
+  const deleteExercise = useDeleteExercise();
+  const [tagDraft, setTagDraft] = useState("");
   const Chevron = expanded ? ChevronDown : ChevronRight;
+
+  function addTag() {
+    const tag = tagDraft.trim().replace(/,+$/, "");
+    setTagDraft("");
+    if (!tag) return;
+    const current = exercise.tags ?? [];
+    if (current.includes(tag)) return;
+    setTags.mutate({ exerciseId: exercise.id, tags: [...current, tag] });
+  }
 
   return (
     <li data-testid={`exercise-row-${exercise.name}`}>
@@ -102,9 +117,17 @@ function ExerciseRow({
         onClick={onToggle}
         className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-sm transition-colors duration-100 hover:bg-surface-hover"
       >
-        <span className="flex items-center gap-2">
-          <Chevron className="size-3.5 text-faint" />
-          {exercise.name}
+        <span className="flex min-w-0 items-center gap-2">
+          <Chevron className="size-3.5 shrink-0 text-faint" />
+          <span className="truncate">{exercise.name}</span>
+          {exercise.tags?.map((t) => (
+            <span
+              key={t}
+              className="shrink-0 rounded-sm border border-border bg-surface-2 px-1.5 text-2xs text-faint"
+            >
+              {t}
+            </span>
+          ))}
         </span>
         {!exercise.isCustom && (
           <span className="text-2xs text-faint uppercase">seed</span>
@@ -148,6 +171,63 @@ function ExerciseRow({
               })}
             </div>
           )}
+
+          {exercise.isCustom && (
+            <div className="mt-3 border-t border-border pt-2.5">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(exercise.tags ?? []).map((t) => (
+                  <span
+                    key={t}
+                    className="flex items-center gap-1 rounded-sm border border-border bg-surface px-1.5 py-0.5 text-2xs text-soft"
+                  >
+                    {t}
+                    <button
+                      type="button"
+                      title={`Remove tag ${t}`}
+                      onClick={() =>
+                        setTags.mutate({
+                          exerciseId: exercise.id,
+                          tags: (exercise.tags ?? []).filter((x) => x !== t),
+                        })
+                      }
+                      className="text-faint hover:text-neg"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                <Input
+                  value={tagDraft}
+                  onChange={(e) => {
+                    if (e.target.value.endsWith(",")) {
+                      setTagDraft(e.target.value);
+                      addTag();
+                    } else {
+                      setTagDraft(e.target.value);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addTag();
+                    }
+                  }}
+                  placeholder="+ tag"
+                  className="h-6 w-24 text-2xs"
+                  data-testid={`tag-input-${exercise.name}`}
+                />
+              </div>
+              <Button
+                variant="danger"
+                size="sm"
+                className="mt-2.5"
+                onClick={() => deleteExercise.mutate(exercise.id)}
+                data-testid={`delete-exercise-${exercise.name}`}
+              >
+                Delete exercise
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </li>
@@ -163,6 +243,7 @@ const METRIC_TYPES: NewMetricInput["type"][] = [
 
 function MetricsSection({ metrics }: { metrics: Metric[] }) {
   const create = useCreateMetric();
+  const deleteMetric = useDeleteMetric();
   const [name, setName] = useState("");
   const [type, setType] = useState<NewMetricInput["type"]>("number");
 
@@ -222,8 +303,19 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
               className="flex items-center justify-between px-3.5 py-2 text-sm"
             >
               <span>{m.name}</span>
-              <span className="num text-2xs text-faint">
-                {m.type} · {m.scope} · {m.exerciseIds?.length ?? 0} exercises
+              <span className="flex items-center gap-2">
+                <span className="num text-2xs text-faint">
+                  {m.type} · {m.scope} · {m.exerciseIds?.length ?? 0} exercises
+                </span>
+                <button
+                  type="button"
+                  title="Delete metric"
+                  onClick={() => deleteMetric.mutate(m.id)}
+                  className="rounded-sm p-0.5 text-faint transition-colors duration-100 hover:text-neg"
+                  data-testid={`delete-metric-${m.name}`}
+                >
+                  ×
+                </button>
               </span>
             </li>
           ))}

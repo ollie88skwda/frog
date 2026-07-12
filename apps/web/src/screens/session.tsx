@@ -7,10 +7,17 @@ import {
   newId,
   toDisplayWeight,
 } from "@sbl/core";
-import { useMutation } from "@tanstack/react-query";
-import { Plus, Timer } from "lucide-react";
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { useParams } from "react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Check, Plus, Square, Timer, Trash2, X } from "lucide-react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
+import { useNavigate, useParams } from "react-router";
 import { ConditionsChip } from "@/components/conditions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,9 +43,18 @@ type CommitInput = Omit<LoggedSet, "id" | "setNo"> & {
   metricValues?: Record<string, unknown> | null;
 };
 
+export type SetPatch = {
+  weightKg: number | null;
+  reps: number | null;
+  rir: number | null;
+  note: string | null;
+};
+
 export default function SessionScreen() {
   const { id: sessionId = "" } = useParams();
   const repo = useRepo();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
   const { unit } = useUnit();
   const { data: restored } = useSessionExercises(sessionId);
   const { data: metrics = [] } = useMetrics();
@@ -62,11 +78,41 @@ export default function SessionScreen() {
   }, [restored, blocks]);
 
   const logSet = useMutation({
-    mutationFn: (input: { seId: string; set: CommitInput }) =>
+    mutationFn: (input: { seId: string; set: CommitInput; tempId: string }) =>
       repo.logSet(input.seId, input.set),
+    // Swap the optimistic temp id for the real one so edit/delete target the
+    // actual row.
+    onSuccess: (realId, { seId, tempId }) => {
+      setBlocks((prev) =>
+        (prev ?? []).map((b) =>
+          b.seId === seId
+            ? {
+                ...b,
+                committed: b.committed.map((s) =>
+                  s.id === tempId ? { ...s, id: realId } : s,
+                ),
+              }
+            : b,
+        ),
+      );
+    },
   });
 
-  useHotkeys(useMemo(() => ({ a: () => setPicking(true) }), []));
+  const endSession = useCallback(async () => {
+    await repo.endSession(sessionId);
+    void qc.invalidateQueries({ queryKey: ["active-session"] });
+    navigate("/");
+  }, [repo, sessionId, qc, navigate]);
+
+  useHotkeys(
+    useMemo(
+      () => ({
+        a: () => setPicking(true),
+        e: () => void endSession(),
+      }),
+      [endSession],
+    ),
+  );
 
   async function pickExercise(exerciseId: string, name: string) {
     setPicking(false);
@@ -79,6 +125,7 @@ export default function SessionScreen() {
 
   function commitSet(seId: string, set: CommitInput) {
     // Optimistic: the row is already correct locally; persist in the background.
+    const tempId = newId();
     setBlocks((prev) =>
       (prev ?? []).map((b) =>
         b.seId === seId
@@ -86,14 +133,46 @@ export default function SessionScreen() {
               ...b,
               committed: [
                 ...b.committed,
-                { ...set, id: newId(), setNo: b.committed.length },
+                { ...set, id: tempId, setNo: b.committed.length },
               ],
             }
           : b,
       ),
     );
     setLastCommitAt(Date.now());
-    logSet.mutate({ seId, set });
+    logSet.mutate({ seId, set, tempId });
+  }
+
+  function saveSet(seId: string, setId: string, patch: SetPatch) {
+    setBlocks((prev) =>
+      (prev ?? []).map((b) =>
+        b.seId === seId
+          ? {
+              ...b,
+              committed: b.committed.map((s) =>
+                s.id === setId ? { ...s, ...patch } : s,
+              ),
+            }
+          : b,
+      ),
+    );
+    void repo.updateSet(setId, patch);
+  }
+
+  function removeSet(seId: string, setId: string) {
+    setBlocks((prev) =>
+      (prev ?? []).map((b) =>
+        b.seId === seId
+          ? { ...b, committed: b.committed.filter((s) => s.id !== setId) }
+          : b,
+      ),
+    );
+    void repo.deleteSet(setId);
+  }
+
+  function removeBlock(seId: string) {
+    setBlocks((prev) => (prev ?? []).filter((b) => b.seId !== seId));
+    void repo.deleteSessionExercise(seId);
   }
 
   if (blocks === null) return null;
@@ -106,6 +185,15 @@ export default function SessionScreen() {
         <div className="flex min-w-0 items-center gap-2">
           <ConditionsChip sessionId={sessionId} />
           <RestTimer since={lastCommitAt} />
+          <Button
+            size="sm"
+            onClick={() => void endSession()}
+            title="End session (e)"
+            data-testid="end-session-btn"
+          >
+            <Square className="size-3" />
+            End
+          </Button>
         </div>
       </div>
 
@@ -117,6 +205,9 @@ export default function SessionScreen() {
             unit={unit}
             metrics={metrics}
             onCommit={(set) => commitSet(block.seId, set)}
+            onSaveSet={(setId, patch) => saveSet(block.seId, setId, patch)}
+            onRemoveSet={(setId) => removeSet(block.seId, setId)}
+            onRemoveBlock={() => removeBlock(block.seId)}
           />
         ))}
 
@@ -163,9 +254,17 @@ function ExercisePicker({
                 type="button"
                 data-testid={`pick-exercise-${ex.name}`}
                 onClick={() => onPick(ex.id, ex.name)}
-                className="w-full px-3.5 py-2.5 text-left text-sm transition-colors duration-100 hover:bg-surface-hover"
+                className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-sm transition-colors duration-100 hover:bg-surface-hover"
               >
                 {ex.name}
+                {ex.tags?.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded-sm border border-border bg-surface-2 px-1.5 text-2xs text-faint"
+                  >
+                    {t}
+                  </span>
+                ))}
               </button>
             </li>
           ))}
@@ -180,11 +279,17 @@ function ExerciseBlock({
   unit,
   metrics,
   onCommit,
+  onSaveSet,
+  onRemoveSet,
+  onRemoveBlock,
 }: {
   block: BlockState;
   unit: Unit;
   metrics: Metric[];
   onCommit: (set: CommitInput) => void;
+  onSaveSet: (setId: string, patch: SetPatch) => void;
+  onRemoveSet: (setId: string) => void;
+  onRemoveBlock: () => void;
 }) {
   const { data: ghost = [] } = useGhost(block.exerciseId, block.seId);
   const activeIndex = block.committed.length;
@@ -196,9 +301,20 @@ function ExerciseBlock({
     <section className="overflow-hidden rounded-lg border border-border bg-surface">
       <header className="flex items-center justify-between border-b border-border px-3.5 py-2">
         <h2 className="text-sm font-medium">{block.name}</h2>
-        <span className="num text-2xs text-faint">
-          {block.committed.length}{" "}
-          {block.committed.length === 1 ? "set" : "sets"}
+        <span className="flex items-center gap-2">
+          <span className="num text-2xs text-faint">
+            {block.committed.length}{" "}
+            {block.committed.length === 1 ? "set" : "sets"}
+          </span>
+          <button
+            type="button"
+            onClick={onRemoveBlock}
+            title="Remove exercise from session"
+            className="rounded-sm p-0.5 text-faint transition-colors duration-100 hover:bg-surface-hover hover:text-neg"
+            data-testid={`remove-block-${block.name}`}
+          >
+            <X className="size-3.5" />
+          </button>
         </span>
       </header>
 
@@ -209,20 +325,15 @@ function ExerciseBlock({
         <span />
       </div>
 
-      {block.committed.map((set) => (
-        <div
+      {block.committed.map((set, i) => (
+        <CommittedRow
           key={set.id}
-          className="commit-flash grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-3.5 py-2"
-        >
-          <span className="num text-xs text-faint">{set.setNo + 1}</span>
-          <span className="num text-sm">
-            {set.weightKg != null ? toDisplayWeight(set.weightKg, unit) : "—"}
-          </span>
-          <span className="num text-sm">{set.reps ?? "—"}</span>
-          <span className="num text-2xs text-faint">
-            {set.rir != null ? `@${set.rir}` : ""}
-          </span>
-        </div>
+          set={set}
+          index={i}
+          unit={unit}
+          onSave={(patch) => onSaveSet(set.id, patch)}
+          onDelete={() => onRemoveSet(set.id)}
+        />
       ))}
 
       <ActiveRow
@@ -236,6 +347,155 @@ function ExerciseBlock({
         onCommit={onCommit}
       />
     </section>
+  );
+}
+
+function CommittedRow({
+  set,
+  index,
+  unit,
+  onSave,
+  onDelete,
+}: {
+  set: LoggedSet;
+  index: number;
+  unit: Unit;
+  onSave: (patch: SetPatch) => void;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [weight, setWeight] = useState("");
+  const [reps, setReps] = useState("");
+  const [rir, setRir] = useState("");
+  const [note, setNote] = useState("");
+
+  function startEdit() {
+    setWeight(
+      set.weightKg != null ? String(toDisplayWeight(set.weightKg, unit)) : "",
+    );
+    setReps(set.reps != null ? String(set.reps) : "");
+    setRir(set.rir != null ? String(set.rir) : "");
+    setNote(set.note ?? "");
+    setEditing(true);
+  }
+
+  function save() {
+    const display = weight.trim() === "" ? null : Number.parseFloat(weight);
+    const displayOk =
+      display != null && !Number.isNaN(display) ? display : null;
+    const repsN = reps.trim() === "" ? null : Number.parseInt(reps, 10);
+    onSave({
+      weightKg:
+        displayOk == null
+          ? null
+          : unit === "lb"
+            ? lbToKg(displayOk)
+            : displayOk,
+      reps: repsN != null && Number.isNaN(repsN) ? null : repsN,
+      rir: rir.trim() === "" ? null : Number.parseInt(rir, 10),
+      note: note.trim() === "" ? null : note.trim(),
+    });
+    setEditing(false);
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      save();
+    } else if (e.key === "Escape") {
+      setEditing(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border bg-surface-2 px-3.5 py-2">
+        <span className="num text-xs text-faint">{index + 1}</span>
+        <Input
+          inputMode="decimal"
+          value={weight}
+          onChange={(e) => setWeight(e.target.value)}
+          onKeyDown={onKeyDown}
+          autoFocus
+          className="num h-8"
+          data-testid={`edit-${index}-weight`}
+        />
+        <Input
+          inputMode="numeric"
+          value={reps}
+          onChange={(e) => setReps(e.target.value)}
+          onKeyDown={onKeyDown}
+          className="num h-8"
+          data-testid={`edit-${index}-reps`}
+        />
+        <button
+          type="button"
+          onClick={save}
+          title="Save (Enter)"
+          className="justify-self-center rounded-md p-1 text-accent transition-colors duration-100 hover:bg-accent-soft"
+          data-testid={`edit-${index}-save`}
+        >
+          <Check className="size-4" />
+        </button>
+        <span />
+        <Input
+          inputMode="numeric"
+          placeholder="RIR"
+          value={rir}
+          onChange={(e) => setRir(e.target.value)}
+          onKeyDown={onKeyDown}
+          className="num col-start-2 mt-2 h-8"
+        />
+        <Input
+          placeholder="// note"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          onKeyDown={onKeyDown}
+          className="mt-2 h-8"
+        />
+        <span />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="group commit-flash grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-3.5 py-2"
+      data-testid={`committed-${index}`}
+    >
+      <span className="num text-xs text-faint">{index + 1}</span>
+      <button
+        type="button"
+        onClick={startEdit}
+        className="num cursor-text text-left text-sm"
+        title="Edit set"
+        data-testid={`committed-${index}-weight`}
+      >
+        {set.weightKg != null ? toDisplayWeight(set.weightKg, unit) : "—"}
+      </button>
+      <button
+        type="button"
+        onClick={startEdit}
+        className="num cursor-text text-left text-sm"
+        data-testid={`committed-${index}-reps`}
+      >
+        {set.reps ?? "—"}
+      </button>
+      <span className="flex items-center justify-center gap-1">
+        <span className="num text-2xs text-faint group-hover:hidden">
+          {set.rir != null ? `@${set.rir}` : ""}
+        </span>
+        <button
+          type="button"
+          onClick={onDelete}
+          title="Delete set"
+          className="hidden rounded-sm p-0.5 text-faint transition-colors duration-100 group-hover:block hover:text-neg"
+          data-testid={`delete-${index}`}
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </span>
+    </div>
   );
 }
 

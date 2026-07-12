@@ -7,9 +7,11 @@ import type {
   SessionExercise,
   SetLog,
 } from "../db/schema";
+import { SEED_CONDITIONS } from "../db/seed-ids";
 import { newId } from "../domain/ids";
 import { generateToken, hashToken } from "../domain/tokens";
 import type { FindingsSessionInput } from "../findings/types";
+import type { ImportedSession, ImportResult } from "../import/types";
 import type {
   CreatedApiToken,
   ExportBundle,
@@ -159,6 +161,75 @@ export class SupabaseRepo implements Repo {
       .single();
     throwIf(error);
     return toSession(data as Row);
+  }
+
+  async endSession(sessionId: string): Promise<void> {
+    const now = Date.now();
+    const { error } = await this.client
+      .from("sessions")
+      .update({ ended_at: now, updated_at: now })
+      .eq("id", sessionId);
+    throwIf(error);
+  }
+
+  async activeSession(): Promise<Session | null> {
+    const { data, error } = await this.client
+      .from("sessions")
+      .select()
+      .is("ended_at", null)
+      .is("deleted_at", null)
+      .order("started_at", { ascending: false })
+      .limit(1);
+    throwIf(error);
+    const row = (data as Row[] | null)?.[0];
+    return row ? toSession(row) : null;
+  }
+
+  private async softDelete(table: string, id: string): Promise<void> {
+    const now = Date.now();
+    const { error } = await this.client
+      .from(table)
+      .update({ deleted_at: now, updated_at: now })
+      .eq("id", id);
+    throwIf(error);
+  }
+
+  deleteSet(id: string) {
+    return this.softDelete("set_logs", id);
+  }
+  deleteSessionExercise(id: string) {
+    return this.softDelete("session_exercises", id);
+  }
+  deleteExercise(id: string) {
+    return this.softDelete("exercises", id);
+  }
+  deleteMetric(id: string) {
+    return this.softDelete("metrics", id);
+  }
+  deleteSession(id: string) {
+    return this.softDelete("sessions", id);
+  }
+
+  async updateSet(setId: string, patch: Partial<NewSetInput>): Promise<void> {
+    const row: Row = { updated_at: Date.now() };
+    if ("weightKg" in patch) row.weight_kg = patch.weightKg ?? null;
+    if ("reps" in patch) row.reps = patch.reps ?? null;
+    if ("rir" in patch) row.rir = patch.rir ?? null;
+    if ("note" in patch) row.note = patch.note ?? null;
+    if ("metricValues" in patch) row.metric_values = patch.metricValues ?? null;
+    const { error } = await this.client
+      .from("set_logs")
+      .update(row)
+      .eq("id", setId);
+    throwIf(error);
+  }
+
+  async setExerciseTags(exerciseId: string, tags: string[]): Promise<void> {
+    const { error } = await this.client
+      .from("exercises")
+      .update({ tags: tags.length ? tags : null, updated_at: Date.now() })
+      .eq("id", exerciseId);
+    throwIf(error);
   }
 
   async addExerciseToSession(
@@ -343,6 +414,141 @@ export class SupabaseRepo implements Repo {
       .update({ exercise_ids: exerciseIds, updated_at: Date.now() })
       .eq("id", metricId);
     throwIf(error);
+  }
+
+  private async chunkedInsert(table: string, rows: Row[]): Promise<void> {
+    const CHUNK = 500;
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const { error } = await this.client
+        .from(table)
+        .insert(rows.slice(i, i + CHUNK));
+      throwIf(error);
+    }
+  }
+
+  async importSessions(sessions: ImportedSession[]): Promise<ImportResult> {
+    // Idempotency: a session is identified by its started_at timestamp.
+    const { data: existingRows, error: existingError } = await this.client
+      .from("sessions")
+      .select("started_at");
+    throwIf(existingError);
+    const existing = new Set(
+      ((existingRows as Row[]) ?? []).map((r) => r.started_at as number),
+    );
+
+    const fresh = sessions.filter((s) => !existing.has(s.startedAt));
+    const skipped = sessions.length - fresh.length;
+    if (fresh.length === 0) {
+      return { imported: 0, skipped, sets: 0, exercisesCreated: 0 };
+    }
+
+    // Find-or-create exercises by case-insensitive name (seeds included).
+    const known = await this.listExercises();
+    const idByName = new Map(known.map((e) => [e.name.toLowerCase(), e.id]));
+    const newExercises: Row[] = [];
+    for (const session of fresh) {
+      for (const ex of session.exercises) {
+        const key = ex.name.toLowerCase();
+        if (!idByName.has(key)) {
+          const id = newId();
+          idByName.set(key, id);
+          newExercises.push({
+            id,
+            created_at: session.startedAt,
+            updated_at: session.startedAt,
+            name: ex.name,
+            is_custom: true,
+          });
+        }
+      }
+    }
+    await this.chunkedInsert("exercises", newExercises);
+
+    // Historical created_at keeps ghost-prefill ordering chronological.
+    const sessionRows: Row[] = [];
+    const seRows: Row[] = [];
+    const setRows: Row[] = [];
+    for (const session of fresh) {
+      const sessionId = newId();
+      const t = session.startedAt;
+      sessionRows.push({
+        id: sessionId,
+        created_at: t,
+        updated_at: t,
+        title: session.title,
+        started_at: t,
+        ended_at: session.endedAt,
+      });
+      session.exercises.forEach((ex, orderIndex) => {
+        const seId = newId();
+        seRows.push({
+          id: seId,
+          created_at: t,
+          updated_at: t,
+          session_id: sessionId,
+          exercise_id: idByName.get(ex.name.toLowerCase()),
+          order_index: orderIndex,
+        });
+        ex.sets.forEach((set, setNo) => {
+          setRows.push({
+            id: newId(),
+            created_at: t,
+            updated_at: t,
+            session_exercise_id: seId,
+            set_no: setNo,
+            weight_kg: set.weightKg,
+            reps: set.reps,
+            rir: set.rir,
+            note: set.note,
+            completed: true,
+          });
+        });
+      });
+    }
+    await this.chunkedInsert("sessions", sessionRows);
+    await this.chunkedInsert("session_exercises", seRows);
+    await this.chunkedInsert("set_logs", setRows);
+
+    return {
+      imported: fresh.length,
+      skipped,
+      sets: setRows.length,
+      exercisesCreated: newExercises.length,
+    };
+  }
+
+  async applySleep(sleepHoursByDate: Map<string, number>): Promise<number> {
+    const { data, error } = await this.client
+      .from("sessions")
+      .select("id, started_at, condition_values")
+      .is("deleted_at", null);
+    throwIf(error);
+    const rows = (data as Row[]) ?? [];
+
+    const updates: { id: string; merged: Record<string, unknown> }[] = [];
+    for (const r of rows) {
+      const conditions =
+        (r.condition_values as Record<string, unknown> | null) ?? {};
+      if (conditions[SEED_CONDITIONS.sleepH] != null) continue; // never overwrite
+      const d = new Date(r.started_at as number);
+      const dateISO = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const hours = sleepHoursByDate.get(dateISO);
+      if (hours == null) continue;
+      updates.push({
+        id: r.id as string,
+        merged: { ...conditions, [SEED_CONDITIONS.sleepH]: hours },
+      });
+    }
+
+    const now = Date.now();
+    for (const u of updates) {
+      const { error: updateError } = await this.client
+        .from("sessions")
+        .update({ condition_values: u.merged, updated_at: now })
+        .eq("id", u.id);
+      throwIf(updateError);
+    }
+    return updates.length;
   }
 
   async exportAll(): Promise<ExportBundle> {

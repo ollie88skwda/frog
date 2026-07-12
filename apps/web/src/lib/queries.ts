@@ -53,12 +53,78 @@ export function useCreateExercise() {
   });
 }
 
+export function useDeleteExercise() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteExercise(id),
+    onMutate: (id) => {
+      void qc.cancelQueries({ queryKey: ["exercises"] });
+      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
+      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
+        old.filter((e) => e.id !== id),
+      );
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
+  });
+}
+
+export function useDeleteMetric() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteMetric(id),
+    onMutate: (id) => {
+      void qc.cancelQueries({ queryKey: ["metrics"] });
+      const prev = qc.getQueryData<Metric[]>(["metrics"]);
+      qc.setQueryData<Metric[]>(["metrics"], (old = []) =>
+        old.filter((m) => m.id !== id),
+      );
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["metrics"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["metrics"] }),
+  });
+}
+
+export function useSetExerciseTags() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { exerciseId: string; tags: string[] }) =>
+      repo.setExerciseTags(input.exerciseId, input.tags),
+    onMutate: ({ exerciseId, tags }) => {
+      void qc.cancelQueries({ queryKey: ["exercises"] });
+      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
+      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
+        old.map((e) =>
+          e.id === exerciseId ? { ...e, tags: tags.length ? tags : null } : e,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
+  });
+}
+
 export function useSessionExercises(sessionId: string) {
   const repo = useRepo();
   return useQuery({
     queryKey: ["session-exercises", sessionId],
     queryFn: () => repo.listSessionExercises(sessionId),
+    // Fresh for the lifetime of one mount, but never served stale to a later
+    // mount (resuming a session must see sets logged since the first fetch).
     staleTime: Number.POSITIVE_INFINITY,
+    gcTime: 0,
   });
 }
 
@@ -114,6 +180,15 @@ export function useSetMetricExercises() {
       if (ctx?.prev) qc.setQueryData(["metrics"], ctx.prev);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["metrics"] }),
+  });
+}
+
+export function useActiveSession() {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["active-session"],
+    queryFn: () => repo.activeSession(),
+    staleTime: 0,
   });
 }
 

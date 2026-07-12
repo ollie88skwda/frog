@@ -11,4 +11,7 @@ export * from "./export/csv";
 export * from "./findings/conditions";
 export * from "./findings/teaser";
 export * from "./findings/types";
+export * from "./import/fitbit-sleep";
+export * from "./import/hevy";
+export * from "./import/types";
 export * from "./repo/types";

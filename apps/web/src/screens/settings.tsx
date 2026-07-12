@@ -2,6 +2,7 @@ import { type ApiToken, setsCsv } from "@sbl/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Download } from "lucide-react";
 import { useState } from "react";
+import { ImportCard } from "@/components/import-card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -101,6 +102,8 @@ export default function SettingsScreen() {
           </Button>
         </div>
       </div>
+
+      <ImportCard />
 
       <ApiTokensSection />
 
