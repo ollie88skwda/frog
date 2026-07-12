@@ -1,5 +1,24 @@
-import type { Exercise, Metric, Session } from "../db/schema";
+import type {
+  ApiToken,
+  Exercise,
+  Metric,
+  Session,
+  SessionExercise,
+  SetLog,
+} from "../db/schema";
 import type { FindingsSessionInput } from "../findings/types";
+
+export type ExportBundle = {
+  schemaVersion: number;
+  exportedAt: number;
+  exercises: Exercise[];
+  metrics: Metric[];
+  sessions: Session[];
+  sessionExercises: SessionExercise[];
+  setLogs: SetLog[];
+};
+
+export type CreatedApiToken = { token: string; row: ApiToken };
 
 export type NewSetInput = {
   weightKg: number | null;
@@ -67,6 +86,14 @@ export interface Repo {
   createMetric(input: NewMetricInput): Promise<Metric>;
   /** Which exercises a set-scope metric is enabled for (stored on the metric row). */
   setMetricExercises(metricId: string, exerciseIds: string[]): Promise<void>;
+
+  /** Full user data graph (RLS-scoped), for JSON/CSV export. */
+  exportAll(): Promise<ExportBundle>;
+
+  listApiTokens(): Promise<ApiToken[]>;
+  /** Returns the plaintext token exactly once; only its sha256 is stored. */
+  createApiToken(name: string): Promise<CreatedApiToken>;
+  revokeApiToken(id: string): Promise<void>;
 
   /**
    * Most recent PRIOR session's sets for an exercise (ghost prefill).

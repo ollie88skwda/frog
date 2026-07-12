@@ -1,8 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Exercise, Metric, Session } from "../db/schema";
+import type {
+  ApiToken,
+  Exercise,
+  Metric,
+  Session,
+  SessionExercise,
+  SetLog,
+} from "../db/schema";
 import { newId } from "../domain/ids";
+import { generateToken, hashToken } from "../domain/tokens";
 import type { FindingsSessionInput } from "../findings/types";
 import type {
+  CreatedApiToken,
+  ExportBundle,
   GhostSet,
   NewMetricInput,
   NewSetInput,
@@ -52,6 +62,49 @@ function toMetric(r: Row): Metric {
     type: r.type as string,
     scope: r.scope as string,
     exerciseIds: (r.exercise_ids as string[] | null) ?? null,
+  };
+}
+
+function toSessionExercise(r: Row): SessionExercise {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    sessionId: r.session_id as string,
+    exerciseId: r.exercise_id as string,
+    orderIndex: r.order_index as number,
+  };
+}
+
+function toSetLog(r: Row): SetLog {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    sessionExerciseId: r.session_exercise_id as string,
+    setNo: r.set_no as number,
+    weightKg: (r.weight_kg as number | null) ?? null,
+    reps: (r.reps as number | null) ?? null,
+    rir: (r.rir as number | null) ?? null,
+    note: (r.note as string | null) ?? null,
+    metricValues: (r.metric_values as Record<string, unknown> | null) ?? null,
+    completed: r.completed as boolean,
+  };
+}
+
+function toApiToken(r: Row): ApiToken {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    lastUsedAt: (r.last_used_at as number | null) ?? null,
+    revokedAt: (r.revoked_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    name: r.name as string,
+    tokenHash: r.token_hash as string,
   };
 }
 
@@ -289,6 +342,62 @@ export class SupabaseRepo implements Repo {
       .from("metrics")
       .update({ exercise_ids: exerciseIds, updated_at: Date.now() })
       .eq("id", metricId);
+    throwIf(error);
+  }
+
+  async exportAll(): Promise<ExportBundle> {
+    const [exercises, metrics, sessions, sessionExercises, setLogs] =
+      await Promise.all([
+        this.client.from("exercises").select().is("deleted_at", null),
+        this.client.from("metrics").select().is("deleted_at", null),
+        this.client.from("sessions").select().is("deleted_at", null),
+        this.client.from("session_exercises").select().is("deleted_at", null),
+        this.client.from("set_logs").select().is("deleted_at", null),
+      ]);
+    for (const r of [exercises, metrics, sessions, sessionExercises, setLogs])
+      throwIf(r.error);
+    return {
+      schemaVersion: 1,
+      exportedAt: Date.now(),
+      exercises: (exercises.data as Row[]).map(toExercise),
+      metrics: (metrics.data as Row[]).map(toMetric),
+      sessions: (sessions.data as Row[]).map(toSession),
+      sessionExercises: (sessionExercises.data as Row[]).map(toSessionExercise),
+      setLogs: (setLogs.data as Row[]).map(toSetLog),
+    };
+  }
+
+  async listApiTokens(): Promise<ApiToken[]> {
+    const { data, error } = await this.client
+      .from("api_tokens")
+      .select()
+      .order("created_at", { ascending: false });
+    throwIf(error);
+    return (data as Row[]).map(toApiToken);
+  }
+
+  async createApiToken(name: string): Promise<CreatedApiToken> {
+    const token = generateToken();
+    const row = {
+      id: newId(),
+      created_at: Date.now(),
+      name,
+      token_hash: await hashToken(token),
+    };
+    const { data, error } = await this.client
+      .from("api_tokens")
+      .insert(row)
+      .select()
+      .single();
+    throwIf(error);
+    return { token, row: toApiToken(data as Row) };
+  }
+
+  async revokeApiToken(id: string): Promise<void> {
+    const { error } = await this.client
+      .from("api_tokens")
+      .update({ revoked_at: Date.now() })
+      .eq("id", id);
     throwIf(error);
   }
 

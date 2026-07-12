@@ -113,8 +113,25 @@ export const setLogs = pgTable(
   ],
 );
 
+// Personal access tokens for the read-only API (sha256 of the plaintext;
+// the plaintext is shown once at creation and never stored).
+export const apiTokens = pgTable(
+  "api_tokens",
+  {
+    id: uuid("id").primaryKey(),
+    createdAt: bigint("created_at", { mode: "number" }).notNull(),
+    lastUsedAt: bigint("last_used_at", { mode: "number" }),
+    revokedAt: bigint("revoked_at", { mode: "number" }),
+    ownerId: requiredOwner,
+    name: text("name").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+  },
+  (t) => [index("api_tokens_owner_idx").on(t.ownerId)],
+);
+
 export type Exercise = typeof exercises.$inferSelect;
 export type Metric = typeof metrics.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type SessionExercise = typeof sessionExercises.$inferSelect;
 export type SetLog = typeof setLogs.$inferSelect;
+export type ApiToken = typeof apiTokens.$inferSelect;

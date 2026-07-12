@@ -32,4 +32,5 @@ sh("bun run --cwd apps/web build", {
 sh("bun x playwright test -c e2e/playwright.config.ts", {
   E2E_EMAIL: seeded.email,
   E2E_PASSWORD: seeded.password,
+  E2E_SUPABASE_URL: seeded.url,
 });
