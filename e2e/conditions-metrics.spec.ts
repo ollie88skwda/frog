@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn } from "./helpers";
+import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // P4 round-trips: session conditions and a custom set-scope metric.
 
@@ -34,6 +34,7 @@ test("custom set metric: create, enable on an exercise, log a value", async ({ p
   await page.getByTestId("exercise-name-input").fill(EX);
   await page.getByTestId("add-exercise-btn").click();
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
+  await waitForExercise(page, EX);
 
   await page.getByTestId("metric-name-input").fill(METRIC);
   await page.getByTestId("add-metric-btn").click();

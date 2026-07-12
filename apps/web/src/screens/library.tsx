@@ -115,7 +115,7 @@ function ExerciseRow({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-sm transition-colors duration-100 hover:bg-surface-hover"
+        className="flex h-9 w-full items-center justify-between px-3.5 text-left text-sm transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
       >
         <span className="flex min-w-0 items-center gap-2">
           <Chevron className="size-3.5 shrink-0 text-faint" />
@@ -123,14 +123,17 @@ function ExerciseRow({
           {exercise.tags?.map((t) => (
             <span
               key={t}
-              className="shrink-0 rounded-sm border border-border bg-surface-2 px-1.5 text-2xs text-faint"
+              className="flex shrink-0 items-center gap-1 rounded-full bg-accent/10 px-2 text-2xs text-soft"
             >
+              <span className="size-1 rounded-full bg-accent" />
               {t}
             </span>
           ))}
         </span>
         {!exercise.isCustom && (
-          <span className="text-2xs text-faint uppercase">seed</span>
+          <span className="rounded-full bg-translucent px-2 text-2xs text-faint">
+            seed
+          </span>
         )}
       </button>
       {expanded && (
@@ -259,7 +262,9 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
 
   return (
     <div className="mt-8">
-      <h2 className="text-sm font-medium">Custom metrics</h2>
+      <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
+        Custom metrics
+      </h2>
       <p className="mt-0.5 text-2xs text-faint">
         Everything logged is a metric. Set-scope metrics attach to exercises
         above.

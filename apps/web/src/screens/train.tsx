@@ -66,6 +66,9 @@ export default function TrainScreen() {
           </Button>
         </div>
         {error && <p className="mt-3 text-xs text-neg">{error}</p>}
+        <p className="mt-3 flex items-center justify-center gap-1.5 text-2xs text-faint">
+          press <kbd className="keycap">S</kbd> to start
+        </p>
       </div>
 
       <TrainFindingsCard />

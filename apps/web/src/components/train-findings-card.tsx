@@ -64,10 +64,10 @@ export function TrainFindingsCard() {
   return (
     <Link
       to="/findings"
-      className="mt-4 block rounded-lg border border-border bg-surface p-4 transition-colors duration-100 hover:border-border-strong"
+      className="mt-4 block rounded-lg border border-border bg-surface p-4 transition-colors duration-150 ease-(--ease-out-quad) hover:border-border-strong"
       data-testid="train-findings-card"
     >
-      <div className="flex items-center gap-2 text-2xs font-medium tracking-wide text-faint uppercase">
+      <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
         <FlaskConical className="size-3.5" />
         Findings
       </div>

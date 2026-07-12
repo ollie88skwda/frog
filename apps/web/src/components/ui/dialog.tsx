@@ -15,11 +15,11 @@ export function DialogContent({
 }: ComponentProps<typeof DialogPrimitive.Content> & { title: ReactNode }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/50" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-(--overlay)" />
       <DialogPrimitive.Content
         className={cn(
-          "fixed top-[20%] left-1/2 z-50 w-full max-w-md -translate-x-1/2",
-          "rounded-lg border border-border bg-surface shadow-xl shadow-black/20",
+          "float-in fixed top-[20%] left-1/2 z-50 w-full max-w-md -translate-x-1/2",
+          "floating rounded-xl",
           className,
         )}
         {...props}
@@ -28,7 +28,7 @@ export function DialogContent({
           <DialogPrimitive.Title className="text-sm font-medium">
             {title}
           </DialogPrimitive.Title>
-          <DialogPrimitive.Close className="rounded-sm p-0.5 text-soft hover:bg-surface-hover hover:text-ink">
+          <DialogPrimitive.Close className="rounded-sm p-0.5 text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
             <X className="size-4" />
           </DialogPrimitive.Close>
         </div>

@@ -1,7 +1,6 @@
 import { APP_NAME } from "@sbl/core";
 import {
   BookOpen,
-  Command as CommandIcon,
   Dumbbell,
   FlaskConical,
   History,
@@ -18,11 +17,11 @@ import { cn } from "@/lib/utils";
 import { CommandPalette } from "./command-palette";
 
 const NAV = [
-  { to: "/", label: "Train", icon: Dumbbell, end: true },
-  { to: "/library", label: "Library", icon: BookOpen },
-  { to: "/history", label: "History", icon: History },
-  { to: "/findings", label: "Findings", icon: FlaskConical },
-  { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/", label: "Train", icon: Dumbbell, end: true, key: null },
+  { to: "/library", label: "Library", icon: BookOpen, key: "L" },
+  { to: "/history", label: "History", icon: History, key: "H" },
+  { to: "/findings", label: "Findings", icon: FlaskConical, key: "F" },
+  { to: "/settings", label: "Settings", icon: Settings, key: null },
 ];
 
 export function AppShell() {
@@ -48,16 +47,19 @@ export function AppShell() {
 
   return (
     <div className="flex h-dvh">
-      <aside className="flex w-52 shrink-0 flex-col border-r border-border bg-surface max-md:hidden">
-        <div className="flex h-12 items-center justify-between px-4">
-          <span className="text-sm font-semibold tracking-tight">
-            {APP_NAME}
+      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-surface max-md:hidden">
+        <div className="flex h-12 items-center justify-between px-3">
+          <span className="flex min-w-0 items-center gap-2">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-brand text-xs font-semibold text-accent-fg">
+              {APP_NAME[0]}
+            </span>
+            <span className="truncate text-sm font-medium">{APP_NAME}</span>
           </span>
           <button
             type="button"
             onClick={toggle}
             title="Toggle theme"
-            className="rounded-md p-1 text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+            className="rounded-md p-1 text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
           >
             {theme === "dark" ? (
               <Sun className="size-3.5" />
@@ -66,31 +68,35 @@ export function AppShell() {
             )}
           </button>
         </div>
-        <nav className="flex flex-col gap-0.5 px-2 py-1">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
+
+        <p className="px-4 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
+          Workspace
+        </p>
+        <nav className="flex flex-col gap-0.5 px-2">
+          {NAV.map(({ to, label, icon: Icon, end, key }) => (
             <NavLink
               key={to}
               to={to}
               end={end}
               className={({ isActive }) =>
                 cn(
-                  "flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors duration-100",
+                  "flex h-7 items-center gap-2 rounded-md px-2 text-sm transition-colors duration-150 ease-(--ease-out-quad)",
                   isActive
-                    ? "bg-accent-soft text-ink"
+                    ? "bg-surface-active text-ink"
                     : "text-soft hover:bg-surface-hover hover:text-ink",
                 )
               }
             >
-              <Icon className="size-4" />
-              {label}
+              <Icon className="size-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{label}</span>
+              {key && <kbd className="keycap">{key}</kbd>}
             </NavLink>
           ))}
         </nav>
-        <div className="mt-auto px-4 py-3">
-          <div className="flex items-center gap-1.5 text-2xs text-faint">
-            <CommandIcon className="size-3" />
-            <span>K for commands</span>
-          </div>
+
+        <div className="mt-auto flex items-center gap-1.5 px-4 py-3 text-2xs text-faint">
+          <kbd className="keycap">⌘K</kbd>
+          <span>for commands</span>
         </div>
       </aside>
 

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, rowCount, signIn } from "./helpers";
+import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
 
 // Parity port of the legacy Expo E2E (archived at tag expo-final,
 // e2e/web.spec.ts): add exercise → session → log sets → ghost prefill →
@@ -24,7 +24,7 @@ test("core loop: add exercise, pick in session, persistence", async ({ page }) =
   await page.getByTestId("exercise-name-input").fill(EX);
   await page.getByTestId("add-exercise-btn").click();
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
-  await expect.poll(() => rowCount(page, "exercises")).toBeGreaterThanOrEqual(1);
+  await waitForExercise(page, EX);
 
   // 2) Train: start a session, pick the exercise (writes a session_exercise).
   await page.goto("/");
@@ -50,6 +50,7 @@ test("log sets persists to set_logs, and ghost prefill shows the prior session",
   await page.getByTestId("exercise-name-input").fill(EX);
   await page.getByTestId("add-exercise-btn").click();
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
+  await waitForExercise(page, EX);
 
   // Session 1: log one set (135 x 5) — row commits on blur once both are set.
   await page.goto("/");

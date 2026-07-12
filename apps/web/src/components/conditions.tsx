@@ -80,7 +80,7 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
         <button
           type="button"
           data-testid="conditions-chip"
-          className="num flex max-w-full items-center gap-1.5 truncate rounded-md border border-border bg-surface px-2 py-1 text-xs text-soft transition-colors duration-100 hover:border-border-strong hover:text-ink"
+          className="num flex h-7 max-w-full items-center gap-1.5 truncate rounded-md bg-translucent px-2 text-xs text-soft shadow-(--inset-control) transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
         >
           <ClipboardList className="size-3.5 shrink-0" />
           <span className="truncate">{summary ?? "Log conditions"}</span>

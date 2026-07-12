@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, rowCount, signIn } from "./helpers";
+import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
 
 // G2 + G3: edit/delete logged data + exercise tags.
 
@@ -58,6 +58,7 @@ test("delete a custom exercise removes it from the picker; tags round-trip", asy
   await page.getByTestId("exercise-name-input").fill(EX);
   await page.getByTestId("add-exercise-btn").click();
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
+  await waitForExercise(page, EX);
 
   // Tag it.
   await page.getByTestId(`exercise-row-${EX}`).click();

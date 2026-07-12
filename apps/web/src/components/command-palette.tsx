@@ -20,6 +20,7 @@ type Item = {
   icon: typeof Play;
   action: () => void;
   keywords?: string;
+  shortcut?: string;
 };
 
 export function CommandPalette() {
@@ -45,12 +46,23 @@ export function CommandPalette() {
 
   const nav: Item[] = [
     { label: "Train", icon: Dumbbell, action: () => navigate("/") },
-    { label: "Library", icon: BookOpen, action: () => navigate("/library") },
-    { label: "History", icon: History, action: () => navigate("/history") },
+    {
+      label: "Library",
+      icon: BookOpen,
+      action: () => navigate("/library"),
+      shortcut: "L",
+    },
+    {
+      label: "History",
+      icon: History,
+      action: () => navigate("/history"),
+      shortcut: "H",
+    },
     {
       label: "Findings",
       icon: FlaskConical,
       action: () => navigate("/findings"),
+      shortcut: "F",
     },
     { label: "Settings", icon: Settings, action: () => navigate("/settings") },
   ];
@@ -76,8 +88,8 @@ export function CommandPalette() {
       open={open}
       onOpenChange={setOpen}
       label="Command palette"
-      overlayClassName="fixed inset-0 z-50 bg-black/40"
-      contentClassName="fixed top-[18%] left-1/2 z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-lg border border-border bg-surface shadow-2xl shadow-black/30"
+      overlayClassName="fixed inset-0 z-50 bg-(--overlay)"
+      contentClassName="float-in floating fixed top-[18%] left-1/2 z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-xl"
     >
       <Command.Input
         placeholder="Type a command…"
@@ -89,7 +101,7 @@ export function CommandPalette() {
         </Command.Empty>
         <Command.Group
           heading="Go to"
-          className="text-2xs font-medium tracking-wide text-faint uppercase [&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5"
+          className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-faint [&_[cmdk-group-heading]]:uppercase"
         >
           {nav.map((item) => (
             <PaletteItem key={item.label} item={item} onRun={run} />
@@ -97,7 +109,7 @@ export function CommandPalette() {
         </Command.Group>
         <Command.Group
           heading="Actions"
-          className="text-2xs font-medium tracking-wide text-faint uppercase [&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5"
+          className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-faint [&_[cmdk-group-heading]]:uppercase"
         >
           {actions.map((item) => (
             <PaletteItem key={item.label} item={item} onRun={run} />
@@ -120,10 +132,11 @@ function PaletteItem({
     <Command.Item
       keywords={item.keywords ? [item.keywords] : undefined}
       onSelect={() => onRun(item.action)}
-      className="flex cursor-default items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-normal text-ink normal-case tracking-normal data-[selected=true]:bg-surface-hover"
+      className="flex h-8 cursor-default items-center gap-2.5 rounded-md px-2.5 text-sm text-ink data-[selected=true]:bg-surface-hover"
     >
-      <Icon className="size-4 text-soft" />
-      {item.label}
+      <Icon className="size-4 shrink-0 text-soft" />
+      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      {item.shortcut && <kbd className="keycap">{item.shortcut}</kbd>}
     </Command.Item>
   );
 }

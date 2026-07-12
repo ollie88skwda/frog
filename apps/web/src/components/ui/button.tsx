@@ -4,21 +4,24 @@ import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-1.5 rounded-md font-medium select-none " +
-    "transition-colors duration-100 disabled:pointer-events-none disabled:opacity-50 " +
-    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-1",
+    "transition-[background-color,border-color,color,box-shadow] duration-150 ease-(--ease-out-quad) " +
+    "disabled:pointer-events-none disabled:opacity-50 " +
+    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
   {
     variants: {
       variant: {
-        primary: "bg-accent text-accent-fg hover:bg-accent-hover",
-        outline: "border border-border-strong text-ink hover:bg-surface-hover",
+        primary: "bg-brand text-accent-fg hover:bg-accent-hover",
+        // Linear's signature secondary control: translucent fill + inset hairlines.
+        outline:
+          "bg-translucent text-ink shadow-(--inset-control) hover:bg-surface-hover",
         ghost: "text-soft hover:bg-surface-hover hover:text-ink",
         danger:
-          "text-neg border border-border hover:border-neg/40 hover:bg-neg/10",
+          "text-neg bg-translucent shadow-(--inset-control) hover:bg-neg/10",
       },
       size: {
         sm: "h-7 px-2.5 text-xs",
         md: "h-8 px-3 text-sm",
-        lg: "h-9 px-4 text-sm",
+        lg: "h-8 px-4 text-sm",
         icon: "size-7 text-soft",
       },
     },

@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
+import { StatusRing } from "@/components/ui/status-ring";
 import { formatDate, formatTime } from "@/lib/format";
 import { useSessionHistory } from "@/lib/queries";
 
@@ -27,12 +28,18 @@ export default function HistoryScreen() {
                 <Link
                   to={`/history/${s.id}`}
                   data-testid={`history-row-${s.id}`}
-                  className="flex items-center justify-between px-3.5 py-2.5 transition-colors duration-100 hover:bg-surface-hover"
+                  className="flex h-9 items-center justify-between px-3.5 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
                 >
-                  <span className="text-sm">
-                    {s.title ?? formatDate(s.startedAt)}
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <StatusRing
+                      state={s.endedAt != null ? "done" : "partial"}
+                      progress={0.5}
+                    />
+                    <span className="truncate text-sm">
+                      {s.title ?? formatDate(s.startedAt)}
+                    </span>
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex shrink-0 items-center gap-2">
                     <span className="num text-xs text-faint">
                       {formatDate(s.startedAt)} · {formatTime(s.startedAt)}
                     </span>

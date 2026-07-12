@@ -64,9 +64,9 @@ export default function SettingsScreen() {
               onClick={() => setUnit(u)}
               data-testid={`unit-${u}`}
               className={cn(
-                "px-3 py-1.5 text-xs font-medium transition-colors duration-100",
+                "px-3 py-1.5 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
                 unit === u
-                  ? "bg-accent-soft text-ink"
+                  ? "bg-surface-active text-ink"
                   : "text-soft hover:bg-surface-hover",
               )}
             >

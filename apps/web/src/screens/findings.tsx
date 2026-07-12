@@ -92,7 +92,7 @@ export default function FindingsScreen() {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-2xs font-medium tracking-wide text-faint uppercase">
+    <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
       {children}
     </h2>
   );
@@ -100,25 +100,25 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 const VERDICT_STYLE: Record<TrendFinding["verdict"], string> = {
   PROGRESSING: "text-pos bg-pos/10",
-  PLATEAU: "text-soft bg-surface-hover",
+  PLATEAU: "text-soft bg-translucent",
   REGRESSING: "text-neg bg-neg/10",
 };
 
 function TrendRow({ trend }: { trend: TrendFinding }) {
   return (
     <div
-      className="flex items-center justify-between gap-3 px-3.5 py-2.5"
+      className="flex h-9 items-center justify-between gap-3 px-3.5 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
       data-testid={`trend-${trend.exerciseName}`}
     >
       <span className="truncate text-sm">{trend.exerciseName}</span>
-      <span className="flex items-center gap-2.5">
-        <span className="num text-xs text-soft">
+      <span className="flex shrink-0 items-center gap-2.5">
+        <span className="num text-xs text-faint">
           {trend.pctChange > 0 ? "+" : ""}
           {trend.pctChange.toFixed(1)}% · n={trend.n}
         </span>
         <span
           className={cn(
-            "rounded-md px-1.5 py-0.5 text-2xs font-semibold tracking-wide",
+            "rounded-full px-2 py-0.5 text-2xs font-medium",
             VERDICT_STYLE[trend.verdict],
           )}
         >

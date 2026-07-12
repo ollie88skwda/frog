@@ -26,6 +26,23 @@ export async function signIn(page: Page) {
   await expect(page.getByTestId("start-session-btn")).toBeVisible();
 }
 
+/** Poll until an exercise with this exact name exists server-side (optimistic
+ * UI can show it before the insert lands; a full-page goto would abort it). */
+export async function waitForExercise(page: Page, name: string) {
+  await expect
+    .poll(() =>
+      page.evaluate(async (n) => {
+        const { count, error } = await window.__sbl.supabase
+          .from("exercises")
+          .select("id", { count: "exact", head: true })
+          .eq("name", n);
+        if (error) throw new Error(error.message);
+        return count ?? 0;
+      }, name),
+    )
+    .toBe(1);
+}
+
 export async function rowCount(page: Page, table: string): Promise<number> {
   return page.evaluate(async (t) => {
     const { count, error } = await window.__sbl.supabase

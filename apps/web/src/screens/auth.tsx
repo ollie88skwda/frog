@@ -36,8 +36,8 @@ export default function AuthScreen() {
     <div className="flex min-h-dvh items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-3">
-          <div className="flex size-10 items-center justify-center rounded-lg border border-border bg-surface text-sm font-semibold">
-            {APP_NAME}
+          <div className="flex size-8 items-center justify-center rounded-lg bg-brand text-sm font-semibold text-accent-fg">
+            {APP_NAME[0]}
           </div>
           <div className="text-center">
             <h1 className="text-lg font-semibold tracking-tight">

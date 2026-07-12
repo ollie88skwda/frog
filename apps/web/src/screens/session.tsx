@@ -21,6 +21,7 @@ import { useNavigate, useParams } from "react-router";
 import { ConditionsChip } from "@/components/conditions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { StatusRing } from "@/components/ui/status-ring";
 import { useHotkeys } from "@/lib/hotkeys";
 import {
   useExercises,
@@ -237,7 +238,7 @@ function ExercisePicker({
   const { data: exercises = [], isLoading } = useExercises();
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-surface">
-      <p className="border-b border-border px-3.5 py-2 text-2xs font-medium tracking-wide text-faint uppercase">
+      <p className="border-b border-border px-3.5 py-2 text-2xs font-medium tracking-widest text-faint uppercase">
         Pick an exercise
       </p>
       {isLoading ? (
@@ -254,14 +255,15 @@ function ExercisePicker({
                 type="button"
                 data-testid={`pick-exercise-${ex.name}`}
                 onClick={() => onPick(ex.id, ex.name)}
-                className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-sm transition-colors duration-100 hover:bg-surface-hover"
+                className="flex h-9 w-full items-center gap-2 px-3.5 text-left text-sm transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
               >
                 {ex.name}
                 {ex.tags?.map((t) => (
                   <span
                     key={t}
-                    className="rounded-sm border border-border bg-surface-2 px-1.5 text-2xs text-faint"
+                    className="flex items-center gap-1 rounded-full bg-accent/10 px-2 text-2xs text-soft"
                   >
+                    <span className="size-1 rounded-full bg-accent" />
                     {t}
                   </span>
                 ))}
@@ -299,7 +301,7 @@ function ExerciseBlock({
 
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-surface">
-      <header className="flex items-center justify-between border-b border-border px-3.5 py-2">
+      <header className="group flex h-9 items-center justify-between border-b border-border px-3.5">
         <h2 className="text-sm font-medium">{block.name}</h2>
         <span className="flex items-center gap-2">
           <span className="num text-2xs text-faint">
@@ -310,7 +312,7 @@ function ExerciseBlock({
             type="button"
             onClick={onRemoveBlock}
             title="Remove exercise from session"
-            className="rounded-sm p-0.5 text-faint transition-colors duration-100 hover:bg-surface-hover hover:text-neg"
+            className="rounded-sm p-0.5 text-faint opacity-0 transition-opacity duration-150 ease-(--ease-out-quad) group-hover:opacity-100 hover:text-neg focus-visible:opacity-100"
             data-testid={`remove-block-${block.name}`}
           >
             <X className="size-3.5" />
@@ -318,7 +320,7 @@ function ExerciseBlock({
         </span>
       </header>
 
-      <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 px-3.5 py-1.5 text-2xs font-medium tracking-wide text-faint uppercase">
+      <div className="grid grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2 px-3.5 py-1.5 text-2xs font-medium tracking-widest text-faint uppercase">
         <span>#</span>
         <span>{unit}</span>
         <span>reps</span>
@@ -409,8 +411,11 @@ function CommittedRow({
 
   if (editing) {
     return (
-      <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border bg-surface-2 px-3.5 py-2">
-        <span className="num text-xs text-faint">{index + 1}</span>
+      <div className="grid grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border bg-surface-2 px-3.5 py-2">
+        <span className="flex items-center gap-1.5">
+          <StatusRing state="done" />
+          <span className="num text-2xs text-faint">{index + 1}</span>
+        </span>
         <Input
           inputMode="decimal"
           value={weight}
@@ -460,10 +465,13 @@ function CommittedRow({
 
   return (
     <div
-      className="group commit-flash grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-3.5 py-2"
+      className="group commit-flash grid h-9 grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-3.5 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
       data-testid={`committed-${index}`}
     >
-      <span className="num text-xs text-faint">{index + 1}</span>
+      <span className="flex items-center gap-1.5">
+        <StatusRing state="done" />
+        <span className="num text-2xs text-faint">{index + 1}</span>
+      </span>
       <button
         type="button"
         onClick={startEdit}
@@ -590,8 +598,11 @@ function ActiveRow({
 
   return (
     <div className="border-t border-border px-3.5 py-2">
-      <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2">
-        <span className="num text-xs text-faint">{index + 1}</span>
+      <div className="grid grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2">
+        <span className="flex items-center gap-1.5">
+          <StatusRing state="empty" />
+          <span className="num text-2xs text-faint">{index + 1}</span>
+        </span>
         <Input
           inputMode="decimal"
           placeholder={ghostWeight != null ? String(ghostWeight) : unit}
@@ -705,7 +716,7 @@ function RestTimer({ since }: { since: number | null }) {
   const m = Math.floor(total / 60);
   const s = String(total % 60).padStart(2, "0");
   return (
-    <span className="num flex shrink-0 items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1 text-xs text-soft">
+    <span className="num flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-translucent px-2 text-xs text-soft shadow-(--inset-control)">
       <Timer className="size-3.5" />
       {m}:{s}
     </span>

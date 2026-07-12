@@ -8,69 +8,120 @@
 }
 
 /* ---------------------------------------------------------------------------
- * SBL design language: techie-modern, Linear-grade.
- * Neutral near-black ramp (dark default) + off-white light theme.
- * One indigo accent for primary/focus/selection. Sparse semantic pos/neg.
- * Crisp 1px low-contrast borders, flat surfaces, dense 13px UI.
+ * SBL design language — Linear-derived.
+ * Neutral near-black surfaces stepped by elevation, hairline borders instead
+ * of shadows, one desaturated indigo accent, Inter Variable with tuned
+ * weights (510/590) and stylistic alternates, dense 13px UI, fast
+ * transform/opacity-only motion (out-quad, ~160ms).
  * ------------------------------------------------------------------------- */
 
 :root,
 :root[data-theme="dark"] {
-  --bg: #0a0b0d;
-  --surface: #101114;
-  --surface-2: #16181c;
-  --surface-hover: #1a1c21;
-  --border: rgba(255, 255, 255, 0.07);
-  --border-strong: rgba(255, 255, 255, 0.14);
-  --ink: #e8eaed;
-  --soft: #9198a1;
-  --faint: #5c626b;
-  --accent: #5e6ad2;
-  --accent-hover: #6d79e0;
-  --accent-soft: rgba(94, 106, 210, 0.14);
+  /* surfaces: page → raised levels */
+  --bg: #08090a;
+  --surface: #0f1011;
+  --surface-2: #141516;
+  --surface-3: #191a1b;
+  --surface-hover: #1c1c1f;
+  --surface-active: #232326;
+  --translucent: rgba(255, 255, 255, 0.05);
+
+  /* hairlines */
+  --border: #23252a;
+  --border-strong: #34343a;
+  --border-translucent: rgba(255, 255, 255, 0.05);
+
+  /* text */
+  --ink: #f7f8f8;
+  --ink-2: #d0d6e0;
+  --soft: #8a8f98;
+  --faint: #62666d;
+
+  /* the one accent */
+  --accent: #7170ff;
+  --accent-hover: #828fff;
+  --accent-soft: #18182f;
   --accent-fg: #ffffff;
-  --pos: #4cb782;
+  --brand: #5e6ad2;
+
+  /* semantic — muted, used in icons/dots, never large fills */
+  --pos: #27a644;
   --neg: #eb5757;
-  --warn: #d9a02c;
-  --ring: rgba(94, 106, 210, 0.55);
-  --scrollbar: rgba(255, 255, 255, 0.12);
+  --warn: #f0bf00;
+  --orange: #fc7840;
+
+  --ring: #5e6ad2;
+  --scrollbar: rgba(255, 255, 255, 0.1);
+  --overlay: rgba(0, 0, 0, 0.7);
+
+  --shadow-low: 0px 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0px 4px 24px rgba(0, 0, 0, 0.2);
+  --shadow-high: 0px 7px 32px rgba(0, 0, 0, 0.35);
+  /* signature secondary-control treatment: translucent fill + inset hairlines */
+  --inset-control:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03), inset 0 1px rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 :root[data-theme="light"] {
-  --bg: #fafafa;
-  --surface: #ffffff;
-  --surface-2: #f4f4f5;
-  --surface-hover: #ededee;
-  --border: rgba(0, 0, 0, 0.08);
-  --border-strong: rgba(0, 0, 0, 0.16);
-  --ink: #17181c;
-  --soft: #5f656d;
-  --faint: #9a9fa7;
-  --accent: #5e6ad2;
-  --accent-hover: #4f5bc4;
-  --accent-soft: rgba(94, 106, 210, 0.1);
+  --bg: #ffffff;
+  --surface: #f9f8f9;
+  --surface-2: #f4f2f4;
+  --surface-3: #eeedef;
+  --surface-hover: #f0f0f0;
+  --surface-active: #e9e8ea;
+  --translucent: rgba(0, 0, 0, 0.03);
+
+  --border: #e9e8ea;
+  --border-strong: #dcdbdd;
+  --border-translucent: rgba(0, 0, 0, 0.05);
+
+  --ink: #282a30;
+  --ink-2: #3c4149;
+  --soft: #6f6e77;
+  --faint: #86848d;
+
+  --accent: #7070ff;
+  --accent-hover: #5e69d1;
+  --accent-soft: #f1f1ff;
   --accent-fg: #ffffff;
-  --pos: #21845a;
-  --neg: #d0393e;
-  --warn: #9c7017;
-  --ring: rgba(94, 106, 210, 0.45);
+  --brand: #7070ff;
+
+  --pos: #27a644;
+  --neg: #eb5757;
+  --warn: #b08c00;
+  --orange: #fc7840;
+
+  --ring: #5e6ad2;
   --scrollbar: rgba(0, 0, 0, 0.15);
+  --overlay: rgba(255, 255, 255, 0.65);
+
+  --shadow-low: 0px 1px 4px -1px rgba(0, 0, 0, 0.09);
+  --shadow-medium: 0px 3px 12px rgba(0, 0, 0, 0.09);
+  --shadow-high: 0px 7px 24px rgba(0, 0, 0, 0.06);
+  --inset-control:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-translucent: var(--translucent);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
   --color-soft: var(--soft);
   --color-faint: var(--faint);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-soft: var(--accent-soft);
   --color-accent-fg: var(--accent-fg);
+  --color-brand: var(--brand);
   --color-pos: var(--pos);
   --color-neg: var(--neg);
   --color-warn: var(--warn);
@@ -79,38 +130,73 @@
 
 @theme {
   --font-sans:
-    "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono:
-    ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, monospace;
+    "Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Berkeley Mono", Menlo, monospace;
 
-  /* Dense Linear-style type scale (base UI text is 13px). */
+  /* Inter Variable tuned weights (Linear caps at ~590 — no heavy display weights) */
+  --font-weight-medium: 510;
+  --font-weight-semibold: 590;
+  --font-weight-bold: 590;
+
+  /* Dense app scale: 13px base, 15px "regular", negative tracking on body */
   --text-2xs: 11px;
-  --text-2xs--line-height: 16px;
+  --text-2xs--line-height: 15px;
   --text-xs: 12px;
-  --text-xs--line-height: 16px;
+  --text-xs--line-height: 17px;
   --text-sm: 13px;
-  --text-sm--line-height: 20px;
-  --text-base: 14px;
-  --text-base--line-height: 22px;
-  --text-lg: 16px;
-  --text-lg--line-height: 24px;
+  --text-sm--line-height: 19.5px;
+  --text-base: 15px;
+  --text-base--line-height: 24px;
+  --text-lg: 18px;
+  --text-lg--line-height: 25px;
   --text-xl: 20px;
-  --text-xl--line-height: 28px;
+  --text-xl--line-height: 27px;
   --text-2xl: 24px;
-  --text-2xl--line-height: 32px;
+  --text-2xl--line-height: 31px;
 
+  --radius-xs: 4px;
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
 
-  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  /* Linear's easing library (out-quad is the UI default) */
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955);
 }
 
 /* Tabular numerals for all data: weights, reps, e1RM, timers. */
 @utility num {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
+}
+
+/* Keycap-style shortcut hint chip (tooltips, palette, menus). */
+@utility keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--faint);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 510;
+  line-height: 1;
+}
+
+/* Floating layers: hairline + soft shadow (the only place shadows appear). */
+@utility floating {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-high);
 }
 
 @layer base {
@@ -127,7 +213,16 @@
 
   body {
     @apply bg-bg text-ink font-sans text-sm antialiased;
+    /* Linear's signature Inter alternates: a/g/l variants + slashed zero */
+    font-feature-settings: "cv01", "ss03", "zero";
+    letter-spacing: -0.011em;
     text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.013em;
   }
 
   ::selection {
@@ -135,14 +230,12 @@
   }
 
   *::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+    width: 6px;
+    height: 6px;
   }
   *::-webkit-scrollbar-thumb {
     background: var(--scrollbar);
-    border-radius: 5px;
-    border: 2px solid transparent;
-    background-clip: content-box;
+    border-radius: 3px;
   }
   *::-webkit-scrollbar-track {
     background: transparent;
@@ -150,7 +243,7 @@
 
   :focus-visible {
     outline: 2px solid var(--ring);
-    outline-offset: 1px;
+    outline-offset: 2px;
   }
 
   /* Numeric inputs: no spinners on the logging path. */
@@ -162,9 +255,18 @@
   input[type="number"] {
     -moz-appearance: textfield;
   }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
-/* One-shot accent flash when a set row commits. */
+/* One-shot accent flash when a set row commits (opacity-only, GPU-safe). */
 @keyframes commit-flash {
   0% {
     box-shadow: inset 0 0 0 1px var(--accent);
@@ -174,5 +276,20 @@
   }
 }
 @utility commit-flash {
-  animation: commit-flash 600ms var(--ease-out-quart);
+  animation: commit-flash 480ms var(--ease-out-quad);
+}
+
+/* Floating-layer entrance: fade + 2px rise, 160ms out-quad. */
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@utility float-in {
+  animation: float-in 160ms var(--ease-out-quad);
 }
