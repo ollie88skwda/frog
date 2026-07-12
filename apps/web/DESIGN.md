@@ -4,6 +4,32 @@ Read before touching UI. Tokens live in `src/styles/theme.css` (Tailwind v4
 `@theme`); primitives in `src/components/ui/`. We match Linear's look with our
 own code — never import their assets or branding.
 
+## MOBILE-FIRST — the primary target
+
+**SBL is used on phones, in gyms. Desktop is secondary.** Every screen, every
+control, every layout decision is designed for a ~390px viewport FIRST and
+then adapted up — never the reverse.
+
+- Touch targets on interaction paths (logging, buttons, rows) are ≥44px on
+  mobile: use `h-11 md:h-9` rows, `h-10 md:h-8` inputs — dense sizes are the
+  `md:` override, not the default experience.
+- Hover-revealed affordances (trash, ✕) MUST also be reachable on touch:
+  visible by default on mobile, hover-revealed only from `md:` up.
+- Dialogs are bottom sheets on mobile (full-width, rounded top, pinned to the
+  bottom); centered cards only from `md:` up.
+- Navigation is the bottom tab bar on mobile; the sidebar exists only ≥md.
+- Headers and chip rows wrap instead of truncating away functionality.
+- One-handed thumb reach: primary actions live low or right; never hide the
+  main action behind hover or keyboard-only paths.
+- Test every UI change at 390×844 before calling it done.
+
+## Accent — red monochrome
+
+The theme is **monochrome + one red accent**: neutral near-black grayscale
+with `accent`/`brand` red (`#e5484d` family) carrying ALL emphasis. No other
+hue appears in chrome. Semantic `pos`/`neg`/`warn` exist only inside data
+glyphs (findings verdicts, condition dots) — never in chrome or large fills.
+
 ## Principles
 
 - **Density with calm.** Lots of information, quiet presentation. Hairline

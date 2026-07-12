@@ -181,9 +181,9 @@ export default function SessionScreen() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <h1 className="text-lg font-semibold tracking-tight">Session</h1>
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <ConditionsChip sessionId={sessionId} />
           <RestTimer since={lastCommitAt} />
           <Button
@@ -255,7 +255,7 @@ function ExercisePicker({
                 type="button"
                 data-testid={`pick-exercise-${ex.name}`}
                 onClick={() => onPick(ex.id, ex.name)}
-                className="flex h-9 w-full items-center gap-2 px-3.5 text-left text-sm transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+                className="flex h-11 w-full items-center gap-2 px-3.5 text-left text-sm md:h-9 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
               >
                 {ex.name}
                 {ex.tags?.map((t) => (
@@ -312,7 +312,7 @@ function ExerciseBlock({
             type="button"
             onClick={onRemoveBlock}
             title="Remove exercise from session"
-            className="rounded-sm p-0.5 text-faint opacity-0 transition-opacity duration-150 ease-(--ease-out-quad) group-hover:opacity-100 hover:text-neg focus-visible:opacity-100"
+            className="rounded-sm p-1.5 text-faint transition-opacity duration-150 ease-(--ease-out-quad) hover:text-neg max-md:opacity-100 md:p-0.5 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
             data-testid={`remove-block-${block.name}`}
           >
             <X className="size-3.5" />
@@ -422,7 +422,7 @@ function CommittedRow({
           onChange={(e) => setWeight(e.target.value)}
           onKeyDown={onKeyDown}
           autoFocus
-          className="num h-8"
+          className="num h-10 md:h-8"
           data-testid={`edit-${index}-weight`}
         />
         <Input
@@ -430,7 +430,7 @@ function CommittedRow({
           value={reps}
           onChange={(e) => setReps(e.target.value)}
           onKeyDown={onKeyDown}
-          className="num h-8"
+          className="num h-10 md:h-8"
           data-testid={`edit-${index}-reps`}
         />
         <button
@@ -449,14 +449,14 @@ function CommittedRow({
           value={rir}
           onChange={(e) => setRir(e.target.value)}
           onKeyDown={onKeyDown}
-          className="num col-start-2 mt-2 h-8"
+          className="num col-start-2 mt-2 h-10 md:h-8"
         />
         <Input
           placeholder="// note"
           value={note}
           onChange={(e) => setNote(e.target.value)}
           onKeyDown={onKeyDown}
-          className="mt-2 h-8"
+          className="mt-2 h-10 md:h-8"
         />
         <span />
       </div>
@@ -465,7 +465,7 @@ function CommittedRow({
 
   return (
     <div
-      className="group commit-flash grid h-9 grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-3.5 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+      className="group commit-flash grid h-11 grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-3.5 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-9"
       data-testid={`committed-${index}`}
     >
       <span className="flex items-center gap-1.5">
@@ -490,14 +490,14 @@ function CommittedRow({
         {set.reps ?? "—"}
       </button>
       <span className="flex items-center justify-center gap-1">
-        <span className="num text-2xs text-faint group-hover:hidden">
+        <span className="num text-2xs text-faint max-md:hidden md:group-hover:hidden">
           {set.rir != null ? `@${set.rir}` : ""}
         </span>
         <button
           type="button"
           onClick={onDelete}
           title="Delete set"
-          className="hidden rounded-sm p-0.5 text-faint transition-colors duration-100 group-hover:block hover:text-neg"
+          className="rounded-sm p-1.5 text-faint transition-colors duration-150 hover:text-neg max-md:block md:hidden md:p-0.5 md:group-hover:block"
           data-testid={`delete-${index}`}
         >
           <Trash2 className="size-3.5" />
@@ -611,7 +611,7 @@ function ActiveRow({
           onBlur={onBlur}
           onKeyDown={onKeyDown}
           autoFocus={autoFocusWeight}
-          className="num h-8"
+          className="num h-10 md:h-8"
           data-testid={`set-${index}-weight`}
         />
         <Input
@@ -621,7 +621,7 @@ function ActiveRow({
           onChange={(e) => setReps(e.target.value)}
           onBlur={onBlur}
           onKeyDown={onKeyDown}
-          className="num h-8"
+          className="num h-10 md:h-8"
           data-testid={`set-${index}-reps`}
         />
         <button
@@ -648,7 +648,7 @@ function ActiveRow({
               value={rir}
               onChange={(e) => setRir(e.target.value)}
               onKeyDown={onKeyDown}
-              className="num h-8"
+              className="num h-10 md:h-8"
               data-testid={`set-${index}-rir`}
             />
             <Input
@@ -656,7 +656,7 @@ function ActiveRow({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               onKeyDown={onKeyDown}
-              className="h-8"
+              className="h-10 md:h-8"
               data-testid={`set-${index}-note`}
             />
             <span />
@@ -690,7 +690,7 @@ function ActiveRow({
                     setMetricDraft((d) => ({ ...d, [m.id]: e.target.value }))
                   }
                   onKeyDown={onKeyDown}
-                  className="num h-8"
+                  className="num h-10 md:h-8"
                   data-testid={`set-${index}-metric-${m.id}`}
                 />
               )}

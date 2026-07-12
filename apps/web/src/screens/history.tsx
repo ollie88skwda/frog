@@ -28,7 +28,7 @@ export default function HistoryScreen() {
                 <Link
                   to={`/history/${s.id}`}
                   data-testid={`history-row-${s.id}`}
-                  className="flex h-9 items-center justify-between px-3.5 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+                  className="flex h-11 items-center justify-between px-3.5 transition-colors md:h-9 duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
                     <StatusRing

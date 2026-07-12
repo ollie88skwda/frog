@@ -325,11 +325,11 @@ export class SupabaseRepo implements Repo {
     sessionId: string,
     values: Record<string, unknown>,
   ): Promise<void> {
-    const current = await this.getSession(sessionId);
-    const merged = { ...(current?.conditionValues ?? {}), ...values };
+    // Replace semantics: the conditions dialog owns the full set, so removing
+    // a condition sticks. (applySleep does its own read-merge-write.)
     const { error } = await this.client
       .from("sessions")
-      .update({ condition_values: merged, updated_at: Date.now() })
+      .update({ condition_values: values, updated_at: Date.now() })
       .eq("id", sessionId);
     throwIf(error);
   }

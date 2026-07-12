@@ -115,7 +115,7 @@ function ExerciseRow({
       <button
         type="button"
         onClick={onToggle}
-        className="flex h-9 w-full items-center justify-between px-3.5 text-left text-sm transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+        className="flex h-11 w-full items-center justify-between px-3.5 text-left text-sm md:h-9 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
       >
         <span className="flex min-w-0 items-center gap-2">
           <Chevron className="size-3.5 shrink-0 text-faint" />

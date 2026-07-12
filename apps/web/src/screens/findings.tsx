@@ -107,7 +107,7 @@ const VERDICT_STYLE: Record<TrendFinding["verdict"], string> = {
 function TrendRow({ trend }: { trend: TrendFinding }) {
   return (
     <div
-      className="flex h-9 items-center justify-between gap-3 px-3.5 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+      className="flex h-11 items-center justify-between gap-3 px-3.5 transition-colors md:h-9 duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
       data-testid={`trend-${trend.exerciseName}`}
     >
       <span className="truncate text-sm">{trend.exerciseName}</span>

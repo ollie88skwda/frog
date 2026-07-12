@@ -15,7 +15,9 @@ test("session conditions round-trip through the chip", async ({ page }) => {
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
 
+  // Conditions start empty: add the Sleep preset via its pill, then fill it.
   await page.getByTestId("conditions-chip").click();
+  await page.getByTestId("condition-preset-Sleep (h)").click();
   await page.getByTestId(`condition-input-${SLEEP_ID}`).fill("7.5");
   await page.getByTestId("conditions-save-btn").click();
   await expect(page.getByTestId("conditions-chip")).toContainText("7.5h");
@@ -23,6 +25,27 @@ test("session conditions round-trip through the chip", async ({ page }) => {
   // Reload: values restore from the server.
   await page.reload();
   await expect(page.getByTestId("conditions-chip")).toContainText("7.5h");
+});
+
+test("custom typed condition: create from the add input, value round-trips", async ({
+  page,
+}) => {
+  const NAME = `Soreness ${Date.now()}`;
+
+  await page.getByTestId("start-session-btn").click();
+  await expect(page).toHaveURL(/\/session\//);
+
+  await page.getByTestId("conditions-chip").click();
+  await page.getByTestId("condition-add-input").fill(NAME);
+  await page.getByTestId("condition-create-btn").click();
+  // The new condition's value input autofocuses; type into it.
+  await page.locator("input:focus").fill("6");
+  await page.getByTestId("conditions-save-btn").click();
+  await expect(page.getByTestId("conditions-chip")).toContainText(`${NAME} 6`);
+
+  // Reload: custom condition + value restore from the server.
+  await page.reload();
+  await expect(page.getByTestId("conditions-chip")).toContainText(`${NAME} 6`);
 });
 
 test("custom set metric: create, enable on an exercise, log a value", async ({ page }) => {

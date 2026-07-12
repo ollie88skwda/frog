@@ -100,7 +100,7 @@ export interface Repo {
   listSessionExercises(sessionId: string): Promise<SessionExerciseDetail[]>;
 
   getSession(sessionId: string): Promise<Session | null>;
-  /** Merge-writes session condition values ({metricId: value}). */
+  /** Replaces the session's condition values ({metricId: value}). */
   updateSessionConditions(
     sessionId: string,
     values: Record<string, unknown>,

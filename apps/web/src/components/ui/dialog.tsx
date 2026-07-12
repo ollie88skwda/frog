@@ -18,8 +18,10 @@ export function DialogContent({
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-(--overlay)" />
       <DialogPrimitive.Content
         className={cn(
-          "float-in fixed top-[20%] left-1/2 z-50 w-full max-w-md -translate-x-1/2",
-          "floating rounded-xl",
+          "float-in floating fixed z-50 w-full",
+          // Mobile: bottom sheet. ≥md: centered card.
+          "max-md:inset-x-0 max-md:bottom-0 max-md:rounded-t-xl max-md:rounded-b-none max-md:border-b-0",
+          "md:top-[20%] md:left-1/2 md:max-w-md md:-translate-x-1/2 md:rounded-xl",
           className,
         )}
         {...props}

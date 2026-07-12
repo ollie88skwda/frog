@@ -9,10 +9,10 @@
 
 /* ---------------------------------------------------------------------------
  * SBL design language — Linear-derived.
- * Neutral near-black surfaces stepped by elevation, hairline borders instead
- * of shadows, one desaturated indigo accent, Inter Variable with tuned
- * weights (510/590) and stylistic alternates, dense 13px UI, fast
- * transform/opacity-only motion (out-quad, ~160ms).
+ * Monochrome: neutral near-black surfaces stepped by elevation, hairline
+ * borders instead of shadows, ONE red accent carrying all emphasis, Inter
+ * Variable with tuned weights (510/590) and stylistic alternates, dense 13px
+ * UI, fast transform/opacity-only motion (out-quad, ~160ms). Mobile-first.
  * ------------------------------------------------------------------------- */
 
 :root,
@@ -37,12 +37,12 @@
   --soft: #8a8f98;
   --faint: #62666d;
 
-  /* the one accent */
-  --accent: #7170ff;
-  --accent-hover: #828fff;
-  --accent-soft: #18182f;
+  /* the one accent — red monochrome */
+  --accent: #e5484d;
+  --accent-hover: #ec5d61;
+  --accent-soft: #2a1416;
   --accent-fg: #ffffff;
-  --brand: #5e6ad2;
+  --brand: #e5484d;
 
   /* semantic — muted, used in icons/dots, never large fills */
   --pos: #27a644;
@@ -50,7 +50,7 @@
   --warn: #f0bf00;
   --orange: #fc7840;
 
-  --ring: #5e6ad2;
+  --ring: #e5484d;
   --scrollbar: rgba(255, 255, 255, 0.1);
   --overlay: rgba(0, 0, 0, 0.7);
 
@@ -81,18 +81,18 @@
   --soft: #6f6e77;
   --faint: #86848d;
 
-  --accent: #7070ff;
-  --accent-hover: #5e69d1;
-  --accent-soft: #f1f1ff;
+  --accent: #d93036;
+  --accent-hover: #c22f34;
+  --accent-soft: #feebec;
   --accent-fg: #ffffff;
-  --brand: #7070ff;
+  --brand: #d93036;
 
   --pos: #27a644;
   --neg: #eb5757;
   --warn: #b08c00;
   --orange: #fc7840;
 
-  --ring: #5e6ad2;
+  --ring: #d93036;
   --scrollbar: rgba(0, 0, 0, 0.15);
   --overlay: rgba(255, 255, 255, 0.65);
 
