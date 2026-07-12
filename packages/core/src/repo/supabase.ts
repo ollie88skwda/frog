@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Exercise, Metric, Session } from "../db/schema";
 import { newId } from "../domain/ids";
+import type { FindingsSessionInput } from "../findings/types";
 import type {
   GhostSet,
   NewMetricInput,
@@ -207,6 +208,48 @@ export class SupabaseRepo implements Repo {
       .update({ condition_values: merged, updated_at: Date.now() })
       .eq("id", sessionId);
     throwIf(error);
+  }
+
+  async listSessions(limit: number, offset: number): Promise<Session[]> {
+    const { data, error } = await this.client
+      .from("sessions")
+      .select()
+      .is("deleted_at", null)
+      .order("started_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    throwIf(error);
+    return (data as Row[]).map(toSession);
+  }
+
+  async findingsData(): Promise<FindingsSessionInput[]> {
+    const { data, error } = await this.client
+      .from("sessions")
+      .select(
+        "id, started_at, condition_values, deleted_at, session_exercises(exercise_id, deleted_at, exercises(name), set_logs(weight_kg, reps, deleted_at))",
+      )
+      .is("deleted_at", null)
+      .order("started_at", { ascending: true });
+    throwIf(error);
+    return ((data as Row[]) ?? []).map((s) => ({
+      sessionId: s.id as string,
+      startedAt: s.started_at as number,
+      conditionValues:
+        (s.condition_values as Record<string, unknown> | null) ?? null,
+      sets: ((s.session_exercises as Row[]) ?? [])
+        .filter((se) => se.deleted_at == null)
+        .flatMap((se) =>
+          (
+            ((se.set_logs as Row[]) ?? []).filter(
+              (sl) => sl.deleted_at == null,
+            ) ?? []
+          ).map((sl) => ({
+            exerciseId: se.exercise_id as string,
+            exerciseName: ((se.exercises as Row | null)?.name as string) ?? "",
+            weightKg: (sl.weight_kg as number | null) ?? null,
+            reps: (sl.reps as number | null) ?? null,
+          })),
+        ),
+    }));
   }
 
   async listMetrics(): Promise<Metric[]> {

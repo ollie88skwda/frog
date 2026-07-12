@@ -4,7 +4,12 @@ import {
   type NewMetricInput,
   newId,
 } from "@sbl/core";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useRepo } from "./repo";
 
 export function useExercises() {
@@ -105,6 +110,28 @@ export function useSetMetricExercises() {
       if (ctx?.prev) qc.setQueryData(["metrics"], ctx.prev);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["metrics"] }),
+  });
+}
+
+export const HISTORY_PAGE = 50;
+
+export function useSessionHistory() {
+  const repo = useRepo();
+  return useInfiniteQuery({
+    queryKey: ["sessions"],
+    queryFn: ({ pageParam }) => repo.listSessions(HISTORY_PAGE, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length < HISTORY_PAGE ? undefined : pages.length * HISTORY_PAGE,
+  });
+}
+
+export function useFindingsData() {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["findings-data"],
+    queryFn: () => repo.findingsData(),
+    staleTime: 60_000,
   });
 }
 

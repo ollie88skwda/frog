@@ -1,8 +1,61 @@
+import { ChevronRight } from "lucide-react";
+import { Link } from "react-router";
+import { Button } from "@/components/ui/button";
+import { formatDate, formatTime } from "@/lib/format";
+import { useSessionHistory } from "@/lib/queries";
+
 export default function HistoryScreen() {
+  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } =
+    useSessionHistory();
+  const sessions = data?.pages.flat() ?? [];
+
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
       <h1 className="text-lg font-semibold tracking-tight">History</h1>
-      <p className="mt-1 text-xs text-soft">Session history lands in P5.</p>
+
+      <div className="mt-4 overflow-hidden rounded-lg border border-border bg-surface">
+        {isLoading ? (
+          <p className="px-3.5 py-6 text-center text-xs text-faint">Loading…</p>
+        ) : sessions.length === 0 ? (
+          <p className="px-3.5 py-6 text-center text-xs text-faint">
+            No sessions yet — start one from Train.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {sessions.map((s) => (
+              <li key={s.id}>
+                <Link
+                  to={`/history/${s.id}`}
+                  data-testid={`history-row-${s.id}`}
+                  className="flex items-center justify-between px-3.5 py-2.5 transition-colors duration-100 hover:bg-surface-hover"
+                >
+                  <span className="text-sm">
+                    {s.title ?? formatDate(s.startedAt)}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="num text-xs text-faint">
+                      {formatDate(s.startedAt)} · {formatTime(s.startedAt)}
+                    </span>
+                    <ChevronRight className="size-3.5 text-faint" />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {hasNextPage && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-3"
+          disabled={isFetchingNextPage}
+          onClick={() => void fetchNextPage()}
+        >
+          {isFetchingNextPage ? "Loading…" : "Load more"}
+        </Button>
+      )}
     </div>
   );
 }

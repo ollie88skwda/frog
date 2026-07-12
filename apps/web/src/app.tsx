@@ -11,6 +11,7 @@ const AuthScreen = lazy(() => import("@/screens/auth"));
 const SessionScreen = lazy(() => import("@/screens/session"));
 const LibraryScreen = lazy(() => import("@/screens/library"));
 const HistoryScreen = lazy(() => import("@/screens/history"));
+const HistoryDetailScreen = lazy(() => import("@/screens/history-detail"));
 const FindingsScreen = lazy(() => import("@/screens/findings"));
 const SettingsScreen = lazy(() => import("@/screens/settings"));
 
@@ -36,6 +37,10 @@ export function App() {
                     <Route path="session/:id" element={<SessionScreen />} />
                     <Route path="library" element={<LibraryScreen />} />
                     <Route path="history" element={<HistoryScreen />} />
+                    <Route
+                      path="history/:id"
+                      element={<HistoryDetailScreen />}
+                    />
                     <Route path="findings" element={<FindingsScreen />} />
                     <Route path="settings" element={<SettingsScreen />} />
                   </Route>

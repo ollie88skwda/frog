@@ -1,6 +1,7 @@
 import { Play } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router";
+import { TrainFindingsCard } from "@/components/train-findings-card";
 import { Button } from "@/components/ui/button";
 import { useRepo } from "@/lib/repo";
 
@@ -41,6 +42,8 @@ export default function TrainScreen() {
         </Button>
         {error && <p className="mt-3 text-xs text-neg">{error}</p>}
       </div>
+
+      <TrainFindingsCard />
     </div>
   );
 }

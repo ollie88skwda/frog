@@ -1,4 +1,5 @@
 import type { Exercise, Metric, Session } from "../db/schema";
+import type { FindingsSessionInput } from "../findings/types";
 
 export type NewSetInput = {
   weightKg: number | null;
@@ -55,6 +56,12 @@ export interface Repo {
     sessionId: string,
     values: Record<string, unknown>,
   ): Promise<void>;
+
+  /** Newest-first page of sessions (history). */
+  listSessions(limit: number, offset: number): Promise<Session[]>;
+
+  /** Full session graph shaped for the findings engine (client-side compute). */
+  findingsData(): Promise<FindingsSessionInput[]>;
 
   listMetrics(): Promise<Metric[]>;
   createMetric(input: NewMetricInput): Promise<Metric>;
