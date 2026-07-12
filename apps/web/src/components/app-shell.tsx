@@ -1,5 +1,14 @@
 import { APP_NAME } from "@sbl/core";
-import { BookOpen, Command as CommandIcon, Dumbbell, FlaskConical, History, Moon, Settings, Sun } from "lucide-react";
+import {
+  BookOpen,
+  Command as CommandIcon,
+  Dumbbell,
+  FlaskConical,
+  History,
+  Moon,
+  Settings,
+  Sun,
+} from "lucide-react";
 import { NavLink, Outlet } from "react-router";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -19,14 +28,20 @@ export function AppShell() {
     <div className="flex h-dvh">
       <aside className="flex w-52 shrink-0 flex-col border-r border-border bg-surface max-md:hidden">
         <div className="flex h-12 items-center justify-between px-4">
-          <span className="text-sm font-semibold tracking-tight">{APP_NAME}</span>
+          <span className="text-sm font-semibold tracking-tight">
+            {APP_NAME}
+          </span>
           <button
             type="button"
             onClick={toggle}
             title="Toggle theme"
             className="rounded-md p-1 text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
           >
-            {theme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+            {theme === "dark" ? (
+              <Sun className="size-3.5" />
+            ) : (
+              <Moon className="size-3.5" />
+            )}
           </button>
         </div>
         <nav className="flex flex-col gap-0.5 px-2 py-1">

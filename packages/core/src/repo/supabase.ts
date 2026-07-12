@@ -1,7 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Exercise, Session } from "../db/schema";
 import { newId } from "../domain/ids";
-import type { GhostSet, NewSetInput, Repo } from "./types";
+import type {
+  GhostSet,
+  NewSetInput,
+  Repo,
+  SessionExerciseDetail,
+} from "./types";
 
 type Row = Record<string, unknown>;
 
@@ -132,6 +137,37 @@ export class SupabaseRepo implements Repo {
     const { error } = await this.client.from("set_logs").insert(row);
     throwIf(error);
     return row.id;
+  }
+
+  async listSessionExercises(
+    sessionId: string,
+  ): Promise<SessionExerciseDetail[]> {
+    const { data, error } = await this.client
+      .from("session_exercises")
+      .select(
+        "id, exercise_id, order_index, exercises(name), set_logs(id, set_no, weight_kg, reps, rir, note, deleted_at)",
+      )
+      .eq("session_id", sessionId)
+      .is("deleted_at", null)
+      .order("order_index");
+    throwIf(error);
+    return ((data as Row[]) ?? []).map((r) => ({
+      id: r.id as string,
+      exerciseId: r.exercise_id as string,
+      exerciseName: ((r.exercises as Row | null)?.name as string) ?? "",
+      orderIndex: r.order_index as number,
+      sets: ((r.set_logs as Row[]) ?? [])
+        .filter((s) => s.deleted_at == null)
+        .sort((a, b) => (a.set_no as number) - (b.set_no as number))
+        .map((s) => ({
+          id: s.id as string,
+          setNo: s.set_no as number,
+          weightKg: (s.weight_kg as number | null) ?? null,
+          reps: (s.reps as number | null) ?? null,
+          rir: (s.rir as number | null) ?? null,
+          note: (s.note as string | null) ?? null,
+        })),
+    }));
   }
 
   async lastSetsForExercise(

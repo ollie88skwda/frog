@@ -9,6 +9,23 @@ export type NewSetInput = {
 
 export type GhostSet = { weightKg: number | null; reps: number | null };
 
+export type LoggedSet = {
+  id: string;
+  setNo: number;
+  weightKg: number | null;
+  reps: number | null;
+  rir: number | null;
+  note: string | null;
+};
+
+export type SessionExerciseDetail = {
+  id: string;
+  exerciseId: string;
+  exerciseName: string;
+  orderIndex: number;
+  sets: LoggedSet[];
+};
+
 /**
  * All data access goes through this interface — screens never touch a client
  * directly. SupabaseRepo is the v1 (online-first) implementation; a future
@@ -21,6 +38,9 @@ export interface Repo {
   startSession(title?: string): Promise<Session>;
   addExerciseToSession(sessionId: string, exerciseId: string): Promise<string>;
   logSet(sessionExerciseId: string, set: NewSetInput): Promise<string>;
+
+  /** Exercises + logged sets of one session, in order (restores an open session). */
+  listSessionExercises(sessionId: string): Promise<SessionExerciseDetail[]>;
 
   /**
    * Most recent PRIOR session's sets for an exercise (ghost prefill).

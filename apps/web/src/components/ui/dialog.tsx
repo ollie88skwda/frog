@@ -25,7 +25,9 @@ export function DialogContent({
         {...props}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-          <DialogPrimitive.Title className="text-sm font-medium">{title}</DialogPrimitive.Title>
+          <DialogPrimitive.Title className="text-sm font-medium">
+            {title}
+          </DialogPrimitive.Title>
           <DialogPrimitive.Close className="rounded-sm p-0.5 text-soft hover:bg-surface-hover hover:text-ink">
             <X className="size-4" />
           </DialogPrimitive.Close>

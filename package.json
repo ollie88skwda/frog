@@ -7,8 +7,10 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "bun run --cwd apps/web dev",
     "test": "bun run --filter '*' test",
     "test:integration": "bun run --cwd packages/core test:integration",
+    "e2e": "bun scripts/run-e2e.ts",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "biome check .",
     "format": "biome format --write .",

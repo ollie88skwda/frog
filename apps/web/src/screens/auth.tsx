@@ -40,7 +40,9 @@ export default function AuthScreen() {
             {APP_NAME}
           </div>
           <div className="text-center">
-            <h1 className="text-lg font-semibold tracking-tight">Sign in to {APP_NAME}</h1>
+            <h1 className="text-lg font-semibold tracking-tight">
+              Sign in to {APP_NAME}
+            </h1>
             <p className="mt-1 text-xs text-soft">
               Your training lab notebook. We'll email you a magic link.
             </p>
@@ -51,9 +53,15 @@ export default function AuthScreen() {
           <div className="rounded-lg border border-border bg-surface p-4 text-center">
             <p className="text-sm">Check your email</p>
             <p className="mt-1 text-xs text-soft">
-              A sign-in link was sent to <span className="text-ink">{email}</span>.
+              A sign-in link was sent to{" "}
+              <span className="text-ink">{email}</span>.
             </p>
-            <Button variant="ghost" size="sm" className="mt-3" onClick={() => setPhase("idle")}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-3"
+              onClick={() => setPhase("idle")}
+            >
               Use a different email
             </Button>
           </div>

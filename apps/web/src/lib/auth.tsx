@@ -1,5 +1,11 @@
 import type { Session } from "@supabase/supabase-js";
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { Navigate, Outlet, useLocation } from "react-router";
 import { supabase } from "./supabase";
 
@@ -8,7 +14,10 @@ type AuthState = { session: Session | null; loading: boolean };
 const AuthContext = createContext<AuthState>({ session: null, loading: true });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({ session: null, loading: true });
+  const [state, setState] = useState<AuthState>({
+    session: null,
+    loading: true,
+  });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -32,6 +41,7 @@ export function RequireAuth() {
   const { session, loading } = useAuth();
   const location = useLocation();
   if (loading) return null;
-  if (!session) return <Navigate to="/auth" replace state={{ from: location }} />;
+  if (!session)
+    return <Navigate to="/auth" replace state={{ from: location }} />;
   return <Outlet />;
 }

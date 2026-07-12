@@ -6,7 +6,7 @@
     <title>SBL</title>
     <script>
       // Set theme before first paint to avoid a flash of the wrong theme.
-      (function () {
+      (() => {
         var stored = localStorage.getItem("theme");
         var theme =
           stored === "light" || stored === "dark"

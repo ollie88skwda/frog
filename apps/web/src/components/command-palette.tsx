@@ -6,7 +6,7 @@ import {
   History,
   LogOut,
   Moon,
-  Play,
+  type Play,
   Settings,
   Sun,
 } from "lucide-react";
@@ -47,13 +47,18 @@ export function CommandPalette() {
     { label: "Train", icon: Dumbbell, action: () => navigate("/") },
     { label: "Library", icon: BookOpen, action: () => navigate("/library") },
     { label: "History", icon: History, action: () => navigate("/history") },
-    { label: "Findings", icon: FlaskConical, action: () => navigate("/findings") },
+    {
+      label: "Findings",
+      icon: FlaskConical,
+      action: () => navigate("/findings"),
+    },
     { label: "Settings", icon: Settings, action: () => navigate("/settings") },
   ];
 
   const actions: Item[] = [
     {
-      label: theme === "dark" ? "Switch to light theme" : "Switch to dark theme",
+      label:
+        theme === "dark" ? "Switch to light theme" : "Switch to dark theme",
       icon: theme === "dark" ? Sun : Moon,
       action: toggle,
       keywords: "theme toggle appearance",
@@ -103,7 +108,13 @@ export function CommandPalette() {
   );
 }
 
-function PaletteItem({ item, onRun }: { item: Item; onRun: (a: () => void) => void }) {
+function PaletteItem({
+  item,
+  onRun,
+}: {
+  item: Item;
+  onRun: (a: () => void) => void;
+}) {
   const Icon = item.icon;
   return (
     <Command.Item

@@ -12,7 +12,8 @@ const buttonVariants = cva(
         primary: "bg-accent text-accent-fg hover:bg-accent-hover",
         outline: "border border-border-strong text-ink hover:bg-surface-hover",
         ghost: "text-soft hover:bg-surface-hover hover:text-ink",
-        danger: "text-neg border border-border hover:border-neg/40 hover:bg-neg/10",
+        danger:
+          "text-neg border border-border hover:border-neg/40 hover:bg-neg/10",
       },
       size: {
         sm: "h-7 px-2.5 text-xs",
@@ -25,10 +26,21 @@ const buttonVariants = cva(
   },
 );
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>;
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof buttonVariants>;
 
-export function Button({ className, variant, size, type = "button", ...props }: ButtonProps) {
+export function Button({
+  className,
+  variant,
+  size,
+  type = "button",
+  ...props
+}: ButtonProps) {
   return (
-    <button type={type} className={cn(buttonVariants({ variant, size }), className)} {...props} />
+    <button
+      type={type}
+      className={cn(buttonVariants({ variant, size }), className)}
+      {...props}
+    />
   );
 }
