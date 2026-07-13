@@ -178,6 +178,92 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     expect(byStart.get(base + day)?.[SEED_CONDITIONS.sleepH]).toBe(7.5);
   });
 
+  it("machines: CRUD round-trip, exercise link, delete detaches", async () => {
+    const machine = await repoA.createMachine({
+      name: `Row Machine ${newId().slice(0, 8)}`,
+      brand: "Matrix",
+      catalogKey: "matrix-ultra-seated-row",
+      settings: [
+        { label: "Seat height", value: 4 },
+        { label: "Chest pad", value: null },
+      ],
+    });
+    expect(machine.brand).toBe("Matrix");
+    expect(machine.settings).toEqual([
+      { label: "Seat height", value: 4 },
+      { label: "Chest pad", value: null },
+    ]);
+
+    await repoA.updateMachine(machine.id, {
+      settings: [{ label: "Seat height", value: 5 }],
+      notes: "lean forward",
+    });
+    const listed = await repoA.listMachines();
+    const updated = listed.find((m) => m.id === machine.id);
+    expect(updated?.settings).toEqual([{ label: "Seat height", value: 5 }]);
+    expect(updated?.notes).toBe("lean forward");
+
+    const ex = await repoA.createExercise(
+      `Machine Row ${newId().slice(0, 8)}`,
+      {
+        machineId: machine.id,
+        jointActions: ["shoulder-extension", "elbow-flexion"],
+        muscleTargets: [{ muscle: "lats", tier: "A" }],
+      },
+    );
+    expect(ex.machineId).toBe(machine.id);
+    expect(ex.jointActions).toEqual(["shoulder-extension", "elbow-flexion"]);
+    expect(ex.muscleTargets).toEqual([{ muscle: "lats", tier: "A" }]);
+
+    await repoA.deleteMachine(machine.id);
+    expect((await repoA.listMachines()).map((m) => m.id)).not.toContain(
+      machine.id,
+    );
+    const after = (await repoA.listExercises()).find((e) => e.id === ex.id);
+    expect(after?.machineId).toBeNull();
+  });
+
+  it("machines: RLS isolates users; seed classifications are visible", async () => {
+    const machine = await repoA.createMachine({ name: "A's Leg Press" });
+    const bMachines = await repoB.listMachines();
+    expect(bMachines.map((m) => m.id)).not.toContain(machine.id);
+
+    // Seed exercises carry classifications from the migration…
+    const seeds = (await repoB.listExercises()).filter((e) => !e.isCustom);
+    expect(seeds.length).toBeGreaterThan(0);
+    expect(seeds.every((e) => e.muscleTargets?.length)).toBe(true);
+    // …and stay read-only for clients.
+    const squat = seeds.find((e) => e.name === "Squat");
+    const { data: updatedRows } = await clientB
+      .from("exercises")
+      .update({ muscle_targets: [{ muscle: "abs", tier: "S" }] })
+      .eq("id", squat?.id as string)
+      .select();
+    expect(updatedRows ?? []).toHaveLength(0);
+  });
+
+  it("machine photos: owner can upload, others cannot read", async () => {
+    const machine = await repoA.createMachine({ name: "Photo Machine" });
+    const pixel = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], {
+      type: "image/jpeg",
+    });
+    await repoA.uploadMachinePhoto(machine.id, pixel);
+
+    const updated = (await repoA.listMachines()).find(
+      (m) => m.id === machine.id,
+    );
+    expect(updated?.photoPath).toContain(machine.id);
+
+    const url = await repoA.machinePhotoUrl(updated ?? machine);
+    expect(url).toContain("machine-photos");
+
+    // Another user cannot sign a URL for A's object path.
+    const { data: crossSign } = await clientB.storage
+      .from("machine-photos")
+      .createSignedUrl(updated?.photoPath as string, 60);
+    expect(crossSign?.signedUrl ?? null).toBeNull();
+  });
+
   it("RLS: users cannot see or write each other's data", async () => {
     const exA = await repoA.createExercise(
       `Private Curl ${newId().slice(0, 8)}`,

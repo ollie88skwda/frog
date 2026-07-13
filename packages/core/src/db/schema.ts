@@ -10,6 +10,7 @@ import {
   text,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { MuscleTarget } from "../domain/anatomy";
 
 // Conventions (see AGENTS.md): ids are client-generated uuid v4 (newId());
 // timestamps are bigint millisecond epochs managed by the app (Date.now());
@@ -25,6 +26,27 @@ const base = {
 const seedableOwner = uuid("owner_id").default(sql`auth.uid()`);
 const requiredOwner = uuid("owner_id").notNull().default(sql`auth.uid()`);
 
+// A user's gym machine: brand + numbered settings (seat height, pad position…)
+// entered once and shown in every session ("same setup every time").
+// catalog_key links to the static machine catalog (packages/core/src/data);
+// photo_path points at the user's own photo in the machine-photos bucket.
+export const machines = pgTable(
+  "machines",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    name: text("name").notNull(),
+    brand: text("brand"),
+    catalogKey: text("catalog_key"),
+    settings: jsonb("settings").$type<MachineSetting[]>(),
+    notes: text("notes"),
+    photoPath: text("photo_path"),
+  },
+  (t) => [index("machines_owner_idx").on(t.ownerId)],
+);
+
+export type MachineSetting = { label: string; value: number | null };
+
 export const exercises = pgTable(
   "exercises",
   {
@@ -33,6 +55,11 @@ export const exercises = pgTable(
     name: text("name").notNull(),
     tags: jsonb("tags").$type<string[]>(), // light tagging only in v1
     isCustom: boolean("is_custom").notNull().default(true),
+    machineId: uuid("machine_id").references(() => machines.id),
+    // Classification (docs/DECISIONS.md): muscleTargets drives library
+    // grouping (first = primary); jointActions are display labels.
+    jointActions: jsonb("joint_actions").$type<string[]>(),
+    muscleTargets: jsonb("muscle_targets").$type<MuscleTarget[]>(),
   },
   (t) => [index("exercises_owner_idx").on(t.ownerId)],
 );
@@ -129,6 +156,7 @@ export const apiTokens = pgTable(
   (t) => [index("api_tokens_owner_idx").on(t.ownerId)],
 );
 
+export type Machine = typeof machines.$inferSelect;
 export type Exercise = typeof exercises.$inferSelect;
 export type Metric = typeof metrics.$inferSelect;
 export type Session = typeof sessions.$inferSelect;

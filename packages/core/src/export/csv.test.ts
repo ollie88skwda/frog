@@ -5,7 +5,7 @@ import { setsCsv } from "./csv";
 const base = { createdAt: 1, updatedAt: 1, deletedAt: null };
 
 const bundle: ExportBundle = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   exportedAt: 1,
   exercises: [
     {
@@ -15,8 +15,12 @@ const bundle: ExportBundle = {
       name: "Bench, Press",
       tags: null,
       isCustom: true,
+      machineId: null,
+      jointActions: null,
+      muscleTargets: null,
     },
   ],
+  machines: [],
   metrics: [
     {
       ...base,

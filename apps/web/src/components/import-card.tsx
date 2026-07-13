@@ -116,7 +116,7 @@ export function ImportCard() {
             type="file"
             accept=".csv,text/csv"
             onChange={(e) => void onHevyFile(e.target.files?.[0])}
-            className="text-xs text-soft file:mr-2 file:rounded-md file:border file:border-border file:bg-surface-2 file:px-2.5 file:py-1 file:text-xs file:text-ink"
+            className="text-xs text-soft file:mr-2 file:rounded-md file:border file:border-border file:bg-surface-2 file:px-2 file:py-1 file:text-xs file:text-ink"
             data-testid="import-hevy-input"
           />
           {hevy.phase === "parsed" && (
@@ -126,13 +126,13 @@ export function ImportCard() {
               onClick={() => void runHevyImport()}
               data-testid="import-hevy-btn"
             >
-              <Upload className="size-3.5" />
+              <Upload className="size-4" />
               Import {hevy.sessions.length} sessions
             </Button>
           )}
         </div>
         <p
-          className="num mt-1.5 text-2xs text-faint"
+          className="num mt-2 text-2xs text-faint"
           data-testid="import-hevy-status"
         >
           {hevy.phase === "parsed" &&
@@ -157,7 +157,7 @@ export function ImportCard() {
             accept=".json,application/json"
             multiple
             onChange={(e) => void onSleepFiles(e.target.files)}
-            className="text-xs text-soft file:mr-2 file:rounded-md file:border file:border-border file:bg-surface-2 file:px-2.5 file:py-1 file:text-xs file:text-ink"
+            className="text-xs text-soft file:mr-2 file:rounded-md file:border file:border-border file:bg-surface-2 file:px-2 file:py-1 file:text-xs file:text-ink"
             data-testid="import-sleep-input"
           />
           {sleep.phase === "parsed" && (
@@ -167,13 +167,13 @@ export function ImportCard() {
               onClick={() => void runSleepApply()}
               data-testid="import-sleep-btn"
             >
-              <Upload className="size-3.5" />
+              <Upload className="size-4" />
               Apply {sleep.map.size} nights
             </Button>
           )}
         </div>
         <p
-          className="num mt-1.5 text-2xs text-faint"
+          className="num mt-2 text-2xs text-faint"
           data-testid="import-sleep-status"
         >
           {sleep.phase === "parsed" && `${sleep.map.size} nights parsed`}

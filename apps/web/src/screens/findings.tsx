@@ -58,7 +58,7 @@ export default function FindingsScreen() {
                 {countdowns.map((c) => (
                   <div
                     key={c.exerciseId}
-                    className="flex items-center justify-between px-3.5 py-2.5 text-sm"
+                    className="flex items-center justify-between px-4 py-2 text-sm"
                     data-testid={`countdown-${c.exerciseName}`}
                   >
                     <span className="text-soft">
@@ -107,18 +107,18 @@ const VERDICT_STYLE: Record<TrendFinding["verdict"], string> = {
 function TrendRow({ trend }: { trend: TrendFinding }) {
   return (
     <div
-      className="flex h-11 items-center justify-between gap-3 px-3.5 transition-colors md:h-9 duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+      className="flex h-11 items-center justify-between gap-3 px-4 transition-colors md:h-8 duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
       data-testid={`trend-${trend.exerciseName}`}
     >
       <span className="truncate text-sm">{trend.exerciseName}</span>
-      <span className="flex shrink-0 items-center gap-2.5">
+      <span className="flex shrink-0 items-center gap-2">
         <span className="num text-xs text-faint">
           {trend.pctChange > 0 ? "+" : ""}
           {trend.pctChange.toFixed(1)}% · n={trend.n}
         </span>
         <span
           className={cn(
-            "rounded-full px-2 py-0.5 text-2xs font-medium",
+            " px-2 py-0.5 text-2xs font-medium",
             VERDICT_STYLE[trend.verdict],
           )}
         >
@@ -136,7 +136,7 @@ function ConditionRow({ finding }: { finding: ConditionFinding }) {
       : `${finding.outcome.exerciseName} top-set e1RM`;
   const sign = finding.pctDiff > 0 ? "+" : "";
   return (
-    <div className="px-3.5 py-2.5">
+    <div className="px-4 py-2">
       <p className="text-sm">
         {outcome}{" "}
         <span

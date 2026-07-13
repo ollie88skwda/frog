@@ -66,7 +66,7 @@ export default function AuthScreen() {
             </Button>
           </div>
         ) : (
-          <form onSubmit={onSubmit} className="flex flex-col gap-2.5">
+          <form onSubmit={onSubmit} className="flex flex-col gap-2">
             <Input
               type="email"
               required

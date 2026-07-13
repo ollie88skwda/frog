@@ -35,24 +35,23 @@ export default function TrainScreen() {
 
       <div className="mt-6 rounded-lg border border-border bg-surface p-6 text-center">
         <p className="text-sm text-soft">Every session is an experiment.</p>
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        <div className="mt-4 flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
           {active && (
             <Button
               variant="primary"
               size="lg"
+              className="w-full sm:w-auto"
               onClick={() => navigate(`/session/${active.id}`)}
               data-testid="resume-session-btn"
             >
               <Play className="size-4" />
               Resume session
-              <span className="num opacity-75">
-                · started {formatTime(active.startedAt)}
-              </span>
             </Button>
           )}
           <Button
             variant={active ? "outline" : "primary"}
             size="lg"
+            className="w-full sm:w-auto"
             disabled={starting}
             onClick={() => void start()}
             data-testid="start-session-btn"
@@ -65,8 +64,13 @@ export default function TrainScreen() {
                 : "Start session"}
           </Button>
         </div>
+        {active && (
+          <p className="num mt-2 text-2xs text-faint">
+            started {formatTime(active.startedAt)}
+          </p>
+        )}
         {error && <p className="mt-3 text-xs text-neg">{error}</p>}
-        <p className="mt-3 flex items-center justify-center gap-1.5 text-2xs text-faint">
+        <p className="mt-3 flex items-center justify-center gap-2 text-2xs text-faint">
           press <kbd className="keycap">S</kbd> to start
         </p>
       </div>

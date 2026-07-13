@@ -123,9 +123,9 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
         <button
           type="button"
           data-testid="conditions-chip"
-          className="num flex h-9 max-w-full items-center gap-1.5 truncate rounded-md bg-translucent px-2.5 text-xs text-soft shadow-(--inset-control) transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink md:h-7 md:px-2"
+          className="num flex h-8 max-w-full items-center gap-2 truncate rounded-md bg-translucent px-2 text-xs text-soft shadow-(--inset-control) transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink md:h-8 md:px-2"
         >
-          <ClipboardList className="size-3.5 shrink-0" />
+          <ClipboardList className="size-4 shrink-0" />
           <span className="truncate">{summary ?? "Log conditions"}</span>
         </button>
       </DialogTrigger>
@@ -158,7 +158,7 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
                         save();
                       }
                     }}
-                    className="num h-10 text-xs md:h-7"
+                    className="num h-10 text-xs md:h-8"
                     data-testid={`condition-input-${id}`}
                   />
                   <button
@@ -173,7 +173,7 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
                     className="justify-self-center rounded-sm p-0.5 text-faint transition-colors duration-150 hover:text-neg"
                     data-testid={`condition-remove-${id}`}
                   >
-                    <X className="size-3.5" />
+                    <X className="size-4" />
                   </button>
                 </div>
                 {id === SEED_CONDITIONS.stress && (
@@ -193,13 +193,13 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
               data-testid="condition-add-input"
             />
             {(suggestions.length > 0 || q !== "") && (
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {suggestions.slice(0, 8).map((m) => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => addMetric(m.id)}
-                    className="rounded-full bg-translucent px-2.5 py-1 text-2xs text-soft shadow-(--inset-control) transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
+                    className=" bg-translucent px-2 py-1 text-2xs text-soft shadow-(--inset-control) transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
                     data-testid={`condition-preset-${m.name}`}
                   >
                     {m.name}
@@ -210,7 +210,7 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
                     type="button"
                     onClick={() => void createCustom()}
                     disabled={createMetric.isPending}
-                    className="rounded-full bg-accent-soft px-2.5 py-1 text-2xs text-accent transition-colors duration-150 ease-(--ease-out-quad) hover:bg-accent/20"
+                    className=" bg-accent-soft px-2 py-1 text-2xs text-accent transition-colors duration-150 ease-(--ease-out-quad) hover:bg-accent/20"
                     data-testid="condition-create-btn"
                   >
                     + Create “{query.trim()}”

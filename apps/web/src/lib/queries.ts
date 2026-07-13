@@ -1,6 +1,11 @@
 import {
   type Exercise,
+  type ExerciseClassification,
+  type Machine,
+  type MachinePatch,
   type Metric,
+  type NewExerciseOpts,
+  type NewMachineInput,
   type NewMetricInput,
   newId,
 } from "@sbl/core";
@@ -24,10 +29,11 @@ export function useCreateExercise() {
   const repo = useRepo();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => repo.createExercise(name),
+    mutationFn: ({ name, opts }: { name: string; opts?: NewExerciseOpts }) =>
+      repo.createExercise(name, opts),
     // Synchronous onMutate: the optimistic write must land before React's
     // next render, or controlled inputs flash back to the stale value.
-    onMutate: (name) => {
+    onMutate: ({ name, opts }) => {
       void qc.cancelQueries({ queryKey: ["exercises"] });
       const prev = qc.getQueryData<Exercise[]>(["exercises"]);
       const now = Date.now();
@@ -40,6 +46,9 @@ export function useCreateExercise() {
         name,
         tags: null,
         isCustom: true,
+        machineId: opts?.machineId ?? null,
+        jointActions: opts?.jointActions ?? null,
+        muscleTargets: opts?.muscleTargets ?? null,
       };
       qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
         [...old, optimistic].sort((a, b) => a.name.localeCompare(b.name)),
@@ -113,6 +122,188 @@ export function useSetExerciseTags() {
       if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
+  });
+}
+
+export function useSetExerciseClassification() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      exerciseId: string;
+      classification: ExerciseClassification;
+    }) =>
+      repo.setExerciseClassification(input.exerciseId, input.classification),
+    onMutate: ({ exerciseId, classification }) => {
+      void qc.cancelQueries({ queryKey: ["exercises"] });
+      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
+      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
+        old.map((e) =>
+          e.id === exerciseId
+            ? {
+                ...e,
+                ...("jointActions" in classification
+                  ? { jointActions: classification.jointActions ?? null }
+                  : {}),
+                ...("muscleTargets" in classification
+                  ? { muscleTargets: classification.muscleTargets ?? null }
+                  : {}),
+              }
+            : e,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
+  });
+}
+
+export function useSetExerciseMachine() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { exerciseId: string; machineId: string | null }) =>
+      repo.setExerciseMachine(input.exerciseId, input.machineId),
+    onMutate: ({ exerciseId, machineId }) => {
+      void qc.cancelQueries({ queryKey: ["exercises"] });
+      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
+      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
+        old.map((e) => (e.id === exerciseId ? { ...e, machineId } : e)),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
+  });
+}
+
+export function useMachines() {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["machines"],
+    queryFn: () => repo.listMachines(),
+  });
+}
+
+export function useCreateMachine() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewMachineInput) => repo.createMachine(input),
+    onMutate: (input) => {
+      void qc.cancelQueries({ queryKey: ["machines"] });
+      const prev = qc.getQueryData<Machine[]>(["machines"]);
+      const now = Date.now();
+      const optimistic: Machine = {
+        id: newId(),
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        ownerId: "",
+        name: input.name,
+        brand: input.brand ?? null,
+        catalogKey: input.catalogKey ?? null,
+        settings: input.settings ?? null,
+        notes: input.notes ?? null,
+        photoPath: null,
+      };
+      qc.setQueryData<Machine[]>(["machines"], (old = []) =>
+        [...old, optimistic].sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["machines"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["machines"] }),
+  });
+}
+
+export function useUpdateMachine() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: string; patch: MachinePatch }) =>
+      repo.updateMachine(input.id, input.patch),
+    // Powers in-session setup edits — must feel instant.
+    onMutate: ({ id, patch }) => {
+      void qc.cancelQueries({ queryKey: ["machines"] });
+      const prev = qc.getQueryData<Machine[]>(["machines"]);
+      qc.setQueryData<Machine[]>(["machines"], (old = []) =>
+        old.map((m) =>
+          m.id === id
+            ? {
+                ...m,
+                ...("name" in patch && patch.name != null
+                  ? { name: patch.name }
+                  : {}),
+                ...("brand" in patch ? { brand: patch.brand ?? null } : {}),
+                ...("settings" in patch
+                  ? { settings: patch.settings ?? null }
+                  : {}),
+                ...("notes" in patch ? { notes: patch.notes ?? null } : {}),
+              }
+            : m,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["machines"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["machines"] }),
+  });
+}
+
+export function useDeleteMachine() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => repo.deleteMachine(id),
+    onMutate: (id) => {
+      void qc.cancelQueries({ queryKey: ["machines"] });
+      const prev = qc.getQueryData<Machine[]>(["machines"]);
+      qc.setQueryData<Machine[]>(["machines"], (old = []) =>
+        old.filter((m) => m.id !== id),
+      );
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["machines"], ctx.prev);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["machines"] });
+      void qc.invalidateQueries({ queryKey: ["exercises"] });
+    },
+  });
+}
+
+export function useUploadMachinePhoto() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { machineId: string; file: Blob }) =>
+      repo.uploadMachinePhoto(input.machineId, input.file),
+    // Off the logging hot path — no optimistic write; thumbnail appears on settle.
+    onSettled: (_d, _e, { machineId }) => {
+      void qc.invalidateQueries({ queryKey: ["machines"] });
+      void qc.invalidateQueries({ queryKey: ["machine-photo", machineId] });
+    },
+  });
+}
+
+export function useMachinePhotoUrl(machine: Machine | null | undefined) {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["machine-photo", machine?.id, machine?.photoPath],
+    queryFn: () => (machine ? repo.machinePhotoUrl(machine) : null),
+    enabled: !!machine?.photoPath,
+    staleTime: 45 * 60_000, // signed URLs live an hour
   });
 }
 

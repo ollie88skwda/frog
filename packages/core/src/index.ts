@@ -1,6 +1,7 @@
 export { APP_NAME } from "./config";
 export * from "./db/schema";
 export * from "./db/seed-ids";
+export * from "./domain/anatomy";
 export * from "./domain/e1rm";
 export * from "./domain/ids";
 export * from "./domain/progression";

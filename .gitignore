@@ -27,3 +27,4 @@ supabase/.branches/
 *.key
 *.p8
 *.p12
+.lavish/

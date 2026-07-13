@@ -1,14 +1,16 @@
 import {
   type GhostSet,
   ghostFor,
+  groupByPrimaryMuscle,
   type LoggedSet,
   lbToKg,
+  type Machine,
   type Metric,
   newId,
   toDisplayWeight,
 } from "@sbl/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, Plus, Square, Timer, Trash2, X } from "lucide-react";
+import { Check, Plus, Settings2, Square, Timer, Trash2, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -18,14 +20,19 @@ import {
   useState,
 } from "react";
 import { useNavigate, useParams } from "react-router";
+import { JointActionChips } from "@/components/anatomy-ui";
 import { ConditionsChip } from "@/components/conditions";
+import { InfoTip } from "@/components/lesson";
+import { MachineEditor } from "@/components/machines";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { StatusRing } from "@/components/ui/status-ring";
 import { useHotkeys } from "@/lib/hotkeys";
 import {
   useExercises,
   useGhost,
+  useMachines,
   useMetrics,
   useSessionExercises,
 } from "@/lib/queries";
@@ -221,7 +228,7 @@ export default function SessionScreen() {
             className="self-start"
             onClick={() => setPicking(true)}
           >
-            <Plus className="size-3.5" />
+            <Plus className="size-4" />
             Add exercise
           </Button>
         )}
@@ -236,41 +243,45 @@ function ExercisePicker({
   onPick: (id: string, name: string) => void;
 }) {
   const { data: exercises = [], isLoading } = useExercises();
+  // Muscle-grouped, tier-sorted — dense headers, no collapsing: the logging
+  // path stays one-tap.
+  const groups = groupByPrimaryMuscle(exercises);
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-surface">
-      <p className="border-b border-border px-3.5 py-2 text-2xs font-medium tracking-widest text-faint uppercase">
+      <p className="border-b border-border px-4 py-2 text-2xs font-medium tracking-widest text-faint uppercase">
         Pick an exercise
       </p>
       {isLoading ? (
-        <p className="px-3.5 py-5 text-center text-xs text-faint">Loading…</p>
+        <p className="px-4 py-6 text-center text-xs text-faint">Loading…</p>
       ) : exercises.length === 0 ? (
-        <p className="px-3.5 py-5 text-center text-xs text-faint">
+        <p className="px-4 py-6 text-center text-xs text-faint">
           No exercises yet — add one in Library.
         </p>
       ) : (
-        <ul className="max-h-64 divide-y divide-border overflow-y-auto">
-          {exercises.map((ex) => (
-            <li key={ex.id}>
-              <button
-                type="button"
-                data-testid={`pick-exercise-${ex.name}`}
-                onClick={() => onPick(ex.id, ex.name)}
-                className="flex h-11 w-full items-center gap-2 px-3.5 text-left text-sm md:h-9 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
-              >
-                {ex.name}
-                {ex.tags?.map((t) => (
-                  <span
-                    key={t}
-                    className="flex items-center gap-1 rounded-full bg-accent/10 px-2 text-2xs text-soft"
-                  >
-                    <span className="size-1 rounded-full bg-accent" />
-                    {t}
-                  </span>
+        <div className="max-h-64 overflow-y-auto">
+          {groups.map((group) => (
+            <div key={group.key}>
+              <p className="border-b border-border bg-surface-2 px-4 py-1 text-2xs font-medium tracking-widest text-faint uppercase">
+                {group.label}
+              </p>
+              <ul className="divide-y divide-border">
+                {group.items.map((ex) => (
+                  <li key={ex.id}>
+                    <button
+                      type="button"
+                      data-testid={`pick-exercise-${ex.name}`}
+                      onClick={() => onPick(ex.id, ex.name)}
+                      className="flex h-11 w-full items-center gap-2 px-4 text-left text-sm md:h-8 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+                    >
+                      {ex.name}
+                      <JointActionChips actions={ex.jointActions} />
+                    </button>
+                  </li>
                 ))}
-              </button>
-            </li>
+              </ul>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
@@ -294,14 +305,18 @@ function ExerciseBlock({
   onRemoveBlock: () => void;
 }) {
   const { data: ghost = [] } = useGhost(block.exerciseId, block.seId);
+  const { data: exercises = [] } = useExercises();
+  const { data: machines = [] } = useMachines();
   const activeIndex = block.committed.length;
   const enabledMetrics = metrics.filter(
     (m) => m.scope === "set" && m.exerciseIds?.includes(block.exerciseId),
   );
+  const exercise = exercises.find((e) => e.id === block.exerciseId);
+  const machine = machines.find((m) => m.id === exercise?.machineId);
 
   return (
     <section className="overflow-hidden rounded-lg border border-border bg-surface">
-      <header className="group flex h-9 items-center justify-between border-b border-border px-3.5">
+      <header className="group flex h-8 items-center justify-between border-b border-border px-4">
         <h2 className="text-sm font-medium">{block.name}</h2>
         <span className="flex items-center gap-2">
           <span className="num text-2xs text-faint">
@@ -312,15 +327,17 @@ function ExerciseBlock({
             type="button"
             onClick={onRemoveBlock}
             title="Remove exercise from session"
-            className="rounded-sm p-1.5 text-faint transition-opacity duration-150 ease-(--ease-out-quad) hover:text-neg max-md:opacity-100 md:p-0.5 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
+            className="rounded-sm p-1 text-faint transition-opacity duration-150 ease-(--ease-out-quad) hover:text-neg max-md:opacity-100 md:p-0.5 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
             data-testid={`remove-block-${block.name}`}
           >
-            <X className="size-3.5" />
+            <X className="size-4" />
           </button>
         </span>
       </header>
 
-      <div className="grid grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2 px-3.5 py-1.5 text-2xs font-medium tracking-widest text-faint uppercase">
+      {machine && <SetupStrip machine={machine} blockName={block.name} />}
+
+      <div className="grid grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2 px-4 py-1 text-2xs font-medium tracking-widest text-faint uppercase">
         <span>#</span>
         <span>{unit}</span>
         <span>reps</span>
@@ -349,6 +366,48 @@ function ExerciseBlock({
         onCommit={onCommit}
       />
     </section>
+  );
+}
+
+// Machine setup memory: the strip shows the remembered settings; the dialog
+// edits them on the machine row itself, so the same setup appears in every
+// future session.
+function SetupStrip({
+  machine,
+  blockName,
+}: {
+  machine: Machine;
+  blockName: string;
+}) {
+  const summary = (machine.settings ?? [])
+    .filter((s) => s.value != null)
+    .map((s) => `${s.label} ${s.value}`)
+    .join(" · ");
+  return (
+    <Dialog>
+      <DialogTrigger
+        className="flex h-8 w-full items-center gap-2 border-b border-border bg-surface-2 px-4 text-left text-2xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+        data-testid={`setup-strip-${blockName}`}
+      >
+        <Settings2 className="size-4 shrink-0 text-faint" />
+        <span className="truncate">
+          {machine.brand ? `${machine.brand} · ` : ""}
+          {machine.name}
+        </span>
+        {summary ? (
+          <span className="num ml-auto shrink-0 truncate text-faint">
+            {summary}
+          </span>
+        ) : (
+          <span className="ml-auto shrink-0 text-faint">set up…</span>
+        )}
+      </DialogTrigger>
+      <DialogContent
+        title={`Setup — ${machine.brand ? `${machine.brand} · ` : ""}${machine.name}`}
+      >
+        <MachineEditor machine={machine} />
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -411,8 +470,8 @@ function CommittedRow({
 
   if (editing) {
     return (
-      <div className="grid grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border bg-surface-2 px-3.5 py-2">
-        <span className="flex items-center gap-1.5">
+      <div className="grid grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border bg-surface-2 px-4 py-2">
+        <span className="flex items-center gap-2">
           <StatusRing state="done" />
           <span className="num text-2xs text-faint">{index + 1}</span>
         </span>
@@ -465,10 +524,10 @@ function CommittedRow({
 
   return (
     <div
-      className="group commit-flash grid h-11 grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-3.5 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-9"
+      className="group commit-flash grid h-11 grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-4 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-8"
       data-testid={`committed-${index}`}
     >
-      <span className="flex items-center gap-1.5">
+      <span className="flex items-center gap-2">
         <StatusRing state="done" />
         <span className="num text-2xs text-faint">{index + 1}</span>
       </span>
@@ -497,10 +556,10 @@ function CommittedRow({
           type="button"
           onClick={onDelete}
           title="Delete set"
-          className="rounded-sm p-1.5 text-faint transition-colors duration-150 hover:text-neg max-md:block md:hidden md:p-0.5 md:group-hover:block"
+          className="rounded-sm p-1 text-faint transition-colors duration-150 hover:text-neg max-md:block md:hidden md:p-0.5 md:group-hover:block"
           data-testid={`delete-${index}`}
         >
-          <Trash2 className="size-3.5" />
+          <Trash2 className="size-4" />
         </button>
       </span>
     </div>
@@ -597,9 +656,9 @@ function ActiveRow({
   }
 
   return (
-    <div className="border-t border-border px-3.5 py-2">
+    <div className="border-t border-border px-4 py-2">
       <div className="grid grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2">
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-2">
           <StatusRing state="empty" />
           <span className="num text-2xs text-faint">{index + 1}</span>
         </span>
@@ -629,7 +688,7 @@ function ActiveRow({
           onClick={toggleExpanded}
           title="RIR / note / metrics"
           className={cn(
-            "justify-self-center rounded-md px-1.5 py-1 text-2xs font-medium transition-colors duration-100",
+            "justify-self-center rounded-md px-2 py-1 text-2xs font-medium transition-colors duration-100",
             expanded
               ? "bg-accent-soft text-ink"
               : "text-faint hover:bg-surface-hover hover:text-ink",
@@ -641,7 +700,7 @@ function ActiveRow({
       {expanded && (
         <div className="mt-2 flex flex-col gap-2">
           <div className="grid grid-cols-[2rem_1fr_2fr_2.5rem] items-center gap-x-2">
-            <span />
+            <InfoTip lessonId="rir" />
             <Input
               inputMode="numeric"
               placeholder="RIR"
@@ -716,8 +775,8 @@ function RestTimer({ since }: { since: number | null }) {
   const m = Math.floor(total / 60);
   const s = String(total % 60).padStart(2, "0");
   return (
-    <span className="num flex h-7 shrink-0 items-center gap-1.5 rounded-md bg-translucent px-2 text-xs text-soft shadow-(--inset-control)">
-      <Timer className="size-3.5" />
+    <span className="num flex h-8 shrink-0 items-center gap-2 rounded-md bg-translucent px-2 text-xs text-soft shadow-(--inset-control)">
+      <Timer className="size-4" />
       {m}:{s}
     </span>
   );

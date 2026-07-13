@@ -2,6 +2,8 @@
 
 Read this before writing any code in this repo.
 
+**Decisions: see `docs/DECISIONS.md` — the running log of product/design/architecture calls. Read it before changing direction; append to it (same commit) when you make a new call.**
+
 ## What SBL is
 
 SBL is a **training lab notebook**, not a workout tracker. Every session is treated as a controlled experiment: you log the work (exercises, sets, reps × weight, RIR) *and* the conditions around it (sleep hours, bodyweight, pre-workout carbs, caffeine, stress, meal timing), and the app surfaces correlations between inputs and outputs — **"Findings"** ("your top sets average heavier on 7h+ sleep"). Findings are transparent statistics (robust trend fitting, median-split heuristics) with honest guardrails: minimum sample sizes, visible confidence, and an explicit "correlation, not causation" caveat. No AI/ML black boxes.
@@ -66,4 +68,4 @@ Local Supabase is the default for all dev and tests; the hosted project exists o
 
 ## Design language
 
-Techie-modern, Linear-style: neutral near-black grays (dark default) + off-white light theme, a single restrained indigo accent, crisp 1 px low-contrast borders, flat surfaces (no heavy shadows/glassmorphism), dense 13 px UI. Keyboard-first: ⌘K command palette, single-key shortcuts on the logging path. All numeric data (weights, reps, e1RM, timers) uses tabular numerals (`.num` utility). Micro-interactions are 100–150 ms CSS transitions; nothing animates on the data path.
+Techie-modern, Linear-style, **blue monochrome**: every non-semantic color is a `color-mix` percentage step of the single base blue `#034078` (dark default + light theme), defined only in `apps/web/src/styles/theme.css`. **0 px border radius everywhere** (square/brutalist; no pills). **8 px grid hard rule:** spacing and box sizes are multiples of 8 px (4 px sub-steps on mobile/micro-spacing); type scale exempt. Crisp 1 px low-contrast borders, flat surfaces (no heavy shadows/glassmorphism), dense 13 px UI. Semantic green/red/yellow survive only as small text/icons (findings ±, destructive actions). Keyboard-first: ⌘K command palette, single-key shortcuts on the logging path. All numeric data (weights, reps, e1RM, timers) uses tabular numerals (`.num` utility). Micro-interactions are 100–150 ms CSS transitions; nothing animates on the data path.

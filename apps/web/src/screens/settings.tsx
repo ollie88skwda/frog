@@ -64,7 +64,7 @@ export default function SettingsScreen() {
               onClick={() => setUnit(u)}
               data-testid={`unit-${u}`}
               className={cn(
-                "px-3 py-1.5 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
+                "px-3 py-1 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
                 unit === u
                   ? "bg-surface-active text-ink"
                   : "text-soft hover:bg-surface-hover",
@@ -88,7 +88,7 @@ export default function SettingsScreen() {
             onClick={() => void exportData("json")}
             data-testid="export-json-btn"
           >
-            <Download className="size-3.5" />
+            <Download className="size-4" />
             {exporting === "json" ? "Exporting…" : "JSON"}
           </Button>
           <Button
@@ -97,7 +97,7 @@ export default function SettingsScreen() {
             onClick={() => void exportData("csv")}
             data-testid="export-csv-btn"
           >
-            <Download className="size-3.5" />
+            <Download className="size-4" />
             {exporting === "csv" ? "Exporting…" : "sets.csv"}
           </Button>
         </div>
@@ -200,7 +200,7 @@ function ApiTokensSection() {
           </p>
           <div className="mt-3 flex items-center gap-2">
             <code
-              className="min-w-0 flex-1 truncate rounded-md border border-border bg-surface-2 px-2.5 py-1.5 font-mono text-xs"
+              className="min-w-0 flex-1 truncate rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs"
               data-testid="token-plaintext"
             >
               {plaintext}
@@ -213,7 +213,7 @@ function ApiTokensSection() {
                 plaintext && void navigator.clipboard.writeText(plaintext)
               }
             >
-              <Copy className="size-3.5" />
+              <Copy className="size-4" />
             </Button>
           </div>
         </DialogContent>
@@ -235,7 +235,7 @@ function TokenRow({
       <span className={cn(revoked && "text-faint line-through")}>
         {token.name}
       </span>
-      <span className="flex items-center gap-2.5">
+      <span className="flex items-center gap-2">
         <span className="num text-2xs text-faint">
           created {formatDate(token.createdAt)}
           {token.lastUsedAt != null &&

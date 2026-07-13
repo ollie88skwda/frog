@@ -8,50 +8,58 @@
 }
 
 /* ---------------------------------------------------------------------------
- * SBL design language — Linear-derived.
- * Monochrome: neutral near-black surfaces stepped by elevation, hairline
- * borders instead of shadows, ONE red accent carrying all emphasis, Inter
- * Variable with tuned weights (510/590) and stylistic alternates, dense 13px
- * UI, fast transform/opacity-only motion (out-quad, ~160ms). Mobile-first.
+ * SBL design language — Linear-derived, blue monochrome, square.
+ * ONE base blue (#034078, user-picked) generates every non-semantic color as
+ * a color-mix percentage step toward black (dark surfaces) or white (text /
+ * light surfaces). Only the hex is locked; step percentages tune against
+ * measured contrast. 0px radius everywhere. 8px-grid spacing (see AGENTS.md).
+ * Semantic pos/neg/warn stay green/red/yellow — small text/icons only.
+ * Inter Variable tuned weights (510/590), dense 13px UI, fast
+ * transform/opacity-only motion (out-quad, ~160ms). Mobile-first.
  * ------------------------------------------------------------------------- */
+
+:root {
+  --blue: #034078;
+}
 
 :root,
 :root[data-theme="dark"] {
-  /* surfaces: page → raised levels */
-  --bg: #08090a;
-  --surface: #0f1011;
-  --surface-2: #141516;
-  --surface-3: #191a1b;
-  --surface-hover: #1c1c1f;
-  --surface-active: #232326;
-  --translucent: rgba(255, 255, 255, 0.05);
+  /* surfaces: page → raised levels (blue → black steps) */
+  --bg: color-mix(in oklab, var(--blue) 25%, black);
+  --surface: color-mix(in oklab, var(--blue) 32%, black);
+  --surface-2: color-mix(in oklab, var(--blue) 38%, black);
+  --surface-3: color-mix(in oklab, var(--blue) 44%, black);
+  --surface-hover: color-mix(in oklab, var(--blue) 50%, black);
+  --surface-active: color-mix(in oklab, var(--blue) 56%, black);
+  --translucent: color-mix(in srgb, var(--blue) 18%, transparent);
 
   /* hairlines */
-  --border: #23252a;
-  --border-strong: #34343a;
-  --border-translucent: rgba(255, 255, 255, 0.05);
+  --border: color-mix(in oklab, var(--blue) 55%, black);
+  --border-strong: color-mix(in oklab, var(--blue) 75%, black);
+  --border-translucent: color-mix(in srgb, var(--blue) 22%, transparent);
 
-  /* text */
-  --ink: #f7f8f8;
-  --ink-2: #d0d6e0;
-  --soft: #8a8f98;
-  --faint: #62666d;
+  /* text (blue → white steps) */
+  --ink: color-mix(in oklab, var(--blue) 8%, white);
+  --ink-2: color-mix(in oklab, var(--blue) 22%, white);
+  --soft: color-mix(in oklab, var(--blue) 48%, white);
+  --faint: color-mix(in oklab, var(--blue) 64%, white);
 
-  /* the one accent — red monochrome */
-  --accent: #e5484d;
-  --accent-hover: #ec5d61;
-  --accent-soft: #2a1416;
+  /* the one accent — the base blue, lifted toward white on dark surfaces so
+     filled controls clear ~3:1 against --surface (measured in visual pass) */
+  --accent: color-mix(in oklab, var(--blue) 72%, white);
+  --accent-hover: color-mix(in oklab, var(--blue) 60%, white);
+  --accent-soft: color-mix(in srgb, var(--blue) 30%, transparent);
   --accent-fg: #ffffff;
-  --brand: #e5484d;
+  --brand: color-mix(in oklab, var(--blue) 72%, white);
 
-  /* semantic — muted, used in icons/dots, never large fills */
+  /* semantic exceptions — small text/icons only, never large fills */
   --pos: #27a644;
   --neg: #eb5757;
   --warn: #f0bf00;
   --orange: #fc7840;
 
-  --ring: #e5484d;
-  --scrollbar: rgba(255, 255, 255, 0.1);
+  --ring: color-mix(in oklab, var(--blue) 55%, white);
+  --scrollbar: color-mix(in srgb, var(--blue) 35%, transparent);
   --overlay: rgba(0, 0, 0, 0.7);
 
   --shadow-low: 0px 2px 4px rgba(0, 0, 0, 0.1);
@@ -64,36 +72,36 @@
 }
 
 :root[data-theme="light"] {
-  --bg: #ffffff;
-  --surface: #f9f8f9;
-  --surface-2: #f4f2f4;
-  --surface-3: #eeedef;
-  --surface-hover: #f0f0f0;
-  --surface-active: #e9e8ea;
-  --translucent: rgba(0, 0, 0, 0.03);
+  --bg: color-mix(in oklab, var(--blue) 2%, white);
+  --surface: color-mix(in oklab, var(--blue) 4%, white);
+  --surface-2: color-mix(in oklab, var(--blue) 7%, white);
+  --surface-3: color-mix(in oklab, var(--blue) 10%, white);
+  --surface-hover: color-mix(in oklab, var(--blue) 9%, white);
+  --surface-active: color-mix(in oklab, var(--blue) 13%, white);
+  --translucent: color-mix(in srgb, var(--blue) 5%, transparent);
 
-  --border: #e9e8ea;
-  --border-strong: #dcdbdd;
-  --border-translucent: rgba(0, 0, 0, 0.05);
+  --border: color-mix(in oklab, var(--blue) 14%, white);
+  --border-strong: color-mix(in oklab, var(--blue) 22%, white);
+  --border-translucent: color-mix(in srgb, var(--blue) 8%, transparent);
 
-  --ink: #282a30;
-  --ink-2: #3c4149;
-  --soft: #6f6e77;
-  --faint: #86848d;
+  --ink: color-mix(in oklab, var(--blue) 85%, black);
+  --ink-2: var(--blue);
+  --soft: color-mix(in oklab, var(--blue) 75%, white);
+  --faint: color-mix(in oklab, var(--blue) 62%, white);
 
-  --accent: #d93036;
-  --accent-hover: #c22f34;
-  --accent-soft: #feebec;
+  --accent: var(--blue);
+  --accent-hover: color-mix(in oklab, var(--blue) 85%, black);
+  --accent-soft: color-mix(in srgb, var(--blue) 12%, transparent);
   --accent-fg: #ffffff;
-  --brand: #d93036;
+  --brand: var(--blue);
 
-  --pos: #27a644;
-  --neg: #eb5757;
+  --pos: #1e8a38;
+  --neg: #d64545;
   --warn: #b08c00;
   --orange: #fc7840;
 
-  --ring: #d93036;
-  --scrollbar: rgba(0, 0, 0, 0.15);
+  --ring: var(--blue);
+  --scrollbar: color-mix(in srgb, var(--blue) 25%, transparent);
   --overlay: rgba(255, 255, 255, 0.65);
 
   --shadow-low: 0px 1px 4px -1px rgba(0, 0, 0, 0.09);
@@ -155,11 +163,12 @@
   --text-2xl: 24px;
   --text-2xl--line-height: 31px;
 
-  --radius-xs: 4px;
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  /* Square everywhere — brutalist mandate (docs/DECISIONS.md). */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
 
   /* Linear's easing library (out-quad is the UI default) */
   --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -179,10 +188,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 17px;
-  height: 17px;
+  min-width: 16px;
+  height: 16px;
   padding: 0 4px;
-  border-radius: 4px;
+  border-radius: 0;
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--faint);
@@ -235,7 +244,6 @@
   }
   *::-webkit-scrollbar-thumb {
     background: var(--scrollbar);
-    border-radius: 3px;
   }
   *::-webkit-scrollbar-track {
     background: transparent;

@@ -2,20 +2,27 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   ApiToken,
   Exercise,
+  Machine,
+  MachineSetting,
   Metric,
   Session,
   SessionExercise,
   SetLog,
 } from "../db/schema";
 import { SEED_CONDITIONS } from "../db/seed-ids";
+import type { MuscleTarget } from "../domain/anatomy";
 import { newId } from "../domain/ids";
 import { generateToken, hashToken } from "../domain/tokens";
 import type { FindingsSessionInput } from "../findings/types";
 import type { ImportedSession, ImportResult } from "../import/types";
 import type {
   CreatedApiToken,
+  ExerciseClassification,
   ExportBundle,
   GhostSet,
+  MachinePatch,
+  NewExerciseOpts,
+  NewMachineInput,
   NewMetricInput,
   NewSetInput,
   Repo,
@@ -35,6 +42,25 @@ function toExercise(r: Row): Exercise {
     name: r.name as string,
     tags: (r.tags as string[] | null) ?? null,
     isCustom: r.is_custom as boolean,
+    machineId: (r.machine_id as string | null) ?? null,
+    jointActions: (r.joint_actions as string[] | null) ?? null,
+    muscleTargets: (r.muscle_targets as MuscleTarget[] | null) ?? null,
+  };
+}
+
+function toMachine(r: Row): Machine {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    name: r.name as string,
+    brand: (r.brand as string | null) ?? null,
+    catalogKey: (r.catalog_key as string | null) ?? null,
+    settings: (r.settings as MachineSetting[] | null) ?? null,
+    notes: (r.notes as string | null) ?? null,
+    photoPath: (r.photo_path as string | null) ?? null,
   };
 }
 
@@ -117,7 +143,10 @@ function throwIf(error: { message: string } | null): void {
 export class SupabaseRepo implements Repo {
   constructor(private client: SupabaseClient) {}
 
-  async createExercise(name: string): Promise<Exercise> {
+  async createExercise(
+    name: string,
+    opts?: NewExerciseOpts,
+  ): Promise<Exercise> {
     const now = Date.now();
     const row = {
       id: newId(),
@@ -125,6 +154,9 @@ export class SupabaseRepo implements Repo {
       updated_at: now,
       name,
       is_custom: true,
+      machine_id: opts?.machineId ?? null,
+      joint_actions: opts?.jointActions?.length ? opts.jointActions : null,
+      muscle_targets: opts?.muscleTargets?.length ? opts.muscleTargets : null,
     };
     const { data, error } = await this.client
       .from("exercises")
@@ -133,6 +165,121 @@ export class SupabaseRepo implements Repo {
       .single();
     throwIf(error);
     return toExercise(data as Row);
+  }
+
+  async listMachines(): Promise<Machine[]> {
+    const { data, error } = await this.client
+      .from("machines")
+      .select()
+      .is("deleted_at", null)
+      .order("name");
+    throwIf(error);
+    return (data as Row[]).map(toMachine);
+  }
+
+  async createMachine(input: NewMachineInput): Promise<Machine> {
+    const now = Date.now();
+    const row = {
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      name: input.name,
+      brand: input.brand ?? null,
+      catalog_key: input.catalogKey ?? null,
+      settings: input.settings?.length ? input.settings : null,
+      notes: input.notes ?? null,
+    };
+    const { data, error } = await this.client
+      .from("machines")
+      .insert(row)
+      .select()
+      .single();
+    throwIf(error);
+    return toMachine(data as Row);
+  }
+
+  async updateMachine(id: string, patch: MachinePatch): Promise<void> {
+    const row: Row = { updated_at: Date.now() };
+    if ("name" in patch && patch.name != null) row.name = patch.name;
+    if ("brand" in patch) row.brand = patch.brand ?? null;
+    if ("catalogKey" in patch) row.catalog_key = patch.catalogKey ?? null;
+    if ("settings" in patch)
+      row.settings = patch.settings?.length ? patch.settings : null;
+    if ("notes" in patch) row.notes = patch.notes ?? null;
+    const { error } = await this.client
+      .from("machines")
+      .update(row)
+      .eq("id", id);
+    throwIf(error);
+  }
+
+  async deleteMachine(id: string): Promise<void> {
+    await this.softDelete("machines", id);
+    const { error } = await this.client
+      .from("exercises")
+      .update({ machine_id: null, updated_at: Date.now() })
+      .eq("machine_id", id);
+    throwIf(error);
+  }
+
+  async setExerciseMachine(
+    exerciseId: string,
+    machineId: string | null,
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("exercises")
+      .update({ machine_id: machineId, updated_at: Date.now() })
+      .eq("id", exerciseId);
+    throwIf(error);
+  }
+
+  async setExerciseClassification(
+    exerciseId: string,
+    classification: ExerciseClassification,
+  ): Promise<void> {
+    const row: Row = { updated_at: Date.now() };
+    if ("jointActions" in classification)
+      row.joint_actions = classification.jointActions?.length
+        ? classification.jointActions
+        : null;
+    if ("muscleTargets" in classification)
+      row.muscle_targets = classification.muscleTargets?.length
+        ? classification.muscleTargets
+        : null;
+    const { error } = await this.client
+      .from("exercises")
+      .update(row)
+      .eq("id", exerciseId);
+    throwIf(error);
+  }
+
+  private async ownerId(): Promise<string> {
+    const { data, error } = await this.client.auth.getUser();
+    if (error || !data.user) throw new Error(error?.message ?? "Not signed in");
+    return data.user.id;
+  }
+
+  async uploadMachinePhoto(machineId: string, file: Blob): Promise<void> {
+    const uid = await this.ownerId();
+    const path = `${uid}/${machineId}.jpg`;
+    const { error: uploadError } = await this.client.storage
+      .from("machine-photos")
+      .upload(path, file, { upsert: true, contentType: "image/jpeg" });
+    throwIf(uploadError);
+    const { error } = await this.client
+      .from("machines")
+      .update({ photo_path: path, updated_at: Date.now() })
+      .eq("id", machineId);
+    throwIf(error);
+  }
+
+  async machinePhotoUrl(machine: Machine): Promise<string | null> {
+    if (!machine.photoPath) return null;
+    const { data, error } = await this.client.storage
+      .from("machine-photos")
+      .createSignedUrl(machine.photoPath, 60 * 60);
+    throwIf(error);
+    return data?.signedUrl ?? null;
   }
 
   async listExercises(): Promise<Exercise[]> {
@@ -552,20 +699,29 @@ export class SupabaseRepo implements Repo {
   }
 
   async exportAll(): Promise<ExportBundle> {
-    const [exercises, metrics, sessions, sessionExercises, setLogs] =
+    const [exercises, machines, metrics, sessions, sessionExercises, setLogs] =
       await Promise.all([
         this.client.from("exercises").select().is("deleted_at", null),
+        this.client.from("machines").select().is("deleted_at", null),
         this.client.from("metrics").select().is("deleted_at", null),
         this.client.from("sessions").select().is("deleted_at", null),
         this.client.from("session_exercises").select().is("deleted_at", null),
         this.client.from("set_logs").select().is("deleted_at", null),
       ]);
-    for (const r of [exercises, metrics, sessions, sessionExercises, setLogs])
+    for (const r of [
+      exercises,
+      machines,
+      metrics,
+      sessions,
+      sessionExercises,
+      setLogs,
+    ])
       throwIf(r.error);
     return {
-      schemaVersion: 1,
+      schemaVersion: 2,
       exportedAt: Date.now(),
       exercises: (exercises.data as Row[]).map(toExercise),
+      machines: (machines.data as Row[]).map(toMachine),
       metrics: (metrics.data as Row[]).map(toMetric),
       sessions: (sessions.data as Row[]).map(toSession),
       sessionExercises: (sessionExercises.data as Row[]).map(toSessionExercise),

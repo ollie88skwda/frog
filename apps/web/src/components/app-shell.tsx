@@ -62,9 +62,9 @@ export function AppShell() {
             className="rounded-md p-1 text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
           >
             {theme === "dark" ? (
-              <Sun className="size-3.5" />
+              <Sun className="size-4" />
             ) : (
-              <Moon className="size-3.5" />
+              <Moon className="size-4" />
             )}
           </button>
         </div>
@@ -80,7 +80,7 @@ export function AppShell() {
               end={end}
               className={({ isActive }) =>
                 cn(
-                  "flex h-7 items-center gap-2 rounded-md px-2 text-sm transition-colors duration-150 ease-(--ease-out-quad)",
+                  "flex h-8 items-center gap-2 rounded-md px-2 text-sm transition-colors duration-150 ease-(--ease-out-quad)",
                   isActive
                     ? "bg-surface-active text-ink"
                     : "text-soft hover:bg-surface-hover hover:text-ink",
@@ -94,7 +94,7 @@ export function AppShell() {
           ))}
         </nav>
 
-        <div className="mt-auto flex items-center gap-1.5 px-4 py-3 text-2xs text-faint">
+        <div className="mt-auto flex items-center gap-2 px-4 py-3 text-2xs text-faint">
           <kbd className="keycap">⌘K</kbd>
           <span>for commands</span>
         </div>
@@ -113,7 +113,7 @@ export function AppShell() {
             end={end}
             className={({ isActive }) =>
               cn(
-                "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-2xs",
+                "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-1 text-2xs",
                 isActive ? "text-accent" : "text-soft",
               )
             }

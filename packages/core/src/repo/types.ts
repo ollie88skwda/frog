@@ -1,11 +1,14 @@
 import type {
   ApiToken,
   Exercise,
+  Machine,
+  MachineSetting,
   Metric,
   Session,
   SessionExercise,
   SetLog,
 } from "../db/schema";
+import type { MuscleTarget } from "../domain/anatomy";
 import type { FindingsSessionInput } from "../findings/types";
 import type { ImportedSession, ImportResult } from "../import/types";
 
@@ -13,6 +16,7 @@ export type ExportBundle = {
   schemaVersion: number;
   exportedAt: number;
   exercises: Exercise[];
+  machines: Machine[]; // photos not included in v1 exports
   metrics: Metric[];
   sessions: Session[];
   sessionExercises: SessionExercise[];
@@ -37,6 +41,27 @@ export type NewMetricInput = {
 
 export type GhostSet = { weightKg: number | null; reps: number | null };
 
+export type NewMachineInput = {
+  name: string;
+  brand?: string | null;
+  catalogKey?: string | null;
+  settings?: MachineSetting[] | null;
+  notes?: string | null;
+};
+
+export type MachinePatch = Partial<NewMachineInput>;
+
+export type NewExerciseOpts = {
+  jointActions?: string[] | null;
+  muscleTargets?: MuscleTarget[] | null;
+  machineId?: string | null;
+};
+
+export type ExerciseClassification = {
+  jointActions?: string[] | null;
+  muscleTargets?: MuscleTarget[] | null;
+};
+
 export type LoggedSet = {
   id: string;
   setNo: number;
@@ -60,8 +85,31 @@ export type SessionExerciseDetail = {
  * mobile/offline SqliteRepo slots in behind the same seam.
  */
 export interface Repo {
-  createExercise(name: string): Promise<Exercise>;
+  createExercise(name: string, opts?: NewExerciseOpts): Promise<Exercise>;
   listExercises(): Promise<Exercise[]>;
+
+  // Machines: the user's gym equipment — settings entered once, shown in
+  // every session (setup memory). No seed machines; all rows owner-scoped.
+  listMachines(): Promise<Machine[]>;
+  createMachine(input: NewMachineInput): Promise<Machine>;
+  /** Partial update; `settings` replaces the whole array when provided. */
+  updateMachine(id: string, patch: MachinePatch): Promise<void>;
+  /** Soft delete + detaches the owner's exercises referencing it. */
+  deleteMachine(id: string): Promise<void>;
+  /** Custom exercises only (seeds read-only under RLS). null detaches. */
+  setExerciseMachine(
+    exerciseId: string,
+    machineId: string | null,
+  ): Promise<void>;
+  /** Joint actions + muscle targets (custom exercises only). */
+  setExerciseClassification(
+    exerciseId: string,
+    classification: ExerciseClassification,
+  ): Promise<void>;
+  /** Uploads the user's own photo (already resized) and stores its path. */
+  uploadMachinePhoto(machineId: string, file: Blob): Promise<void>;
+  /** Short-lived signed URL for the machine's photo, or null if none. */
+  machinePhotoUrl(machine: Machine): Promise<string | null>;
 
   startSession(title?: string): Promise<Session>;
   /** Stamps ended_at. Active session = ended_at null. */

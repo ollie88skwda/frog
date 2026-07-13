@@ -20,13 +20,13 @@ export function DialogContent({
         className={cn(
           "float-in floating fixed z-50 w-full",
           // Mobile: bottom sheet. ≥md: centered card.
-          "max-md:inset-x-0 max-md:bottom-0 max-md:rounded-t-xl max-md:rounded-b-none max-md:border-b-0",
-          "md:top-[20%] md:left-1/2 md:max-w-md md:-translate-x-1/2 md:rounded-xl",
+          "max-md:inset-x-0 max-md:bottom-0 max-md:border-b-0",
+          "md:top-[20%] md:left-1/2 md:max-w-md md:-translate-x-1/2",
           className,
         )}
         {...props}
       >
-        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+        <div className="flex items-center justify-between border-b border-border px-4 py-2">
           <DialogPrimitive.Title className="text-sm font-medium">
             {title}
           </DialogPrimitive.Title>

@@ -68,7 +68,7 @@ export function TrainFindingsCard() {
       data-testid="train-findings-card"
     >
       <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
-        <FlaskConical className="size-3.5" />
+        <FlaskConical className="size-4" />
         Findings
       </div>
       <div className="mt-2">{body}</div>

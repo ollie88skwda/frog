@@ -95,13 +95,13 @@ export function CommandPalette() {
         placeholder="Type a command…"
         className="h-11 w-full border-b border-border bg-transparent px-4 text-sm text-ink placeholder:text-faint focus:outline-none"
       />
-      <Command.List className="max-h-72 overflow-y-auto p-1.5">
-        <Command.Empty className="px-2.5 py-6 text-center text-xs text-faint">
+      <Command.List className="max-h-72 overflow-y-auto p-1">
+        <Command.Empty className="px-2 py-6 text-center text-xs text-faint">
           No results.
         </Command.Empty>
         <Command.Group
           heading="Go to"
-          className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-faint [&_[cmdk-group-heading]]:uppercase"
+          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-faint [&_[cmdk-group-heading]]:uppercase"
         >
           {nav.map((item) => (
             <PaletteItem key={item.label} item={item} onRun={run} />
@@ -109,7 +109,7 @@ export function CommandPalette() {
         </Command.Group>
         <Command.Group
           heading="Actions"
-          className="[&_[cmdk-group-heading]]:px-2.5 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-faint [&_[cmdk-group-heading]]:uppercase"
+          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1 [&_[cmdk-group-heading]]:text-2xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-faint [&_[cmdk-group-heading]]:uppercase"
         >
           {actions.map((item) => (
             <PaletteItem key={item.label} item={item} onRun={run} />
@@ -132,7 +132,7 @@ function PaletteItem({
     <Command.Item
       keywords={item.keywords ? [item.keywords] : undefined}
       onSelect={() => onRun(item.action)}
-      className="flex h-8 cursor-default items-center gap-2.5 rounded-md px-2.5 text-sm text-ink data-[selected=true]:bg-surface-hover"
+      className="flex h-8 cursor-default items-center gap-2 rounded-md px-2 text-sm text-ink data-[selected=true]:bg-surface-hover"
     >
       <Icon className="size-4 shrink-0 text-soft" />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>

@@ -16,9 +16,9 @@ export default function HistoryScreen() {
 
       <div className="mt-4 overflow-hidden rounded-lg border border-border bg-surface">
         {isLoading ? (
-          <p className="px-3.5 py-6 text-center text-xs text-faint">Loading…</p>
+          <p className="px-4 py-6 text-center text-xs text-faint">Loading…</p>
         ) : sessions.length === 0 ? (
-          <p className="px-3.5 py-6 text-center text-xs text-faint">
+          <p className="px-4 py-6 text-center text-xs text-faint">
             No sessions yet — start one from Train.
           </p>
         ) : (
@@ -28,9 +28,9 @@ export default function HistoryScreen() {
                 <Link
                   to={`/history/${s.id}`}
                   data-testid={`history-row-${s.id}`}
-                  className="flex h-11 items-center justify-between px-3.5 transition-colors md:h-9 duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+                  className="flex h-11 items-center justify-between px-4 transition-colors md:h-8 duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
                 >
-                  <span className="flex min-w-0 items-center gap-2.5">
+                  <span className="flex min-w-0 items-center gap-2">
                     <StatusRing
                       state={s.endedAt != null ? "done" : "partial"}
                       progress={0.5}
@@ -43,7 +43,7 @@ export default function HistoryScreen() {
                     <span className="num text-xs text-faint">
                       {formatDate(s.startedAt)} · {formatTime(s.startedAt)}
                     </span>
-                    <ChevronRight className="size-3.5 text-faint" />
+                    <ChevronRight className="size-4 text-faint" />
                   </span>
                 </Link>
               </li>
