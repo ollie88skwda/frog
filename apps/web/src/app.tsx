@@ -1,5 +1,59 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
+import { BrowserRouter, Route, Routes } from "react-router";
+import { AppShell } from "@/components/app-shell";
+import { AuthProvider, RequireAuth } from "@/lib/auth";
+import { RepoProvider } from "@/lib/repo";
+
+import HomeScreen from "@/screens/home";
+
+const AuthScreen = lazy(() => import("@/screens/auth"));
+const TrainScreen = lazy(() => import("@/screens/train"));
+const ProfileScreen = lazy(() => import("@/screens/profile"));
+const SessionScreen = lazy(() => import("@/screens/session"));
+const LibraryScreen = lazy(() => import("@/screens/library"));
+const HistoryScreen = lazy(() => import("@/screens/history"));
+const HistoryDetailScreen = lazy(() => import("@/screens/history-detail"));
+const FindingsScreen = lazy(() => import("@/screens/findings"));
+const SettingsScreen = lazy(() => import("@/screens/settings"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: 2, staleTime: 15_000 },
+    mutations: { retry: 3 },
+  },
+});
+
 export function App() {
   return (
-    <div style={{ backgroundColor: "#034078", width: "100vw", height: "100vh" }} />
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <RepoProvider>
+          <BrowserRouter>
+            <Suspense fallback={null}>
+              <Routes>
+                <Route path="/auth" element={<AuthScreen />} />
+                <Route element={<RequireAuth />}>
+                  <Route element={<AppShell />}>
+                    <Route index element={<HomeScreen />} />
+                    <Route path="train" element={<TrainScreen />} />
+                    <Route path="profile" element={<ProfileScreen />} />
+                    <Route path="session/:id" element={<SessionScreen />} />
+                    <Route path="library" element={<LibraryScreen />} />
+                    <Route path="history" element={<HistoryScreen />} />
+                    <Route
+                      path="history/:id"
+                      element={<HistoryDetailScreen />}
+                    />
+                    <Route path="findings" element={<FindingsScreen />} />
+                    <Route path="settings" element={<SettingsScreen />} />
+                  </Route>
+                </Route>
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </RepoProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
