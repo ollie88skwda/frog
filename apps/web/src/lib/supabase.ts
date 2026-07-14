@@ -1,11 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const url = import.meta.env.VITE_SUPABASE_URL || "https://placeholder.supabase.co";
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "placeholder";
 
-if (!url || !anonKey) {
-  throw new Error(
-    "Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY — copy .env.example to .env.local (values from `supabase status`).",
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.warn(
+    "Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY — UI will load but data fetching will fail.",
   );
 }
 
