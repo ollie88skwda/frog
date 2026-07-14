@@ -5,9 +5,11 @@ import { AppShell } from "@/components/app-shell";
 import { AuthProvider, RequireAuth } from "@/lib/auth";
 import { RepoProvider } from "@/lib/repo";
 
-import TrainScreen from "@/screens/train";
+import HomeScreen from "@/screens/home";
 
 const AuthScreen = lazy(() => import("@/screens/auth"));
+const TrainScreen = lazy(() => import("@/screens/train"));
+const ProfileScreen = lazy(() => import("@/screens/profile"));
 const SessionScreen = lazy(() => import("@/screens/session"));
 const LibraryScreen = lazy(() => import("@/screens/library"));
 const HistoryScreen = lazy(() => import("@/screens/history"));
@@ -33,7 +35,9 @@ export function App() {
                 <Route path="/auth" element={<AuthScreen />} />
                 <Route element={<RequireAuth />}>
                   <Route element={<AppShell />}>
-                    <Route index element={<TrainScreen />} />
+                    <Route index element={<HomeScreen />} />
+                    <Route path="train" element={<TrainScreen />} />
+                    <Route path="profile" element={<ProfileScreen />} />
                     <Route path="session/:id" element={<SessionScreen />} />
                     <Route path="library" element={<LibraryScreen />} />
                     <Route path="history" element={<HistoryScreen />} />

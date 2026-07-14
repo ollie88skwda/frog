@@ -24,6 +24,8 @@ export function setsCsv(bundle: ExportBundle): string {
     "weight_kg",
     "reps",
     "rir",
+    "rpe",
+    "rest_sec",
     "note",
     ...conditionMetrics.map((m) => m.name),
   ];
@@ -43,6 +45,8 @@ export function setsCsv(bundle: ExportBundle): string {
         sl.weightKg ?? "",
         sl.reps ?? "",
         sl.rir ?? "",
+        sl.rpe ?? "",
+        sl.restSec ?? "",
         sl.note ?? "",
         ...conditionMetrics.map(
           (m) => (conditions as Record<string, unknown>)[m.id] ?? "",

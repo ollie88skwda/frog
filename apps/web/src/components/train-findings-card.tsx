@@ -8,7 +8,7 @@ import { useFindingsData, useMetrics } from "@/lib/queries";
 export function TrainFindingsCard() {
   const { data: sessions = [], isLoading } = useFindingsData();
   const { data: metrics = [] } = useMetrics();
-  const { trends, countdowns, conditions } = useMemo(
+  const { trends, countdowns, conditions, conditionCountdowns } = useMemo(
     () => computeFindings(sessions, metrics),
     [sessions, metrics],
   );
@@ -18,6 +18,7 @@ export function TrainFindingsCard() {
   const top = conditions[0];
   const trend = trends[0];
   const next = countdowns[0];
+  const nextCond = conditionCountdowns[0];
 
   let body: React.ReactNode;
   if (top) {
@@ -50,6 +51,14 @@ export function TrainFindingsCard() {
         <span className="num text-ink">{next.sessionsNeeded}</span> more{" "}
         {next.sessionsNeeded === 1 ? "session" : "sessions"} of{" "}
         {next.exerciseName} until your first finding
+      </p>
+    );
+  } else if (nextCond) {
+    body = (
+      <p className="text-sm text-soft" data-testid="findings-countdown">
+        <span className="num text-ink">{nextCond.sessionsNeeded}</span> more{" "}
+        {nextCond.sessionsNeeded === 1 ? "session" : "sessions"} with{" "}
+        {nextCond.conditionName} logged until a correlation
       </p>
     );
   } else {

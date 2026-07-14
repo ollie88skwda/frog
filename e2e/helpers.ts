@@ -22,7 +22,7 @@ export async function signIn(page: Page) {
     },
     { email: EMAIL, password: PASSWORD },
   );
-  await page.goto("/");
+  await page.goto("/train");
   await expect(page.getByTestId("start-session-btn")).toBeVisible();
 }
 

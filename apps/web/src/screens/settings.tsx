@@ -1,4 +1,4 @@
-import { type ApiToken, setsCsv } from "@sbl/core";
+import { type ApiToken, setsCsv, unitLabel } from "@sbl/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Download } from "lucide-react";
 import { useState } from "react";
@@ -70,7 +70,7 @@ export default function SettingsScreen() {
                   : "text-soft hover:bg-surface-hover",
               )}
             >
-              {u}
+              {unitLabel(u)}
             </button>
           ))}
         </div>

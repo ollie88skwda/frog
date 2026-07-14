@@ -54,12 +54,27 @@ test("machine from catalog: settings remembered into the session setup strip", a
   await page.getByTestId("exercise-name-input").fill(EX);
   await page.getByTestId("add-exercise-btn").click();
   await waitForExercise(page, EX);
-  await page.getByTestId(`exercise-row-${EX}`).click();
+  await page.getByTestId(`exercise-row-toggle-${EX}`).click();
   const machineSelect = page.getByTestId(`machine-select-${EX}`);
   await machineSelect.selectOption({ label: `Matrix · ${MACHINE}` });
 
+  // The link is a background write; wait for it to land before the full-page
+  // nav below (page.goto tears down the document and aborts in-flight fetches).
+  await expect
+    .poll(async () =>
+      page.evaluate(async (name) => {
+        const { data } = await window.__sbl.supabase
+          .from("exercises")
+          .select("machine_id")
+          .eq("name", name)
+          .maybeSingle();
+        return (data?.machine_id as string) ?? null;
+      }, EX),
+    )
+    .not.toBeNull();
+
   // In a session, the setup strip shows the remembered settings.
-  await page.goto("/");
+  await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${EX}`).click();
@@ -82,7 +97,8 @@ test("RIR InfoTip opens the lesson", async ({ page }) => {
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId("pick-exercise-Squat").click();
-  await page.getByRole("button", { name: "+RIR" }).click();
+  await page.getByTestId("set-0-more").click();
+  await page.getByTestId("set-0-add-rir").click();
   await page.getByTestId("infotip-rir").click();
   await expect(page.getByText("RIR — reps in reserve")).toBeVisible();
   await expect(page.getByText(/reps you could still do/i)).toBeVisible();

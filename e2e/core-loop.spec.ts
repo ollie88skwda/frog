@@ -27,7 +27,7 @@ test("core loop: add exercise, pick in session, persistence", async ({ page }) =
   await waitForExercise(page, EX);
 
   // 2) Train: start a session, pick the exercise (writes a session_exercise).
-  await page.goto("/");
+  await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${EX}`).click();
@@ -53,7 +53,7 @@ test("log sets persists to set_logs, and ghost prefill shows the prior session",
   await waitForExercise(page, EX);
 
   // Session 1: log one set (135 x 5) — row commits on blur once both are set.
-  await page.goto("/");
+  await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   const before = await rowCount(page, "set_logs");
@@ -67,7 +67,7 @@ test("log sets persists to set_logs, and ghost prefill shows the prior session",
   await expect(page.getByTestId("set-1-weight")).toBeVisible();
 
   // Session 2: ghost prefill surfaces the prior session's values as placeholders.
-  await page.goto("/");
+  await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   await expect(page.getByTestId("set-0-weight")).toHaveAttribute("placeholder", "135");

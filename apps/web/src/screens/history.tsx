@@ -19,7 +19,7 @@ export default function HistoryScreen() {
           <p className="px-4 py-6 text-center text-xs text-faint">Loading…</p>
         ) : sessions.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-faint">
-            No sessions yet — start one from Train.
+            No sessions yet — start one from Training.
           </p>
         ) : (
           <ul className="divide-y divide-border">

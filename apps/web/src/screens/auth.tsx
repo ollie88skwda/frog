@@ -32,6 +32,18 @@ export default function AuthScreen() {
     }
   }
 
+  // Dev-only shortcut: sign in as a fixed local user, self-provisioning it on
+  // first use (local Supabase has confirmations off → signUp returns a session).
+  // Guarded by import.meta.env.DEV, so it never exists in a production build.
+  async function devBypass() {
+    setError(null);
+    const creds = { email: "dev@sbl.test", password: "dev-password-123" };
+    const signIn = await supabase.auth.signInWithPassword(creds);
+    if (!signIn.error) return;
+    const signUp = await supabase.auth.signUp(creds);
+    if (signUp.error) setError(signUp.error.message);
+  }
+
   return (
     <div className="flex min-h-dvh items-center justify-center bg-bg px-4">
       <div className="w-full max-w-sm">
@@ -87,6 +99,17 @@ export default function AuthScreen() {
             </Button>
             {error && <p className="text-xs text-neg">{error}</p>}
           </form>
+        )}
+
+        {import.meta.env.DEV && phase !== "sent" && (
+          <button
+            type="button"
+            onClick={() => void devBypass()}
+            data-testid="dev-bypass-btn"
+            className="mt-3 w-full rounded-md border border-dashed border-border py-2 text-xs text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-soft"
+          >
+            Dev bypass — sign in as dev@sbl.test
+          </button>
         )}
       </div>
     </div>

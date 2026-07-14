@@ -18,6 +18,8 @@ const bundle: ExportBundle = {
       machineId: null,
       jointActions: null,
       muscleTargets: null,
+      imageUrl: null,
+      imageAttribution: null,
     },
   ],
   machines: [],
@@ -29,6 +31,7 @@ const bundle: ExportBundle = {
       name: "Sleep (h)",
       type: "number",
       scope: "session",
+      unit: null,
       exerciseIds: null,
     },
     {
@@ -38,6 +41,7 @@ const bundle: ExportBundle = {
       name: "Seat",
       type: "number",
       scope: "set",
+      unit: null,
       exerciseIds: null,
     },
   ],
@@ -50,6 +54,7 @@ const bundle: ExportBundle = {
       startedAt: Date.UTC(2026, 0, 2, 10, 0, 0),
       endedAt: null,
       conditionValues: { m1: 7.5 },
+      notes: null,
     },
   ],
   sessionExercises: [
@@ -72,6 +77,8 @@ const bundle: ExportBundle = {
       weightKg: 100,
       reps: 5,
       rir: 2,
+      rpe: 8,
+      restSec: 90,
       note: 'felt "heavy"',
       metricValues: null,
       completed: true,
@@ -84,10 +91,10 @@ describe("setsCsv", () => {
     const csv = setsCsv(bundle);
     const [header, row] = csv.split("\n");
     expect(header).toBe(
-      "session_started_at,session_title,exercise,set_no,weight_kg,reps,rir,note,Sleep (h)",
+      "session_started_at,session_title,exercise,set_no,weight_kg,reps,rir,rpe,rest_sec,note,Sleep (h)",
     );
     expect(row).toBe(
-      '2026-01-02T10:00:00.000Z,,"Bench, Press",0,100,5,2,"felt ""heavy""",7.5',
+      '2026-01-02T10:00:00.000Z,,"Bench, Press",0,100,5,2,8,90,"felt ""heavy""",7.5',
     );
   });
 

@@ -499,6 +499,37 @@ export function ratingsForMuscle(muscle: string): ActionRating[] {
   );
 }
 
+export type ExerciseJointActionRating = {
+  jointAction: string;
+  tier: Tier | null; // null when no ACTION_RATINGS entry matches
+  muscle: string | null;
+};
+
+/**
+ * Per-exercise joint-action tiers: for each of the exercise's joint actions,
+ * the best (lowest-tier-number) ACTION_RATINGS match among the exercise's own
+ * target muscles. E.g. Front Squat (quads, glutes) × knee-extension → S
+ * (quads), × hip-extension → S (glutes). Falls back to tier: null (label only)
+ * when no rating exists for that muscle/action pair.
+ */
+export function ratingsForExercise(exercise: {
+  jointActions: string[] | null;
+  muscleTargets: MuscleTarget[] | null;
+}): ExerciseJointActionRating[] {
+  const muscles = exercise.muscleTargets?.map((t) => t.muscle) ?? [];
+  return (exercise.jointActions ?? []).map((jointAction) => {
+    const matches = ACTION_RATINGS.filter(
+      (r) => r.jointAction === jointAction && muscles.includes(r.muscle),
+    ).sort((a, b) => TIER_ORDER[a.tier] - TIER_ORDER[b.tier]);
+    const best = matches[0];
+    return {
+      jointAction,
+      tier: best?.tier ?? null,
+      muscle: best?.muscle ?? null,
+    };
+  });
+}
+
 export type MuscleGroup<T> = { key: string; label: string; items: T[] };
 
 /**

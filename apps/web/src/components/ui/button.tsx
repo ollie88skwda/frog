@@ -14,7 +14,9 @@ const buttonVariants = cva(
         // Linear's signature secondary control: translucent fill + inset hairlines.
         outline:
           "bg-translucent text-ink shadow-(--inset-control) hover:bg-surface-hover",
-        ghost: "text-soft hover:bg-surface-hover hover:text-ink",
+        // Even the lightest control keeps a visible surface — no bare
+        // text-only buttons (AGENTS.md: every button has a background).
+        ghost: "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
         danger:
           "text-neg bg-translucent shadow-(--inset-control) hover:bg-neg/10",
       },

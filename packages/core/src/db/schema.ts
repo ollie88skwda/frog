@@ -8,6 +8,7 @@ import {
   pgTable,
   real,
   text,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import type { MuscleTarget } from "../domain/anatomy";
@@ -60,6 +61,11 @@ export const exercises = pgTable(
     // grouping (first = primary); jointActions are display labels.
     jointActions: jsonb("joint_actions").$type<string[]>(),
     muscleTargets: jsonb("muscle_targets").$type<MuscleTarget[]>(),
+    // Reference diagram (seed exercises only, docs/DECISIONS.md): hotlinked
+    // Wikimedia Commons URL, all same Everkinetic CC BY-SA 3.0 line-art set
+    // for a consistent visual style. Null for custom exercises in v1.
+    imageUrl: text("image_url"),
+    imageAttribution: text("image_attribution"),
   },
   (t) => [index("exercises_owner_idx").on(t.ownerId)],
 );
@@ -72,11 +78,60 @@ export const metrics = pgTable(
     name: text("name").notNull(),
     type: text("type").notNull(), // 'number' | 'scale' | 'text' | 'checkbox'
     scope: text("scope").notNull(), // 'set' | 'session'
+    // Optional display unit for number metrics (kg, mg, g, h…), shown as a suffix.
+    unit: text("unit"),
     // Set-scope metrics: which exercises show this metric. Lives on the metric
     // (user-owned) rather than the exercise so it works on seed exercises too.
     exerciseIds: jsonb("exercise_ids").$type<string[]>(),
   },
   (t) => [index("metrics_owner_idx").on(t.ownerId)],
+);
+
+// A user's tracked conditions — the "experiment variables" pre-loaded into
+// every session. A row records an EXPLICIT choice; its absence means "use the
+// default" (see DEFAULT_TRACKED_CONDITIONS in domain/conditions). This lets us
+// tell a new user (no rows → defaults show) apart from one who removed a
+// default (a tracked=false row hides it), without an auth-schema trigger.
+export const trackedConditions = pgTable(
+  "tracked_conditions",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    metricId: uuid("metric_id")
+      .notNull()
+      .references(() => metrics.id),
+    tracked: boolean("tracked").notNull().default(true),
+    position: integer("position"),
+  },
+  (t) => [
+    index("tracked_conditions_owner_idx").on(t.ownerId),
+    uniqueIndex("tracked_conditions_owner_metric_idx").on(
+      t.ownerId,
+      t.metricId,
+    ),
+  ],
+);
+
+// A user's favorited exercises (works on shared seed rows too, since this is
+// a separate owner-scoped table, not a column on the shared exercise row).
+// One row per (owner, exercise); presence + favorite=true means favorited.
+export const exerciseFavorites = pgTable(
+  "exercise_favorites",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    exerciseId: uuid("exercise_id")
+      .notNull()
+      .references(() => exercises.id),
+    favorite: boolean("favorite").notNull().default(true),
+  },
+  (t) => [
+    index("exercise_favorites_owner_idx").on(t.ownerId),
+    uniqueIndex("exercise_favorites_owner_exercise_idx").on(
+      t.ownerId,
+      t.exerciseId,
+    ),
+  ],
 );
 
 export const sessions = pgTable(
@@ -88,6 +143,7 @@ export const sessions = pgTable(
     startedAt: bigint("started_at", { mode: "number" }).notNull(),
     endedAt: bigint("ended_at", { mode: "number" }),
     conditionValues: jsonb("condition_values").$type<Record<string, unknown>>(), // {metricId: value}
+    notes: text("notes"), // freeform per-session notes (not tied to a condition)
   },
   (t) => [
     index("sessions_owner_started_idx").on(t.ownerId, t.startedAt.desc()),
@@ -130,7 +186,9 @@ export const setLogs = pgTable(
     weightKg: real("weight_kg"), // canonical kg; kg/lb is a display setting
     reps: integer("reps"),
     rir: integer("rir"),
+    rpe: real("rpe"), // 1–10 perceived exertion (halves allowed); RIR ≈ 10 − RPE
     note: text("note"),
+    restSec: integer("rest_sec"), // seconds rested before this set (null = first/unknown)
     metricValues: jsonb("metric_values").$type<Record<string, unknown>>(), // {metricId: value}
     completed: boolean("completed").notNull().default(false),
   },
@@ -159,6 +217,8 @@ export const apiTokens = pgTable(
 export type Machine = typeof machines.$inferSelect;
 export type Exercise = typeof exercises.$inferSelect;
 export type Metric = typeof metrics.$inferSelect;
+export type TrackedCondition = typeof trackedConditions.$inferSelect;
+export type ExerciseFavorite = typeof exerciseFavorites.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
 export type SessionExercise = typeof sessionExercises.$inferSelect;
 export type SetLog = typeof setLogs.$inferSelect;

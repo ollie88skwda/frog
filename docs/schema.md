@@ -15,6 +15,19 @@ API, and the MCP server. DDL source of truth: `packages/core/src/db/schema.ts`
 
 ## Tables
 
+### machines
+The user's gym equipment — settings entered once, recalled in every session.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| name | text | |
+| brand | text? | |
+| catalog_key | text? | source key when added from the catalog |
+| settings | jsonb | `{label, value}[]` remembered setup |
+| notes | text? | freeform setup notes |
+| photo_path | text? | storage path of the user's photo |
+| owner_id | uuid | |
+
 ### exercises
 | column | type | notes |
 |---|---|---|
@@ -22,6 +35,11 @@ API, and the MCP server. DDL source of truth: `packages/core/src/db/schema.ts`
 | name | text | |
 | tags | jsonb | string[], light tagging (v1) |
 | is_custom | boolean | false = seed row |
+| machine_id | uuid? | FK → machines |
+| joint_actions | jsonb | string[], display labels |
+| muscle_targets | jsonb | `{muscle, tier}[]`; first = primary (library grouping) |
+| image_url | text? | reference diagram (seed rows only) |
+| image_attribution | text? | image credit |
 | owner_id | uuid? | null = global seed |
 | created_at / updated_at / deleted_at | bigint ms | |
 
@@ -40,6 +58,27 @@ on `set_logs`; custom metrics are rows here.
 Seeded condition metrics (fixed ids, see `packages/core/src/db/seed-ids.ts`):
 Sleep (h), Bodyweight, Pre-workout carbs (g), Caffeine (mg), Stress (1–10),
 Last meal (h before), Meal note.
+
+### tracked_conditions
+A user's "experiment variables" pre-loaded into every session. A row is an
+explicit choice; its absence means "use the defaults" (Sleep + Stress).
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| metric_id | uuid | FK → metrics (session-scope) |
+| tracked | boolean | false = hidden from future sessions |
+| position | integer? | display order |
+| owner_id | uuid | one row per (owner, metric) |
+
+### exercise_favorites
+A user's favorited exercises (a separate owner-scoped table, so it works on
+shared seed rows too).
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| exercise_id | uuid | FK → exercises |
+| favorite | boolean | presence + true = favorited |
+| owner_id | uuid | one row per (owner, exercise) |
 
 ### sessions
 | column | type | notes |
@@ -69,6 +108,8 @@ One exercise performed within one session, ordered.
 | weight_kg | real? | canonical kg |
 | reps | integer? | |
 | rir | integer? | reps in reserve |
+| rpe | real? | 1–10 perceived exertion (halves allowed) |
+| rest_sec | integer? | seconds rested before this set (null = first/unknown) |
 | note | text? | |
 | metric_values | jsonb | {metric_id: value} for enabled set metrics |
 | completed | boolean | |

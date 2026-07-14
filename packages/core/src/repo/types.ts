@@ -1,12 +1,14 @@
 import type {
   ApiToken,
   Exercise,
+  ExerciseFavorite,
   Machine,
   MachineSetting,
   Metric,
   Session,
   SessionExercise,
   SetLog,
+  TrackedCondition,
 } from "../db/schema";
 import type { MuscleTarget } from "../domain/anatomy";
 import type { FindingsSessionInput } from "../findings/types";
@@ -29,14 +31,21 @@ export type NewSetInput = {
   weightKg: number | null;
   reps: number | null;
   rir?: number | null;
+  rpe?: number | null;
   note?: string | null;
+  /** Seconds rested before this set (time since the previous set committed). */
+  restSec?: number | null;
   metricValues?: Record<string, unknown> | null;
 };
 
+export type MetricType = "number" | "scale" | "text" | "checkbox";
+
 export type NewMetricInput = {
   name: string;
-  type: "number" | "scale" | "text" | "checkbox";
+  type: MetricType;
   scope: "set" | "session";
+  /** Optional display unit for number metrics (kg, mg, g, h…). */
+  unit?: string | null;
 };
 
 export type GhostSet = { weightKg: number | null; reps: number | null };
@@ -68,7 +77,9 @@ export type LoggedSet = {
   weightKg: number | null;
   reps: number | null;
   rir: number | null;
+  rpe: number | null;
   note: string | null;
+  restSec: number | null;
 };
 
 export type SessionExerciseDetail = {
@@ -114,6 +125,8 @@ export interface Repo {
   startSession(title?: string): Promise<Session>;
   /** Stamps ended_at. Active session = ended_at null. */
   endSession(sessionId: string): Promise<void>;
+  /** Backdate/correct a session's start time (ms epoch). */
+  updateSessionStartedAt(sessionId: string, startedAt: number): Promise<void>;
   /** Newest open session (ended_at null), if any. */
   activeSession(): Promise<Session | null>;
   addExerciseToSession(sessionId: string, exerciseId: string): Promise<string>;
@@ -153,6 +166,8 @@ export interface Repo {
     sessionId: string,
     values: Record<string, unknown>,
   ): Promise<void>;
+  /** Sets the session's freeform notes (null clears them). */
+  updateSessionNotes(sessionId: string, notes: string | null): Promise<void>;
 
   /** Newest-first page of sessions (history). */
   listSessions(limit: number, offset: number): Promise<Session[]>;
@@ -164,6 +179,12 @@ export interface Repo {
   createMetric(input: NewMetricInput): Promise<Metric>;
   /** Which exercises a set-scope metric is enabled for (stored on the metric row). */
   setMetricExercises(metricId: string, exerciseIds: string[]): Promise<void>;
+
+  // Tracked conditions: the user's "experiment variables" pre-loaded into every
+  // session. A row is an explicit choice; absence = use the default set.
+  listTrackedConditions(): Promise<TrackedCondition[]>;
+  /** Track (true) or hide (false) a condition going forward. Upserts one row. */
+  setConditionTracked(metricId: string, tracked: boolean): Promise<void>;
 
   /** Full user data graph (RLS-scoped), for JSON/CSV export. */
   exportAll(): Promise<ExportBundle>;
@@ -181,4 +202,10 @@ export interface Repo {
     exerciseId: string,
     excludeSessionExerciseId?: string,
   ): Promise<GhostSet[]>;
+
+  // Favorited exercises: owner-scoped, works on shared seed rows too since
+  // it's a separate table, not a column on the exercise row.
+  listExerciseFavorites(): Promise<ExerciseFavorite[]>;
+  /** Favorite (true) or unfavorite (false) an exercise. Upserts one row. */
+  setExerciseFavorite(exerciseId: string, favorite: boolean): Promise<void>;
 }

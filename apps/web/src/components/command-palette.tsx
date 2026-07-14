@@ -4,11 +4,13 @@ import {
   Dumbbell,
   FlaskConical,
   History,
+  Home,
   LogOut,
   Moon,
   type Play,
   Settings,
   Sun,
+  User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
@@ -45,7 +47,9 @@ export function CommandPalette() {
   }
 
   const nav: Item[] = [
-    { label: "Train", icon: Dumbbell, action: () => navigate("/") },
+    { label: "Home", icon: Home, action: () => navigate("/") },
+    { label: "Training", icon: Dumbbell, action: () => navigate("/train") },
+    { label: "Profile", icon: User, action: () => navigate("/profile") },
     {
       label: "Library",
       icon: BookOpen,

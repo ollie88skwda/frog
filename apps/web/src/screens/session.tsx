@@ -643,18 +643,14 @@ function CommittedRow({
   onSave: (patch: SetPatch) => void;
   onDelete: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [open, setOpen] = useState(false);
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [rir, setRir] = useState("");
   const [rpe, setRpe] = useState("");
   const [note, setNote] = useState("");
-  const [focusField, setFocusField] = useState<
-    "weight" | "rir" | "rpe" | "note"
-  >("weight");
-  const [menuOpen, setMenuOpen] = useState(false);
 
-  function startEdit(focus: "weight" | "rir" | "rpe" | "note" = "weight") {
+  function openDetails() {
     setWeight(
       set.weightKg != null ? String(toDisplayWeight(set.weightKg, unit)) : "",
     );
@@ -662,8 +658,7 @@ function CommittedRow({
     setRir(set.rir != null ? String(set.rir) : "");
     setRpe(set.rpe != null ? String(set.rpe) : "");
     setNote(set.note ?? "");
-    setFocusField(focus);
-    setEditing(true);
+    setOpen(true);
   }
 
   function save() {
@@ -683,101 +678,34 @@ function CommittedRow({
       rpe: rpe.trim() === "" ? null : Number.parseFloat(rpe),
       note: note.trim() === "" ? null : note.trim(),
     });
-    setEditing(false);
+    setOpen(false);
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
       e.preventDefault();
       save();
-    } else if (e.key === "Escape") {
-      setEditing(false);
     }
   }
 
-  if (editing) {
-    return (
-      <div className="border-t border-border bg-surface-2 px-4 py-2">
-        <div className="grid grid-cols-[2.5rem_1fr_1fr_2.5rem] items-center gap-x-2">
-          <span className="flex items-center gap-2">
-            <StatusRing state="done" />
-            <span className="num text-2xs text-faint">{index + 1}</span>
-          </span>
-          <Input
-            inputMode="decimal"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            onKeyDown={onKeyDown}
-            autoFocus={focusField === "weight"}
-            className="num h-10 md:h-8"
-            data-testid={`edit-${index}-weight`}
-          />
-          <Input
-            inputMode="numeric"
-            value={reps}
-            onChange={(e) => setReps(e.target.value)}
-            onKeyDown={onKeyDown}
-            className="num h-10 md:h-8"
-            data-testid={`edit-${index}-reps`}
-          />
-          <button
-            type="button"
-            onClick={save}
-            title="Save (Enter)"
-            className="justify-self-center rounded-md p-1 text-accent transition-colors duration-100 hover:bg-accent-soft"
-            data-testid={`edit-${index}-save`}
-          >
-            <Check className="size-4" />
-          </button>
-        </div>
-        <div className="mt-2 flex flex-wrap items-end gap-3 pl-10">
-          <div className="flex flex-col gap-1">
-            <span className="text-2xs font-medium tracking-wide text-faint uppercase">
-              RIR
-            </span>
-            <Input
-              inputMode="numeric"
-              placeholder="—"
-              value={rir}
-              onChange={(e) => setRir(e.target.value)}
-              onKeyDown={onKeyDown}
-              autoFocus={focusField === "rir"}
-              className="num h-8 w-16 bg-surface text-xs text-soft"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-2xs font-medium tracking-wide text-faint uppercase">
-              RPE
-            </span>
-            <RpeSelect
-              value={rpe}
-              onChange={setRpe}
-              autoFocus={focusField === "rpe"}
-              testId={`edit-${index}-rpe`}
-            />
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-2xs font-medium tracking-wide text-faint uppercase">
-              Note
-            </span>
-            <Input
-              placeholder="// note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              onKeyDown={onKeyDown}
-              autoFocus={focusField === "note"}
-              className="h-8 text-xs"
-            />
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const e1rm = e1rmFromEffort(set.weightKg, set.reps, {
-    rir: set.rir,
-    rpe: set.rpe,
-  });
+  // e1RM previews live off the fields being edited, so it reacts as you type.
+  const liveWeightKg =
+    weight.trim() === ""
+      ? null
+      : unit === "lb"
+        ? lbToKg(Number.parseFloat(weight))
+        : Number.parseFloat(weight);
+  const e1rm = e1rmFromEffort(
+    liveWeightKg,
+    reps.trim() === "" ? null : Number.parseInt(reps, 10),
+    {
+      rir: rir.trim() === "" ? null : Number.parseInt(rir, 10),
+      rpe: rpe.trim() === "" ? null : Number.parseFloat(rpe),
+    },
+  );
+  const restLabel =
+    set.restSec != null ? formatDurationSeconds(set.restSec * 1000) : null;
+  const labelCls = "text-2xs font-medium tracking-wide text-faint uppercase";
 
   return (
     <div className="relative border-t border-border">
@@ -791,22 +719,22 @@ function CommittedRow({
         </span>
         <button
           type="button"
-          onClick={() => startEdit("weight")}
-          className="num cursor-text text-left text-sm"
-          title="Edit set"
+          onClick={openDetails}
+          className="num cursor-pointer text-left text-sm"
+          title="Set details"
           data-testid={`committed-${index}-weight`}
         >
           {set.weightKg != null ? toDisplayWeight(set.weightKg, unit) : "—"}
         </button>
         <button
           type="button"
-          onClick={() => startEdit("weight")}
-          className="num cursor-text text-left text-sm"
+          onClick={openDetails}
+          className="num cursor-pointer text-left text-sm"
           data-testid={`committed-${index}-reps`}
         >
           {set.reps ?? "—"}
         </button>
-        <span className="relative flex items-center justify-center gap-1">
+        <span className="flex items-center justify-center gap-1">
           <span className="num text-2xs text-faint max-md:hidden md:group-hover:hidden">
             {[
               set.rir != null ? `@${set.rir}` : null,
@@ -817,78 +745,133 @@ function CommittedRow({
           </span>
           <button
             type="button"
-            onClick={() => setMenuOpen((o) => !o)}
-            title="Set options"
+            onClick={openDetails}
+            title="Set details"
             className="rounded-sm p-1 text-faint transition-colors duration-150 hover:text-ink max-md:block md:hidden md:p-0.5 md:group-hover:block"
             data-testid={`set-menu-${index}`}
           >
             <MoreHorizontal className="size-4" />
           </button>
-          {menuOpen && (
-            <>
-              <button
-                type="button"
-                aria-label="Close menu"
-                tabIndex={-1}
-                className="fixed inset-0 z-10 cursor-default"
-                onClick={() => setMenuOpen(false)}
-              />
-              <div className="floating absolute top-full right-0 z-20 mt-1 min-w-36 py-1">
-                {e1rm != null && (
-                  <div className="num border-b border-border px-3 py-1.5 text-2xs text-faint">
-                    e1RM ≈ {toDisplayWeight(e1rm, unit)} {unitLabel(unit)}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    startEdit("rir");
-                  }}
-                  data-testid={`set-menu-${index}-rir`}
-                  className="block w-full px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
-                >
-                  {set.rir != null ? "Edit RIR" : "Add RIR"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    startEdit("rpe");
-                  }}
-                  data-testid={`set-menu-${index}-rpe`}
-                  className="block w-full px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
-                >
-                  {set.rpe != null ? "Edit RPE" : "Add RPE"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    startEdit("note");
-                  }}
-                  data-testid={`set-menu-${index}-note`}
-                  className="block w-full px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
-                >
-                  {set.note ? "Edit note" : "Add note"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onDelete();
-                  }}
-                  data-testid={`set-menu-${index}-delete`}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
-                >
-                  <Trash2 className="size-3.5" />
-                  Delete set
-                </button>
-              </div>
-            </>
-          )}
         </span>
       </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          title={`Set ${index + 1} details`}
+          className="md:max-w-sm"
+        >
+          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <span className={labelCls}>Weight ({unitLabel(unit)})</span>
+                <Input
+                  inputMode="decimal"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  autoFocus
+                  className="num"
+                  data-testid={`edit-${index}-weight`}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className={labelCls}>Reps</span>
+                <Input
+                  inputMode="numeric"
+                  value={reps}
+                  onChange={(e) => setReps(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  className="num"
+                  data-testid={`edit-${index}-reps`}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <span className={cn(labelCls, "flex items-center gap-1")}>
+                  RIR
+                  <InfoTip lessonId="rir" />
+                </span>
+                <Input
+                  inputMode="numeric"
+                  placeholder="—"
+                  value={rir}
+                  onChange={(e) => setRir(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  className="num"
+                  data-testid={`edit-${index}-rir`}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className={labelCls}>RPE</span>
+                <RpeSelect
+                  value={rpe}
+                  onChange={setRpe}
+                  testId={`edit-${index}-rpe`}
+                />
+              </div>
+            </div>
+
+            <label className="flex flex-col gap-1">
+              <span className={labelCls}>Note</span>
+              <textarea
+                rows={3}
+                placeholder="e.g. seat height 4, pad on notch 2, felt strong out of the hole…"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                data-testid={`edit-${index}-note`}
+                className="w-full resize-y rounded-md border border-border-strong bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+              />
+            </label>
+
+            <div className="flex flex-wrap gap-x-6 gap-y-1 border-t border-border pt-3 text-2xs text-faint">
+              <span className="flex items-center gap-1.5">
+                <Timer className="size-3.5" />
+                Rest{" "}
+                <span
+                  className="num text-soft"
+                  data-testid={`set-rest-${index}`}
+                >
+                  {restLabel ?? "—"}
+                </span>
+              </span>
+              <span>
+                e1RM ≈{" "}
+                <span className="num text-soft">
+                  {e1rm != null
+                    ? `${toDisplayWeight(e1rm, unit)} ${unitLabel(unit)}`
+                    : "—"}
+                </span>
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => {
+                  setOpen(false);
+                  onDelete();
+                }}
+                data-testid={`set-menu-${index}-delete`}
+              >
+                <Trash2 className="size-3.5" />
+                Delete
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={save}
+                data-testid={`edit-${index}-save`}
+              >
+                <Check className="size-4" />
+                Save
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

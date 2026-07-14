@@ -35,6 +35,8 @@ Web-first rewrite (the original Expo/React Native app is archived on branch `leg
 
 ## Constraints (product requirements, not preferences)
 
+- **Mobile-first, always.** SBL is a **mobile web app**. Design and build every screen for a phone / touch viewport *first*; desktop is only a secondary widening of the same layout, never the starting point. Tap targets on the logging path are ≥40 px; never gate an action behind hover-only affordances (a mobile user can't hover). Popups/menus must open fully visible on a phone — never clipped by an `overflow-hidden` ancestor or hidden behind sibling controls.
+- **Buttons are never bare text.** Every button and actionable control carries a *visible* background — filled, translucent, or an outline surface — so it reads as pressable at rest, without relying on a hover state. A hover-only background does not count. (`ghost` in `ui/button.tsx` keeps a translucent fill for exactly this reason.)
 - **Lightweight & fast.** Audit every dependency before adding it; prefer a few lines over a package. Initial JS budget: **≤220 kB gzipped**, gated in CI.
 - **Optimistic UI.** Logging a set never waits on the network: client-generated UUIDs (`newId()`), fire-and-forget mutations with retry, UI state already correct. Visual feedback within ~100 ms.
 - **Lazy-load** non-critical routes (findings/history/settings/library); virtualize long lists only when profiling demands it.

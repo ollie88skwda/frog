@@ -2,12 +2,14 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   ApiToken,
   Exercise,
+  ExerciseFavorite,
   Machine,
   MachineSetting,
   Metric,
   Session,
   SessionExercise,
   SetLog,
+  TrackedCondition,
 } from "../db/schema";
 import { SEED_CONDITIONS } from "../db/seed-ids";
 import type { MuscleTarget } from "../domain/anatomy";
@@ -45,6 +47,8 @@ function toExercise(r: Row): Exercise {
     machineId: (r.machine_id as string | null) ?? null,
     jointActions: (r.joint_actions as string[] | null) ?? null,
     muscleTargets: (r.muscle_targets as MuscleTarget[] | null) ?? null,
+    imageUrl: (r.image_url as string | null) ?? null,
+    imageAttribution: (r.image_attribution as string | null) ?? null,
   };
 }
 
@@ -76,6 +80,7 @@ function toSession(r: Row): Session {
     endedAt: (r.ended_at as number | null) ?? null,
     conditionValues:
       (r.condition_values as Record<string, unknown> | null) ?? null,
+    notes: (r.notes as string | null) ?? null,
   };
 }
 
@@ -89,7 +94,33 @@ function toMetric(r: Row): Metric {
     name: r.name as string,
     type: r.type as string,
     scope: r.scope as string,
+    unit: (r.unit as string | null) ?? null,
     exerciseIds: (r.exercise_ids as string[] | null) ?? null,
+  };
+}
+
+function toTrackedCondition(r: Row): TrackedCondition {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    metricId: r.metric_id as string,
+    tracked: r.tracked as boolean,
+    position: (r.position as number | null) ?? null,
+  };
+}
+
+function toExerciseFavorite(r: Row): ExerciseFavorite {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    exerciseId: r.exercise_id as string,
+    favorite: r.favorite as boolean,
   };
 }
 
@@ -118,7 +149,9 @@ function toSetLog(r: Row): SetLog {
     weightKg: (r.weight_kg as number | null) ?? null,
     reps: (r.reps as number | null) ?? null,
     rir: (r.rir as number | null) ?? null,
+    rpe: (r.rpe as number | null) ?? null,
     note: (r.note as string | null) ?? null,
+    restSec: (r.rest_sec as number | null) ?? null,
     metricValues: (r.metric_values as Record<string, unknown> | null) ?? null,
     completed: r.completed as boolean,
   };
@@ -319,6 +352,17 @@ export class SupabaseRepo implements Repo {
     throwIf(error);
   }
 
+  async updateSessionStartedAt(
+    sessionId: string,
+    startedAt: number,
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("sessions")
+      .update({ started_at: startedAt, updated_at: Date.now() })
+      .eq("id", sessionId);
+    throwIf(error);
+  }
+
   async activeSession(): Promise<Session | null> {
     const { data, error } = await this.client
       .from("sessions")
@@ -344,17 +388,60 @@ export class SupabaseRepo implements Repo {
   deleteSet(id: string) {
     return this.softDelete("set_logs", id);
   }
-  deleteSessionExercise(id: string) {
-    return this.softDelete("session_exercises", id);
-  }
   deleteExercise(id: string) {
     return this.softDelete("exercises", id);
   }
   deleteMetric(id: string) {
     return this.softDelete("metrics", id);
   }
-  deleteSession(id: string) {
-    return this.softDelete("sessions", id);
+
+  // Soft-delete cascade helper. Reads that key off session_exercises/set_logs
+  // (ghost prefill, export) filter each table's own deleted_at without joining
+  // the parent, so a soft-deleted parent must tombstone its children too — else
+  // orphaned rows resurface (e.g. a deleted session's sets in ghost prefill).
+  private async softDeleteSetsOf(
+    sessionExerciseIds: string[],
+    now: number,
+  ): Promise<void> {
+    if (sessionExerciseIds.length === 0) return;
+    const { error } = await this.client
+      .from("set_logs")
+      .update({ deleted_at: now, updated_at: now })
+      .in("session_exercise_id", sessionExerciseIds);
+    throwIf(error);
+  }
+
+  async deleteSessionExercise(id: string): Promise<void> {
+    const now = Date.now();
+    await this.softDeleteSetsOf([id], now);
+    const { error } = await this.client
+      .from("session_exercises")
+      .update({ deleted_at: now, updated_at: now })
+      .eq("id", id);
+    throwIf(error);
+  }
+
+  async deleteSession(id: string): Promise<void> {
+    const now = Date.now();
+    const { data: ses, error: seErr } = await this.client
+      .from("session_exercises")
+      .select("id")
+      .eq("session_id", id);
+    throwIf(seErr);
+    const seIds = (ses ?? []).map((r) => r.id as string);
+    await this.softDeleteSetsOf(seIds, now);
+    if (seIds.length > 0) {
+      const { error: seUpdErr } = await this.client
+        .from("session_exercises")
+        .update({ deleted_at: now, updated_at: now })
+        .eq("session_id", id);
+      throwIf(seUpdErr);
+    }
+    const { error } = await this.client
+      .from("sessions")
+      .update({ deleted_at: now, updated_at: now })
+      .eq("id", id);
+    throwIf(error);
   }
 
   async updateSet(setId: string, patch: Partial<NewSetInput>): Promise<void> {
@@ -362,7 +449,9 @@ export class SupabaseRepo implements Repo {
     if ("weightKg" in patch) row.weight_kg = patch.weightKg ?? null;
     if ("reps" in patch) row.reps = patch.reps ?? null;
     if ("rir" in patch) row.rir = patch.rir ?? null;
+    if ("rpe" in patch) row.rpe = patch.rpe ?? null;
     if ("note" in patch) row.note = patch.note ?? null;
+    if ("restSec" in patch) row.rest_sec = patch.restSec ?? null;
     if ("metricValues" in patch) row.metric_values = patch.metricValues ?? null;
     const { error } = await this.client
       .from("set_logs")
@@ -418,7 +507,9 @@ export class SupabaseRepo implements Repo {
       weight_kg: set.weightKg,
       reps: set.reps,
       rir: set.rir ?? null,
+      rpe: set.rpe ?? null,
       note: set.note ?? null,
+      rest_sec: set.restSec ?? null,
       metric_values: set.metricValues ?? null,
       completed: true,
     };
@@ -433,7 +524,7 @@ export class SupabaseRepo implements Repo {
     const { data, error } = await this.client
       .from("session_exercises")
       .select(
-        "id, exercise_id, order_index, exercises(name), set_logs(id, set_no, weight_kg, reps, rir, note, deleted_at)",
+        "id, exercise_id, order_index, exercises(name), set_logs(id, set_no, weight_kg, reps, rir, rpe, note, rest_sec, deleted_at)",
       )
       .eq("session_id", sessionId)
       .is("deleted_at", null)
@@ -453,7 +544,9 @@ export class SupabaseRepo implements Repo {
           weightKg: (s.weight_kg as number | null) ?? null,
           reps: (s.reps as number | null) ?? null,
           rir: (s.rir as number | null) ?? null,
+          rpe: (s.rpe as number | null) ?? null,
           note: (s.note as string | null) ?? null,
+          restSec: (s.rest_sec as number | null) ?? null,
         })),
     }));
   }
@@ -477,6 +570,20 @@ export class SupabaseRepo implements Repo {
     const { error } = await this.client
       .from("sessions")
       .update({ condition_values: values, updated_at: Date.now() })
+      .eq("id", sessionId);
+    throwIf(error);
+  }
+
+  async updateSessionNotes(
+    sessionId: string,
+    notes: string | null,
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("sessions")
+      .update({
+        notes: notes?.length ? notes : null,
+        updated_at: Date.now(),
+      })
       .eq("id", sessionId);
     throwIf(error);
   }
@@ -542,6 +649,7 @@ export class SupabaseRepo implements Repo {
       name: input.name,
       type: input.type,
       scope: input.scope,
+      unit: input.unit ?? null,
     };
     const { data, error } = await this.client
       .from("metrics")
@@ -550,6 +658,37 @@ export class SupabaseRepo implements Repo {
       .single();
     throwIf(error);
     return toMetric(data as Row);
+  }
+
+  async listTrackedConditions(): Promise<TrackedCondition[]> {
+    const { data, error } = await this.client
+      .from("tracked_conditions")
+      .select()
+      .is("deleted_at", null);
+    throwIf(error);
+    return (data as Row[]).map(toTrackedCondition);
+  }
+
+  async setConditionTracked(metricId: string, tracked: boolean): Promise<void> {
+    // Upsert one row per (owner, metric). RLS scopes rows to the caller, so an
+    // update by metric_id targets only their own row; insert falls back when
+    // none exists yet. owner_id defaults to auth.uid().
+    const now = Date.now();
+    const { data: updated, error: updateError } = await this.client
+      .from("tracked_conditions")
+      .update({ tracked, deleted_at: null, updated_at: now })
+      .eq("metric_id", metricId)
+      .select("id");
+    throwIf(updateError);
+    if (updated && updated.length > 0) return;
+    const { error } = await this.client.from("tracked_conditions").insert({
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      metric_id: metricId,
+      tracked,
+    });
+    throwIf(error);
   }
 
   async setMetricExercises(
@@ -791,5 +930,37 @@ export class SupabaseRepo implements Repo {
         weightKg: (s.weight_kg as number | null) ?? null,
         reps: (s.reps as number | null) ?? null,
       }));
+  }
+
+  async listExerciseFavorites(): Promise<ExerciseFavorite[]> {
+    const { data, error } = await this.client
+      .from("exercise_favorites")
+      .select()
+      .is("deleted_at", null);
+    throwIf(error);
+    return (data as Row[]).map(toExerciseFavorite);
+  }
+
+  async setExerciseFavorite(
+    exerciseId: string,
+    favorite: boolean,
+  ): Promise<void> {
+    // Upsert one row per (owner, exercise), same pattern as setConditionTracked.
+    const now = Date.now();
+    const { data: updated, error: updateError } = await this.client
+      .from("exercise_favorites")
+      .update({ favorite, deleted_at: null, updated_at: now })
+      .eq("exercise_id", exerciseId)
+      .select("id");
+    throwIf(updateError);
+    if (updated && updated.length > 0) return;
+    const { error } = await this.client.from("exercise_favorites").insert({
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      exercise_id: exerciseId,
+      favorite,
+    });
+    throwIf(error);
   }
 }

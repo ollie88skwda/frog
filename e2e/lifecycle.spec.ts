@@ -27,7 +27,7 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   await waitForExercise(page, EX);
 
   // Start and log one set.
-  await page.goto("/");
+  await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   const sessionUrl = page.url();
@@ -42,7 +42,7 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
 
   // Train shows resume; resuming lands on the same session with the set restored.
-  await page.goto("/");
+  await page.goto("/train");
   await expect(page.getByTestId("resume-session-btn")).toBeVisible();
   await page.getByTestId("resume-session-btn").click();
   await expect(page).toHaveURL(sessionUrl);

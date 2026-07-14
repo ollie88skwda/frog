@@ -288,4 +288,63 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     });
     expect(error).not.toBeNull();
   });
+
+  it("session notes round-trip and clear", async () => {
+    const s = await repoA.startSession();
+    await repoA.updateSessionNotes(s.id, "legs felt heavy, cleared by set 2");
+    expect((await repoA.getSession(s.id))?.notes).toBe(
+      "legs felt heavy, cleared by set 2",
+    );
+    await repoA.updateSessionNotes(s.id, null);
+    expect((await repoA.getSession(s.id))?.notes).toBeNull();
+  });
+
+  it("custom conditions carry type + unit", async () => {
+    const scale = await repoA.createMetric({
+      name: `RPE ${newId().slice(0, 8)}`,
+      type: "scale",
+      scope: "session",
+    });
+    expect(scale.type).toBe("scale");
+    expect(scale.unit).toBeNull();
+
+    const water = await repoA.createMetric({
+      name: `Water ${newId().slice(0, 8)}`,
+      type: "number",
+      scope: "session",
+      unit: "ml",
+    });
+    expect(water.unit).toBe("ml");
+  });
+
+  it("tracked conditions: empty for a fresh user, upserts one row per metric", async () => {
+    const metric = await repoA.createMetric({
+      name: `Soreness ${newId().slice(0, 8)}`,
+      type: "scale",
+      scope: "session",
+    });
+
+    // A fresh user has no explicit tracked rows (defaults live in app code).
+    const before = await repoA.listTrackedConditions();
+    expect(before.some((t) => t.metricId === metric.id)).toBe(false);
+
+    await repoA.setConditionTracked(metric.id, true);
+    let mine = (await repoA.listTrackedConditions()).filter(
+      (t) => t.metricId === metric.id,
+    );
+    expect(mine).toHaveLength(1);
+    expect(mine[0].tracked).toBe(true);
+
+    // Upsert: flipping to hidden updates the same row, never duplicates it.
+    await repoA.setConditionTracked(metric.id, false);
+    mine = (await repoA.listTrackedConditions()).filter(
+      (t) => t.metricId === metric.id,
+    );
+    expect(mine).toHaveLength(1);
+    expect(mine[0].tracked).toBe(false);
+
+    // RLS: user B never sees A's tracked rows.
+    const bRows = await repoB.listTrackedConditions();
+    expect(bRows.some((t) => t.metricId === metric.id)).toBe(false);
+  });
 });

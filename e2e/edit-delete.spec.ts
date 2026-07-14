@@ -16,7 +16,7 @@ test("edit a committed set; delete a set; both survive reload", async ({ page })
   await page.getByTestId("add-exercise-btn").click();
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
 
-  await page.goto("/");
+  await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   const before = await rowCount(page, "set_logs");
   await page.getByTestId(`pick-exercise-${EX}`).click();
@@ -40,9 +40,10 @@ test("edit a committed set; delete a set; both survive reload", async ({ page })
   await page.getByTestId("edit-0-save").click();
   await expect(page.getByTestId("committed-0-weight")).toHaveText("105");
 
-  // Delete set 2 (hover reveals the trash).
+  // Delete set 2 via the set-options (⋯) menu.
   await page.getByTestId("committed-1").hover();
-  await page.getByTestId("delete-1").click();
+  await page.getByTestId("set-menu-1").click();
+  await page.getByTestId("set-menu-1-delete").click();
   await expect(page.getByTestId("committed-1")).not.toBeVisible();
 
   // Reload: edit persisted, deleted set stays gone.
@@ -61,7 +62,7 @@ test("delete a custom exercise removes it from the picker; tags round-trip", asy
   await waitForExercise(page, EX);
 
   // Tag it.
-  await page.getByTestId(`exercise-row-${EX}`).click();
+  await page.getByTestId(`exercise-row-toggle-${EX}`).click();
   await page.getByTestId(`tag-input-${EX}`).fill("pull");
   await page.getByTestId(`tag-input-${EX}`).press("Enter");
   // Wait for the tag write to land server-side before reloading (reload aborts
@@ -82,15 +83,19 @@ test("delete a custom exercise removes it from the picker; tags round-trip", asy
   await page.reload();
   await expect(page.getByTestId(`exercise-row-${EX}`)).toContainText("pull");
 
-  // Delete it.
-  await page.getByTestId(`exercise-row-${EX}`).click();
-  await page.getByTestId(`delete-exercise-${EX}`).click();
+  // Archive it (soft-delete; history kept). Confirm in the dialog.
+  await page.getByTestId(`exercise-row-toggle-${EX}`).click();
+  await page.getByTestId(`archive-exercise-${EX}`).click();
+  await page.getByTestId(`confirm-archive-${EX}`).click();
   await expect(page.getByTestId(`exercise-row-${EX}`)).not.toBeVisible();
 
   // Gone from the session picker too.
-  await page.goto("/");
+  await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page.getByTestId("pick-exercise-Squat")).toBeVisible();
   await expect(page.getByTestId(`pick-exercise-${EX}`)).not.toBeVisible();
+  // Close the auto-opened picker before reaching the header.
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog").waitFor({ state: "hidden" });
   await page.getByTestId("end-session-btn").click();
 });

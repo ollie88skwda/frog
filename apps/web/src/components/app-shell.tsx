@@ -1,33 +1,47 @@
 import { APP_NAME } from "@sbl/core";
-import {
-  BookOpen,
-  Dumbbell,
-  FlaskConical,
-  History,
-  Moon,
-  Settings,
-  Sun,
-} from "lucide-react";
+import { Dumbbell, Home, Moon, Sun, User } from "lucide-react";
 import { useMemo } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useHotkeys } from "@/lib/hotkeys";
+import { useActiveSession } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { CommandPalette } from "./command-palette";
 
 const NAV = [
-  { to: "/", label: "Train", icon: Dumbbell, end: true, key: null },
-  { to: "/library", label: "Library", icon: BookOpen, key: "L" },
-  { to: "/history", label: "History", icon: History, key: "H" },
-  { to: "/findings", label: "Findings", icon: FlaskConical, key: "F" },
-  { to: "/settings", label: "Settings", icon: Settings, key: null },
+  { to: "/", label: "Home", icon: Home, end: true, key: null },
+  { to: "/train", label: "Training", icon: Dumbbell, key: null },
+  { to: "/profile", label: "Profile", icon: User, key: null },
 ];
+
+/* One stroke weight across the shell — lucide's default 2 reads chunky at UI
+ * sizes; 1.75 gives a lighter, more deliberate line. */
+const STROKE = 1.75;
 
 export function AppShell() {
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const repo = useRepo();
+  const { data: active } = useActiveSession();
+  const { pathname } = useLocation();
+
+  // The Training tab jumps straight into the live session when one exists, so
+  // you don't have to land on /train and click "Resume". It stays highlighted
+  // for both the training landing and any open session.
+  const nav = useMemo(
+    () =>
+      NAV.map((item) =>
+        item.to === "/train"
+          ? {
+              ...item,
+              to: active ? `/session/${active.id}` : "/train",
+              active: pathname === "/train" || pathname.startsWith("/session/"),
+            }
+          : { ...item, active: undefined as boolean | undefined },
+      ),
+    [active, pathname],
+  );
 
   useHotkeys(
     useMemo(
@@ -62,9 +76,9 @@ export function AppShell() {
             className="rounded-md p-1 text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
           >
             {theme === "dark" ? (
-              <Sun className="size-4" />
+              <Sun className="size-4" strokeWidth={STROKE} />
             ) : (
-              <Moon className="size-4" />
+              <Moon className="size-4" strokeWidth={STROKE} />
             )}
           </button>
         </div>
@@ -73,25 +87,27 @@ export function AppShell() {
           Workspace
         </p>
         <nav className="flex flex-col gap-0.5 px-2">
-          {NAV.map(({ to, label, icon: Icon, end, key }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  "flex h-8 items-center gap-2 rounded-md px-2 text-sm transition-colors duration-150 ease-(--ease-out-quad)",
-                  isActive
-                    ? "bg-surface-active text-ink"
-                    : "text-soft hover:bg-surface-hover hover:text-ink",
-                )
-              }
-            >
-              <Icon className="size-4 shrink-0" />
-              <span className="min-w-0 flex-1 truncate">{label}</span>
-              {key && <kbd className="keycap">{key}</kbd>}
-            </NavLink>
-          ))}
+          {nav.map(
+            ({ to, label, icon: Icon, end, key, active: forceActive }) => (
+              <NavLink
+                key={label}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  cn(
+                    "flex h-8 items-center gap-2 rounded-md px-2 text-sm transition-colors duration-150 ease-(--ease-out-quad)",
+                    (forceActive ?? isActive)
+                      ? "bg-surface-active text-ink"
+                      : "text-soft hover:bg-surface-hover hover:text-ink",
+                  )
+                }
+              >
+                <Icon className="size-4 shrink-0" strokeWidth={STROKE} />
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+                {key && <kbd className="keycap">{key}</kbd>}
+              </NavLink>
+            ),
+          )}
         </nav>
 
         <div className="mt-auto flex items-center gap-2 px-4 py-3 text-2xs text-faint">
@@ -100,26 +116,46 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto">
+      <main className="min-w-0 flex-1 overflow-y-auto max-md:pb-[calc(5rem+env(safe-area-inset-bottom))]">
         <Outlet />
       </main>
 
-      {/* Bottom tab bar on small screens (mobile-first logging). */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-surface md:hidden">
-        {NAV.map(({ to, label, icon: Icon, end }) => (
+      {/* Floating island tab bar on small screens (mobile-first logging).
+          Centered, content-width — it doesn't span the viewport. Sits clear of
+          the iOS home indicator via safe-area margin. Active tab expands to
+          reveal its label (the "island" effect); square corners hold the
+          0px-radius design language. */}
+      <nav className="floating float-in fixed inset-x-0 bottom-0 z-40 mx-auto mb-[calc(0.75rem+env(safe-area-inset-bottom))] flex w-fit items-center gap-0.5 p-1.5 md:hidden">
+        {nav.map(({ to, label, icon: Icon, end, active: forceActive }) => (
           <NavLink
-            key={to}
+            key={label}
             to={to}
             end={end}
+            title={label}
             className={({ isActive }) =>
               cn(
-                "flex min-h-11 flex-1 flex-col items-center justify-center gap-0.5 py-1 text-2xs",
-                isActive ? "text-accent" : "text-soft",
+                "flex h-11 items-center justify-center gap-1.5 px-3 text-2xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
+                (forceActive ?? isActive)
+                  ? "bg-accent-soft text-accent"
+                  : "text-soft active:text-ink",
               )
             }
           >
-            <Icon className="size-4" />
-            {label}
+            {({ isActive }) => (
+              <>
+                <Icon className="size-[22px] shrink-0" strokeWidth={STROKE} />
+                <span
+                  className={cn(
+                    "overflow-hidden leading-none whitespace-nowrap transition-all duration-150 ease-(--ease-out-quad)",
+                    (forceActive ?? isActive)
+                      ? "max-w-24 opacity-100"
+                      : "max-w-0 opacity-0",
+                  )}
+                >
+                  {label}
+                </span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>

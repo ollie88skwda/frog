@@ -136,3 +136,35 @@ export function conditionFindings(
   // Strongest effects first.
   return findings.sort((a, b) => Math.abs(b.pctDiff) - Math.abs(a.pctDiff));
 }
+
+export type ConditionCountdown = {
+  conditionId: string;
+  conditionName: string;
+  sessionsLogged: number;
+  sessionsNeeded: number;
+};
+
+/** For a metric the user has started logging but that doesn't yet have enough
+ * valued sessions (MIN_BUCKET_N * 2) to attempt a correlation — mirrors the
+ * trend countdown so the correlation feature is discoverable, not silent. */
+export function conditionCountdowns(
+  sessions: FindingsSessionInput[],
+  conditionMetrics: ConditionMetricDef[],
+): ConditionCountdown[] {
+  const target = MIN_BUCKET_N * 2;
+  const out: ConditionCountdown[] = [];
+  for (const metric of conditionMetrics) {
+    const logged = sessions.reduce((n, s) => {
+      const raw = s.conditionValues?.[metric.id];
+      return typeof raw === "number" && Number.isFinite(raw) ? n + 1 : n;
+    }, 0);
+    if (logged > 0 && logged < target)
+      out.push({
+        conditionId: metric.id,
+        conditionName: metric.name,
+        sessionsLogged: logged,
+        sessionsNeeded: target - logged,
+      });
+  }
+  return out.sort((a, b) => a.sessionsNeeded - b.sessionsNeeded);
+}

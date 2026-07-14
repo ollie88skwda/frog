@@ -1,6 +1,7 @@
 import {
   type Exercise,
   type ExerciseClassification,
+  type ExerciseFavorite,
   type Machine,
   type MachinePatch,
   type Metric,
@@ -8,6 +9,8 @@ import {
   type NewMachineInput,
   type NewMetricInput,
   newId,
+  type Session,
+  type TrackedCondition,
 } from "@sbl/core";
 import {
   useInfiniteQuery,
@@ -49,6 +52,8 @@ export function useCreateExercise() {
         machineId: opts?.machineId ?? null,
         jointActions: opts?.jointActions ?? null,
         muscleTargets: opts?.muscleTargets ?? null,
+        imageUrl: null,
+        imageAttribution: null,
       };
       qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
         [...old, optimistic].sort((a, b) => a.name.localeCompare(b.name)),
@@ -327,13 +332,76 @@ export function useSession(sessionId: string) {
   });
 }
 
+export function useUpdateSessionStartedAt(sessionId: string) {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  const key = ["session", sessionId];
+  return useMutation({
+    mutationFn: (startedAt: number) =>
+      repo.updateSessionStartedAt(sessionId, startedAt),
+    onMutate: (startedAt) => {
+      void qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Session | null>(key);
+      qc.setQueryData<Session | null>(key, (old) =>
+        old ? { ...old, startedAt } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: key });
+      void qc.invalidateQueries({ queryKey: ["sessions"] });
+      // started_at drives every trend/correlation — recompute.
+      void qc.invalidateQueries({ queryKey: ["findings-data"] });
+    },
+  });
+}
+
 export function useUpdateConditions(sessionId: string) {
   const repo = useRepo();
   const qc = useQueryClient();
+  const key = ["session", sessionId];
   return useMutation({
     mutationFn: (values: Record<string, unknown>) =>
       repo.updateSessionConditions(sessionId, values),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["session", sessionId] }),
+    // Auto-save fires on every keystroke/tap — reflect it instantly (see
+    // useCreateExercise). Replace semantics: callers pass the full value set.
+    onMutate: (values) => {
+      void qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Session | null>(key);
+      qc.setQueryData<Session | null>(key, (old) =>
+        old ? { ...old, conditionValues: values } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+export function useUpdateSessionNotes(sessionId: string) {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  const key = ["session", sessionId];
+  return useMutation({
+    mutationFn: (notes: string | null) =>
+      repo.updateSessionNotes(sessionId, notes),
+    onMutate: (notes) => {
+      void qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<Session | null>(key);
+      qc.setQueryData<Session | null>(key, (old) =>
+        old ? { ...old, notes } : old,
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev !== undefined) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
 }
 
@@ -347,7 +415,130 @@ export function useCreateMetric() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: NewMetricInput) => repo.createMetric(input),
+    // Optimistic append (see useCreateExercise) — reconciled by the settle
+    // invalidate. The real row's id arrives via mutateAsync's return value.
+    onMutate: (input) => {
+      void qc.cancelQueries({ queryKey: ["metrics"] });
+      const prev = qc.getQueryData<Metric[]>(["metrics"]);
+      const now = Date.now();
+      const optimistic: Metric = {
+        id: newId(),
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+        ownerId: null,
+        name: input.name,
+        type: input.type,
+        scope: input.scope,
+        unit: input.unit ?? null,
+        exerciseIds: null,
+      };
+      qc.setQueryData<Metric[]>(["metrics"], (old = []) =>
+        [...old, optimistic].sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["metrics"], ctx.prev);
+    },
     onSettled: () => qc.invalidateQueries({ queryKey: ["metrics"] }),
+  });
+}
+
+export function useTrackedConditions() {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["tracked-conditions"],
+    queryFn: () => repo.listTrackedConditions(),
+  });
+}
+
+export function useSetConditionTracked() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  const key = ["tracked-conditions"];
+  return useMutation({
+    mutationFn: (input: { metricId: string; tracked: boolean }) =>
+      repo.setConditionTracked(input.metricId, input.tracked),
+    onMutate: ({ metricId, tracked }) => {
+      void qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<TrackedCondition[]>(key);
+      const now = Date.now();
+      qc.setQueryData<TrackedCondition[]>(key, (old = []) => {
+        const existing = old.find((t) => t.metricId === metricId);
+        if (existing)
+          return old.map((t) =>
+            t.metricId === metricId ? { ...t, tracked, updatedAt: now } : t,
+          );
+        return [
+          ...old,
+          {
+            id: newId(),
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null,
+            ownerId: "",
+            metricId,
+            tracked,
+            position: null,
+          },
+        ];
+      });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
+export function useExerciseFavorites() {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["exercise-favorites"],
+    queryFn: () => repo.listExerciseFavorites(),
+  });
+}
+
+export function useSetExerciseFavorite() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  const key = ["exercise-favorites"];
+  return useMutation({
+    mutationFn: (input: { exerciseId: string; favorite: boolean }) =>
+      repo.setExerciseFavorite(input.exerciseId, input.favorite),
+    onMutate: ({ exerciseId, favorite }) => {
+      void qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<ExerciseFavorite[]>(key);
+      const now = Date.now();
+      qc.setQueryData<ExerciseFavorite[]>(key, (old = []) => {
+        const existing = old.find((f) => f.exerciseId === exerciseId);
+        if (existing)
+          return old.map((f) =>
+            f.exerciseId === exerciseId
+              ? { ...f, favorite, updatedAt: now }
+              : f,
+          );
+        return [
+          ...old,
+          {
+            id: newId(),
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null,
+            ownerId: "",
+            exerciseId,
+            favorite,
+          },
+        ];
+      });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
   });
 }
 
@@ -412,5 +603,16 @@ export function useGhost(exerciseId: string, excludeSessionExerciseId: string) {
     queryFn: () =>
       repo.lastSetsForExercise(exerciseId, excludeSessionExerciseId),
     staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+// Library card "last set" summary — same underlying lookup as ghost prefill,
+// with no session-exercise to exclude.
+export function useLastSets(exerciseId: string) {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["last-sets", exerciseId],
+    queryFn: () => repo.lastSetsForExercise(exerciseId),
+    staleTime: 60_000,
   });
 }

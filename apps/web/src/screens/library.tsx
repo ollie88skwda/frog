@@ -1,5 +1,6 @@
 import {
   type Exercise,
+  formatWeight,
   groupByPrimaryMuscle,
   JOINT_ACTIONS,
   jointActionLabel,
@@ -12,9 +13,28 @@ import {
   ratingsForMuscle,
   type Tier,
 } from "@sbl/core";
-import { ChevronDown, ChevronRight, Info } from "lucide-react";
-import { type FormEvent, useState } from "react";
-import { JointActionChips, TierBadge } from "@/components/anatomy-ui";
+import {
+  Archive,
+  ChevronDown,
+  ChevronRight,
+  Dumbbell,
+  History,
+  Info,
+} from "lucide-react";
+import { type FormEvent, useRef, useState } from "react";
+import {
+  ExerciseThumb,
+  FavoriteButton,
+  JointActionChips,
+  JointActionRatings,
+  TierBadge,
+  TierLegend,
+  tierNameClass,
+} from "@/components/anatomy-ui";
+import {
+  ExerciseFilterBar,
+  filterExercises,
+} from "@/components/exercise-filter";
 import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -24,14 +44,18 @@ import {
   useCreateMetric,
   useDeleteExercise,
   useDeleteMetric,
+  useExerciseFavorites,
   useExercises,
+  useLastSets,
   useMachines,
   useMetrics,
   useSetExerciseClassification,
+  useSetExerciseFavorite,
   useSetExerciseMachine,
   useSetExerciseTags,
   useSetMetricExercises,
 } from "@/lib/queries";
+import { useUnit } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 
 const TIERS: Tier[] = ["S", "A", "B", "C"];
@@ -40,16 +64,24 @@ export default function LibraryScreen() {
   const { data: exercises = [], isLoading } = useExercises();
   const { data: metrics = [] } = useMetrics();
   const { data: machines = [] } = useMachines();
+  const { data: favorites = [] } = useExerciseFavorites();
+  const setFavorite = useSetExerciseFavorite();
+  const favoriteIds = new Set(
+    favorites.filter((f) => f.favorite).map((f) => f.exerciseId),
+  );
   const create = useCreateExercise();
   const [name, setName] = useState("");
   const [muscle, setMuscle] = useState("");
+  const [query, setQuery] = useState("");
+  const [filterMuscle, setFilterMuscle] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const setMetrics = metrics.filter(
     (m) => m.scope === "set" && m.ownerId !== null,
   );
-  const groups = groupByPrimaryMuscle(exercises);
+  const filtered = filterExercises(exercises, query, filterMuscle);
+  const groups = groupByPrimaryMuscle(filtered);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -106,12 +138,26 @@ export default function LibraryScreen() {
         </Button>
       </form>
 
+      <div className="mt-4">
+        <ExerciseFilterBar
+          query={query}
+          onQuery={setQuery}
+          muscle={filterMuscle}
+          onMuscle={setFilterMuscle}
+        />
+        <TierLegend className="mt-2" />
+      </div>
+
       <div className="mt-4 overflow-hidden border border-border bg-surface">
         {isLoading ? (
           <p className="px-4 py-6 text-center text-xs text-faint">Loading…</p>
         ) : exercises.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-faint">
             No exercises yet. Add your first above.
+          </p>
+        ) : filtered.length === 0 ? (
+          <p className="px-4 py-6 text-center text-xs text-faint">
+            No exercises match your search.
           </p>
         ) : (
           groups.map((group) => (
@@ -148,6 +194,13 @@ export default function LibraryScreen() {
                       groupMuscle={group.key}
                       setMetrics={setMetrics}
                       machines={machines}
+                      isFavorite={favoriteIds.has(ex.id)}
+                      onToggleFavorite={() =>
+                        setFavorite.mutate({
+                          exerciseId: ex.id,
+                          favorite: !favoriteIds.has(ex.id),
+                        })
+                      }
                       expanded={expandedId === ex.id}
                       onToggle={() =>
                         setExpandedId(expandedId === ex.id ? null : ex.id)
@@ -238,6 +291,10 @@ function BestForMuscle({
                 {ranked.map(({ exercise, target }) => (
                   <li key={exercise.id} className="flex items-center gap-2">
                     <TierBadge tier={target.tier} />
+                    <ExerciseThumb
+                      imageUrl={exercise.imageUrl}
+                      name={exercise.name}
+                    />
                     <span className="truncate text-xs">{exercise.name}</span>
                     <JointActionChips actions={exercise.jointActions} />
                   </li>
@@ -256,6 +313,8 @@ function ExerciseRow({
   groupMuscle,
   setMetrics,
   machines,
+  isFavorite,
+  onToggleFavorite,
   expanded,
   onToggle,
 }: {
@@ -263,12 +322,15 @@ function ExerciseRow({
   groupMuscle: string;
   setMetrics: Metric[];
   machines: Machine[];
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
   expanded: boolean;
   onToggle: () => void;
 }) {
   const toggleMetric = useSetMetricExercises();
   const setTags = useSetExerciseTags();
   const deleteExercise = useDeleteExercise();
+  const [confirmingArchive, setConfirmingArchive] = useState(false);
   const Chevron = expanded ? ChevronDown : ChevronRight;
   const groupTier = exercise.muscleTargets?.find(
     (t) => t.muscle === groupMuscle,
@@ -277,43 +339,68 @@ function ExerciseRow({
 
   return (
     <li data-testid={`exercise-row-${exercise.name}`}>
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex h-11 w-full items-center justify-between gap-2 px-4 text-left text-sm md:h-8 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
-      >
-        <span className="flex min-w-0 items-center gap-2">
-          <Chevron className="size-4 shrink-0 text-faint" />
-          {groupTier && <TierBadge tier={groupTier} />}
-          <span className="truncate">{exercise.name}</span>
-          <JointActionChips
-            actions={exercise.jointActions}
-            className="max-md:hidden"
-          />
-          {exercise.tags?.map((t) => (
-            <span
-              key={t}
-              className="flex shrink-0 items-center gap-1 bg-accent/10 px-2 text-2xs text-soft"
+      {/* Ribbon: big diagram anchors the row; the name carries the most weight
+          and its brightness encodes exercise quality for this muscle (see
+          TierLegend); joint actions sit under it as plain labels; metadata
+          (machine, last set) is smallest/faintest. */}
+      <div className="flex w-full items-start gap-3 px-4 py-3 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover">
+        <ExerciseThumb
+          imageUrl={exercise.imageUrl}
+          name={exercise.name}
+          size="lg"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <button
+              type="button"
+              onClick={onToggle}
+              className="flex min-w-0 items-center gap-1.5 text-left"
+              data-testid={`exercise-row-toggle-${exercise.name}`}
             >
-              <span className="size-1 bg-accent" />
-              {t}
+              <span
+                className={cn(
+                  "truncate text-sm font-semibold",
+                  tierNameClass(groupTier),
+                )}
+              >
+                {exercise.name}
+              </span>
+              <Chevron className="size-4 shrink-0 text-faint" />
+            </button>
+            <span className="flex shrink-0 items-center gap-1">
+              {!exercise.isCustom && (
+                <span className="bg-translucent px-2 py-0.5 text-2xs text-faint">
+                  seed
+                </span>
+              )}
+              <FavoriteButton
+                favorite={isFavorite}
+                onToggle={onToggleFavorite}
+                name={exercise.name}
+              />
             </span>
-          ))}
-        </span>
-        <span className="flex shrink-0 items-center gap-2">
-          {machine && (
-            <span className="max-w-32 truncate bg-translucent px-2 text-2xs text-faint">
-              {machine.brand ? `${machine.brand} · ` : ""}
-              {machine.name}
-            </span>
-          )}
-          {!exercise.isCustom && (
-            <span className="bg-translucent px-2 text-2xs text-faint">
-              seed
-            </span>
-          )}
-        </span>
-      </button>
+          </div>
+
+          <JointActionRatings exercise={exercise} className="mt-1.5" />
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-faint">
+            {machine && (
+              <span className="flex items-center gap-1 truncate">
+                <Dumbbell className="size-3 shrink-0" />
+                {machine.brand ? `${machine.brand} · ` : ""}
+                {machine.name}
+              </span>
+            )}
+            <LastSetSummary exerciseId={exercise.id} />
+            {exercise.tags?.map((t) => (
+              <span key={t} className="flex shrink-0 items-center gap-1">
+                <span className="size-1 bg-accent" />
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
       {expanded && (
         <div className="border-t border-border bg-surface-2 px-4 py-2 pl-10">
           {setMetrics.length === 0 ? (
@@ -361,19 +448,74 @@ function ExerciseRow({
             <div className="mt-3 border-t border-border pt-2">
               <TagEditor exercise={exercise} setTags={setTags} />
               <Button
-                variant="danger"
+                variant="ghost"
                 size="sm"
-                className="mt-2"
-                onClick={() => deleteExercise.mutate(exercise.id)}
-                data-testid={`delete-exercise-${exercise.name}`}
+                className="mt-2 text-soft"
+                onClick={() => setConfirmingArchive(true)}
+                data-testid={`archive-exercise-${exercise.name}`}
               >
-                Delete exercise
+                <Archive className="size-4" />
+                Archive exercise
               </Button>
+              <Dialog
+                open={confirmingArchive}
+                onOpenChange={setConfirmingArchive}
+              >
+                <DialogContent title="Archive this exercise?">
+                  <p className="text-xs text-soft">
+                    It's hidden from your library and the exercise picker. Your
+                    past sessions and findings keep it — nothing logged is lost.
+                  </p>
+                  <div className="mt-3 flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setConfirmingArchive(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="primary"
+                      onClick={() => {
+                        deleteExercise.mutate(exercise.id);
+                        setConfirmingArchive(false);
+                      }}
+                      data-testid={`confirm-archive-${exercise.name}`}
+                    >
+                      Archive
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
         </div>
       )}
     </li>
+  );
+}
+
+// "Last set" line — reuses the ghost-prefill lookup (most recent prior
+// session's sets), no separate history query needed.
+function LastSetSummary({ exerciseId }: { exerciseId: string }) {
+  const { unit } = useUnit();
+  const { data: sets = [] } = useLastSets(exerciseId);
+  if (sets.length === 0) return null;
+  const summary = sets
+    .map((s) =>
+      s.weightKg != null && s.reps != null
+        ? `${formatWeight(s.weightKg, unit)}\u00d7${s.reps}`
+        : null,
+    )
+    .filter((s): s is string => s != null)
+    .join(", ");
+  if (!summary) return null;
+  return (
+    <span className="flex items-center gap-1 truncate">
+      <History className="size-3 shrink-0" />
+      Last: {summary}
+    </span>
   );
 }
 
@@ -540,14 +682,20 @@ function TagEditor({
   setTags: ReturnType<typeof useSetExerciseTags>;
 }) {
   const [tagDraft, setTagDraft] = useState("");
+  // Hold the latest tags so a rapid second add appends to the first instead of
+  // reading stale props (the optimistic cache update lags a render behind).
+  const tagsRef = useRef(exercise.tags ?? []);
+  tagsRef.current = exercise.tags ?? [];
 
   function addTag() {
     const tag = tagDraft.trim().replace(/,+$/, "");
     setTagDraft("");
     if (!tag) return;
-    const current = exercise.tags ?? [];
+    const current = tagsRef.current;
     if (current.includes(tag)) return;
-    setTags.mutate({ exerciseId: exercise.id, tags: [...current, tag] });
+    const nextTags = [...current, tag];
+    tagsRef.current = nextTags;
+    setTags.mutate({ exerciseId: exercise.id, tags: nextTags });
   }
 
   return (

@@ -7,12 +7,14 @@ import { cn } from "@/lib/utils";
 export default function FindingsScreen() {
   const { data: sessions = [], isLoading } = useFindingsData();
   const { data: metrics = [] } = useMetrics();
-  const { trends, countdowns, conditions } = useMemo(
+  const { trends, countdowns, conditions, conditionCountdowns } = useMemo(
     () => computeFindings(sessions, metrics),
     [sessions, metrics],
   );
 
   const empty = !isLoading && trends.length === 0 && conditions.length === 0;
+  const nothingOnTheWay =
+    countdowns.length === 0 && conditionCountdowns.length === 0;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
@@ -51,7 +53,7 @@ export default function FindingsScreen() {
             </section>
           )}
 
-          {countdowns.length > 0 && (
+          {!nothingOnTheWay && (
             <section>
               <SectionLabel>On the way</SectionLabel>
               <div className="mt-2 divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
@@ -71,11 +73,27 @@ export default function FindingsScreen() {
                     </span>
                   </div>
                 ))}
+                {conditionCountdowns.map((c) => (
+                  <div
+                    key={c.conditionId}
+                    className="flex items-center justify-between px-4 py-2 text-sm"
+                    data-testid={`condition-countdown-${c.conditionName}`}
+                  >
+                    <span className="text-soft">
+                      <span className="num text-ink">{c.sessionsNeeded}</span>{" "}
+                      more {c.sessionsNeeded === 1 ? "session" : "sessions"}{" "}
+                      with {c.conditionName} logged until a correlation
+                    </span>
+                    <span className="num text-2xs text-faint">
+                      {c.sessionsLogged}/10
+                    </span>
+                  </div>
+                ))}
               </div>
             </section>
           )}
 
-          {empty && countdowns.length === 0 && (
+          {empty && nothingOnTheWay && (
             <div className="rounded-lg border border-border bg-surface px-4 py-8 text-center">
               <p className="text-sm text-soft">No findings yet.</p>
               <p className="mt-1 text-xs text-faint">
@@ -135,8 +153,12 @@ function ConditionRow({ finding }: { finding: ConditionFinding }) {
       ? "Session tonnage"
       : `${finding.outcome.exerciseName} top-set e1RM`;
   const sign = finding.pctDiff > 0 ? "+" : "";
+  const testId =
+    finding.outcome.type === "tonnage"
+      ? `condition-${finding.conditionName}-tonnage`
+      : `condition-${finding.conditionName}-e1rm-${finding.outcome.exerciseName}`;
   return (
-    <div className="px-4 py-2">
+    <div className="px-4 py-2" data-testid={testId}>
       <p className="text-sm">
         {outcome}{" "}
         <span

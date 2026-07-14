@@ -1,14 +1,37 @@
-import { toDisplayWeight } from "@sbl/core";
+import { toDisplayWeight, unitLabel } from "@sbl/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { formatDateTime } from "@/lib/format";
-import { useMetrics, useSession, useSessionExercises } from "@/lib/queries";
+import {
+  useMetrics,
+  useSession,
+  useSessionExercises,
+  useUpdateSessionStartedAt,
+} from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
 import { useUnit } from "@/lib/settings";
+
+/** Average rest (mm:ss) across a block's sets, or null if none recorded. */
+function avgRestLabel(sets: { restSec: number | null }[]): string | null {
+  const rests = sets
+    .map((s) => s.restSec)
+    .filter((r): r is number => r != null && r > 0);
+  if (!rests.length) return null;
+  const total = Math.round(rests.reduce((a, b) => a + b, 0) / rests.length);
+  const m = Math.floor(total / 60);
+  const s = String(total % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+/** ms epoch → "YYYY-MM-DDTHH:mm" in local time for a datetime-local input. */
+function toLocalInput(ms: number): string {
+  const d = new Date(ms);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 
 export default function HistoryDetailScreen() {
   const { id = "" } = useParams();
@@ -20,6 +43,7 @@ export default function HistoryDetailScreen() {
   const { data: session } = useSession(id);
   const { data: blocks = [] } = useSessionExercises(id);
   const { data: metrics = [] } = useMetrics();
+  const updateStartedAt = useUpdateSessionStartedAt(id);
 
   async function deleteSession() {
     await repo.deleteSession(id);
@@ -88,9 +112,17 @@ export default function HistoryDetailScreen() {
         {session?.title ?? "Session"}
       </h1>
       {session && (
-        <p className="num mt-0.5 text-xs text-faint">
-          {formatDateTime(session.startedAt)}
-        </p>
+        <input
+          type="datetime-local"
+          className="num mt-0.5 block bg-transparent text-xs text-faint transition-colors duration-100 hover:text-soft focus:text-ink focus:outline-none"
+          value={toLocalInput(session.startedAt)}
+          onChange={(e) => {
+            const ms = new Date(e.target.value).getTime();
+            if (Number.isFinite(ms)) updateStartedAt.mutate(ms);
+          }}
+          title="Session start — edit to backdate"
+          data-testid="session-date-input"
+        />
       )}
       {conditionLines.length > 0 && (
         <p className="num mt-2 text-xs text-soft">
@@ -108,11 +140,13 @@ export default function HistoryDetailScreen() {
               <h2 className="text-sm font-medium">{block.exerciseName}</h2>
               <span className="num text-2xs text-faint">
                 {block.sets.length} {block.sets.length === 1 ? "set" : "sets"}
+                {avgRestLabel(block.sets) &&
+                  ` · rest ${avgRestLabel(block.sets)} avg`}
               </span>
             </header>
             <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 px-4 py-1 text-2xs font-medium tracking-wide text-faint uppercase">
               <span>#</span>
-              <span>{unit}</span>
+              <span>{unitLabel(unit)}</span>
               <span>reps</span>
               <span />
             </div>
@@ -129,7 +163,12 @@ export default function HistoryDetailScreen() {
                 </span>
                 <span className="num text-sm">{set.reps ?? "—"}</span>
                 <span className="num text-2xs text-faint">
-                  {set.rir != null ? `@${set.rir}` : ""}
+                  {[
+                    set.rir != null ? `@${set.rir}` : null,
+                    set.rpe != null ? `RPE ${set.rpe}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                 </span>
               </div>
             ))}

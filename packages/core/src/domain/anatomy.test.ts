@@ -5,6 +5,7 @@ import {
   JOINT_ACTIONS,
   MUSCLES,
   type MuscleTarget,
+  ratingsForExercise,
   ratingsForMuscle,
 } from "./anatomy";
 
@@ -42,6 +43,39 @@ describe("anatomy vocabulary", () => {
       expect(ratings.length, m.key).toBeGreaterThan(0);
       expect(["S", "A"], m.key).toContain(ratings[0]?.tier);
     }
+  });
+});
+
+describe("ratingsForExercise", () => {
+  it("picks the best-matching tier per joint action from the exercise's own muscles", () => {
+    // Front Squat: quads (knee-extension = S), glutes (hip-extension = S).
+    const ratings = ratingsForExercise({
+      jointActions: ["knee-extension", "hip-extension"],
+      muscleTargets: [
+        { muscle: "quads", tier: "S" },
+        { muscle: "glutes", tier: "B" },
+      ],
+    });
+    expect(ratings).toEqual([
+      { jointAction: "knee-extension", tier: "S", muscle: "quads" },
+      { jointAction: "hip-extension", tier: "S", muscle: "glutes" },
+    ]);
+  });
+
+  it("returns tier: null for a joint action with no matching rating", () => {
+    const ratings = ratingsForExercise({
+      jointActions: ["wrist-flexion-extension"],
+      muscleTargets: [{ muscle: "quads", tier: "S" }],
+    });
+    expect(ratings).toEqual([
+      { jointAction: "wrist-flexion-extension", tier: null, muscle: null },
+    ]);
+  });
+
+  it("handles null jointActions/muscleTargets", () => {
+    expect(
+      ratingsForExercise({ jointActions: null, muscleTargets: null }),
+    ).toEqual([]);
   });
 });
 
