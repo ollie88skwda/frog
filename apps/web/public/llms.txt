@@ -1,0 +1,45 @@
+# SBL
+
+> SBL is a training lab notebook: users log workouts (exercises, sets of
+> weight×reps, RIR, notes) AND the conditions around them (sleep, bodyweight,
+> pre-workout carbs, caffeine, stress, meal timing), then the app surfaces
+> correlations between inputs and outputs ("Findings"). All user data is
+> open: JSON/CSV export, a personal-access-token read API, and an MCP server.
+
+## Auth
+
+Every API request needs a personal access token (created in-app under
+Settings → API tokens): `Authorization: Bearer sbl_...`. Tokens are
+read-only and scoped to the owning user's data.
+
+## REST API (read-only)
+
+Base: `<SUPABASE_PROJECT_URL>/functions/v1/api`
+
+- `GET /v1/exercises?limit&offset` — exercises (global seeds + user's custom)
+- `GET /v1/sessions?limit&offset` — sessions, newest first, incl. `condition_values` ({metric_id: value})
+- `GET /v1/sets?limit&offset` — flat set logs (weight_kg, reps, rir, note, metric_values)
+- `GET /v1/export` — everything: exercises, metrics, sessions, session_exercises, set_logs
+
+Example:
+
+    curl -H "Authorization: Bearer $SBL_TOKEN" \
+      "$SBL_API_URL/v1/sessions?limit=10"
+
+## Data model (stable)
+
+Tables: exercises, metrics, sessions, session_exercises, set_logs.
+Conventions: uuid ids; created_at/updated_at/deleted_at are millisecond
+epochs; rows are soft-deleted (deleted_at set, never removed); weight is
+canonical kg (weight_kg); custom values live in jsonb keyed by metric id
+(sessions.condition_values, set_logs.metric_values); metrics have
+type (number|scale|text|checkbox) and scope (set|session).
+
+Full schema reference: docs/schema.md in the repo. API reference: docs/api.md.
+
+## MCP server
+
+TypeScript stdio server (`sbl-mcp`, packages/mcp in the repo). Config env:
+SBL_TOKEN (required), SBL_API_URL. Tools: list_exercises, list_sessions,
+get_session, get_sets, get_progression (runs the findings engine locally),
+export_all.

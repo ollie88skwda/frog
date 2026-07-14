@@ -1,0 +1,308 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Inter Variable";
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------------------
+ * SBL design language — Linear-derived, blue monochrome, square.
+ * ONE base blue (#034078, user-picked) generates every non-semantic color as
+ * a color-mix percentage step toward black (dark surfaces) or white (text /
+ * light surfaces). Only the hex is locked; step percentages tune against
+ * measured contrast. 0px radius everywhere. 8px-grid spacing (see AGENTS.md).
+ * Semantic pos/neg/warn stay green/red/yellow — small text/icons only.
+ * Inter Variable tuned weights (510/590), dense 13px UI, fast
+ * transform/opacity-only motion (out-quad, ~160ms). Mobile-first.
+ * ------------------------------------------------------------------------- */
+
+:root {
+  --blue: #034078;
+}
+
+:root,
+:root[data-theme="dark"] {
+  /* surfaces: page → raised levels (blue → black steps) */
+  --bg: color-mix(in oklab, var(--blue) 34%, black);
+  --surface: color-mix(in oklab, var(--blue) 41%, black);
+  --surface-2: color-mix(in oklab, var(--blue) 47%, black);
+  --surface-3: color-mix(in oklab, var(--blue) 53%, black);
+  --surface-hover: color-mix(in oklab, var(--blue) 59%, black);
+  --surface-active: color-mix(in oklab, var(--blue) 65%, black);
+  --translucent: color-mix(in srgb, var(--blue) 18%, transparent);
+
+  /* hairlines */
+  --border: color-mix(in oklab, var(--blue) 62%, black);
+  --border-strong: color-mix(in oklab, var(--blue) 80%, black);
+  --border-translucent: color-mix(in srgb, var(--blue) 22%, transparent);
+
+  /* text (blue → white steps) */
+  --ink: color-mix(in oklab, var(--blue) 8%, white);
+  --ink-2: color-mix(in oklab, var(--blue) 22%, white);
+  --soft: color-mix(in oklab, var(--blue) 48%, white);
+  --faint: color-mix(in oklab, var(--blue) 64%, white);
+
+  /* the one accent — the base blue, lifted toward white on dark surfaces so
+     filled controls clear ~3:1 against --surface (measured in visual pass) */
+  --accent: color-mix(in oklab, var(--blue) 72%, white);
+  --accent-hover: color-mix(in oklab, var(--blue) 60%, white);
+  --accent-soft: color-mix(in srgb, var(--blue) 30%, transparent);
+  --accent-fg: #ffffff;
+  --brand: color-mix(in oklab, var(--blue) 72%, white);
+
+  /* semantic exceptions — small text/icons only, never large fills */
+  --pos: #27a644;
+  --neg: #eb5757;
+  --warn: #f0bf00;
+  --orange: #fc7840;
+
+  --ring: color-mix(in oklab, var(--blue) 55%, white);
+  --scrollbar: color-mix(in srgb, var(--blue) 35%, transparent);
+  --overlay: rgba(0, 0, 0, 0.7);
+
+  --shadow-low: 0px 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0px 4px 24px rgba(0, 0, 0, 0.2);
+  --shadow-high: 0px 7px 32px rgba(0, 0, 0, 0.35);
+  /* signature secondary-control treatment: translucent fill + inset hairlines */
+  --inset-control:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.03), inset 0 1px rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="light"] {
+  --bg: color-mix(in oklab, var(--blue) 2%, white);
+  --surface: color-mix(in oklab, var(--blue) 4%, white);
+  --surface-2: color-mix(in oklab, var(--blue) 7%, white);
+  --surface-3: color-mix(in oklab, var(--blue) 10%, white);
+  --surface-hover: color-mix(in oklab, var(--blue) 9%, white);
+  --surface-active: color-mix(in oklab, var(--blue) 13%, white);
+  --translucent: color-mix(in srgb, var(--blue) 5%, transparent);
+
+  --border: color-mix(in oklab, var(--blue) 14%, white);
+  --border-strong: color-mix(in oklab, var(--blue) 22%, white);
+  --border-translucent: color-mix(in srgb, var(--blue) 8%, transparent);
+
+  --ink: color-mix(in oklab, var(--blue) 85%, black);
+  --ink-2: var(--blue);
+  --soft: color-mix(in oklab, var(--blue) 75%, white);
+  --faint: color-mix(in oklab, var(--blue) 62%, white);
+
+  --accent: var(--blue);
+  --accent-hover: color-mix(in oklab, var(--blue) 85%, black);
+  --accent-soft: color-mix(in srgb, var(--blue) 12%, transparent);
+  --accent-fg: #ffffff;
+  --brand: var(--blue);
+
+  --pos: #1e8a38;
+  --neg: #d64545;
+  --warn: #b08c00;
+  --orange: #fc7840;
+
+  --ring: var(--blue);
+  --scrollbar: color-mix(in srgb, var(--blue) 25%, transparent);
+  --overlay: rgba(255, 255, 255, 0.65);
+
+  --shadow-low: 0px 1px 4px -1px rgba(0, 0, 0, 0.09);
+  --shadow-medium: 0px 3px 12px rgba(0, 0, 0, 0.09);
+  --shadow-high: 0px 7px 24px rgba(0, 0, 0, 0.06);
+  --inset-control:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-active: var(--surface-active);
+  --color-translucent: var(--translucent);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-soft: var(--soft);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-brand: var(--brand);
+  --color-pos: var(--pos);
+  --color-neg: var(--neg);
+  --color-warn: var(--warn);
+  --color-ring: var(--ring);
+}
+
+@theme {
+  --font-sans:
+    "Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Berkeley Mono", Menlo, monospace;
+
+  /* Inter Variable tuned weights (Linear caps at ~590 — no heavy display weights) */
+  --font-weight-medium: 510;
+  --font-weight-semibold: 590;
+  --font-weight-bold: 590;
+
+  /* Mobile-friendly scale: 15px body base (was 13px dense), bumped ~+2px per
+     step for phone legibility. Line-heights scaled to match. */
+  --text-2xs: 12px;
+  --text-2xs--line-height: 16px;
+  --text-xs: 13px;
+  --text-xs--line-height: 18px;
+  --text-sm: 15px;
+  --text-sm--line-height: 22px;
+  --text-base: 17px;
+  --text-base--line-height: 26px;
+  --text-lg: 20px;
+  --text-lg--line-height: 27px;
+  --text-xl: 22px;
+  --text-xl--line-height: 29px;
+  --text-2xl: 26px;
+  --text-2xl--line-height: 33px;
+
+  /* Square everywhere — brutalist mandate (docs/DECISIONS.md). */
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+
+  /* Linear's easing library (out-quad is the UI default) */
+  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
+  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955);
+}
+
+/* Tabular numerals for all data: weights, reps, e1RM, timers. */
+@utility num {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Keycap-style shortcut hint chip (tooltips, palette, menus). */
+@utility keycap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 0;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--faint);
+  font-family: var(--font-sans);
+  font-size: 10.5px;
+  font-weight: 510;
+  line-height: 1;
+}
+
+/* Floating layers: hairline + soft shadow (the only place shadows appear). */
+@utility floating {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--shadow-high);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  body {
+    @apply bg-bg text-ink font-sans text-sm antialiased;
+    /* Linear's signature Inter alternates: a/g/l variants + slashed zero */
+    font-feature-settings: "cv01", "ss03", "zero";
+    letter-spacing: -0.011em;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Lab-notebook signature: headings set in mono (reuses --font-mono system
+     stack, no extra font file). Uppercase micro-labels keep their own
+     tracking-widest utility; mono just makes them read more terminal-y. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-mono);
+    letter-spacing: -0.01em;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+  }
+
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--scrollbar);
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Numeric inputs: no spinners on the logging path. */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* One-shot accent flash when a set row commits (opacity-only, GPU-safe). */
+@keyframes commit-flash {
+  0% {
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+  100% {
+    box-shadow: inset 0 0 0 1px transparent;
+  }
+}
+@utility commit-flash {
+  animation: commit-flash 480ms var(--ease-out-quad);
+}
+
+/* Floating-layer entrance: fade + 2px rise, 160ms out-quad. */
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@utility float-in {
+  animation: float-in 160ms var(--ease-out-quad);
+}

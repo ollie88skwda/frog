@@ -1,52 +1,28 @@
 {
   "name": "sbl",
-  "main": "index.js",
   "version": "1.0.0",
-  "dependencies": {
-    "babel-preset-expo": "~54.0.10",
-    "drizzle-orm": "^0.45.2",
-    "expo": "^54",
-    "expo-constants": "~18.0.13",
-    "expo-crypto": "~15.0.9",
-    "expo-linking": "~8.0.12",
-    "expo-router": "~6.0.24",
-    "expo-splash-screen": "~31.0.13",
-    "expo-sqlite": "~16.0.10",
-    "expo-status-bar": "~3.0.9",
-    "expo-system-ui": "~6.0.9",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "react-native": "0.81.5",
-    "react-native-gesture-handler": "~2.28.0",
-    "react-native-reanimated": "~4.1.1",
-    "react-native-safe-area-context": "~5.6.0",
-    "react-native-screens": "~4.16.0",
-    "react-native-web": "~0.21.0",
-    "react-native-worklets": "0.5.1"
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --cwd apps/web dev",
+    "test": "bun run --filter '*' test",
+    "test:integration": "bun run --cwd packages/core test:integration",
+    "e2e": "bun scripts/run-e2e.ts",
+    "typecheck": "bun run --filter '*' typecheck",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "db:generate": "drizzle-kit generate",
+    "db:reset": "supabase db reset"
   },
   "devDependencies": {
-    "@playwright/test": "^1.60.0-alpha-2026-04-14",
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/react": "~19.1.10",
-    "@types/sql.js": "^1.4.11",
-    "babel-plugin-inline-import": "^3.0.0",
-    "better-sqlite3": "^12.11.1",
+    "@biomejs/biome": "^2.3.13",
+    "@playwright/test": "^1.61.1",
+    "@supabase/supabase-js": "^2.110.2",
+    "@types/node": "^26.1.1",
     "drizzle-kit": "^0.31.10",
-    "sql.js": "^1.14.1",
-    "typescript": "~5.9.2",
-    "vitest": "^4.1.9"
-  },
-  "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
-    "web": "expo start --web",
-    "lint": "expo lint",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "e2e:build": "EXPO_PUBLIC_E2E=1 expo export -p web --output-dir dist-e2e",
-    "e2e": "npm run e2e:build && playwright test -c e2e/playwright.config.ts",
-    "e2e:headed": "npm run e2e:build && playwright test -c e2e/playwright.config.ts --headed"
-  },
-  "private": true
+    "typescript": "~5.9.2"
+  }
 }

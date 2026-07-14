@@ -1,0 +1,18 @@
+{
+  "name": "@sbl/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "sbl-mcp": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "bun src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.21.1",
+    "@sbl/core": "workspace:*",
+    "zod": "^3.25.76"
+  }
+}
