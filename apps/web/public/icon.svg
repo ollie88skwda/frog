@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <title>SBL</title>
-  <rect width="512" height="512" rx="96" fill="#0a0b0d"/>
-  <rect x="16" y="16" width="480" height="480" rx="84" fill="none" stroke="#5e6ad2" stroke-opacity="0.35" stroke-width="8"/>
-  <text x="256" y="308" font-family="Inter, -apple-system, sans-serif" font-size="164" font-weight="650" letter-spacing="-6" text-anchor="middle" fill="#e8eaed">SBL</text>
+  <rect width="512" height="512" rx="96" fill="#111113"/>
+  <rect x="16" y="16" width="480" height="480" rx="84" fill="none" stroke="#3e63dd" stroke-opacity="0.4" stroke-width="8"/>
+  <text x="256" y="308" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="164" font-weight="650" letter-spacing="-6" text-anchor="middle" fill="#e8eaed">SBL</text>
 </svg>

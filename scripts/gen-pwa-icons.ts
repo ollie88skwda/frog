@@ -8,7 +8,7 @@ import { APP_NAME } from "../packages/core/src/config";
 
 const BG = "#111113"; // Radix slate-1 (dark app background)
 const FG = "#e8eaed";
-const ACCENT = "#5b5bd6"; // Radix indigo-9
+const ACCENT = "#3e63dd"; // Radix indigo-9 (the app's --brand)
 
 const monogram = APP_NAME.slice(0, 3).toUpperCase();
 
