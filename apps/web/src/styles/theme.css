@@ -284,16 +284,6 @@
     -moz-appearance: textfield;
   }
 
-  /* Prevent mobile zoom on focus: set 16px minimum and disable webkit auto-zoom.
-     iOS zooms inputs with font-size < 16px on focus; we keep the ui at 15px but
-     bump inputs to 16px specifically. */
-  input,
-  textarea,
-  select {
-    font-size: 16px;
-    -webkit-text-size-adjust: 100%;
-  }
-
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -301,6 +291,20 @@
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
     }
+  }
+}
+
+/* Prevent mobile zoom on input focus. iOS/WebKit (incl. Arc) auto-zooms any
+   focused form control whose font-size resolves < 16px, and `user-scalable=no`
+   is ignored. Radix's reset applies `all: unset` to inputs in the `radix`
+   layer, which forces `font-size: inherit` (14px from --font-size-2) and beats
+   a `@layer base` rule. The `utilities` layer is the documented escape hatch
+   that outranks `radix`, so the 16px minimum has to live here to actually win. */
+@layer utilities {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
   }
 }
 
