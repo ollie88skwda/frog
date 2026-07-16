@@ -34,7 +34,9 @@ test("unit toggles persist across reload", async ({ page }) => {
 
 test("first day of week persists to user_prefs", async ({ page }) => {
   await page.goto("/settings");
-  await page.getByTestId("first-weekday-select").selectOption("0"); // Sunday
+  // Radix Select (not a native <select>): open the trigger, click the option.
+  await page.getByTestId("first-weekday-select").click();
+  await page.getByRole("option", { name: "Sunday" }).click();
 
   await expect
     .poll(() =>
@@ -49,7 +51,8 @@ test("first day of week persists to user_prefs", async ({ page }) => {
     .toBe(0);
 
   await page.reload();
-  await expect(page.getByTestId("first-weekday-select")).toHaveValue("0");
+  // The Radix Select trigger renders the selected option's label.
+  await expect(page.getByTestId("first-weekday-select")).toHaveText(/Sunday/);
 });
 
 test("warm-up method editor adds, removes, and resets steps", async ({

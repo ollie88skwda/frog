@@ -1,3 +1,4 @@
+import { Select } from "@radix-ui/themes";
 import {
   type ApiToken,
   measurementsCsv,
@@ -149,26 +150,28 @@ function Toggle({
   );
 }
 
-function NativeSelect({
+function SelectField({
   value,
   onChange,
   testid,
-  children,
+  options,
 }: {
   value: string;
   onChange: (v: string) => void;
   testid?: string;
-  children: ReactNode;
+  options: { value: string; label: string }[];
 }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      data-testid={testid}
-      className="rounded-md border border-border bg-surface-2 px-2 py-1 text-xs text-ink"
-    >
-      {children}
-    </select>
+    <Select.Root value={value} onValueChange={onChange} size="1">
+      <Select.Trigger variant="surface" data-testid={testid} />
+      <Select.Content>
+        {options.map((o) => (
+          <Select.Item key={o.value} value={o.value}>
+            {o.label}
+          </Select.Item>
+        ))}
+      </Select.Content>
+    </Select.Root>
   );
 }
 
@@ -307,7 +310,7 @@ function WorkoutsSection() {
           label="Default rest timer"
           hint="Applied to sets with no per-exercise rest set."
         >
-          <NativeSelect
+          <SelectField
             value={defaultRestSec === null ? "off" : String(defaultRestSec)}
             onChange={(v) =>
               updatePrefs.mutate({
@@ -315,16 +318,11 @@ function WorkoutsSection() {
               })
             }
             testid="default-rest-select"
-          >
-            {REST_OPTIONS.map((o) => (
-              <option
-                key={o.label}
-                value={o.sec === null ? "off" : String(o.sec)}
-              >
-                {o.label}
-              </option>
-            ))}
-          </NativeSelect>
+            options={REST_OPTIONS.map((o) => ({
+              value: o.sec === null ? "off" : String(o.sec),
+              label: o.label,
+            }))}
+          />
         </Row>
 
         <Row
@@ -536,26 +534,20 @@ function DisplaySection() {
     <Section title="Display">
       <div className="mt-1 divide-y divide-border">
         <Row label="First day of week" hint="Calendar and weekly streak start.">
-          <NativeSelect
+          <SelectField
             value={String(firstWeekday)}
             onChange={(v) => updatePrefs.mutate({ firstWeekday: Number(v) })}
             testid="first-weekday-select"
-          >
-            {WEEKDAYS.map((d, i) => (
-              <option key={d} value={String(i)}>
-                {d}
-              </option>
-            ))}
-          </NativeSelect>
+            options={WEEKDAYS.map((d, i) => ({ value: String(i), label: d }))}
+          />
         </Row>
         <Row label="Body diagram" hint="Figure used on the stats heat map.">
-          <NativeSelect
+          <SelectField
             value={bodyDiagram}
             onChange={(v) => updatePrefs.mutate({ bodyDiagram: v })}
             testid="body-diagram-select"
-          >
-            <option value="neutral">Neutral</option>
-          </NativeSelect>
+            options={[{ value: "neutral", label: "Neutral" }]}
+          />
         </Row>
       </div>
     </Section>
