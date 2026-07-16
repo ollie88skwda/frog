@@ -46,9 +46,10 @@ export function TierBadge({
   tier,
   className,
 }: {
-  tier: Tier;
+  tier: Tier | null;
   className?: string;
 }) {
+  if (!tier) return null;
   return (
     <span
       className={cn(
@@ -110,7 +111,7 @@ export function JointActionRatings({
 }: {
   exercise: {
     jointActions: string[] | null;
-    muscleTargets: { muscle: string; tier: Tier }[] | null;
+    muscleTargets: { muscle: string; tier: Tier | null }[] | null;
   };
   className?: string;
 }) {
@@ -177,7 +178,7 @@ export function ExerciseRibbon({
   className,
 }: {
   exercise: Exercise;
-  tier?: Tier;
+  tier?: Tier | null;
   machine?: Machine | null;
   className?: string;
 }) {

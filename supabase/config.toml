@@ -173,7 +173,11 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = true
+# Clerk owns sign-ups; Supabase-native signup stays OFF so the public anon key
+# can't mint `authenticated` JWTs that bypass Clerk. The E2E seed user is
+# created via the service-role admin API, which bypasses this setting.
+# Mirror this OFF on any hosted project when Clerk goes live.
+enable_signup = false
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
@@ -218,6 +222,9 @@ web3 = 30
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
+# NOTE: must stay true — false disables email password SIGN-INS too, which
+# breaks the hermetic E2E path. New-user signups are already blocked by the
+# top-level [auth] enable_signup = false (verified: /auth/v1/signup → 422).
 enable_signup = true
 # If enabled, a user will be required to confirm any email change on both the old, and new email
 # addresses. If disabled, only the new email is required to confirm.
@@ -357,10 +364,17 @@ enabled = false
 # user_pool_region = "us-east-1"
 
 # Use Clerk as a third-party provider alongside Supabase Auth.
+# Clerk is SBL's identity provider. To finish setup: create the Clerk app,
+# activate its Supabase integration (https://clerk.com/setup/supabase — adds
+# the `role: authenticated` claim), then set `enabled = true` + your Clerk
+# domain below and restart supabase. Until then, Clerk tokens are rejected
+# locally (E2E uses Supabase-native sessions and is unaffected).
 [auth.third_party.clerk]
-enabled = false
+enabled = true
 # Obtain from https://clerk.com/setup/supabase
-# domain = "example.clerk.accounts.dev"
+# Dev instance (pk_test). Production uses a pk_live instance with its own
+# domain — register that one on the hosted project, not this.
+domain = "top-parakeet-48.clerk.accounts.dev"
 
 # OAuth server configuration
 [auth.oauth_server]

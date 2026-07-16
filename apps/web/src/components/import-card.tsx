@@ -3,6 +3,7 @@ import {
   type ImportResult,
   parseFitbitSleep,
   parseHevyCsv,
+  parseStrongCsv,
 } from "@sbl/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { Upload } from "lucide-react";
@@ -10,7 +11,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRepo } from "@/lib/repo";
 
-type HevyState =
+type CsvState =
   | { phase: "idle" }
   | {
       phase: "parsed";
@@ -29,18 +30,35 @@ type SleepState =
   | { phase: "done"; filled: number }
   | { phase: "error"; message: string };
 
-export function ImportCard() {
+/** A workout-history CSV importer (Hevy, Strong): parse → preview counts →
+ * import. Two providers, one flow — idempotent by session start time, so a
+ * re-import skips sessions that already exist. */
+function WorkoutCsvImport({
+  label,
+  hint,
+  parse,
+  testid,
+}: {
+  label: string;
+  hint: string;
+  parse: (text: string) => ImportedSession[];
+  testid: string;
+}) {
   const repo = useRepo();
   const qc = useQueryClient();
-  const hevyFile = useRef<HTMLInputElement>(null);
-  const sleepFiles = useRef<HTMLInputElement>(null);
-  const [hevy, setHevy] = useState<HevyState>({ phase: "idle" });
-  const [sleep, setSleep] = useState<SleepState>({ phase: "idle" });
+  const [state, setState] = useState<CsvState>({ phase: "idle" });
 
-  async function onHevyFile(file: File | undefined) {
+  async function onFile(file: File | undefined) {
     if (!file) return;
     try {
-      const sessions = parseHevyCsv(await file.text());
+      const sessions = parse(await file.text());
+      if (sessions.length === 0) {
+        setState({
+          phase: "error",
+          message: "No sessions found — is this the right export?",
+        });
+        return;
+      }
       const sets = sessions.reduce(
         (n, s) => n + s.exercises.reduce((m, e) => m + e.sets.length, 0),
         0,
@@ -48,29 +66,76 @@ export function ImportCard() {
       const exercises = new Set(
         sessions.flatMap((s) => s.exercises.map((e) => e.name.toLowerCase())),
       ).size;
-      setHevy({ phase: "parsed", sessions, sets, exercises });
+      setState({ phase: "parsed", sessions, sets, exercises });
     } catch (e) {
-      setHevy({
+      setState({
         phase: "error",
         message: e instanceof Error ? e.message : String(e),
       });
     }
   }
 
-  async function runHevyImport() {
-    if (hevy.phase !== "parsed") return;
-    setHevy({ phase: "importing" });
+  async function runImport() {
+    if (state.phase !== "parsed") return;
+    setState({ phase: "importing" });
     try {
-      const result = await repo.importSessions(hevy.sessions);
-      setHevy({ phase: "done", result });
+      const result = await repo.importSessions(state.sessions);
+      setState({ phase: "done", result });
       void qc.invalidateQueries();
     } catch (e) {
-      setHevy({
+      setState({
         phase: "error",
         message: e instanceof Error ? e.message : String(e),
       });
     }
   }
+
+  return (
+    <div className="mt-3 border-t border-border pt-3">
+      <p className="text-xs font-medium">{label}</p>
+      <p className="mt-0.5 text-2xs text-faint">{hint}</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <input
+          type="file"
+          accept=".csv,text/csv"
+          onChange={(e) => void onFile(e.target.files?.[0])}
+          className="text-xs text-soft file:mr-2 file:rounded-md file:border file:border-border file:bg-surface-2 file:px-2 file:py-1 file:text-xs file:text-ink"
+          data-testid={`import-${testid}-input`}
+        />
+        {state.phase === "parsed" && (
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => void runImport()}
+            data-testid={`import-${testid}-btn`}
+          >
+            <Upload className="size-4" />
+            Import {state.sessions.length} sessions
+          </Button>
+        )}
+      </div>
+      <p
+        className="num mt-2 text-2xs text-faint"
+        data-testid={`import-${testid}-status`}
+      >
+        {state.phase === "parsed" &&
+          `${state.sessions.length} sessions · ${state.sets} sets · ${state.exercises} exercises — re-import skips existing`}
+        {state.phase === "importing" && "Importing…"}
+        {state.phase === "done" &&
+          `Imported ${state.result.imported} sessions (${state.result.sets} sets, ${state.result.exercisesCreated} new exercises) · skipped ${state.result.skipped} existing`}
+        {state.phase === "error" && (
+          <span className="text-neg">{state.message}</span>
+        )}
+      </p>
+    </div>
+  );
+}
+
+export function ImportCard() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  const sleepFiles = useRef<HTMLInputElement>(null);
+  const [sleep, setSleep] = useState<SleepState>({ phase: "idle" });
 
   async function onSleepFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -104,47 +169,22 @@ export function ImportCard() {
     <div className="mt-4 rounded-lg border border-border bg-surface p-4">
       <h2 className="text-sm font-medium">Import</h2>
       <p className="mt-0.5 text-2xs text-faint">
-        Bring your history in. Import workouts (Hevy) first, then sleep — sleep
-        attaches to sessions that already exist.
+        Bring your history in. Import workouts (Hevy or Strong) first, then
+        sleep — sleep attaches to sessions that already exist.
       </p>
 
-      <div className="mt-3 border-t border-border pt-3">
-        <p className="text-xs font-medium">Hevy workouts (.csv)</p>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <input
-            ref={hevyFile}
-            type="file"
-            accept=".csv,text/csv"
-            onChange={(e) => void onHevyFile(e.target.files?.[0])}
-            className="text-xs text-soft file:mr-2 file:rounded-md file:border file:border-border file:bg-surface-2 file:px-2 file:py-1 file:text-xs file:text-ink"
-            data-testid="import-hevy-input"
-          />
-          {hevy.phase === "parsed" && (
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => void runHevyImport()}
-              data-testid="import-hevy-btn"
-            >
-              <Upload className="size-4" />
-              Import {hevy.sessions.length} sessions
-            </Button>
-          )}
-        </div>
-        <p
-          className="num mt-2 text-2xs text-faint"
-          data-testid="import-hevy-status"
-        >
-          {hevy.phase === "parsed" &&
-            `${hevy.sessions.length} sessions · ${hevy.sets} sets · ${hevy.exercises} exercises — re-import skips existing`}
-          {hevy.phase === "importing" && "Importing…"}
-          {hevy.phase === "done" &&
-            `Imported ${hevy.result.imported} sessions (${hevy.result.sets} sets, ${hevy.result.exercisesCreated} new exercises) · skipped ${hevy.result.skipped} existing`}
-          {hevy.phase === "error" && (
-            <span className="text-neg">{hevy.message}</span>
-          )}
-        </p>
-      </div>
+      <WorkoutCsvImport
+        label="Hevy workouts (.csv)"
+        hint="Export from Hevy → Settings → Export Data."
+        parse={parseHevyCsv}
+        testid="hevy"
+      />
+      <WorkoutCsvImport
+        label="Strong workouts (.csv)"
+        hint="Export from Strong → Settings → Export Data. Weights convert to kg."
+        parse={parseStrongCsv}
+        testid="strong"
+      />
 
       <div className="mt-3 border-t border-border pt-3">
         <p className="text-xs font-medium">

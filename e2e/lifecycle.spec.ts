@@ -48,9 +48,13 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   await expect(page).toHaveURL(sessionUrl);
   await expect(page.getByTestId("committed-0-weight")).toHaveText("100");
 
-  // End: ended_at stamped, resume disappears.
+  // Finish: the End button opens the finish overlay; Save stamps ended_at and
+  // lands on the session's history.
   await page.getByTestId("end-session-btn").click();
-  await expect(page).toHaveURL(/\/$/);
+  await page.getByTestId("finish-save").click();
+  await expect(page).toHaveURL(/\/history\//);
+  // Back on Train, resume is gone (no open session).
+  await page.goto("/train");
   await expect(page.getByTestId("resume-session-btn")).not.toBeVisible();
   const endedCount = await page.evaluate(async () => {
     const { count, error } = await window.__sbl.supabase

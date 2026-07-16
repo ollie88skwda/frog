@@ -8,7 +8,7 @@ SBL is a **training lab notebook** (web app first; mobile later): log the work *
 
 - **Optimistic UI.** Reflect the user's action immediately; logging a set never waits on the network (client-generated IDs, background mutations with retry).
 - **Interactions feel instant** — visual feedback within ~100ms; 100–150ms CSS transitions; nothing animates on the data path.
-- **Minimal dependencies.** Audit before adding any library; prefer a few lines over a package. Initial JS budget ≤220 kB gzipped (CI-gated).
+- **Minimal dependencies.** Audit before adding any library; prefer a few lines over a package. Initial JS budget ≤220 kB gzipped (CI-gated — the honest eager set, measured from `dist/index.html`, not a filename glob).
 - **Lazy-load** non-critical routes; **virtualize** long lists only when profiling demands; memoize hot paths.
 - Measure, don't guess: if a change risks bundle size or interaction latency, profile it.
 
@@ -18,7 +18,7 @@ Note: v1 web is **online-first** (Supabase-direct; account required). The PRD's 
 
 - Monorepo (Bun workspaces): `apps/web` + `packages/core` + `packages/mcp` + `supabase/`.
 - App: **Vite + React SPA**, react-router v7, TanStack Query, Tailwind v4 (CSS-first `@theme`), vendored shadcn/ui.
-- Data: **Supabase** (Postgres + Auth magic-link + RLS + PostgREST) via supabase-js; Drizzle pg-core schema → drizzle-kit → `supabase/migrations/`.
+- Data: **Supabase** (Postgres + RLS + PostgREST) via supabase-js; auth is **Clerk** (Google + email, prebuilt UI) via Supabase third-party auth; Drizzle pg-core schema → drizzle-kit → `supabase/migrations/`.
 - Domain logic: framework-free TS in `packages/core` (units, e1rm, progression, session-reducer, findings) — keep it free of React/DOM/supabase imports (except `repo/`).
 - Dev/integration layer (a major focus): export + personal-token API + **MCP server** + AI-buildable docs — all **TypeScript**. **No Rust.**
 - Design: techie-modern **Linear-style** — neutral grays, single indigo accent, 1px borders, dense keyboard-first UI, ⌘K palette, tabular numerals. (The old graph-paper/blueprint direction is retired; legacy app archived on branch `legacy/expo`.)

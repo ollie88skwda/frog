@@ -124,3 +124,130 @@ Personal access tokens for the read API (not part of the export).
 | token_hash | text | sha256 of the plaintext; plaintext never stored |
 | created_at / last_used_at / revoked_at | bigint ms | revoked_at set = dead |
 | owner_id | uuid | |
+
+### routine_folders
+Groups routines (program/split/goal). Owner-scoped, no seeds.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| name | text | |
+| position | integer | drag order |
+| owner_id | text | |
+
+### routines
+Reusable workout templates. Starting one pre-fills a live session.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| name | text | |
+| folder_id | uuid? | FK → routine_folders; null = unfiled |
+| position | integer | list order |
+| description | text? | |
+| owner_id | text | |
+
+### routine_exercises
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| routine_id | uuid | FK → routines |
+| exercise_id | uuid | FK → exercises |
+| order_index | integer | |
+| superset_group | integer? | same int = same superset; null = none |
+| rest_sec | integer? | countdown target; null = default, 0 = off |
+| note | text? | persistent template note (re-renders every session) |
+| owner_id | text | |
+
+### routine_sets
+Target prescription per set. `target_reps_max` non-null ⇒ rep range
+[`target_reps`, `target_reps_max`]; rep-range sets are never auto-updated by
+Update Routine Values.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| routine_exercise_id | uuid | FK |
+| set_no | integer | |
+| set_type | text | 'normal' \| 'warmup' \| 'failure' \| 'drop' |
+| target_weight_kg | real? | |
+| target_reps | integer? | |
+| target_reps_max | integer? | non-null ⇒ rep range |
+| target_duration_sec | integer? | duration types |
+| target_distance_m | real? | distance types (canonical meters) |
+| owner_id | text | |
+
+### programs
+Generator/library provenance. Progression state is not stored — the overload
+rule reads history via `sessions.routine_id`.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| source | text | 'generated' \| 'library' |
+| library_key | text? | catalog key when source='library' |
+| config | jsonb | questionnaire answers |
+| folder_id | uuid | FK → routine_folders |
+| active | boolean | |
+| owner_id | text | |
+
+### measurements
+One entry per local day (unique owner + measured_on). Canonical bodyweight
+store (volume math, trends, generator report); the seeded Bodyweight
+condition mirrors into it. Progress photo is part of the day's entry.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| measured_on | text | local YYYY-MM-DD, unique per owner |
+| bodyweight_kg | real? | |
+| bodyfat_pct | real? | |
+| neck_cm … calf_r_cm | real? | 14 circumference columns (canonical cm) |
+| photo_path | text? | progress-photos bucket; always private |
+| owner_id | text | |
+
+### exercise_prefs
+Per-exercise prefs; satellite on shared seed rows (favorites pattern).
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| exercise_id | uuid | unique per owner |
+| weight_unit | text? | 'kg' \| 'lb'; null = global default |
+| generator_excluded | boolean | "don't recommend again" |
+| owner_id | text | |
+
+### user_prefs
+One row per user. Only semantics-bearing/cross-device settings live here;
+pure device behavior (theme, display unit, sounds…) stays in localStorage.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| first_weekday | integer | 0=Sun … 6=Sat (streak/calendar semantics) |
+| include_warmups_in_stats | boolean | toggling recomputes records client-side |
+| default_rest_sec | integer? | null = off; applies to exercises added later |
+| previous_values_scope | text | 'any' \| 'routine' |
+| body_diagram | text | heat-map figure variant |
+| plate_config | jsonb | `{barKg, platesKg[], barLb, platesLb[], dumbbellStepKg}` |
+| display_name | text? | |
+| owner_id | text | unique |
+
+### session_media
+Workout photos attached at save (photos v1; ≤3 app-enforced).
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| session_id | uuid | FK → sessions |
+| path | text | session-media bucket (private) |
+| position | integer | carousel order |
+| media_type | text | 'photo' (video = backlog) |
+| owner_id | text | |
+
+### push_subscriptions
+Web-push endpoints for rest-timer/PR notifications (M12).
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| endpoint | text | unique |
+| keys | jsonb | `{p256dh, auth}` |
+| owner_id | text | |
+
+### Column additions (2026-07-15, Hevy parity)
+- `exercises`: + `exercise_type` (8 measurement types; immutable once logged — duplicate-as-custom resets), `equipment`, `instructions` (jsonb string[]), `image_urls` (jsonb string[] how-to frames).
+- `set_logs`: + `set_type`, `duration_sec`, `distance_m`. `weight_kg` is reinterpreted per exercise type (added weight for weighted-bodyweight, assistance for assisted-bodyweight).
+- `session_exercises`: + `superset_group`, `rest_sec`, `note`, `routine_exercise_id` (provenance → routine write-back + same-routine PREVIOUS scope).
+- `sessions`: + `routine_id` (provenance; null = empty workout), `paused_ms` (duration = ended − started − paused).

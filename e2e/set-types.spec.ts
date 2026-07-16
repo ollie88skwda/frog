@@ -1,0 +1,89 @@
+import { expect, test } from "@playwright/test";
+import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+
+// M1 set types: the set-number cell assigns Normal / Warm-up / Failure / Drop,
+// renders a W/F/D marker, persists via the log + update paths, and survives a
+// reload (restored from set_logs.set_type).
+
+test.beforeEach(async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
+  await signIn(page);
+});
+
+// Fills the active weight/reps row and commits it via its Add-set button.
+async function logSet(
+  page: import("@playwright/test").Page,
+  index: number,
+  weight: string,
+  reps: string,
+) {
+  await page.getByTestId(`set-${index}-weight`).fill(weight);
+  await page.getByTestId(`set-${index}-reps`).fill(reps);
+  await page.getByTestId(`set-${index}-add`).click();
+  await expect(page.getByTestId(`committed-${index}-type`)).toBeVisible();
+}
+
+test("assign W/F/D markers on the draft row, edit a committed type, persist across reload", async ({
+  page,
+}) => {
+  const EX = `SetType ${Date.now()}`;
+
+  await page.goto("/library");
+  await page.getByTestId("exercise-name-input").fill(EX);
+  await page.getByTestId("add-exercise-btn").click();
+  await waitForExercise(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await expect(page).toHaveURL(/\/session\//);
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  // Set 0 → Warm-up before committing.
+  await page.getByTestId("set-0-type").click();
+  await page.getByTestId("set-0-type-warmup").click();
+  await logSet(page, 0, "60", "12");
+  await expect(page.getByTestId("committed-0-type")).toHaveText("W");
+
+  // Set 1 → Drop.
+  await page.getByTestId("set-1-type").click();
+  await page.getByTestId("set-1-type-drop").click();
+  await logSet(page, 1, "40", "10");
+  await expect(page.getByTestId("committed-1-type")).toHaveText("D");
+
+  // Set 2 → left Normal, shows its number.
+  await logSet(page, 2, "40", "8");
+  await expect(page.getByTestId("committed-2-type")).toHaveText("3");
+
+  // Re-type a committed set (Warm-up → Failure) via its number-cell menu.
+  await page.getByTestId("committed-0-type").click();
+  await page.getByTestId("committed-0-type-failure").click();
+  await expect(page.getByTestId("committed-0-type")).toHaveText("F");
+
+  // Reload resumes the session; markers come back from the server.
+  await page.reload();
+  await expect(page.getByTestId("committed-0-type")).toHaveText("F");
+  await expect(page.getByTestId("committed-1-type")).toHaveText("D");
+  await expect(page.getByTestId("committed-2-type")).toHaveText("3");
+});
+
+test("Remove set from the number-cell menu deletes a committed set", async ({
+  page,
+}) => {
+  const EX = `SetTypeRemove ${Date.now()}`;
+
+  await page.goto("/library");
+  await page.getByTestId("exercise-name-input").fill(EX);
+  await page.getByTestId("add-exercise-btn").click();
+  await waitForExercise(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  await logSet(page, 0, "50", "5");
+  await expect(page.getByTestId("committed-0")).toBeVisible();
+
+  await page.getByTestId("committed-0-type").click();
+  await page.getByTestId("committed-0-type-remove").click();
+  await expect(page.getByTestId("committed-0")).toBeHidden();
+});

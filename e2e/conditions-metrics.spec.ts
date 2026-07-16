@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForConditionUntracked,
+  waitForExercise,
+} from "./helpers";
 
 // P4 round-trips: session conditions (tracked defaults, auto-save, notes,
 // custom typed conditions, stop-tracking) and a custom set-scope metric.
@@ -135,6 +141,7 @@ test("stop tracking a default hides it from future sessions", async ({
   await page.getByTestId(`condition-untrack-${SLEEP_ID}`).click();
   // Optimistically removed from the current sheet.
   await expect(page.getByTestId(`condition-input-${SLEEP_ID}`)).toHaveCount(0);
+  await waitForConditionUntracked(page, SLEEP_ID);
 
   // A brand-new session no longer pre-loads Sleep, but keeps Stress.
   await page.goto("/train");

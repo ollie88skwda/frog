@@ -3,13 +3,22 @@ import type {
   ApiToken,
   Exercise,
   ExerciseFavorite,
+  ExercisePref,
   Machine,
   MachineSetting,
+  Measurement,
   Metric,
+  Program,
+  PushSubscription,
+  Routine,
+  RoutineFolder,
+  RoutineSet,
   Session,
   SessionExercise,
+  SessionMediaRow,
   SetLog,
   TrackedCondition,
+  UserPrefs,
 } from "../db/schema";
 import { SEED_CONDITIONS } from "../db/seed-ids";
 import type { MuscleTarget } from "../domain/anatomy";
@@ -17,18 +26,24 @@ import { newId } from "../domain/ids";
 import { generateToken, hashToken } from "../domain/tokens";
 import type { FindingsSessionInput } from "../findings/types";
 import type { ImportedSession, ImportResult } from "../import/types";
+import type { RecordsSessionInput } from "../records/types";
 import type {
   CreatedApiToken,
   ExerciseClassification,
   ExportBundle,
   GhostSet,
   MachinePatch,
+  MeasurementPatch,
   NewExerciseOpts,
   NewMachineInput,
   NewMetricInput,
+  NewRoutineInput,
   NewSetInput,
   Repo,
+  RoutineDetail,
+  RoutineExerciseInput,
   SessionExerciseDetail,
+  UserPrefsPatch,
 } from "./types";
 
 type Row = Record<string, unknown>;
@@ -49,6 +64,10 @@ function toExercise(r: Row): Exercise {
     muscleTargets: (r.muscle_targets as MuscleTarget[] | null) ?? null,
     imageUrl: (r.image_url as string | null) ?? null,
     imageAttribution: (r.image_attribution as string | null) ?? null,
+    exerciseType: (r.exercise_type as string) ?? "weight_reps",
+    equipment: (r.equipment as string | null) ?? null,
+    instructions: (r.instructions as string[] | null) ?? null,
+    imageUrls: (r.image_urls as string[] | null) ?? null,
   };
 }
 
@@ -81,6 +100,8 @@ function toSession(r: Row): Session {
     conditionValues:
       (r.condition_values as Record<string, unknown> | null) ?? null,
     notes: (r.notes as string | null) ?? null,
+    routineId: (r.routine_id as string | null) ?? null,
+    pausedMs: (r.paused_ms as number) ?? 0,
   };
 }
 
@@ -134,6 +155,10 @@ function toSessionExercise(r: Row): SessionExercise {
     sessionId: r.session_id as string,
     exerciseId: r.exercise_id as string,
     orderIndex: r.order_index as number,
+    supersetGroup: (r.superset_group as number | null) ?? null,
+    restSec: (r.rest_sec as number | null) ?? null,
+    note: (r.note as string | null) ?? null,
+    routineExerciseId: (r.routine_exercise_id as string | null) ?? null,
   };
 }
 
@@ -146,14 +171,118 @@ function toSetLog(r: Row): SetLog {
     ownerId: r.owner_id as string,
     sessionExerciseId: r.session_exercise_id as string,
     setNo: r.set_no as number,
+    setType: (r.set_type as string) ?? "normal",
     weightKg: (r.weight_kg as number | null) ?? null,
     reps: (r.reps as number | null) ?? null,
+    durationSec: (r.duration_sec as number | null) ?? null,
+    distanceM: (r.distance_m as number | null) ?? null,
     rir: (r.rir as number | null) ?? null,
     rpe: (r.rpe as number | null) ?? null,
     note: (r.note as string | null) ?? null,
     restSec: (r.rest_sec as number | null) ?? null,
     metricValues: (r.metric_values as Record<string, unknown> | null) ?? null,
     completed: r.completed as boolean,
+  };
+}
+
+function toMeasurement(r: Row): Measurement {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    measuredOn: r.measured_on as string,
+    bodyweightKg: (r.bodyweight_kg as number | null) ?? null,
+    bodyfatPct: (r.bodyfat_pct as number | null) ?? null,
+    neckCm: (r.neck_cm as number | null) ?? null,
+    shouldersCm: (r.shoulders_cm as number | null) ?? null,
+    chestCm: (r.chest_cm as number | null) ?? null,
+    waistCm: (r.waist_cm as number | null) ?? null,
+    abdomenCm: (r.abdomen_cm as number | null) ?? null,
+    hipsCm: (r.hips_cm as number | null) ?? null,
+    bicepLCm: (r.bicep_l_cm as number | null) ?? null,
+    bicepRCm: (r.bicep_r_cm as number | null) ?? null,
+    forearmLCm: (r.forearm_l_cm as number | null) ?? null,
+    forearmRCm: (r.forearm_r_cm as number | null) ?? null,
+    thighLCm: (r.thigh_l_cm as number | null) ?? null,
+    thighRCm: (r.thigh_r_cm as number | null) ?? null,
+    calfLCm: (r.calf_l_cm as number | null) ?? null,
+    calfRCm: (r.calf_r_cm as number | null) ?? null,
+    photoPath: (r.photo_path as string | null) ?? null,
+  };
+}
+
+function toSessionMedia(r: Row): SessionMediaRow {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    sessionId: r.session_id as string,
+    path: r.path as string,
+    position: (r.position as number) ?? 0,
+    mediaType: (r.media_type as string) ?? "photo",
+  };
+}
+
+function toProgram(r: Row): Program {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    source: r.source as string,
+    libraryKey: (r.library_key as string | null) ?? null,
+    config: (r.config as Record<string, unknown> | null) ?? null,
+    folderId: r.folder_id as string,
+    active: (r.active as boolean) ?? false,
+  };
+}
+
+function toRoutineFolder(r: Row): RoutineFolder {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    name: r.name as string,
+    position: (r.position as number) ?? 0,
+  };
+}
+
+function toRoutine(r: Row): Routine {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    name: r.name as string,
+    folderId: (r.folder_id as string | null) ?? null,
+    position: (r.position as number) ?? 0,
+    description: (r.description as string | null) ?? null,
+  };
+}
+
+function toRoutineSet(r: Row): RoutineSet {
+  return {
+    id: r.id as string,
+    createdAt: r.created_at as number,
+    updatedAt: r.updated_at as number,
+    deletedAt: (r.deleted_at as number | null) ?? null,
+    ownerId: r.owner_id as string,
+    routineExerciseId: r.routine_exercise_id as string,
+    setNo: r.set_no as number,
+    setType: (r.set_type as string) ?? "normal",
+    targetWeightKg: (r.target_weight_kg as number | null) ?? null,
+    targetReps: (r.target_reps as number | null) ?? null,
+    targetRepsMax: (r.target_reps_max as number | null) ?? null,
+    targetDurationSec: (r.target_duration_sec as number | null) ?? null,
+    targetDistanceM: (r.target_distance_m as number | null) ?? null,
   };
 }
 
@@ -174,7 +303,13 @@ function throwIf(error: { message: string } | null): void {
 }
 
 export class SupabaseRepo implements Repo {
-  constructor(private client: SupabaseClient) {}
+  // getOwnerId is required when the client uses the `accessToken` option
+  // (which disables `client.auth.*`, e.g. the Clerk-backed web client);
+  // clients with native Supabase sessions (tests) can omit it.
+  constructor(
+    private client: SupabaseClient,
+    private opts: { getOwnerId?: () => Promise<string> } = {},
+  ) {}
 
   async createExercise(
     name: string,
@@ -182,7 +317,7 @@ export class SupabaseRepo implements Repo {
   ): Promise<Exercise> {
     const now = Date.now();
     const row = {
-      id: newId(),
+      id: opts?.id ?? newId(),
       created_at: now,
       updated_at: now,
       name,
@@ -190,6 +325,10 @@ export class SupabaseRepo implements Repo {
       machine_id: opts?.machineId ?? null,
       joint_actions: opts?.jointActions?.length ? opts.jointActions : null,
       muscle_targets: opts?.muscleTargets?.length ? opts.muscleTargets : null,
+      exercise_type: opts?.exerciseType ?? "weight_reps",
+      equipment: opts?.equipment ?? null,
+      instructions: opts?.instructions?.length ? opts.instructions : null,
+      image_urls: opts?.imageUrls?.length ? opts.imageUrls : null,
     };
     const { data, error } = await this.client
       .from("exercises")
@@ -213,7 +352,7 @@ export class SupabaseRepo implements Repo {
   async createMachine(input: NewMachineInput): Promise<Machine> {
     const now = Date.now();
     const row = {
-      id: newId(),
+      id: input.id ?? newId(),
       created_at: now,
       updated_at: now,
       name: input.name,
@@ -287,6 +426,7 @@ export class SupabaseRepo implements Repo {
   }
 
   private async ownerId(): Promise<string> {
+    if (this.opts.getOwnerId) return this.opts.getOwnerId();
     const { data, error } = await this.client.auth.getUser();
     if (error || !data.user) throw new Error(error?.message ?? "Not signed in");
     return data.user.id;
@@ -453,6 +593,9 @@ export class SupabaseRepo implements Repo {
     if ("note" in patch) row.note = patch.note ?? null;
     if ("restSec" in patch) row.rest_sec = patch.restSec ?? null;
     if ("metricValues" in patch) row.metric_values = patch.metricValues ?? null;
+    if ("setType" in patch) row.set_type = patch.setType ?? "normal";
+    if ("durationSec" in patch) row.duration_sec = patch.durationSec ?? null;
+    if ("distanceM" in patch) row.distance_m = patch.distanceM ?? null;
     const { error } = await this.client
       .from("set_logs")
       .update(row)
@@ -511,6 +654,9 @@ export class SupabaseRepo implements Repo {
       note: set.note ?? null,
       rest_sec: set.restSec ?? null,
       metric_values: set.metricValues ?? null,
+      set_type: set.setType ?? "normal",
+      duration_sec: set.durationSec ?? null,
+      distance_m: set.distanceM ?? null,
       completed: true,
     };
     const { error } = await this.client.from("set_logs").insert(row);
@@ -524,7 +670,7 @@ export class SupabaseRepo implements Repo {
     const { data, error } = await this.client
       .from("session_exercises")
       .select(
-        "id, exercise_id, order_index, exercises(name), set_logs(id, set_no, weight_kg, reps, rir, rpe, note, rest_sec, deleted_at)",
+        "id, exercise_id, order_index, superset_group, rest_sec, note, routine_exercise_id, exercises(name), set_logs(id, set_no, set_type, weight_kg, reps, duration_sec, distance_m, rir, rpe, note, rest_sec, deleted_at)",
       )
       .eq("session_id", sessionId)
       .is("deleted_at", null)
@@ -535,14 +681,21 @@ export class SupabaseRepo implements Repo {
       exerciseId: r.exercise_id as string,
       exerciseName: ((r.exercises as Row | null)?.name as string) ?? "",
       orderIndex: r.order_index as number,
+      supersetGroup: (r.superset_group as number | null) ?? null,
+      restSec: (r.rest_sec as number | null) ?? null,
+      note: (r.note as string | null) ?? null,
+      routineExerciseId: (r.routine_exercise_id as string | null) ?? null,
       sets: ((r.set_logs as Row[]) ?? [])
         .filter((s) => s.deleted_at == null)
         .sort((a, b) => (a.set_no as number) - (b.set_no as number))
         .map((s) => ({
           id: s.id as string,
           setNo: s.set_no as number,
+          setType: (s.set_type as string) ?? "normal",
           weightKg: (s.weight_kg as number | null) ?? null,
           reps: (s.reps as number | null) ?? null,
+          durationSec: (s.duration_sec as number | null) ?? null,
+          distanceM: (s.distance_m as number | null) ?? null,
           rir: (s.rir as number | null) ?? null,
           rpe: (s.rpe as number | null) ?? null,
           note: (s.note as string | null) ?? null,
@@ -627,6 +780,95 @@ export class SupabaseRepo implements Repo {
             reps: (sl.reps as number | null) ?? null,
           })),
         ),
+    }));
+  }
+
+  async updateSessionTitle(
+    sessionId: string,
+    title: string | null,
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("sessions")
+      .update({ title, updated_at: Date.now() })
+      .eq("id", sessionId);
+    throwIf(error);
+  }
+
+  async updateSessionEndedAt(
+    sessionId: string,
+    endedAt: number,
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("sessions")
+      .update({ ended_at: endedAt, updated_at: Date.now() })
+      .eq("id", sessionId);
+    throwIf(error);
+  }
+
+  async updateSessionPausedMs(
+    sessionId: string,
+    pausedMs: number,
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("sessions")
+      .update({ paused_ms: pausedMs, updated_at: Date.now() })
+      .eq("id", sessionId);
+    throwIf(error);
+  }
+
+  async updateSessionExercise(
+    sessionExerciseId: string,
+    patch: {
+      supersetGroup?: number | null;
+      restSec?: number | null;
+      note?: string | null;
+    },
+  ): Promise<void> {
+    const row: Row = { updated_at: Date.now() };
+    if ("supersetGroup" in patch)
+      row.superset_group = patch.supersetGroup ?? null;
+    if ("restSec" in patch) row.rest_sec = patch.restSec ?? null;
+    if ("note" in patch) row.note = patch.note ?? null;
+    const { error } = await this.client
+      .from("session_exercises")
+      .update(row)
+      .eq("id", sessionExerciseId);
+    throwIf(error);
+  }
+
+  async recordsData(): Promise<RecordsSessionInput[]> {
+    const { data, error } = await this.client
+      .from("sessions")
+      .select(
+        "id, started_at, ended_at, paused_ms, deleted_at, session_exercises(exercise_id, deleted_at, exercises(exercise_type), set_logs(set_type, weight_kg, reps, duration_sec, distance_m, rir, rpe, deleted_at))",
+      )
+      .is("deleted_at", null)
+      .order("started_at", { ascending: true });
+    throwIf(error);
+    return ((data as Row[]) ?? []).map((s) => ({
+      sessionId: s.id as string,
+      startedAt: s.started_at as number,
+      endedAt: (s.ended_at as number | null) ?? null,
+      pausedMs: (s.paused_ms as number) ?? 0,
+      exercises: ((s.session_exercises as Row[]) ?? [])
+        .filter((se) => se.deleted_at == null)
+        .map((se) => ({
+          exerciseId: se.exercise_id as string,
+          exerciseType:
+            ((se.exercises as Row | null)?.exercise_type as string) ??
+            "weight_reps",
+          sets: ((se.set_logs as Row[]) ?? [])
+            .filter((sl) => sl.deleted_at == null)
+            .map((sl) => ({
+              setType: (sl.set_type as string) ?? "normal",
+              weightKg: (sl.weight_kg as number | null) ?? null,
+              reps: (sl.reps as number | null) ?? null,
+              durationSec: (sl.duration_sec as number | null) ?? null,
+              distanceM: (sl.distance_m as number | null) ?? null,
+              rir: (sl.rir as number | null) ?? null,
+              rpe: (sl.rpe as number | null) ?? null,
+            })),
+        })),
     }));
   }
 
@@ -782,8 +1024,11 @@ export class SupabaseRepo implements Repo {
             updated_at: t,
             session_exercise_id: seId,
             set_no: setNo,
+            set_type: set.setType ?? "normal",
             weight_kg: set.weightKg,
             reps: set.reps,
+            duration_sec: set.durationSec ?? null,
+            distance_m: set.distanceM ?? null,
             rir: set.rir,
             note: set.note,
             completed: true,
@@ -838,15 +1083,31 @@ export class SupabaseRepo implements Repo {
   }
 
   async exportAll(): Promise<ExportBundle> {
-    const [exercises, machines, metrics, sessions, sessionExercises, setLogs] =
-      await Promise.all([
-        this.client.from("exercises").select().is("deleted_at", null),
-        this.client.from("machines").select().is("deleted_at", null),
-        this.client.from("metrics").select().is("deleted_at", null),
-        this.client.from("sessions").select().is("deleted_at", null),
-        this.client.from("session_exercises").select().is("deleted_at", null),
-        this.client.from("set_logs").select().is("deleted_at", null),
-      ]);
+    const [
+      exercises,
+      machines,
+      metrics,
+      sessions,
+      sessionExercises,
+      setLogs,
+      measurements,
+      routineFolders,
+      routines,
+      routineExercises,
+      routineSets,
+    ] = await Promise.all([
+      this.client.from("exercises").select().is("deleted_at", null),
+      this.client.from("machines").select().is("deleted_at", null),
+      this.client.from("metrics").select().is("deleted_at", null),
+      this.client.from("sessions").select().is("deleted_at", null),
+      this.client.from("session_exercises").select().is("deleted_at", null),
+      this.client.from("set_logs").select().is("deleted_at", null),
+      this.client.from("measurements").select().is("deleted_at", null),
+      this.client.from("routine_folders").select().is("deleted_at", null),
+      this.client.from("routines").select().is("deleted_at", null),
+      this.client.from("routine_exercises").select().is("deleted_at", null),
+      this.client.from("routine_sets").select().is("deleted_at", null),
+    ]);
     for (const r of [
       exercises,
       machines,
@@ -854,10 +1115,15 @@ export class SupabaseRepo implements Repo {
       sessions,
       sessionExercises,
       setLogs,
+      measurements,
+      routineFolders,
+      routines,
+      routineExercises,
+      routineSets,
     ])
       throwIf(r.error);
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       exportedAt: Date.now(),
       exercises: (exercises.data as Row[]).map(toExercise),
       machines: (machines.data as Row[]).map(toMachine),
@@ -865,6 +1131,23 @@ export class SupabaseRepo implements Repo {
       sessions: (sessions.data as Row[]).map(toSession),
       sessionExercises: (sessionExercises.data as Row[]).map(toSessionExercise),
       setLogs: (setLogs.data as Row[]).map(toSetLog),
+      measurements: (measurements.data as Row[]).map(toMeasurement),
+      routineFolders: (routineFolders.data as Row[]).map(toRoutineFolder),
+      routines: (routines.data as Row[]).map(toRoutine),
+      routineExercises: ((routineExercises.data as Row[]) ?? []).map((r) => ({
+        id: r.id as string,
+        createdAt: r.created_at as number,
+        updatedAt: r.updated_at as number,
+        deletedAt: (r.deleted_at as number | null) ?? null,
+        ownerId: r.owner_id as string,
+        routineId: r.routine_id as string,
+        exerciseId: r.exercise_id as string,
+        orderIndex: r.order_index as number,
+        supersetGroup: (r.superset_group as number | null) ?? null,
+        restSec: (r.rest_sec as number | null) ?? null,
+        note: (r.note as string | null) ?? null,
+      })),
+      routineSets: ((routineSets.data as Row[]) ?? []).map(toRoutineSet),
     };
   }
 
@@ -905,10 +1188,17 @@ export class SupabaseRepo implements Repo {
   async lastSetsForExercise(
     exerciseId: string,
     excludeSessionExerciseId?: string,
+    routineId?: string,
   ): Promise<GhostSet[]> {
+    // "Same routine" PREVIOUS scope: inner-join sessions and filter on the
+    // routine provenance; the default scope considers any workout.
     let query = this.client
       .from("session_exercises")
-      .select("id, set_logs(weight_kg, reps, set_no, deleted_at)")
+      .select(
+        routineId
+          ? "id, sessions!inner(routine_id), set_logs(weight_kg, reps, duration_sec, distance_m, set_no, deleted_at)"
+          : "id, set_logs(weight_kg, reps, duration_sec, distance_m, set_no, deleted_at)",
+      )
       .eq("exercise_id", exerciseId)
       .is("deleted_at", null)
       // created_at is millisecond-resolution and can tie; id desc breaks ties
@@ -918,6 +1208,7 @@ export class SupabaseRepo implements Repo {
       .limit(1);
     if (excludeSessionExerciseId)
       query = query.neq("id", excludeSessionExerciseId);
+    if (routineId) query = query.eq("sessions.routine_id", routineId);
     const { data, error } = await query;
     throwIf(error);
     const latest = (data as Row[] | null)?.[0];
@@ -929,7 +1220,107 @@ export class SupabaseRepo implements Repo {
       .map((s) => ({
         weightKg: (s.weight_kg as number | null) ?? null,
         reps: (s.reps as number | null) ?? null,
+        durationSec: (s.duration_sec as number | null) ?? null,
+        distanceM: (s.distance_m as number | null) ?? null,
       }));
+  }
+
+  async lastNoteForExercise(
+    exerciseId: string,
+    excludeSessionExerciseId?: string,
+  ): Promise<string | null> {
+    let query = this.client
+      .from("session_exercises")
+      .select("id, note")
+      .eq("exercise_id", exerciseId)
+      .not("note", "is", null)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(1);
+    if (excludeSessionExerciseId)
+      query = query.neq("id", excludeSessionExerciseId);
+    const { data, error } = await query;
+    throwIf(error);
+    return ((data as Row[] | null)?.[0]?.note as string | null) ?? null;
+  }
+
+  // ── Workout media ────────────────────────────────────────────────────
+
+  async listSessionMedia(sessionId: string): Promise<SessionMediaRow[]> {
+    const { data, error } = await this.client
+      .from("session_media")
+      .select()
+      .eq("session_id", sessionId)
+      .is("deleted_at", null)
+      .order("position");
+    throwIf(error);
+    return ((data as Row[]) ?? []).map(toSessionMedia);
+  }
+
+  async listAllSessionMedia(limit = 30): Promise<SessionMediaRow[]> {
+    const { data, error } = await this.client
+      .from("session_media")
+      .select()
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    throwIf(error);
+    return ((data as Row[]) ?? []).map(toSessionMedia);
+  }
+
+  async uploadSessionPhoto(
+    sessionId: string,
+    file: Blob,
+    position: number,
+  ): Promise<SessionMediaRow> {
+    const uid = await this.ownerId();
+    const id = newId();
+    const path = `${uid}/${sessionId}/${id}.jpg`;
+    const { error: uploadError } = await this.client.storage
+      .from("session-media")
+      .upload(path, file, { upsert: true, contentType: "image/jpeg" });
+    throwIf(uploadError);
+    const now = Date.now();
+    const { data, error } = await this.client
+      .from("session_media")
+      .insert({
+        id,
+        created_at: now,
+        updated_at: now,
+        session_id: sessionId,
+        path,
+        position,
+      })
+      .select()
+      .single();
+    throwIf(error);
+    return toSessionMedia(data as Row);
+  }
+
+  async deleteSessionMedia(id: string): Promise<void> {
+    const { data, error: readError } = await this.client
+      .from("session_media")
+      .select("path")
+      .eq("id", id)
+      .limit(1);
+    throwIf(readError);
+    const path = ((data as Row[] | null)?.[0]?.path as string) ?? null;
+    if (path) await this.client.storage.from("session-media").remove([path]);
+    const now = Date.now();
+    const { error } = await this.client
+      .from("session_media")
+      .update({ deleted_at: now, updated_at: now })
+      .eq("id", id);
+    throwIf(error);
+  }
+
+  async sessionMediaUrl(media: SessionMediaRow): Promise<string | null> {
+    const { data, error } = await this.client.storage
+      .from("session-media")
+      .createSignedUrl(media.path, 60 * 60);
+    throwIf(error);
+    return data?.signedUrl ?? null;
   }
 
   async listExerciseFavorites(): Promise<ExerciseFavorite[]> {
@@ -962,5 +1353,748 @@ export class SupabaseRepo implements Repo {
       favorite,
     });
     throwIf(error);
+  }
+
+  async setExerciseTypeEquipment(
+    exerciseId: string,
+    exerciseType: string,
+    equipment: string | null,
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("exercises")
+      .update({
+        exercise_type: exerciseType,
+        equipment,
+        updated_at: Date.now(),
+      })
+      .eq("id", exerciseId);
+    throwIf(error);
+  }
+
+  async listExercisePrefs(): Promise<ExercisePref[]> {
+    const { data, error } = await this.client
+      .from("exercise_prefs")
+      .select()
+      .is("deleted_at", null);
+    throwIf(error);
+    return ((data as Row[]) ?? []).map((r) => ({
+      id: r.id as string,
+      createdAt: r.created_at as number,
+      updatedAt: r.updated_at as number,
+      deletedAt: (r.deleted_at as number | null) ?? null,
+      ownerId: r.owner_id as string,
+      exerciseId: r.exercise_id as string,
+      weightUnit: (r.weight_unit as string | null) ?? null,
+      generatorExcluded: (r.generator_excluded as boolean) ?? false,
+    }));
+  }
+
+  /** Upsert one exercise_prefs row per (owner, exercise) — favorites pattern. */
+  private async upsertExercisePref(
+    exerciseId: string,
+    patch: Row,
+  ): Promise<void> {
+    const now = Date.now();
+    const { data: updated, error: updateError } = await this.client
+      .from("exercise_prefs")
+      .update({ ...patch, deleted_at: null, updated_at: now })
+      .eq("exercise_id", exerciseId)
+      .select("id");
+    throwIf(updateError);
+    if (updated && updated.length > 0) return;
+    const { error } = await this.client.from("exercise_prefs").insert({
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      exercise_id: exerciseId,
+      ...patch,
+    });
+    throwIf(error);
+  }
+
+  async setExerciseWeightUnit(
+    exerciseId: string,
+    unit: "kg" | "lb" | null,
+  ): Promise<void> {
+    await this.upsertExercisePref(exerciseId, { weight_unit: unit });
+  }
+
+  async setGeneratorExcluded(
+    exerciseId: string,
+    excluded: boolean,
+  ): Promise<void> {
+    await this.upsertExercisePref(exerciseId, { generator_excluded: excluded });
+  }
+
+  async getUserPrefs(): Promise<UserPrefs | null> {
+    const { data, error } = await this.client
+      .from("user_prefs")
+      .select()
+      .is("deleted_at", null)
+      .limit(1);
+    throwIf(error);
+    const r = (data as Row[] | null)?.[0];
+    if (!r) return null;
+    return {
+      id: r.id as string,
+      createdAt: r.created_at as number,
+      updatedAt: r.updated_at as number,
+      deletedAt: (r.deleted_at as number | null) ?? null,
+      ownerId: r.owner_id as string,
+      firstWeekday: (r.first_weekday as number) ?? 1,
+      includeWarmupsInStats: (r.include_warmups_in_stats as boolean) ?? true,
+      defaultRestSec: (r.default_rest_sec as number | null) ?? null,
+      previousValuesScope: (r.previous_values_scope as string) ?? "any",
+      bodyDiagram: (r.body_diagram as string) ?? "neutral",
+      plateConfig: (r.plate_config as UserPrefs["plateConfig"]) ?? null,
+      displayName: (r.display_name as string | null) ?? null,
+    };
+  }
+
+  async updateUserPrefs(patch: UserPrefsPatch): Promise<void> {
+    const row: Row = {};
+    if ("firstWeekday" in patch) row.first_weekday = patch.firstWeekday;
+    if ("includeWarmupsInStats" in patch)
+      row.include_warmups_in_stats = patch.includeWarmupsInStats;
+    if ("defaultRestSec" in patch)
+      row.default_rest_sec = patch.defaultRestSec ?? null;
+    if ("previousValuesScope" in patch)
+      row.previous_values_scope = patch.previousValuesScope;
+    if ("bodyDiagram" in patch) row.body_diagram = patch.bodyDiagram;
+    if ("plateConfig" in patch) row.plate_config = patch.plateConfig ?? null;
+    if ("displayName" in patch) row.display_name = patch.displayName ?? null;
+
+    const now = Date.now();
+    const { data: updated, error: updateError } = await this.client
+      .from("user_prefs")
+      .update({ ...row, updated_at: now })
+      .is("deleted_at", null)
+      .select("id");
+    throwIf(updateError);
+    if (updated && updated.length > 0) return;
+    const { error } = await this.client.from("user_prefs").insert({
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      ...row,
+    });
+    throwIf(error);
+  }
+
+  // ── Web-push subscriptions ────────────────────────────────────────────
+
+  async listPushSubscriptions(): Promise<PushSubscription[]> {
+    const { data, error } = await this.client
+      .from("push_subscriptions")
+      .select()
+      .is("deleted_at", null);
+    throwIf(error);
+    return ((data as Row[]) ?? []).map((r) => ({
+      id: r.id as string,
+      createdAt: r.created_at as number,
+      updatedAt: r.updated_at as number,
+      deletedAt: (r.deleted_at as number | null) ?? null,
+      ownerId: r.owner_id as string,
+      endpoint: r.endpoint as string,
+      keys: r.keys as { p256dh: string; auth: string },
+    }));
+  }
+
+  async savePushSubscription(
+    endpoint: string,
+    keys: { p256dh: string; auth: string },
+  ): Promise<void> {
+    const now = Date.now();
+    const { data: updated, error: updateError } = await this.client
+      .from("push_subscriptions")
+      .update({ keys, deleted_at: null, updated_at: now })
+      .eq("endpoint", endpoint)
+      .select("id");
+    throwIf(updateError);
+    if (updated && updated.length > 0) return;
+    const { error } = await this.client.from("push_subscriptions").insert({
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      endpoint,
+      keys,
+    });
+    throwIf(error);
+  }
+
+  async deletePushSubscription(endpoint: string): Promise<void> {
+    const now = Date.now();
+    const { error } = await this.client
+      .from("push_subscriptions")
+      .update({ deleted_at: now, updated_at: now })
+      .eq("endpoint", endpoint);
+    throwIf(error);
+  }
+
+  // ── Programs ──────────────────────────────────────────────────────────
+
+  async listPrograms(): Promise<Program[]> {
+    const { data, error } = await this.client
+      .from("programs")
+      .select()
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+    throwIf(error);
+    return ((data as Row[]) ?? []).map(toProgram);
+  }
+
+  async activeProgram(): Promise<Program | null> {
+    const { data, error } = await this.client
+      .from("programs")
+      .select()
+      .eq("active", true)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    throwIf(error);
+    const r = (data as Row[] | null)?.[0];
+    return r ? toProgram(r) : null;
+  }
+
+  async createProgram(input: {
+    source: "generated" | "library";
+    folderId: string;
+    config?: Record<string, unknown> | null;
+    libraryKey?: string | null;
+  }): Promise<Program> {
+    const now = Date.now();
+    // One active program at a time (Hevy Trainer semantics): deactivate any
+    // current one before inserting the new active row.
+    const { error: deactivateError } = await this.client
+      .from("programs")
+      .update({ active: false, updated_at: now })
+      .eq("active", true);
+    throwIf(deactivateError);
+    const { data, error } = await this.client
+      .from("programs")
+      .insert({
+        id: newId(),
+        created_at: now,
+        updated_at: now,
+        source: input.source,
+        folder_id: input.folderId,
+        config: input.config ?? null,
+        library_key: input.libraryKey ?? null,
+        active: true,
+      })
+      .select()
+      .single();
+    throwIf(error);
+    return toProgram(data as Row);
+  }
+
+  async setProgramActive(programId: string, active: boolean): Promise<void> {
+    const { error } = await this.client
+      .from("programs")
+      .update({ active, updated_at: Date.now() })
+      .eq("id", programId);
+    throwIf(error);
+  }
+
+  async updateProgramConfig(
+    programId: string,
+    config: Record<string, unknown>,
+  ): Promise<void> {
+    const { error } = await this.client
+      .from("programs")
+      .update({ config, updated_at: Date.now() })
+      .eq("id", programId);
+    throwIf(error);
+  }
+
+  async deleteProgram(programId: string): Promise<void> {
+    const now = Date.now();
+    const { error } = await this.client
+      .from("programs")
+      .update({ deleted_at: now, active: false, updated_at: now })
+      .eq("id", programId);
+    throwIf(error);
+  }
+
+  // ── Body measurements ─────────────────────────────────────────────────
+
+  async listMeasurements(): Promise<Measurement[]> {
+    const { data, error } = await this.client
+      .from("measurements")
+      .select()
+      .is("deleted_at", null)
+      .order("measured_on", { ascending: false });
+    throwIf(error);
+    return ((data as Row[]) ?? []).map(toMeasurement);
+  }
+
+  async upsertMeasurement(
+    measuredOn: string,
+    patch: MeasurementPatch,
+  ): Promise<Measurement> {
+    const now = Date.now();
+    const row: Row = { updated_at: now, deleted_at: null };
+    const cols: Record<keyof MeasurementPatch, string> = {
+      bodyweightKg: "bodyweight_kg",
+      bodyfatPct: "bodyfat_pct",
+      neckCm: "neck_cm",
+      shouldersCm: "shoulders_cm",
+      chestCm: "chest_cm",
+      waistCm: "waist_cm",
+      abdomenCm: "abdomen_cm",
+      hipsCm: "hips_cm",
+      bicepLCm: "bicep_l_cm",
+      bicepRCm: "bicep_r_cm",
+      forearmLCm: "forearm_l_cm",
+      forearmRCm: "forearm_r_cm",
+      thighLCm: "thigh_l_cm",
+      thighRCm: "thigh_r_cm",
+      calfLCm: "calf_l_cm",
+      calfRCm: "calf_r_cm",
+    };
+    for (const [k, col] of Object.entries(cols)) {
+      if (k in patch) row[col] = patch[k as keyof MeasurementPatch] ?? null;
+    }
+    const { data: updated, error: updateError } = await this.client
+      .from("measurements")
+      .update(row)
+      .eq("measured_on", measuredOn)
+      .select();
+    throwIf(updateError);
+    const existing = (updated as Row[] | null)?.[0];
+    if (existing) return toMeasurement(existing);
+    const { data, error } = await this.client
+      .from("measurements")
+      .insert({
+        id: newId(),
+        created_at: now,
+        updated_at: now,
+        measured_on: measuredOn,
+        ...row,
+      })
+      .select()
+      .single();
+    throwIf(error);
+    return toMeasurement(data as Row);
+  }
+
+  async deleteMeasurement(id: string): Promise<void> {
+    const now = Date.now();
+    const { error } = await this.client
+      .from("measurements")
+      .update({ deleted_at: now, updated_at: now })
+      .eq("id", id);
+    throwIf(error);
+  }
+
+  async uploadProgressPhoto(measurementId: string, file: Blob): Promise<void> {
+    const uid = await this.ownerId();
+    const path = `${uid}/${measurementId}.jpg`;
+    const { error: uploadError } = await this.client.storage
+      .from("progress-photos")
+      .upload(path, file, { upsert: true, contentType: "image/jpeg" });
+    throwIf(uploadError);
+    const { error } = await this.client
+      .from("measurements")
+      .update({ photo_path: path, updated_at: Date.now() })
+      .eq("id", measurementId);
+    throwIf(error);
+  }
+
+  async clearProgressPhoto(measurementId: string): Promise<void> {
+    const { data, error: readError } = await this.client
+      .from("measurements")
+      .select("photo_path")
+      .eq("id", measurementId)
+      .limit(1);
+    throwIf(readError);
+    const path =
+      ((data as Row[] | null)?.[0]?.photo_path as string | null) ?? null;
+    if (path) {
+      // Best-effort object removal; the row update is the source of truth.
+      await this.client.storage.from("progress-photos").remove([path]);
+    }
+    const { error } = await this.client
+      .from("measurements")
+      .update({ photo_path: null, updated_at: Date.now() })
+      .eq("id", measurementId);
+    throwIf(error);
+  }
+
+  async progressPhotoUrl(m: Measurement): Promise<string | null> {
+    if (!m.photoPath) return null;
+    const { data, error } = await this.client.storage
+      .from("progress-photos")
+      .createSignedUrl(m.photoPath, 60 * 60);
+    throwIf(error);
+    return data?.signedUrl ?? null;
+  }
+
+  async latestBodyweightKg(onOrBefore?: string): Promise<number | null> {
+    let query = this.client
+      .from("measurements")
+      .select("bodyweight_kg, measured_on")
+      .is("deleted_at", null)
+      .not("bodyweight_kg", "is", null)
+      .order("measured_on", { ascending: false })
+      .limit(1);
+    if (onOrBefore) query = query.lte("measured_on", onOrBefore);
+    const { data, error } = await query;
+    throwIf(error);
+    const r = (data as Row[] | null)?.[0];
+    return (r?.bodyweight_kg as number | null) ?? null;
+  }
+
+  // ── Routines & folders ────────────────────────────────────────────────
+
+  async listRoutineFolders(): Promise<RoutineFolder[]> {
+    const { data, error } = await this.client
+      .from("routine_folders")
+      .select()
+      .is("deleted_at", null)
+      .order("position")
+      .order("created_at");
+    throwIf(error);
+    return ((data as Row[]) ?? []).map(toRoutineFolder);
+  }
+
+  async createRoutineFolder(name: string): Promise<RoutineFolder> {
+    const now = Date.now();
+    const { count } = await this.client
+      .from("routine_folders")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null);
+    const row = {
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      name,
+      position: count ?? 0,
+    };
+    const { data, error } = await this.client
+      .from("routine_folders")
+      .insert(row)
+      .select()
+      .single();
+    throwIf(error);
+    return toRoutineFolder(data as Row);
+  }
+
+  async renameRoutineFolder(id: string, name: string): Promise<void> {
+    const { error } = await this.client
+      .from("routine_folders")
+      .update({ name, updated_at: Date.now() })
+      .eq("id", id);
+    throwIf(error);
+  }
+
+  async reorderRoutineFolders(ids: string[]): Promise<void> {
+    const now = Date.now();
+    for (const [i, id] of ids.entries()) {
+      const { error } = await this.client
+        .from("routine_folders")
+        .update({ position: i, updated_at: now })
+        .eq("id", id);
+      throwIf(error);
+    }
+  }
+
+  async deleteRoutineFolder(id: string): Promise<void> {
+    const now = Date.now();
+    // Unfile the folder's routines rather than deleting them.
+    const { error: unfileError } = await this.client
+      .from("routines")
+      .update({ folder_id: null, updated_at: now })
+      .eq("folder_id", id);
+    throwIf(unfileError);
+    const { error } = await this.client
+      .from("routine_folders")
+      .update({ deleted_at: now, updated_at: now })
+      .eq("id", id);
+    throwIf(error);
+  }
+
+  async listRoutines(): Promise<Routine[]> {
+    const { data, error } = await this.client
+      .from("routines")
+      .select()
+      .is("deleted_at", null)
+      .order("position")
+      .order("created_at");
+    throwIf(error);
+    return ((data as Row[]) ?? []).map(toRoutine);
+  }
+
+  async getRoutineDetail(routineId: string): Promise<RoutineDetail | null> {
+    const { data, error } = await this.client
+      .from("routines")
+      .select(
+        "*, routine_exercises(id, exercise_id, order_index, superset_group, rest_sec, note, deleted_at, exercises(name), routine_sets(*))",
+      )
+      .eq("id", routineId)
+      .is("deleted_at", null)
+      .limit(1);
+    throwIf(error);
+    const r = (data as Row[] | null)?.[0];
+    if (!r) return null;
+    const exercises = ((r.routine_exercises as Row[]) ?? [])
+      .filter((re) => re.deleted_at == null)
+      .sort((a, b) => (a.order_index as number) - (b.order_index as number))
+      .map((re) => ({
+        id: re.id as string,
+        exerciseId: re.exercise_id as string,
+        exerciseName: ((re.exercises as Row | null)?.name as string) ?? "",
+        orderIndex: re.order_index as number,
+        supersetGroup: (re.superset_group as number | null) ?? null,
+        restSec: (re.rest_sec as number | null) ?? null,
+        note: (re.note as string | null) ?? null,
+        sets: ((re.routine_sets as Row[]) ?? [])
+          .filter((s) => s.deleted_at == null)
+          .sort((a, b) => (a.set_no as number) - (b.set_no as number))
+          .map(toRoutineSet),
+      }));
+    return { routine: toRoutine(r), exercises };
+  }
+
+  /** Inserts the child graph (exercises + sets) for a routine id. */
+  private async insertRoutineChildren(
+    routineId: string,
+    exercises: RoutineExerciseInput[],
+    now: number,
+  ): Promise<void> {
+    if (!exercises.length) return;
+    const exerciseRows = exercises.map((e) => ({
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      routine_id: routineId,
+      exercise_id: e.exerciseId,
+      order_index: e.orderIndex,
+      superset_group: e.supersetGroup ?? null,
+      rest_sec: e.restSec ?? null,
+      note: e.note ?? null,
+    }));
+    const { error: reError } = await this.client
+      .from("routine_exercises")
+      .insert(exerciseRows);
+    throwIf(reError);
+    const setRows = exercises.flatMap((e, i) =>
+      e.sets.map((s) => ({
+        id: newId(),
+        created_at: now,
+        updated_at: now,
+        routine_exercise_id: exerciseRows[i].id,
+        set_no: s.setNo,
+        set_type: s.setType ?? "normal",
+        target_weight_kg: s.targetWeightKg ?? null,
+        target_reps: s.targetReps ?? null,
+        target_reps_max: s.targetRepsMax ?? null,
+        target_duration_sec: s.targetDurationSec ?? null,
+        target_distance_m: s.targetDistanceM ?? null,
+      })),
+    );
+    if (setRows.length) {
+      const { error: rsError } = await this.client
+        .from("routine_sets")
+        .insert(setRows);
+      throwIf(rsError);
+    }
+  }
+
+  async createRoutine(input: NewRoutineInput): Promise<Routine> {
+    const now = Date.now();
+    const { count } = await this.client
+      .from("routines")
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null);
+    const row = {
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      name: input.name,
+      folder_id: input.folderId ?? null,
+      description: input.description ?? null,
+      position: count ?? 0,
+    };
+    const { data, error } = await this.client
+      .from("routines")
+      .insert(row)
+      .select()
+      .single();
+    throwIf(error);
+    await this.insertRoutineChildren(row.id, input.exercises, now);
+    return toRoutine(data as Row);
+  }
+
+  async updateRoutine(
+    routineId: string,
+    input: NewRoutineInput,
+  ): Promise<void> {
+    const now = Date.now();
+    const { error: metaError } = await this.client
+      .from("routines")
+      .update({
+        name: input.name,
+        folder_id: input.folderId ?? null,
+        description: input.description ?? null,
+        updated_at: now,
+      })
+      .eq("id", routineId);
+    throwIf(metaError);
+    // Replace the child graph: soft-delete old rows, insert fresh ones.
+    // Simple and safe at template sizes; sessions keep provenance via their
+    // own routine_exercise_id snapshots (soft-deleted rows stay readable).
+    const { error: delSetsError } = await this.client
+      .from("routine_sets")
+      .update({ deleted_at: now, updated_at: now })
+      .in(
+        "routine_exercise_id",
+        (
+          await this.client
+            .from("routine_exercises")
+            .select("id")
+            .eq("routine_id", routineId)
+            .is("deleted_at", null)
+        ).data?.map((r) => (r as Row).id as string) ?? [],
+      );
+    throwIf(delSetsError);
+    const { error: delExError } = await this.client
+      .from("routine_exercises")
+      .update({ deleted_at: now, updated_at: now })
+      .eq("routine_id", routineId)
+      .is("deleted_at", null);
+    throwIf(delExError);
+    await this.insertRoutineChildren(routineId, input.exercises, now);
+  }
+
+  async moveRoutine(routineId: string, folderId: string | null): Promise<void> {
+    const { error } = await this.client
+      .from("routines")
+      .update({ folder_id: folderId, updated_at: Date.now() })
+      .eq("id", routineId);
+    throwIf(error);
+  }
+
+  async reorderRoutines(ids: string[]): Promise<void> {
+    const now = Date.now();
+    for (const [i, id] of ids.entries()) {
+      const { error } = await this.client
+        .from("routines")
+        .update({ position: i, updated_at: now })
+        .eq("id", id);
+      throwIf(error);
+    }
+  }
+
+  async duplicateRoutine(routineId: string, name?: string): Promise<Routine> {
+    const detail = await this.getRoutineDetail(routineId);
+    if (!detail) throw new Error("Routine not found");
+    return this.createRoutine({
+      name: name ?? `${detail.routine.name} (copy)`,
+      folderId: detail.routine.folderId,
+      description: detail.routine.description,
+      exercises: detail.exercises.map((e) => ({
+        exerciseId: e.exerciseId,
+        orderIndex: e.orderIndex,
+        supersetGroup: e.supersetGroup,
+        restSec: e.restSec,
+        note: e.note,
+        sets: e.sets.map((s) => ({
+          setNo: s.setNo,
+          setType: s.setType,
+          targetWeightKg: s.targetWeightKg,
+          targetReps: s.targetReps,
+          targetRepsMax: s.targetRepsMax,
+          targetDurationSec: s.targetDurationSec,
+          targetDistanceM: s.targetDistanceM,
+        })),
+      })),
+    });
+  }
+
+  async deleteRoutine(routineId: string): Promise<void> {
+    const now = Date.now();
+    const { error } = await this.client
+      .from("routines")
+      .update({ deleted_at: now, updated_at: now })
+      .eq("id", routineId);
+    throwIf(error);
+  }
+
+  async startRoutineSession(routineId: string): Promise<Session> {
+    const detail = await this.getRoutineDetail(routineId);
+    if (!detail) throw new Error("Routine not found");
+    const now = Date.now();
+    const sessionRow = {
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      title: detail.routine.name,
+      started_at: now,
+      routine_id: routineId,
+    };
+    const { data, error } = await this.client
+      .from("sessions")
+      .insert(sessionRow)
+      .select()
+      .single();
+    throwIf(error);
+    if (detail.exercises.length) {
+      const seRows = detail.exercises.map((e) => ({
+        id: newId(),
+        created_at: now,
+        updated_at: now,
+        session_id: sessionRow.id,
+        exercise_id: e.exerciseId,
+        order_index: e.orderIndex,
+        superset_group: e.supersetGroup,
+        rest_sec: e.restSec,
+        routine_exercise_id: e.id,
+      }));
+      const { error: seError } = await this.client
+        .from("session_exercises")
+        .insert(seRows);
+      throwIf(seError);
+    }
+    return toSession(data as Row);
+  }
+
+  async updateRoutineValues(
+    routineId: string,
+    performed: Array<{
+      routineExerciseId: string;
+      sets: Array<{
+        setNo: number;
+        weightKg: number | null;
+        reps: number | null;
+        durationSec: number | null;
+        distanceM: number | null;
+      }>;
+    }>,
+  ): Promise<void> {
+    const detail = await this.getRoutineDetail(routineId);
+    if (!detail) return;
+    const now = Date.now();
+    for (const block of performed) {
+      const re = detail.exercises.find((e) => e.id === block.routineExerciseId);
+      if (!re) continue;
+      for (const s of block.sets) {
+        const target = re.sets.find((t) => t.setNo === s.setNo);
+        if (!target) continue;
+        // Rep-range sets are never auto-updated (plan §B).
+        if (target.targetRepsMax != null) continue;
+        const { error } = await this.client
+          .from("routine_sets")
+          .update({
+            target_weight_kg: s.weightKg,
+            target_reps: s.reps,
+            target_duration_sec: s.durationSec,
+            target_distance_m: s.distanceM,
+            updated_at: now,
+          })
+          .eq("id", target.id);
+        throwIf(error);
+      }
+    }
   }
 }

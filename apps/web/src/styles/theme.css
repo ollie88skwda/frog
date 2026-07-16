@@ -1,114 +1,127 @@
+/* Cascade order. Radix Themes sits ABOVE Tailwind's preflight (so base resets
+   can't strip control styling — the documented "buttons render bare" failure)
+   and BELOW Tailwind utilities (so a utility className still wins as a one-off
+   escape hatch). First @layer statement wins, so this must precede the imports;
+   Tailwind's own `@layer theme, base, components, utilities` re-declaration
+   below is consistent with it and changes nothing. */
+@layer theme, base, radix, components, utilities;
+
 @import "tailwindcss";
 
+/* Radix Themes, imported modularly rather than as the all-in styles.css:
+   styles.css ships all 31 color scales (29 kB gz) of which we reference six.
+   base + 6 scales + components + utilities = ~65 kB gz vs ~87 kB gz for the
+   bundle — the rest is scales we never name. Keep this list in sync with the
+   bridge below: referencing a scale that isn't imported (e.g. a Radix
+   `color="tomato"` prop) silently resolves to an invalid var, not an error. */
+@import "@radix-ui/themes/tokens/base.css" layer(radix);
+@import "@radix-ui/themes/tokens/colors/slate.css" layer(radix); /* grayColor */
+@import "@radix-ui/themes/tokens/colors/indigo.css" layer(radix); /* accentColor */
+@import "@radix-ui/themes/tokens/colors/red.css" layer(radix); /* --neg */
+@import "@radix-ui/themes/tokens/colors/green.css" layer(radix); /* --pos */
+@import "@radix-ui/themes/tokens/colors/amber.css" layer(radix); /* --warn */
+@import "@radix-ui/themes/tokens/colors/orange.css" layer(radix); /* --orange */
+@import "@radix-ui/themes/components.css" layer(radix);
+@import "@radix-ui/themes/utilities.css" layer(radix);
+
 @font-face {
-  font-family: "Inter Variable";
-  src: url("/fonts/InterVariable.woff2") format("woff2");
-  font-weight: 100 900;
+  font-family: "Bricolage Grotesque";
+  src: url("/fonts/BricolageGrotesque.woff2") format("woff2");
+  font-weight: 200 800;
   font-display: swap;
 }
 
 /* ---------------------------------------------------------------------------
- * SBL design language — Linear-derived, blue monochrome, square.
- * ONE base blue (#034078, user-picked) generates every non-semantic color as
- * a color-mix percentage step toward black (dark surfaces) or white (text /
- * light surfaces). Only the hex is locked; step percentages tune against
- * measured contrast. 0px radius everywhere. 8px-grid spacing (see AGENTS.md).
- * Semantic pos/neg/warn stay green/red/yellow — small text/icons only.
- * Inter Variable tuned weights (510/590), dense 13px UI, fast
- * transform/opacity-only motion (out-quad, ~160ms). Mobile-first.
+ * SBL design language — Radix Themes 3 (docs/DECISIONS.md, 2026-07-15).
+ * The <Theme accentColor="indigo" grayColor="slate" radius="small"> in app.tsx
+ * is the single source of look-and-feel. Everything in this block is a BRIDGE:
+ * the legacy token names map onto Radix's scales so the ~1,900 existing Tailwind
+ * classes render in the Radix palette while screens migrate component-by-
+ * component. The bridge is deleted in Phase 5, once nothing references it.
+ *
+ * Why the RAW scales (`--slate-N`, `--indigo-N`) and not the aliases
+ * (`--gray-N`, `--accent-N`): Radix defines raw scales on `:root, .light` and
+ * on `.dark` — i.e. on
+ * <html> — but defines the aliases only inside `.radix-themes`. Bridging at
+ * :root therefore keeps these tokens resolvable on <body> too, and each raw
+ * scale already swaps itself per theme class, so the bridge needs no light/dark
+ * duplication. Safe because grayColor/accentColor are locked (not "auto").
+ *
+ * Radix step semantics: 1 app bg · 2 subtle bg · 3 element bg · 4 hover · 5
+ * active · 6 subtle border · 7 element border · 9 solid bg · 10 solid hover ·
+ * 11 low-contrast text · 12 high-contrast text.
  * ------------------------------------------------------------------------- */
 
 :root {
-  --blue: #034078;
-}
-
-:root,
-:root[data-theme="dark"] {
-  /* surfaces: page → raised levels (blue → black steps) */
-  --bg: color-mix(in oklab, var(--blue) 34%, black);
-  --surface: color-mix(in oklab, var(--blue) 41%, black);
-  --surface-2: color-mix(in oklab, var(--blue) 47%, black);
-  --surface-3: color-mix(in oklab, var(--blue) 53%, black);
-  --surface-hover: color-mix(in oklab, var(--blue) 59%, black);
-  --surface-active: color-mix(in oklab, var(--blue) 65%, black);
-  --translucent: color-mix(in srgb, var(--blue) 18%, transparent);
+  /* surfaces */
+  --bg: white; /* matches Radix light --color-background */
+  --surface: var(--slate-2);
+  --surface-2: var(--slate-3);
+  --surface-3: var(--slate-4);
+  --surface-hover: var(--slate-4);
+  --surface-active: var(--slate-5);
+  --translucent: var(--slate-a3);
 
   /* hairlines */
-  --border: color-mix(in oklab, var(--blue) 62%, black);
-  --border-strong: color-mix(in oklab, var(--blue) 80%, black);
-  --border-translucent: color-mix(in srgb, var(--blue) 22%, transparent);
+  --border: var(--slate-6);
+  --border-strong: var(--slate-7);
+  --border-translucent: var(--slate-a6);
 
-  /* text (blue → white steps) */
-  --ink: color-mix(in oklab, var(--blue) 8%, white);
-  --ink-2: color-mix(in oklab, var(--blue) 22%, white);
-  --soft: color-mix(in oklab, var(--blue) 48%, white);
-  --faint: color-mix(in oklab, var(--blue) 64%, white);
+  /* text */
+  --ink: var(--slate-12);
+  --ink-2: var(--slate-11);
+  --soft: var(--slate-11);
+  --faint: var(--slate-10);
 
-  /* the one accent — the base blue, lifted toward white on dark surfaces so
-     filled controls clear ~3:1 against --surface (measured in visual pass) */
-  --accent: color-mix(in oklab, var(--blue) 72%, white);
-  --accent-hover: color-mix(in oklab, var(--blue) 60%, white);
-  --accent-soft: color-mix(in srgb, var(--blue) 30%, transparent);
-  --accent-fg: #ffffff;
-  --brand: color-mix(in oklab, var(--blue) 72%, white);
+  /* accent — --brand is a fill (bg-brand), so it must be a solid step, not text */
+  --accent: var(--indigo-9);
+  --accent-hover: var(--indigo-10);
+  --accent-soft: var(--indigo-a3);
+  --accent-fg: white;
+  --brand: var(--indigo-9);
 
-  /* semantic exceptions — small text/icons only, never large fills */
-  --pos: #27a644;
-  --neg: #eb5757;
-  --warn: #f0bf00;
-  --orange: #fc7840;
+  /* semantic exceptions — text/icons and tints only, never large fills */
+  --pos: var(--green-11);
+  --neg: var(--red-11);
+  --warn: var(--amber-11);
+  --orange: var(--orange-11);
 
-  --ring: color-mix(in oklab, var(--blue) 55%, white);
-  --scrollbar: color-mix(in srgb, var(--blue) 35%, transparent);
-  --overlay: rgba(0, 0, 0, 0.7);
+  --ring: var(--indigo-8);
+  --scrollbar: var(--slate-a7);
+  --overlay: var(--black-a6);
+
+  --shadow-low: 0px 1px 4px -1px rgba(0, 0, 0, 0.09);
+  --shadow-medium: 0px 3px 12px rgba(0, 0, 0, 0.09);
+  --shadow-high: 0px 7px 24px rgba(0, 0, 0, 0.06);
+  /* signature secondary-control treatment: translucent fill + inset hairlines */
+  --inset-control:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Dark only needs the handful of values Radix switches by appearance rather
+   than by scale — every raw-scale reference above re-resolves on its own under
+   the `.dark` class. */
+:root.dark {
+  --bg: var(--slate-1); /* matches Radix dark --color-background */
+  --overlay: var(--black-a8);
 
   --shadow-low: 0px 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-medium: 0px 4px 24px rgba(0, 0, 0, 0.2);
   --shadow-high: 0px 7px 32px rgba(0, 0, 0, 0.35);
-  /* signature secondary-control treatment: translucent fill + inset hairlines */
   --inset-control:
     inset 0 0 0 1px rgba(255, 255, 255, 0.03), inset 0 1px rgba(255, 255, 255, 0.04),
     0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
-:root[data-theme="light"] {
-  --bg: color-mix(in oklab, var(--blue) 2%, white);
-  --surface: color-mix(in oklab, var(--blue) 4%, white);
-  --surface-2: color-mix(in oklab, var(--blue) 7%, white);
-  --surface-3: color-mix(in oklab, var(--blue) 10%, white);
-  --surface-hover: color-mix(in oklab, var(--blue) 9%, white);
-  --surface-active: color-mix(in oklab, var(--blue) 13%, white);
-  --translucent: color-mix(in srgb, var(--blue) 5%, transparent);
-
-  --border: color-mix(in oklab, var(--blue) 14%, white);
-  --border-strong: color-mix(in oklab, var(--blue) 22%, white);
-  --border-translucent: color-mix(in srgb, var(--blue) 8%, transparent);
-
-  --ink: color-mix(in oklab, var(--blue) 85%, black);
-  --ink-2: var(--blue);
-  --soft: color-mix(in oklab, var(--blue) 75%, white);
-  --faint: color-mix(in oklab, var(--blue) 62%, white);
-
-  --accent: var(--blue);
-  --accent-hover: color-mix(in oklab, var(--blue) 85%, black);
-  --accent-soft: color-mix(in srgb, var(--blue) 12%, transparent);
-  --accent-fg: #ffffff;
-  --brand: var(--blue);
-
-  --pos: #1e8a38;
-  --neg: #d64545;
-  --warn: #b08c00;
-  --orange: #fc7840;
-
-  --ring: var(--blue);
-  --scrollbar: color-mix(in srgb, var(--blue) 25%, transparent);
-  --overlay: rgba(255, 255, 255, 0.65);
-
-  --shadow-low: 0px 1px 4px -1px rgba(0, 0, 0, 0.09);
-  --shadow-medium: 0px 3px 12px rgba(0, 0, 0, 0.09);
-  --shadow-high: 0px 7px 24px rgba(0, 0, 0, 0.06);
-  --inset-control:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+/* Point Radix's own typography hooks at the SBL faces (Bricolage head to toe;
+   numeric data stays mono via the `num` utility — Bricolage has no tnum). */
+.radix-themes {
+  --default-font-family: var(--font-sans);
+  --heading-font-family: var(--font-sans);
+  --strong-font-family: var(--font-sans);
+  --em-font-family: var(--font-sans);
+  --quote-font-family: var(--font-sans);
+  --code-font-family: var(--font-mono);
 }
 
 @theme inline {
@@ -134,18 +147,28 @@
   --color-neg: var(--neg);
   --color-warn: var(--warn);
   --color-ring: var(--ring);
+
+  /* Radii come from Radix (radius="small" → --radius-factor 0.75). `inline`
+     emits these as var() passthrough rather than resolving them at :root, which
+     matters: Radix scopes --radius-1..6 to .radix-themes, so they only resolve
+     at the element. Supersedes the 0px/square mandate. */
+  --radius-xs: var(--radius-1);
+  --radius-sm: var(--radius-2);
+  --radius-md: var(--radius-3);
+  --radius-lg: var(--radius-4);
+  --radius-xl: var(--radius-5);
 }
 
 @theme {
   --font-sans:
-    "Inter Variable", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Bricolage Grotesque", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Berkeley Mono", Menlo, monospace;
 
-  /* Inter Variable tuned weights (Linear caps at ~590 — no heavy display weights) */
-  --font-weight-medium: 510;
-  --font-weight-semibold: 590;
-  --font-weight-bold: 590;
+  /* Bricolage Grotesque weights (display grotesque — full range available) */
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
 
   /* Mobile-friendly scale: 15px body base (was 13px dense), bumped ~+2px per
      step for phone legibility. Line-heights scaled to match. */
@@ -164,22 +187,18 @@
   --text-2xl: 26px;
   --text-2xl--line-height: 33px;
 
-  /* Square everywhere — brutalist mandate (docs/DECISIONS.md). */
-  --radius-xs: 0px;
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-
-  /* Linear's easing library (out-quad is the UI default) */
+  /* Easing library (out-quad is the UI default) */
   --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
   --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955);
 }
 
-/* Tabular numerals for all data: weights, reps, e1RM, timers. */
+/* Tabular numerals for all data: weights, reps, e1RM, timers. Bricolage
+   Grotesque has no tabular figures, so data uses the system mono stack (which
+   is inherently fixed-width) to keep numeric columns aligned. */
 @utility num {
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
@@ -192,7 +211,7 @@
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 0;
+  border-radius: var(--radius-1);
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--faint);
@@ -223,20 +242,15 @@
 
   body {
     @apply bg-bg text-ink font-sans text-sm antialiased;
-    /* Linear's signature Inter alternates: a/g/l variants + slashed zero */
-    font-feature-settings: "cv01", "ss03", "zero";
+    font-optical-sizing: auto;
     letter-spacing: -0.011em;
     text-rendering: optimizeLegibility;
   }
 
-  /* Lab-notebook signature: headings set in mono (reuses --font-mono system
-     stack, no extra font file). Uppercase micro-labels keep their own
-     tracking-widest utility; mono just makes them read more terminal-y. */
   h1,
   h2,
   h3 {
-    font-family: var(--font-mono);
-    letter-spacing: -0.01em;
+    letter-spacing: -0.013em;
   }
 
   ::selection {

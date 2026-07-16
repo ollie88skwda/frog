@@ -58,10 +58,10 @@ glyphs (findings verdicts, condition dots) — never in chrome or large fills.
 - Radii: controls `rounded-md` (6px), cards/panels `rounded-lg` (8px),
   dialogs/floating `rounded-xl` (12px), chips/pills `rounded-full`.
 - Type: base 13px (`text-sm`); page titles `text-lg font-semibold`
-  (semibold = 590, medium = 510 — never bolder); section labels
+  (semibold = 600, medium = 500); section labels
   `text-2xs font-medium tracking-widest text-faint uppercase`; ALL numeric
-  data gets `num` (tabular). Body already has Inter alternates
-  (cv01/ss03/zero) globally.
+  data gets `num` (tabular). Type family is **Bricolage Grotesque**
+  (opsz-variable, self-hosted, optical sizing on) — one font, head to toe.
 - Shadows: `shadow-(--inset-control)` is the secondary-button treatment;
   `floating` for overlays. Nothing else casts shadows.
 

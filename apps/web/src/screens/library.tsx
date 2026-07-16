@@ -1,5 +1,10 @@
 import {
+  EQUIPMENT_KINDS,
+  EQUIPMENT_LABELS,
+  EXERCISE_TYPE_LABELS,
+  EXERCISE_TYPES,
   type Exercise,
+  type ExerciseType,
   formatWeight,
   groupByPrimaryMuscle,
   JOINT_ACTIONS,
@@ -12,16 +17,19 @@ import {
   type NewMetricInput,
   ratingsForMuscle,
   type Tier,
+  tierRank,
 } from "@sbl/core";
 import {
   Archive,
+  ArrowRight,
   ChevronDown,
   ChevronRight,
   Dumbbell,
   History,
   Info,
 } from "lucide-react";
-import { type FormEvent, useRef, useState } from "react";
+import { type CSSProperties, type FormEvent, useRef, useState } from "react";
+import { Link } from "react-router";
 import {
   ExerciseThumb,
   FavoriteButton,
@@ -53,12 +61,22 @@ import {
   useSetExerciseFavorite,
   useSetExerciseMachine,
   useSetExerciseTags,
+  useSetExerciseTypeEquipment,
   useSetMetricExercises,
 } from "@/lib/queries";
 import { useUnit } from "@/lib/settings";
+import { useInView } from "@/lib/use-in-view";
 import { cn } from "@/lib/utils";
 
 const TIERS: Tier[] = ["S", "A", "B", "C"];
+
+// Skip layout/paint for off-screen rows (~900 in the seeded library). The
+// `auto` keyword lets the browser cache each row's real height after first
+// render, so the estimate only matters before a row has ever been shown.
+const CV_ROW: CSSProperties = {
+  contentVisibility: "auto",
+  containIntrinsicSize: "auto 88px",
+};
 
 export default function LibraryScreen() {
   const { data: exercises = [], isLoading } = useExercises();
@@ -72,6 +90,8 @@ export default function LibraryScreen() {
   const create = useCreateExercise();
   const [name, setName] = useState("");
   const [muscle, setMuscle] = useState("");
+  const [type, setType] = useState<ExerciseType>("weight_reps");
+  const [equipment, setEquipment] = useState("");
   const [query, setQuery] = useState("");
   const [filterMuscle, setFilterMuscle] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -89,10 +109,16 @@ export default function LibraryScreen() {
     if (!trimmed) return;
     create.mutate({
       name: trimmed,
-      opts: muscle ? { muscleTargets: [{ muscle, tier: "S" }] } : undefined,
+      opts: {
+        ...(muscle ? { muscleTargets: [{ muscle, tier: "S" }] } : {}),
+        exerciseType: type,
+        equipment: equipment || null,
+      },
     });
     setName("");
     setMuscle("");
+    setType("weight_reps");
+    setEquipment("");
   }
 
   function toggleGroup(key: string) {
@@ -108,34 +134,63 @@ export default function LibraryScreen() {
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
       <h1 className="text-lg font-semibold tracking-tight">Library</h1>
 
-      <form onSubmit={onSubmit} className="mt-4 flex gap-2">
-        <Input
-          placeholder="New exercise name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          data-testid="exercise-name-input"
-        />
-        <select
-          value={muscle}
-          onChange={(e) => setMuscle(e.target.value)}
-          className="h-8 w-32 shrink-0 border border-border bg-surface px-2 text-xs text-ink"
-          data-testid="exercise-muscle-select"
-        >
-          <option value="">Muscle…</option>
-          {MUSCLES.map((m) => (
-            <option key={m.key} value={m.key}>
-              {m.label}
-            </option>
-          ))}
-        </select>
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={name.trim().length === 0}
-          data-testid="add-exercise-btn"
-        >
-          Add
-        </Button>
+      <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-2">
+        <div className="flex gap-2">
+          <Input
+            placeholder="New exercise name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            data-testid="exercise-name-input"
+          />
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={name.trim().length === 0}
+            data-testid="add-exercise-btn"
+          >
+            Add
+          </Button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={muscle}
+            onChange={(e) => setMuscle(e.target.value)}
+            className="h-8 flex-1 basis-28 border border-border bg-surface px-2 text-xs text-ink"
+            data-testid="exercise-muscle-select"
+          >
+            <option value="">Muscle…</option>
+            {MUSCLES.map((m) => (
+              <option key={m.key} value={m.key}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as ExerciseType)}
+            className="h-8 flex-1 basis-28 border border-border bg-surface px-2 text-xs text-ink"
+            data-testid="exercise-type-select"
+          >
+            {EXERCISE_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {EXERCISE_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+          <select
+            value={equipment}
+            onChange={(e) => setEquipment(e.target.value)}
+            className="h-8 flex-1 basis-28 border border-border bg-surface px-2 text-xs text-ink"
+            data-testid="exercise-equipment-select"
+          >
+            <option value="">Equipment…</option>
+            {EQUIPMENT_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {EQUIPMENT_LABELS[k]}
+              </option>
+            ))}
+          </select>
+        </div>
       </form>
 
       <div className="mt-4">
@@ -238,9 +293,7 @@ function BestForMuscle({
     .filter((x): x is { exercise: Exercise; target: MuscleTarget } =>
       Boolean(x.target),
     )
-    .sort(
-      (a, b) => TIERS.indexOf(a.target.tier) - TIERS.indexOf(b.target.tier),
-    );
+    .sort((a, b) => tierRank(a.target.tier) - tierRank(b.target.tier));
 
   return (
     <Dialog>
@@ -331,6 +384,9 @@ function ExerciseRow({
   const setTags = useSetExerciseTags();
   const deleteExercise = useDeleteExercise();
   const [confirmingArchive, setConfirmingArchive] = useState(false);
+  // Gate the per-row last-set lookup on visibility — otherwise the seeded
+  // library fires one query per row (~900) on open, saturating the network.
+  const [rowRef, inView] = useInView<HTMLLIElement>();
   const Chevron = expanded ? ChevronDown : ChevronRight;
   const groupTier = exercise.muscleTargets?.find(
     (t) => t.muscle === groupMuscle,
@@ -338,7 +394,11 @@ function ExerciseRow({
   const machine = machines.find((m) => m.id === exercise.machineId);
 
   return (
-    <li data-testid={`exercise-row-${exercise.name}`}>
+    <li
+      ref={rowRef}
+      style={CV_ROW}
+      data-testid={`exercise-row-${exercise.name}`}
+    >
       {/* Ribbon: big diagram anchors the row; the name carries the most weight
           and its brightness encodes exercise quality for this muscle (see
           TierLegend); joint actions sit under it as plain labels; metadata
@@ -378,6 +438,14 @@ function ExerciseRow({
                 onToggle={onToggleFavorite}
                 name={exercise.name}
               />
+              <Link
+                to={`/exercises/${exercise.id}`}
+                title={`Open ${exercise.name}`}
+                className="flex size-8 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
+                data-testid={`open-exercise-${exercise.name}`}
+              >
+                <ArrowRight className="size-4" />
+              </Link>
             </span>
           </div>
 
@@ -391,7 +459,7 @@ function ExerciseRow({
                 {machine.name}
               </span>
             )}
-            <LastSetSummary exerciseId={exercise.id} />
+            {inView && <LastSetSummary exerciseId={exercise.id} />}
             {exercise.tags?.map((t) => (
               <span key={t} className="flex shrink-0 items-center gap-1">
                 <span className="size-1 bg-accent" />
@@ -530,10 +598,16 @@ function CustomExerciseEditor({
 }) {
   const classify = useSetExerciseClassification();
   const setMachine = useSetExerciseMachine();
+  const setTypeEquip = useSetExerciseTypeEquipment();
+  const { data: history = [] } = useLastSets(exercise.id);
   const [muscleDraft, setMuscleDraft] = useState("");
   const [tierDraft, setTierDraft] = useState<Tier>("S");
   const targets = exercise.muscleTargets ?? [];
   const actions = exercise.jointActions ?? [];
+  // Measurement type is immutable once sets exist (volume/records depend on it);
+  // duplicate-as-custom is the reset path. Equipment stays editable.
+  const exType = (exercise.exerciseType as ExerciseType) ?? "weight_reps";
+  const typeLocked = history.length > 0;
 
   function setTargets(next: MuscleTarget[]) {
     classify.mutate({
@@ -550,6 +624,51 @@ function CustomExerciseEditor({
 
   return (
     <div className="mt-3 flex flex-col gap-2 border-t border-border pt-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-2xs text-faint">Type</span>
+        <select
+          value={exType}
+          disabled={typeLocked}
+          onChange={(e) =>
+            setTypeEquip.mutate({
+              exerciseId: exercise.id,
+              exerciseType: e.target.value,
+              equipment: exercise.equipment ?? null,
+            })
+          }
+          className="h-6 max-w-40 border border-border bg-surface px-1 text-2xs text-ink disabled:opacity-50"
+          data-testid={`exercise-type-select-${exercise.name}`}
+        >
+          {EXERCISE_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {EXERCISE_TYPE_LABELS[t]}
+            </option>
+          ))}
+        </select>
+        {typeLocked && (
+          <span className="text-2xs text-faint">locked — has logged sets</span>
+        )}
+        <span className="text-2xs text-faint">Equipment</span>
+        <select
+          value={exercise.equipment ?? ""}
+          onChange={(e) =>
+            setTypeEquip.mutate({
+              exerciseId: exercise.id,
+              exerciseType: exType,
+              equipment: e.target.value || null,
+            })
+          }
+          className="h-6 max-w-40 border border-border bg-surface px-1 text-2xs text-ink"
+          data-testid={`exercise-equipment-select-${exercise.name}`}
+        >
+          <option value="">No equipment</option>
+          {EQUIPMENT_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {EQUIPMENT_LABELS[k]}
+            </option>
+          ))}
+        </select>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-2xs text-faint">Muscles</span>
         {targets.map((t) => (

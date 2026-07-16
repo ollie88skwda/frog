@@ -43,6 +43,24 @@ export async function waitForExercise(page: Page, name: string) {
     .toBe(1);
 }
 
+/** Poll until a condition is untracked server-side (the untrack mutation is
+ * optimistic; a full-page goto before it lands would abort it). */
+export async function waitForConditionUntracked(page: Page, metricId: string) {
+  await expect
+    .poll(() =>
+      page.evaluate(async (id) => {
+        const { count, error } = await window.__sbl.supabase
+          .from("tracked_conditions")
+          .select("id", { count: "exact", head: true })
+          .eq("metric_id", id)
+          .eq("tracked", false);
+        if (error) throw new Error(error.message);
+        return count ?? 0;
+      }, metricId),
+    )
+    .toBe(1);
+}
+
 export async function rowCount(page: Page, table: string): Promise<number> {
   return page.evaluate(async (t) => {
     const { count, error } = await window.__sbl.supabase

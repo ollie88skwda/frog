@@ -3,6 +3,7 @@ node_modules/
 
 # builds
 dist/
+dist-*/
 *.tsbuildinfo
 .vite/
 
@@ -28,3 +29,4 @@ supabase/.branches/
 *.p8
 *.p12
 .lavish/
+.vercel

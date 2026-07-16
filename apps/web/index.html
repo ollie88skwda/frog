@@ -5,9 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SBL</title>
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#111113" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="SBL" />
     <script>
       // Set theme before first paint to avoid a flash of the wrong theme.
+      // Sets BOTH seams: data-theme (SBL tokens) and the light/dark class that
+      // Radix Themes keys off. Keep in sync with src/lib/theme.ts.
       (() => {
         var stored = localStorage.getItem("theme");
         var theme =
@@ -16,7 +23,9 @@
             : window.matchMedia("(prefers-color-scheme: light)").matches
               ? "light"
               : "dark";
-        document.documentElement.dataset.theme = theme;
+        var root = document.documentElement;
+        root.dataset.theme = theme;
+        root.classList.add(theme);
       })();
     </script>
   </head>

@@ -15,6 +15,9 @@ test("edit a committed set; delete a set; both survive reload", async ({ page })
   await page.getByTestId("exercise-name-input").fill(EX);
   await page.getByTestId("add-exercise-btn").click();
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
+  // Wait for the insert to land server-side before navigating — a full-page
+  // goto aborts the optimistic create's in-flight request.
+  await waitForExercise(page, EX);
 
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
@@ -97,5 +100,7 @@ test("delete a custom exercise removes it from the picker; tags round-trip", asy
   // Close the auto-opened picker before reaching the header.
   await page.keyboard.press("Escape");
   await page.getByRole("dialog").waitFor({ state: "hidden" });
+  // End the session through the finish overlay.
   await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("finish-save").click();
 });

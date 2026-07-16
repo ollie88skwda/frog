@@ -1,50 +1,57 @@
-import { cva, type VariantProps } from "class-variance-authority";
+import {
+  Button as RtButton,
+  IconButton as RtIconButton,
+} from "@radix-ui/themes";
 import type { ButtonHTMLAttributes } from "react";
-import { cn } from "@/lib/utils";
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 rounded-md font-medium select-none " +
-    "transition-[background-color,border-color,color,box-shadow] duration-150 ease-(--ease-out-quad) " +
-    "disabled:pointer-events-none disabled:opacity-50 " +
-    "focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2",
-  {
-    variants: {
-      variant: {
-        primary: "bg-brand text-accent-fg hover:bg-accent-hover",
-        // Linear's signature secondary control: translucent fill + inset hairlines.
-        outline:
-          "bg-translucent text-ink shadow-(--inset-control) hover:bg-surface-hover",
-        // Even the lightest control keeps a visible surface — no bare
-        // text-only buttons (AGENTS.md: every button has a background).
-        ghost: "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
-        danger:
-          "text-neg bg-translucent shadow-(--inset-control) hover:bg-neg/10",
-      },
-      size: {
-        sm: "h-8 px-2 text-xs",
-        md: "h-8 px-3 text-sm",
-        lg: "h-10 px-4 text-sm",
-        icon: "size-8 text-soft",
-      },
-    },
-    defaultVariants: { variant: "outline", size: "md" },
-  },
-);
+type Variant = "primary" | "outline" | "ghost" | "danger";
+type Size = "sm" | "md" | "lg" | "icon";
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
-  VariantProps<typeof buttonVariants>;
+// SBL variant -> Radix Themes (variant, color).
+//
+// `ghost` deliberately maps to Radix `soft`, NOT Radix `ghost`: soft keeps a
+// resting background, which is exactly what the no-bare-text-buttons rule
+// requires (AGENTS.md) — Radix's own `ghost` is transparent until hover.
+// `outline`/`ghost`/`danger` pin an explicit color because Radix defaults to
+// the theme accent, and these are quiet/neutral controls; only `primary` is
+// meant to carry indigo.
+const VARIANT = {
+  primary: { variant: "solid" },
+  outline: { variant: "surface", color: "gray" },
+  ghost: { variant: "soft", color: "gray" },
+  danger: { variant: "soft", color: "red" },
+} as const satisfies Record<
+  Variant,
+  { variant: "solid" | "surface" | "soft"; color?: "gray" | "red" }
+>;
+
+// Heights are held at the pre-Radix scale so no call-site layout shifts:
+// Radix size 2 = 32px (was h-8), size 3 = 40px (was h-10). `sm` and `md`
+// collapse onto the same height because they already both rendered at h-8.
+const SIZE = { sm: "2", md: "2", lg: "3", icon: "2" } as const;
+
+// `color` is omitted from the HTML attrs because React's HTMLAttributes still
+// carries the legacy `color?: string`, which collides with Radix's accent prop.
+type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "color"> & {
+  variant?: Variant;
+  size?: Size;
+};
 
 export function Button({
   className,
-  variant,
-  size,
+  variant = "outline",
+  size = "md",
   type = "button",
   ...props
 }: ButtonProps) {
+  const styling = VARIANT[variant];
+  const Comp = size === "icon" ? RtIconButton : RtButton;
   return (
-    <button
+    <Comp
       type={type}
-      className={cn(buttonVariants({ variant, size }), className)}
+      size={SIZE[size]}
+      {...styling}
+      className={className}
       {...props}
     />
   );

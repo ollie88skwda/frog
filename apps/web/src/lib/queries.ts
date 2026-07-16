@@ -2,6 +2,7 @@ import {
   type Exercise,
   type ExerciseClassification,
   type ExerciseFavorite,
+  type ExercisePref,
   type Machine,
   type MachinePatch,
   type Metric,
@@ -36,12 +37,20 @@ export function useCreateExercise() {
       repo.createExercise(name, opts),
     // Synchronous onMutate: the optimistic write must land before React's
     // next render, or controlled inputs flash back to the stale value.
-    onMutate: ({ name, opts }) => {
+    onMutate: (vars) => {
+      const { name } = vars;
+      // Share one client id between the optimistic row and the server insert
+      // (see useCreateMachine) so a classification edit made before the create
+      // settles targets the real row instead of a throwaway id.
+      vars.opts ??= {};
+      const id = vars.opts.id ?? newId();
+      vars.opts.id = id;
+      const opts = vars.opts;
       void qc.cancelQueries({ queryKey: ["exercises"] });
       const prev = qc.getQueryData<Exercise[]>(["exercises"]);
       const now = Date.now();
       const optimistic: Exercise = {
-        id: newId(),
+        id,
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -54,6 +63,10 @@ export function useCreateExercise() {
         muscleTargets: opts?.muscleTargets ?? null,
         imageUrl: null,
         imageAttribution: null,
+        exerciseType: opts?.exerciseType ?? "weight_reps",
+        equipment: opts?.equipment ?? null,
+        instructions: null,
+        imageUrls: null,
       };
       qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
         [...old, optimistic].sort((a, b) => a.name.localeCompare(b.name)),
@@ -166,6 +179,39 @@ export function useSetExerciseClassification() {
   });
 }
 
+// Measurement type + equipment (custom exercises only). Type is app-enforced
+// immutable once the exercise has logged sets — the caller disables the control.
+export function useSetExerciseTypeEquipment() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      exerciseId: string;
+      exerciseType: string;
+      equipment: string | null;
+    }) =>
+      repo.setExerciseTypeEquipment(
+        input.exerciseId,
+        input.exerciseType,
+        input.equipment,
+      ),
+    onMutate: ({ exerciseId, exerciseType, equipment }) => {
+      void qc.cancelQueries({ queryKey: ["exercises"] });
+      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
+      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
+        old.map((e) =>
+          e.id === exerciseId ? { ...e, exerciseType, equipment } : e,
+        ),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
+  });
+}
+
 export function useSetExerciseMachine() {
   const repo = useRepo();
   const qc = useQueryClient();
@@ -201,11 +247,16 @@ export function useCreateMachine() {
   return useMutation({
     mutationFn: (input: NewMachineInput) => repo.createMachine(input),
     onMutate: (input) => {
+      // Share one client id between the optimistic row and the server insert
+      // (onMutate runs before mutationFn with the same variables object).
+      // Otherwise a follow-up settings edit targets the optimistic id and is
+      // dropped when the create settles to a different server-generated id.
+      input.id ??= newId();
       void qc.cancelQueries({ queryKey: ["machines"] });
       const prev = qc.getQueryData<Machine[]>(["machines"]);
       const now = Date.now();
       const optimistic: Machine = {
-        id: newId(),
+        id: input.id,
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
@@ -542,6 +593,58 @@ export function useSetExerciseFavorite() {
   });
 }
 
+// Per-exercise prefs (weight-unit override etc.) — satellite rows, works on
+// shared seed exercises. Same upsert/optimistic shape as favorites.
+export function useExercisePrefs() {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["exercise-prefs"],
+    queryFn: () => repo.listExercisePrefs(),
+  });
+}
+
+export function useSetExerciseWeightUnit() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  const key = ["exercise-prefs"];
+  return useMutation({
+    mutationFn: (input: { exerciseId: string; unit: "kg" | "lb" | null }) =>
+      repo.setExerciseWeightUnit(input.exerciseId, input.unit),
+    onMutate: ({ exerciseId, unit }) => {
+      void qc.cancelQueries({ queryKey: key });
+      const prev = qc.getQueryData<ExercisePref[]>(key);
+      const now = Date.now();
+      qc.setQueryData<ExercisePref[]>(key, (old = []) => {
+        const existing = old.find((p) => p.exerciseId === exerciseId);
+        if (existing)
+          return old.map((p) =>
+            p.exerciseId === exerciseId
+              ? { ...p, weightUnit: unit, updatedAt: now }
+              : p,
+          );
+        return [
+          ...old,
+          {
+            id: newId(),
+            createdAt: now,
+            updatedAt: now,
+            deletedAt: null,
+            ownerId: "",
+            exerciseId,
+            weightUnit: unit,
+            generatorExcluded: false,
+          },
+        ];
+      });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(key, ctx.prev);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: key }),
+  });
+}
+
 export function useSetMetricExercises() {
   const repo = useRepo();
   const qc = useQueryClient();
@@ -596,12 +699,42 @@ export function useFindingsData() {
   });
 }
 
-export function useGhost(exerciseId: string, excludeSessionExerciseId: string) {
+export function useGhost(
+  exerciseId: string,
+  excludeSessionExerciseId: string,
+  // When set, the PREVIOUS lookup is narrowed to same-routine sessions (the
+  // "routine" previous-values scope); null/undefined = any workout.
+  routineId?: string | null,
+) {
   const repo = useRepo();
   return useQuery({
-    queryKey: ["ghost", exerciseId, excludeSessionExerciseId],
+    queryKey: [
+      "ghost",
+      exerciseId,
+      excludeSessionExerciseId,
+      routineId ?? null,
+    ],
     queryFn: () =>
-      repo.lastSetsForExercise(exerciseId, excludeSessionExerciseId),
+      repo.lastSetsForExercise(
+        exerciseId,
+        excludeSessionExerciseId,
+        routineId ?? undefined,
+      ),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+// Previous session's per-exercise note (carry-forward ghost, M3). Cached like
+// the ghost so mounting a block never blocks the logging path.
+export function useLastNote(
+  exerciseId: string,
+  excludeSessionExerciseId: string,
+) {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["last-note", exerciseId, excludeSessionExerciseId],
+    queryFn: () =>
+      repo.lastNoteForExercise(exerciseId, excludeSessionExerciseId),
     staleTime: Number.POSITIVE_INFINITY,
   });
 }

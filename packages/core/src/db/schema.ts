@@ -24,8 +24,12 @@ const base = {
 };
 
 // owner_id null = global seed row (readable by everyone, RLS-enforced).
-const seedableOwner = uuid("owner_id").default(sql`auth.uid()`);
-const requiredOwner = uuid("owner_id").notNull().default(sql`auth.uid()`);
+// text, not uuid: the JWT `sub` is a Clerk user ID (`user_…`) for Clerk
+// sign-ins and a uuid string for Supabase-native (E2E) sessions.
+const seedableOwner = text("owner_id").default(sql`(auth.jwt()->>'sub')`);
+const requiredOwner = text("owner_id")
+  .notNull()
+  .default(sql`(auth.jwt()->>'sub')`);
 
 // A user's gym machine: brand + numbered settings (seat height, pad position…)
 // entered once and shown in every session ("same setup every time").
@@ -66,6 +70,16 @@ export const exercises = pgTable(
     // for a consistent visual style. Null for custom exercises in v1.
     imageUrl: text("image_url"),
     imageAttribution: text("image_attribution"),
+    // Measurement type decides the logging columns and volume/PR math
+    // (domain/exercise-types.ts). App-enforced immutable once sets exist;
+    // duplicate-as-custom is the reset path (docs/hevy-parity plan §B).
+    exerciseType: text("exercise_type").notNull().default("weight_reps"),
+    // 'barbell' | 'ez_bar' | 'dumbbell' | 'kettlebell' | 'machine' | 'cable'
+    // | 'band' | 'suspension' | 'bodyweight' | 'plate' | 'other'
+    // Drives picker filters, plate-calc eligibility, generator matching.
+    equipment: text("equipment"),
+    instructions: jsonb("instructions").$type<string[]>(), // how-to steps
+    imageUrls: jsonb("image_urls").$type<string[]>(), // how-to frames (detail screen)
   },
   (t) => [index("exercises_owner_idx").on(t.ownerId)],
 );
@@ -134,6 +148,104 @@ export const exerciseFavorites = pgTable(
   ],
 );
 
+// Reusable workout templates ("routines"), optionally grouped into folders.
+// Starting a routine copies its prescription into a live session; finishing
+// can write performed values back (Update Routine Values, plan §B).
+export const routineFolders = pgTable(
+  "routine_folders",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    name: text("name").notNull(),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [index("routine_folders_owner_idx").on(t.ownerId)],
+);
+
+export const routines = pgTable(
+  "routines",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    name: text("name").notNull(),
+    folderId: uuid("folder_id").references(() => routineFolders.id), // null = unfiled
+    position: integer("position").notNull().default(0),
+    description: text("description"),
+  },
+  (t) => [
+    index("routines_owner_idx").on(t.ownerId),
+    index("routines_folder_idx").on(t.folderId),
+  ],
+);
+
+export const routineExercises = pgTable(
+  "routine_exercises",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    routineId: uuid("routine_id")
+      .notNull()
+      .references(() => routines.id),
+    exerciseId: uuid("exercise_id")
+      .notNull()
+      .references(() => exercises.id),
+    orderIndex: integer("order_index").notNull(),
+    // Same non-null int = same superset; color = group index. Null = none.
+    supersetGroup: integer("superset_group"),
+    // Rest countdown target in seconds. Null = app default, 0 = explicitly off.
+    restSec: integer("rest_sec"),
+    // Persistent template note — re-renders under the exercise every session.
+    note: text("note"),
+  },
+  (t) => [
+    index("routine_exercises_owner_idx").on(t.ownerId),
+    index("routine_exercises_routine_idx").on(t.routineId),
+  ],
+);
+
+export const routineSets = pgTable(
+  "routine_sets",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    routineExerciseId: uuid("routine_exercise_id")
+      .notNull()
+      .references(() => routineExercises.id),
+    setNo: integer("set_no").notNull(),
+    setType: text("set_type").notNull().default("normal"), // 'normal'|'warmup'|'failure'|'drop'
+    targetWeightKg: real("target_weight_kg"),
+    targetReps: integer("target_reps"),
+    // Non-null ⇒ rep range [targetReps, targetRepsMax]; null ⇒ fixed reps.
+    // Rep-range sets are never auto-updated by Update Routine Values.
+    targetRepsMax: integer("target_reps_max"),
+    targetDurationSec: integer("target_duration_sec"),
+    targetDistanceM: real("target_distance_m"),
+  },
+  (t) => [
+    index("routine_sets_owner_idx").on(t.ownerId),
+    index("routine_sets_routine_exercise_idx").on(t.routineExerciseId),
+  ],
+);
+
+// Generator/library program provenance. Progression state is NOT stored —
+// the overload rule reads history via sessions.routine_id, so regenerate /
+// restart stays trivially consistent (plan §B).
+export const programs = pgTable(
+  "programs",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    source: text("source").notNull(), // 'generated' | 'library'
+    libraryKey: text("library_key"),
+    config: jsonb("config").$type<Record<string, unknown>>(), // questionnaire answers
+    folderId: uuid("folder_id")
+      .notNull()
+      .references(() => routineFolders.id),
+    active: boolean("active").notNull().default(true),
+  },
+  (t) => [index("programs_owner_idx").on(t.ownerId)],
+);
+
 export const sessions = pgTable(
   "sessions",
   {
@@ -144,9 +256,15 @@ export const sessions = pgTable(
     endedAt: bigint("ended_at", { mode: "number" }),
     conditionValues: jsonb("condition_values").$type<Record<string, unknown>>(), // {metricId: value}
     notes: text("notes"), // freeform per-session notes (not tied to a condition)
+    // Provenance: which routine this session was started from (null = empty
+    // workout). Serves same-routine PREVIOUS scope + routine write-back.
+    routineId: uuid("routine_id").references(() => routines.id),
+    // Total paused time; duration = endedAt − startedAt − pausedMs.
+    pausedMs: bigint("paused_ms", { mode: "number" }).notNull().default(0),
   },
   (t) => [
     index("sessions_owner_started_idx").on(t.ownerId, t.startedAt.desc()),
+    index("sessions_routine_idx").on(t.routineId),
   ],
 );
 
@@ -162,6 +280,18 @@ export const sessionExercises = pgTable(
       .notNull()
       .references(() => exercises.id),
     orderIndex: integer("order_index").notNull(),
+    // Same non-null int = same superset (color = group index). Null = none.
+    supersetGroup: integer("superset_group"),
+    // Rest countdown target (seconds). Null = off/default; 0 = explicitly off.
+    restSec: integer("rest_sec"),
+    // Per-exercise session note — saved with the workout; prior session's
+    // note ghosts (read-only) next time the exercise is logged.
+    note: text("note"),
+    // Provenance link to the routine row this block came from (null for
+    // ad-hoc adds). Serves Update-Routine-Values write-back + PREVIOUS scope.
+    routineExerciseId: uuid("routine_exercise_id").references(
+      () => routineExercises.id,
+    ),
   },
   (t) => [
     index("session_exercises_owner_idx").on(t.ownerId),
@@ -183,8 +313,13 @@ export const setLogs = pgTable(
       .notNull()
       .references(() => sessionExercises.id),
     setNo: integer("set_no").notNull(),
-    weightKg: real("weight_kg"), // canonical kg; kg/lb is a display setting
+    setType: text("set_type").notNull().default("normal"), // 'normal'|'warmup'|'failure'|'drop'
+    // Canonical kg; kg/lb is a display setting. Reinterpreted per exercise
+    // type: added weight (weighted_bodyweight), assistance (assisted_bodyweight).
+    weightKg: real("weight_kg"),
     reps: integer("reps"),
+    durationSec: integer("duration_sec"), // duration-type exercises
+    distanceM: real("distance_m"), // distance-type exercises (canonical meters)
     rir: integer("rir"),
     rpe: real("rpe"), // 1–10 perceived exertion (halves allowed); RIR ≈ 10 − RPE
     note: text("note"),
@@ -196,6 +331,124 @@ export const setLogs = pgTable(
     index("set_logs_owner_idx").on(t.ownerId),
     index("set_logs_session_exercise_idx").on(t.sessionExerciseId),
   ],
+);
+
+// Body measurements: one entry per local day (unique owner+date), any subset
+// of fields per entry. Canonical bodyweight store — powers bodyweight-exercise
+// volume math, trend graphs, and the generator report. The seeded Bodyweight
+// condition metric remains the correlation-UX entry point and mirrors here.
+export const measurements = pgTable(
+  "measurements",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    measuredOn: text("measured_on").notNull(), // local YYYY-MM-DD
+    bodyweightKg: real("bodyweight_kg"),
+    bodyfatPct: real("bodyfat_pct"),
+    neckCm: real("neck_cm"),
+    shouldersCm: real("shoulders_cm"),
+    chestCm: real("chest_cm"),
+    waistCm: real("waist_cm"),
+    abdomenCm: real("abdomen_cm"),
+    hipsCm: real("hips_cm"),
+    bicepLCm: real("bicep_l_cm"),
+    bicepRCm: real("bicep_r_cm"),
+    forearmLCm: real("forearm_l_cm"),
+    forearmRCm: real("forearm_r_cm"),
+    thighLCm: real("thigh_l_cm"),
+    thighRCm: real("thigh_r_cm"),
+    calfLCm: real("calf_l_cm"),
+    calfRCm: real("calf_r_cm"),
+    // Progress photo is part of the day's entry → Hevy's 1/day rule falls out
+    // structurally. Path in the private progress-photos bucket; always private.
+    photoPath: text("photo_path"),
+  },
+  (t) => [
+    index("measurements_owner_idx").on(t.ownerId),
+    uniqueIndex("measurements_owner_date_idx").on(t.ownerId, t.measuredOn),
+  ],
+);
+
+// Per-exercise user prefs — satellite on shared seed rows (favorites pattern).
+export const exercisePrefs = pgTable(
+  "exercise_prefs",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    exerciseId: uuid("exercise_id")
+      .notNull()
+      .references(() => exercises.id),
+    weightUnit: text("weight_unit"), // 'kg' | 'lb' | null = global default
+    generatorExcluded: boolean("generator_excluded").notNull().default(false),
+  },
+  (t) => [
+    index("exercise_prefs_owner_idx").on(t.ownerId),
+    uniqueIndex("exercise_prefs_owner_exercise_idx").on(
+      t.ownerId,
+      t.exerciseId,
+    ),
+  ],
+);
+
+// Server-side user preferences: only settings that change data semantics or
+// must agree across devices (plan §B). Pure device behavior (theme, display
+// unit, sounds, keep-awake…) stays in localStorage (apps/web lib/settings.ts).
+export const userPrefs = pgTable(
+  "user_prefs",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    firstWeekday: integer("first_weekday").notNull().default(1), // 0=Sun … 6=Sat
+    includeWarmupsInStats: boolean("include_warmups_in_stats")
+      .notNull()
+      .default(true),
+    defaultRestSec: integer("default_rest_sec"), // null = off
+    previousValuesScope: text("previous_values_scope").notNull().default("any"), // 'any' | 'routine'
+    bodyDiagram: text("body_diagram").notNull().default("neutral"),
+    plateConfig: jsonb("plate_config").$type<PlateConfig>(),
+    displayName: text("display_name"),
+  },
+  (t) => [uniqueIndex("user_prefs_owner_idx").on(t.ownerId)],
+);
+
+export type PlateConfig = {
+  barKg: number;
+  platesKg: number[];
+  barLb: number;
+  platesLb: number[];
+  dumbbellStepKg?: number;
+};
+
+// Workout photos attached at save time (photos only in v1; ≤3 app-enforced).
+// Paths live in the private session-media bucket.
+export const sessionMedia = pgTable(
+  "session_media",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => sessions.id),
+    path: text("path").notNull(),
+    position: integer("position").notNull().default(0),
+    mediaType: text("media_type").notNull().default("photo"),
+  },
+  (t) => [
+    index("session_media_owner_idx").on(t.ownerId),
+    index("session_media_session_idx").on(t.sessionId),
+  ],
+);
+
+// Web-push subscriptions for rest-timer/PR notifications (M12).
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    endpoint: text("endpoint").notNull().unique(),
+    keys: jsonb("keys").$type<{ p256dh: string; auth: string }>().notNull(),
+  },
+  (t) => [index("push_subscriptions_owner_idx").on(t.ownerId)],
 );
 
 // Personal access tokens for the read-only API (sha256 of the plaintext;
@@ -223,3 +476,13 @@ export type Session = typeof sessions.$inferSelect;
 export type SessionExercise = typeof sessionExercises.$inferSelect;
 export type SetLog = typeof setLogs.$inferSelect;
 export type ApiToken = typeof apiTokens.$inferSelect;
+export type RoutineFolder = typeof routineFolders.$inferSelect;
+export type Routine = typeof routines.$inferSelect;
+export type RoutineExercise = typeof routineExercises.$inferSelect;
+export type RoutineSet = typeof routineSets.$inferSelect;
+export type Program = typeof programs.$inferSelect;
+export type Measurement = typeof measurements.$inferSelect;
+export type ExercisePref = typeof exercisePrefs.$inferSelect;
+export type UserPrefs = typeof userPrefs.$inferSelect;
+export type SessionMediaRow = typeof sessionMedia.$inferSelect;
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;

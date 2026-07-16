@@ -1,13 +1,18 @@
 import { APP_NAME } from "@sbl/core";
 import { Dumbbell, Home, Moon, Sun, User } from "lucide-react";
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useHotkeys } from "@/lib/hotkeys";
 import { useActiveSession } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
-import { CommandPalette } from "./command-palette";
+
+// Lazy: cmdk + the palette stay out of the eager chunk (220 kB gz gate); the
+// chunk loads in the background right after mount, so first ⌘K is instant.
+const CommandPalette = lazy(() =>
+  import("./command-palette").then((m) => ({ default: m.CommandPalette })),
+);
 
 const NAV = [
   { to: "/", label: "Home", icon: Home, end: true, key: null },
@@ -160,7 +165,9 @@ export function AppShell() {
         ))}
       </nav>
 
-      <CommandPalette />
+      <Suspense fallback={null}>
+        <CommandPalette />
+      </Suspense>
     </div>
   );
 }

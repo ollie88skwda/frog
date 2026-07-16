@@ -1,21 +1,30 @@
-import type { InputHTMLAttributes } from "react";
-import { cn } from "@/lib/utils";
+import { TextField } from "@radix-ui/themes";
+import type { ComponentProps } from "react";
 
-type InputProps = InputHTMLAttributes<HTMLInputElement>;
+// TextField.Root puts `className` on its wrapper <div> and spreads every other
+// prop onto the inner <input> (whose own class list is fixed). That split is
+// what makes this a drop-in:
+//   - data-testid, value/onChange/onKeyDown, inputMode, autoFocus -> the input,
+//     so every e2e selector and the logging keyboard path are unaffected;
+//   - call-site sizing (h-8, w-16, flex-1) -> the wrapper, which is
+//     display:flex/align-items:stretch, so the input still fills it;
+//   - call-site text classes (num, text-xs, text-soft) -> the wrapper, and
+//     inherit down into the input. `num` beats Radix's own font-family because
+//     Tailwind utilities sit in a later cascade layer than radix (theme.css).
+type InputProps = Omit<
+  ComponentProps<typeof TextField.Root>,
+  "size" | "variant" | "color"
+>;
 
 export function Input({ className, ...props }: InputProps) {
   return (
-    <input
-      className={cn(
-        // Filled, clearly-bordered box so it reads as tappable/editable on
-        // touch (mobile-first) rather than blending into the row surface.
-        "h-8 w-full rounded-md border border-border-strong bg-surface-2 px-2 text-sm text-ink",
-        "placeholder:text-faint",
-        "transition-[border-color,box-shadow] duration-150 ease-(--ease-out-quad)",
-        "hover:border-border-strong",
-        "focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70",
-        className,
-      )}
+    <TextField.Root
+      // 2 = 32px, holding the previous h-8 default so no layout shifts.
+      size="2"
+      // Filled + bordered, so it still reads as tappable/editable on touch
+      // rather than blending into the row surface (mobile-first).
+      variant="surface"
+      className={className}
       {...props}
     />
   );

@@ -27,7 +27,7 @@ Web-first rewrite (the original Expo/React Native app is archived on branch `leg
 | `packages/mcp` | MCP server (stdio) — thin client over the PAT API | @modelcontextprotocol/sdk |
 | `supabase/` | Postgres migrations, RLS policies, Edge Functions, seeds | Supabase CLI |
 
-**Storage is Supabase-direct, online-first** (Postgres + Auth + RLS + PostgREST via supabase-js in the browser). An account is required; there is no local database on web. **Do not promise offline in UI copy.**
+**Storage is Supabase-direct, online-first** (Postgres + RLS + PostgREST via supabase-js in the browser). **Identity is Clerk** (Google + email, prebuilt UI) via Supabase third-party auth: the browser client sends Clerk session tokens (`accessToken` option — note this disables `supabase.auth.*` on the app client), and RLS keys off the JWT `sub` claim as text. An account is required; there is no local database on web. **Do not promise offline in UI copy.**
 
 **The Repo seam:** all data access goes through the `Repo` interface in `packages/core/src/repo/`. `SupabaseRepo` is the v1 implementation. This is deliberate: a future mobile app (Capacitor wrap or native) adds a local-store/offline `SqliteRepo` behind the same interface without touching screens or domain code. Keep the SPA Capacitor-compatible: no SSR, no Node APIs in `apps/web`, browser APIs behind capability guards.
 
@@ -48,7 +48,7 @@ Web-first rewrite (the original Expo/React Native app is archived on branch `leg
 - **Timestamps:** `created_at` / `updated_at` / `deleted_at` are bigint millisecond epochs, app-managed (`Date.now()`).
 - **Soft delete only:** set `deleted_at`; never hard-delete; IDs are never reused.
 - **Weight:** stored canonically in **kg** (`weight_kg`); kg/lb is a display setting (`domain/units.ts`).
-- **Ownership + RLS:** every table has `owner_id` (default `auth.uid()`) and row-level security; global seed rows have `owner_id null`. No service-role keys in app code.
+- **Ownership + RLS:** every table has `owner_id` **text** (default `auth.jwt()->>'sub'` — a Clerk user ID, or a uuid string for Supabase-native E2E sessions) and row-level security; global seed rows have `owner_id null`. No service-role keys in app code. Supabase-native signups stay disabled (Clerk owns sign-up — enforced on BOTH local config.toml and the hosted project; verify with a `POST /auth/v1/signup` → 422). `anon` holds zero table privileges, enforced by `20260716051430_revoke_anon_grants.sql` — never grant anon SELECT to "fix" a boot-time auth race. Note hosted Supabase grants anon full DML by default while local images ship hardened defaults, so **privilege posture must be asserted in a migration, not assumed** — and security checks must be re-run against hosted, not just local.
 - **Migrations:** Drizzle `pg-core` schema in `packages/core/src/db/schema.ts` is the DDL source of truth; `bun run db:generate` (drizzle-kit) emits SQL into `supabase/migrations/`; RLS/seeds are hand-written migrations via `supabase migration new`. Generate first, then hand-write — timestamps must interleave correctly.
 - Tables: `exercises`, `metrics`, `sessions`, `session_exercises`, `set_logs` (+ `api_tokens`). Custom metric/condition values live in jsonb (`condition_values`, `metric_values`).
 

@@ -1,6 +1,7 @@
 import { Command } from "cmdk";
 import {
   BookOpen,
+  CalendarDays,
   Dumbbell,
   FlaskConical,
   History,
@@ -8,13 +9,14 @@ import {
   LogOut,
   Moon,
   type Play,
+  Ruler,
   Settings,
   Sun,
   User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
-import { supabase } from "@/lib/supabase";
+import { useSignOut } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 
 type Item = {
@@ -29,6 +31,7 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { theme, toggle } = useTheme();
+  const signOut = useSignOut();
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -68,6 +71,18 @@ export function CommandPalette() {
       action: () => navigate("/findings"),
       shortcut: "F",
     },
+    {
+      label: "Calendar",
+      icon: CalendarDays,
+      action: () => navigate("/calendar"),
+      keywords: "streak consistency month year",
+    },
+    {
+      label: "Measures",
+      icon: Ruler,
+      action: () => navigate("/measures"),
+      keywords: "body weight measurements photos",
+    },
     { label: "Settings", icon: Settings, action: () => navigate("/settings") },
   ];
 
@@ -82,7 +97,7 @@ export function CommandPalette() {
     {
       label: "Sign out",
       icon: LogOut,
-      action: () => void supabase.auth.signOut(),
+      action: () => void signOut(),
       keywords: "logout",
     },
   ];

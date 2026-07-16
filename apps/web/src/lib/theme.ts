@@ -9,7 +9,12 @@ function current(): Theme {
 }
 
 function set(theme: Theme) {
-  document.documentElement.dataset.theme = theme;
+  const root = document.documentElement;
+  root.dataset.theme = theme;
+  // Radix Themes reads a light/dark class on an ancestor rather than an
+  // attribute. Both seams move together — see index.html's pre-paint script.
+  root.classList.toggle("dark", theme === "dark");
+  root.classList.toggle("light", theme === "light");
   localStorage.setItem("theme", theme);
   for (const l of listeners) l();
 }

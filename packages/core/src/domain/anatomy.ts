@@ -31,6 +31,58 @@ export const MUSCLES: readonly Muscle[] = [
   { key: "abs", label: "Abs" },
 ] as const;
 
+// Coarse region rollup for distribution charts + the body heat map
+// (Hevy-parity plan §C): 23 muscles → 6 regions. Muscles not listed fall
+// under "other" (excluded from region charts).
+export const MUSCLE_REGIONS = [
+  "chest",
+  "back",
+  "legs",
+  "shoulders",
+  "arms",
+  "core",
+] as const;
+export type MuscleRegion = (typeof MUSCLE_REGIONS)[number];
+
+export const MUSCLE_REGION_LABELS: Record<MuscleRegion, string> = {
+  chest: "Chest",
+  back: "Back",
+  legs: "Legs",
+  shoulders: "Shoulders",
+  arms: "Arms",
+  core: "Core",
+};
+
+export const MUSCLE_REGION: Record<string, MuscleRegion> = {
+  quads: "legs",
+  hamstrings: "legs",
+  glutes: "legs",
+  adductors: "legs",
+  "glute-med": "legs",
+  calves: "legs",
+  "hip-flexors": "legs",
+  pecs: "chest",
+  "upper-pecs": "chest",
+  "front-delts": "shoulders",
+  "side-delts": "shoulders",
+  "rear-delts": "shoulders",
+  "rotator-cuff": "shoulders",
+  lats: "back",
+  "teres-major": "back",
+  "mid-traps-rhomboids": "back",
+  "upper-traps": "back",
+  erectors: "back",
+  biceps: "arms",
+  "brachialis-brachioradialis": "arms",
+  triceps: "arms",
+  forearms: "arms",
+  abs: "core",
+};
+
+export function regionOf(muscleKey: string): MuscleRegion | null {
+  return MUSCLE_REGION[muscleKey] ?? null;
+}
+
 export type JointAction = { key: string; label: string; note?: string };
 
 export const JOINT_ACTIONS: readonly JointAction[] = [
@@ -475,7 +527,9 @@ export const ACTION_RATINGS: readonly ActionRating[] = [
   },
 ] as const;
 
-export type MuscleTarget = { muscle: string; tier: Tier };
+// tier null = unclassified (the free-exercise-db seed batch ships untiered;
+// classification is incremental). Untiered sorts below C in library grouping.
+export type MuscleTarget = { muscle: string; tier: Tier | null };
 
 const MUSCLE_BY_KEY = new Map(MUSCLES.map((m) => [m.key, m]));
 export const JOINT_ACTION_BY_KEY: ReadonlyMap<string, JointAction> = new Map(
@@ -491,6 +545,11 @@ export function jointActionLabel(key: string): string {
 }
 
 const TIER_ORDER: Record<Tier, number> = { S: 0, A: 1, B: 2, C: 3 };
+
+/** Sort rank for a possibly-null tier — untiered ranks below C. */
+export function tierRank(tier: Tier | null | undefined): number {
+  return tier ? TIER_ORDER[tier] : 4;
+}
 
 /** Ranked joint actions for a muscle (S first), from ACTION_RATINGS. */
 export function ratingsForMuscle(muscle: string): ActionRating[] {
@@ -549,9 +608,7 @@ export function groupByPrimaryMuscle<
     else buckets.set(key, [item]);
   }
   const tierFor = (item: T, muscle: string) =>
-    TIER_ORDER[
-      item.muscleTargets?.find((t) => t.muscle === muscle)?.tier ?? "C"
-    ];
+    tierRank(item.muscleTargets?.find((t) => t.muscle === muscle)?.tier);
   const groups: MuscleGroup<T>[] = [];
   for (const m of MUSCLES) {
     const bucket = buckets.get(m.key);

@@ -1,117 +1,56 @@
+import { SignIn } from "@clerk/react";
 import { APP_NAME } from "@sbl/core";
-import { type FormEvent, useState } from "react";
 import { Navigate } from "react-router";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/lib/auth";
-import { supabase } from "@/lib/supabase";
+import { useSignedIn } from "@/lib/auth";
+import { e2eBridge } from "@/lib/e2e-bridge";
 
-type Phase = "idle" | "sending" | "sent";
+// Clerk's prebuilt sign-in UI (Google + email — methods are configured in the
+// Clerk dashboard). Hash routing keeps Clerk's multi-step flow off
+// react-router. Redirect targets stay relative — never user-supplied.
 
-export default function AuthScreen() {
-  const { session, loading } = useAuth();
-  const [email, setEmail] = useState("");
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [error, setError] = useState<string | null>(null);
-
-  if (!loading && session) return <Navigate to="/" replace />;
-
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setPhase("sending");
-    setError(null);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.origin },
-    });
-    if (error) {
-      setError(error.message);
-      setPhase("idle");
-    } else {
-      setPhase("sent");
-    }
-  }
-
-  // Dev-only shortcut: sign in as a fixed local user, self-provisioning it on
-  // first use (local Supabase has confirmations off → signUp returns a session).
-  // Guarded by import.meta.env.DEV, so it never exists in a production build.
-  async function devBypass() {
-    setError(null);
-    const creds = { email: "dev@sbl.test", password: "dev-password-123" };
-    const signIn = await supabase.auth.signInWithPassword(creds);
-    if (!signIn.error) return;
-    const signUp = await supabase.auth.signUp(creds);
-    if (signUp.error) setError(signUp.error.message);
-  }
+function ClerkAuthScreen() {
+  const signedIn = useSignedIn();
+  if (signedIn) return <Navigate to="/" replace />;
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-bg px-4">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center gap-3">
+    <div className="flex min-h-dvh items-center justify-center bg-bg px-4 py-8">
+      <div className="flex w-full max-w-sm flex-col items-center gap-6">
+        <div className="flex flex-col items-center gap-3">
           <div className="flex size-8 items-center justify-center rounded-lg bg-brand text-sm font-semibold text-accent-fg">
             {APP_NAME[0]}
           </div>
-          <div className="text-center">
-            <h1 className="text-lg font-semibold tracking-tight">
-              Sign in to {APP_NAME}
-            </h1>
-            <p className="mt-1 text-xs text-soft">
-              Your training lab notebook. We'll email you a magic link.
-            </p>
-          </div>
+          <h1 className="text-lg font-semibold tracking-tight">
+            Sign in to {APP_NAME}
+          </h1>
         </div>
-
-        {phase === "sent" ? (
-          <div className="rounded-lg border border-border bg-surface p-4 text-center">
-            <p className="text-sm">Check your email</p>
-            <p className="mt-1 text-xs text-soft">
-              A sign-in link was sent to{" "}
-              <span className="text-ink">{email}</span>.
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-3"
-              onClick={() => setPhase("idle")}
-            >
-              Use a different email
-            </Button>
-          </div>
-        ) : (
-          <form onSubmit={onSubmit} className="flex flex-col gap-2">
-            <Input
-              type="email"
-              required
-              autoFocus
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              data-testid="auth-email-input"
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              disabled={phase === "sending" || email.length === 0}
-              data-testid="auth-submit-btn"
-            >
-              {phase === "sending" ? "Sending…" : "Send magic link"}
-            </Button>
-            {error && <p className="text-xs text-neg">{error}</p>}
-          </form>
-        )}
-
-        {import.meta.env.DEV && phase !== "sent" && (
-          <button
-            type="button"
-            onClick={() => void devBypass()}
-            data-testid="dev-bypass-btn"
-            className="mt-3 w-full rounded-md border border-dashed border-border py-2 text-xs text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-soft"
-          >
-            Dev bypass — sign in as dev@sbl.test
-          </button>
-        )}
+        <SignIn
+          routing="hash"
+          fallbackRedirectUrl="/"
+          appearance={{
+            variables: {
+              colorPrimary: "#034078",
+              borderRadius: "8px",
+            },
+            // Clerk's card renders its own "Sign in to <Clerk app name>"
+            // heading, which duplicates ours and shows the Clerk-side app
+            // name rather than APP_NAME. Ours is the source of truth.
+            elements: { header: { display: "none" } },
+          }}
+        />
       </div>
     </div>
   );
 }
+
+// E2E builds never render a sign-in UI — Playwright signs in via the bridge.
+function E2eAuthScreen() {
+  const signedIn = useSignedIn();
+  if (signedIn) return <Navigate to="/" replace />;
+  return (
+    <div className="flex min-h-dvh items-center justify-center bg-bg">
+      <p className="text-sm text-soft">E2E build — sign in via test hook.</p>
+    </div>
+  );
+}
+
+export default e2eBridge ? E2eAuthScreen : ClerkAuthScreen;
