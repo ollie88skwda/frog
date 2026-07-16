@@ -224,6 +224,7 @@
 /* Floating layers: hairline + soft shadow (the only place shadows appear). */
 @utility floating {
   border: 1px solid var(--border);
+  border-radius: var(--radius-3);
   background: var(--surface);
   box-shadow: var(--shadow-high);
 }

@@ -1,3 +1,4 @@
+import { Switch } from "@radix-ui/themes";
 import {
   DEFAULT_TRACKED_CONDITIONS,
   isConditionTracked,
@@ -566,24 +567,12 @@ function ToggleField({
 }) {
   const on = value === true;
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={on}
+    <Switch
+      checked={on}
+      onCheckedChange={(c) => onCommit(c)}
       data-testid={testId}
-      onClick={() => onCommit(!on)}
-      className={cn(
-        "relative h-6 w-11 rounded-md border transition-colors duration-150",
-        on ? "border-accent bg-accent-soft" : "border-border bg-translucent",
-      )}
-    >
-      <span
-        className={cn(
-          "absolute top-0.5 size-4 transition-[left] duration-150",
-          on ? "left-[22px] bg-accent" : "left-0.5 bg-soft",
-        )}
-      />
-    </button>
+      size="2"
+    />
   );
 }
 

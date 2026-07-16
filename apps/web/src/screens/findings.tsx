@@ -1,3 +1,4 @@
+import { Badge } from "@radix-ui/themes";
 import type { ConditionFinding, TrendFinding } from "@sbl/core";
 import { useMemo } from "react";
 import { computeFindings } from "@/lib/findings";
@@ -116,10 +117,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-const VERDICT_STYLE: Record<TrendFinding["verdict"], string> = {
-  PROGRESSING: "text-pos bg-pos/10",
-  PLATEAU: "text-soft bg-translucent",
-  REGRESSING: "text-neg bg-neg/10",
+const VERDICT_COLOR: Record<
+  TrendFinding["verdict"],
+  "green" | "gray" | "red"
+> = {
+  PROGRESSING: "green",
+  PLATEAU: "gray",
+  REGRESSING: "red",
 };
 
 function TrendRow({ trend }: { trend: TrendFinding }) {
@@ -134,14 +138,9 @@ function TrendRow({ trend }: { trend: TrendFinding }) {
           {trend.pctChange > 0 ? "+" : ""}
           {trend.pctChange.toFixed(1)}% · n={trend.n}
         </span>
-        <span
-          className={cn(
-            " px-2 py-0.5 text-2xs font-medium",
-            VERDICT_STYLE[trend.verdict],
-          )}
-        >
+        <Badge color={VERDICT_COLOR[trend.verdict]} variant="soft" size="1">
           {trend.verdict}
-        </span>
+        </Badge>
       </span>
     </div>
   );
