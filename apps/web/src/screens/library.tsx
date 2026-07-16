@@ -1,3 +1,4 @@
+import { Select } from "@radix-ui/themes";
 import {
   EQUIPMENT_KINDS,
   EQUIPMENT_LABELS,
@@ -152,44 +153,62 @@ export default function LibraryScreen() {
           </Button>
         </div>
         <div className="flex flex-wrap gap-2">
-          <select
-            value={muscle}
-            onChange={(e) => setMuscle(e.target.value)}
-            className="h-8 flex-1 basis-28 border border-border bg-surface px-2 text-xs text-ink"
-            data-testid="exercise-muscle-select"
+          <Select.Root
+            value={muscle || undefined}
+            onValueChange={setMuscle}
+            size="2"
           >
-            <option value="">Muscle…</option>
-            {MUSCLES.map((m) => (
-              <option key={m.key} value={m.key}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-          <select
+            <Select.Trigger
+              variant="surface"
+              placeholder="Muscle…"
+              className="flex-1 basis-28"
+              data-testid="exercise-muscle-select"
+            />
+            <Select.Content>
+              {MUSCLES.map((m) => (
+                <Select.Item key={m.key} value={m.key}>
+                  {m.label}
+                </Select.Item>
+              ))}
+            </Select.Content>
+          </Select.Root>
+          <Select.Root
             value={type}
-            onChange={(e) => setType(e.target.value as ExerciseType)}
-            className="h-8 flex-1 basis-28 border border-border bg-surface px-2 text-xs text-ink"
-            data-testid="exercise-type-select"
+            onValueChange={(v) => setType(v as ExerciseType)}
+            size="2"
           >
-            {EXERCISE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {EXERCISE_TYPE_LABELS[t]}
-              </option>
-            ))}
-          </select>
-          <select
-            value={equipment}
-            onChange={(e) => setEquipment(e.target.value)}
-            className="h-8 flex-1 basis-28 border border-border bg-surface px-2 text-xs text-ink"
-            data-testid="exercise-equipment-select"
+            <Select.Trigger
+              variant="surface"
+              className="flex-1 basis-28"
+              data-testid="exercise-type-select"
+            />
+            <Select.Content>
+              {EXERCISE_TYPES.map((t) => (
+                <Select.Item key={t} value={t}>
+                  {EXERCISE_TYPE_LABELS[t]}
+                </Select.Item>
+              ))}
+            </Select.Content>
+          </Select.Root>
+          <Select.Root
+            value={equipment || undefined}
+            onValueChange={setEquipment}
+            size="2"
           >
-            <option value="">Equipment…</option>
-            {EQUIPMENT_KINDS.map((k) => (
-              <option key={k} value={k}>
-                {EQUIPMENT_LABELS[k]}
-              </option>
-            ))}
-          </select>
+            <Select.Trigger
+              variant="surface"
+              placeholder="Equipment…"
+              className="flex-1 basis-28"
+              data-testid="exercise-equipment-select"
+            />
+            <Select.Content>
+              {EQUIPMENT_KINDS.map((k) => (
+                <Select.Item key={k} value={k}>
+                  {EQUIPMENT_LABELS[k]}
+                </Select.Item>
+              ))}
+            </Select.Content>
+          </Select.Root>
         </div>
       </form>
 
@@ -904,18 +923,20 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
           onChange={(e) => setName(e.target.value)}
           data-testid="metric-name-input"
         />
-        <select
+        <Select.Root
           value={type}
-          onChange={(e) => setType(e.target.value as NewMetricInput["type"])}
-          className="h-8 rounded-md border border-border bg-surface px-2 text-xs text-ink"
-          data-testid="metric-type-select"
+          onValueChange={(v) => setType(v as NewMetricInput["type"])}
+          size="2"
         >
-          {METRIC_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
+          <Select.Trigger variant="surface" data-testid="metric-type-select" />
+          <Select.Content>
+            {METRIC_TYPES.map((t) => (
+              <Select.Item key={t} value={t}>
+                {t}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
         <Button
           type="submit"
           variant="primary"

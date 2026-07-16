@@ -1,6 +1,13 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
 
+// Radix Select shows option labels, not values (and @sbl/core isn't resolvable
+// from e2e/), so map the exercise-type values this spec uses to their labels.
+const TYPE_LABEL: Record<string, string> = {
+  duration: "Duration",
+  weighted_bodyweight: "Weighted bodyweight",
+};
+
 // M1 exercise types: per-type logging columns. A duration exercise logs time
 // (typed as m:ss) with an inline stopwatch; a weighted-bodyweight exercise
 // shows a "+weight" column header and honours a per-exercise unit override.
@@ -17,7 +24,11 @@ async function createTyped(
 ) {
   await page.goto("/library");
   await page.getByTestId("exercise-name-input").fill(name);
-  await page.getByTestId("exercise-type-select").selectOption(type);
+  // Radix Select: open the trigger, click the option by its exact label.
+  await page.getByTestId("exercise-type-select").click();
+  await page
+    .getByRole("option", { name: TYPE_LABEL[type] ?? type, exact: true })
+    .click();
   await page.getByTestId("add-exercise-btn").click();
   await waitForExercise(page, name);
 }
