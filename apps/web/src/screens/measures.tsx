@@ -1,3 +1,4 @@
+import { Select } from "@radix-ui/themes";
 import {
   kgToLb,
   lbToKg,
@@ -7,6 +8,10 @@ import {
   unitLabel,
 } from "@sbl/core";
 import { Camera, Trash2 } from "lucide-react";
+
+// Radix Select forbids an empty-string value; the "None" comparison option
+// uses a sentinel mapped back to "" (no comparison) at the boundary.
+const COMPARE_NONE = "__none__";
 import { type ChangeEvent, useMemo, useState } from "react";
 import { ShareButton } from "@/components/share-card";
 import { Button } from "@/components/ui/button";
@@ -694,19 +699,25 @@ function PhotoViewer({
         {others.length > 0 && (
           <label className="flex items-center gap-2 text-xs text-soft">
             Compare with
-            <select
-              value={compareId}
-              onChange={(e) => setCompareId(e.target.value)}
-              className="num h-9 flex-1 border border-border-strong bg-surface-2 px-2 text-sm text-ink"
-              data-testid="photo-compare-select"
+            <Select.Root
+              value={compareId || COMPARE_NONE}
+              onValueChange={(v) => setCompareId(v === COMPARE_NONE ? "" : v)}
+              size="2"
             >
-              <option value="">None</option>
-              {others.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {formatDay(o.measuredOn)}
-                </option>
-              ))}
-            </select>
+              <Select.Trigger
+                variant="surface"
+                className="flex-1"
+                data-testid="photo-compare-select"
+              />
+              <Select.Content>
+                <Select.Item value={COMPARE_NONE}>None</Select.Item>
+                {others.map((o) => (
+                  <Select.Item key={o.id} value={o.id}>
+                    {formatDay(o.measuredOn)}
+                  </Select.Item>
+                ))}
+              </Select.Content>
+            </Select.Root>
           </label>
         )}
 

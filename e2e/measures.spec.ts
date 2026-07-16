@@ -137,7 +137,9 @@ test("progress photos: upload, compare, replace, and the two delete paths", asyn
   await page.getByTestId("photo-thumb-2021-07-01").click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.locator("figure")).toHaveCount(1);
-  await page.getByTestId("photo-compare-select").selectOption({ index: 1 });
+  // Radix Select: open the trigger, pick the first real comparison (after None).
+  await page.getByTestId("photo-compare-select").click();
+  await page.getByRole("option").nth(1).click();
   await expect(dialog.locator("figure")).toHaveCount(2);
 
   // Replace A's photo — the object is overwritten in place, path stays set.

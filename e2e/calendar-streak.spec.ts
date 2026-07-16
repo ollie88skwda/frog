@@ -110,11 +110,13 @@ test("changing the first day of the week shifts the grid start", async ({
 }) => {
   await page.goto("/calendar");
 
-  // Sunday-start → the first column is Sunday.
-  await page.getByTestId("cal-first-weekday").selectOption("0");
+  // Sunday-start → the first column is Sunday. Radix Select: open + pick.
+  await page.getByTestId("cal-first-weekday").click();
+  await page.getByRole("option", { name: "Sunday" }).click();
   await expect(page.getByTestId("cal-weekday-0")).toHaveText("Su");
 
   // Saturday-start → the first column is Saturday (optimistic re-layout).
-  await page.getByTestId("cal-first-weekday").selectOption("6");
+  await page.getByTestId("cal-first-weekday").click();
+  await page.getByRole("option", { name: "Saturday" }).click();
   await expect(page.getByTestId("cal-weekday-0")).toHaveText("Sa");
 });

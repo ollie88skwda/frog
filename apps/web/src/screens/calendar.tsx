@@ -1,3 +1,4 @@
+import { Select } from "@radix-ui/themes";
 import { localDateKey, type Session } from "@sbl/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Grid3x3, Plus } from "lucide-react";
@@ -136,23 +137,25 @@ export default function CalendarScreen() {
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold tracking-tight">Calendar</h1>
-        <label className="flex items-center gap-2 text-2xs text-faint">
+        <div className="flex items-center gap-2 text-2xs text-faint">
           Week starts
-          <select
-            value={firstWeekday}
-            onChange={(e) =>
-              updatePrefs.mutate({ firstWeekday: Number(e.target.value) })
+          <Select.Root
+            value={String(firstWeekday)}
+            onValueChange={(v) =>
+              updatePrefs.mutate({ firstWeekday: Number(v) })
             }
-            className="num h-9 border border-border-strong bg-surface-2 px-2 text-xs text-ink"
-            data-testid="cal-first-weekday"
+            size="2"
           >
-            {WEEKDAY_NAMES.map((name, i) => (
-              <option key={name} value={i}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
+            <Select.Trigger variant="surface" data-testid="cal-first-weekday" />
+            <Select.Content>
+              {WEEKDAY_NAMES.map((name, i) => (
+                <Select.Item key={name} value={String(i)}>
+                  {name}
+                </Select.Item>
+              ))}
+            </Select.Content>
+          </Select.Root>
+        </div>
       </div>
 
       <div className="mt-4">
