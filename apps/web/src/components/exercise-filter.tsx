@@ -1,6 +1,11 @@
 import { MUSCLES, type MuscleTarget } from "@sbl/core";
+import { Select } from "@radix-ui/themes";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+
+// Radix Select forbids an empty-string item value, so the "All muscles" option
+// uses a sentinel that maps to "" (the filter's "no muscle") at the boundary.
+const ALL = "all";
 
 const MUSCLE_KEYS = new Set(MUSCLES.map((m) => m.key));
 
@@ -53,20 +58,26 @@ export function ExerciseFilterBar({
           data-testid="exercise-search-input"
         />
       </div>
-      <select
-        value={muscle}
-        onChange={(e) => onMuscle(e.target.value)}
-        className="h-8 w-32 shrink-0 rounded-md border border-border bg-surface px-2 text-xs text-ink"
-        data-testid="exercise-filter-select"
+      <Select.Root
+        value={muscle || ALL}
+        onValueChange={(v) => onMuscle(v === ALL ? "" : v)}
+        size="2"
       >
-        <option value="">All muscles</option>
-        {MUSCLES.map((m) => (
-          <option key={m.key} value={m.key}>
-            {m.label}
-          </option>
-        ))}
-        <option value="other">Other</option>
-      </select>
+        <Select.Trigger
+          variant="surface"
+          className="w-32 shrink-0"
+          data-testid="exercise-filter-select"
+        />
+        <Select.Content>
+          <Select.Item value={ALL}>All muscles</Select.Item>
+          {MUSCLES.map((m) => (
+            <Select.Item key={m.key} value={m.key}>
+              {m.label}
+            </Select.Item>
+          ))}
+          <Select.Item value="other">Other</Select.Item>
+        </Select.Content>
+      </Select.Root>
     </div>
   );
 }
