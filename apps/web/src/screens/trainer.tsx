@@ -1,3 +1,4 @@
+import { Select } from "@radix-ui/themes";
 import {
   distributionBetween,
   EQUIPMENT_KINDS,
@@ -59,6 +60,10 @@ import {
   useTrainerData,
 } from "@/lib/trainer";
 import { cn } from "@/lib/utils";
+
+// Radix Select forbids an empty-string value; the "None" focus-muscle option
+// uses a sentinel mapped back to null at the boundary.
+const FOCUS_NONE = "__none__";
 
 // Rule-based Trainer (Hevy-parity M11 — deterministic generator, no LLM). No
 // active program → questionnaire → generated program. Active program → next
@@ -259,21 +264,27 @@ function QuestionnaireForm({
         />
       </Field>
       <Field label="Focus muscle (optional)">
-        <select
-          value={config.focusMuscle ?? ""}
-          onChange={(e) =>
-            setConfig({ ...config, focusMuscle: e.target.value || null })
+        <Select.Root
+          value={config.focusMuscle ?? FOCUS_NONE}
+          onValueChange={(v) =>
+            setConfig({ ...config, focusMuscle: v === FOCUS_NONE ? null : v })
           }
-          data-testid="q-focus"
-          className="h-9 w-full border border-border bg-surface px-2 text-xs text-ink"
+          size="2"
         >
-          <option value="">None</option>
-          {MUSCLES.map((m) => (
-            <option key={m.key} value={m.key}>
-              {m.label}
-            </option>
-          ))}
-        </select>
+          <Select.Trigger
+            variant="surface"
+            className="w-full"
+            data-testid="q-focus"
+          />
+          <Select.Content>
+            <Select.Item value={FOCUS_NONE}>None</Select.Item>
+            {MUSCLES.map((m) => (
+              <Select.Item key={m.key} value={m.key}>
+                {m.label}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
       </Field>
     </div>
   );

@@ -1,3 +1,4 @@
+import { Select } from "@radix-ui/themes";
 import {
   EXERCISE_TYPES,
   type Exercise,
@@ -60,6 +61,11 @@ type DraftExercise = {
 };
 
 const REST_CHOICES = [null, 0, 30, 45, 60, 90, 120, 150, 180, 240, 300];
+
+// Radix Select forbids empty-string values; these sentinels stand in for the
+// null cases (no folder / default rest) and map back to null at the boundary.
+const NO_FOLDER = "__none__";
+const REST_DEFAULT = "__default__";
 
 function emptySet(): DraftSet {
   return {
@@ -301,19 +307,25 @@ export default function RoutineEditScreen() {
           className="flex-1"
           data-testid="routine-name-input"
         />
-        <select
-          value={folderId ?? ""}
-          onChange={(e) => setFolderId(e.target.value || null)}
-          className="h-8 w-full rounded-md border border-border bg-surface px-2 text-xs text-ink sm:w-40"
-          data-testid="routine-folder-select"
+        <Select.Root
+          value={folderId ?? NO_FOLDER}
+          onValueChange={(v) => setFolderId(v === NO_FOLDER ? null : v)}
+          size="2"
         >
-          <option value="">No folder</option>
-          {folders.map((f) => (
-            <option key={f.id} value={f.id}>
-              {f.name}
-            </option>
-          ))}
-        </select>
+          <Select.Trigger
+            variant="surface"
+            className="w-full sm:w-40"
+            data-testid="routine-folder-select"
+          />
+          <Select.Content>
+            <Select.Item value={NO_FOLDER}>No folder</Select.Item>
+            {folders.map((f) => (
+              <Select.Item key={f.id} value={f.id}>
+                {f.name}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
       </div>
 
       {error && <p className="mt-3 text-xs text-neg">{error}</p>}
@@ -384,29 +396,35 @@ export default function RoutineEditScreen() {
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <label className="flex items-center gap-1 text-2xs text-soft">
                   Rest
-                  <select
-                    value={d.restSec == null ? "" : String(d.restSec)}
-                    onChange={(e) =>
+                  <Select.Root
+                    value={d.restSec == null ? REST_DEFAULT : String(d.restSec)}
+                    onValueChange={(v) =>
                       patchExercise(i, {
                         restSec:
-                          e.target.value === ""
-                            ? null
-                            : Number.parseInt(e.target.value, 10),
+                          v === REST_DEFAULT ? null : Number.parseInt(v, 10),
                       })
                     }
-                    className="h-8 rounded-md border border-border bg-surface px-1 text-xs text-ink"
-                    data-testid={`routine-ex-${i}-rest`}
+                    size="2"
                   >
-                    {REST_CHOICES.map((r) => (
-                      <option key={String(r)} value={r == null ? "" : r}>
-                        {r == null
-                          ? "Default"
-                          : r === 0
-                            ? "Off"
-                            : formatMMSS(r)}
-                      </option>
-                    ))}
-                  </select>
+                    <Select.Trigger
+                      variant="surface"
+                      data-testid={`routine-ex-${i}-rest`}
+                    />
+                    <Select.Content>
+                      {REST_CHOICES.map((r) => (
+                        <Select.Item
+                          key={String(r)}
+                          value={r == null ? REST_DEFAULT : String(r)}
+                        >
+                          {r == null
+                            ? "Default"
+                            : r === 0
+                              ? "Off"
+                              : formatMMSS(r)}
+                        </Select.Item>
+                      ))}
+                    </Select.Content>
+                  </Select.Root>
                 </label>
                 <Input
                   placeholder="Exercise note (shows every session)"
