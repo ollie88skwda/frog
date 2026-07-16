@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { useSignOut } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import { themePortalContainer } from "@/lib/theme-portal";
 
 type Item = {
   label: string;
@@ -107,8 +108,12 @@ export function CommandPalette() {
       open={open}
       onOpenChange={setOpen}
       label="Command palette"
+      // Portal into the theme root so Radix's scoped radius token resolves
+      // (rounded-xl → --radius-5) — otherwise the palette renders square. Same
+      // fix as ui/dialog; see theme-portal.ts.
+      container={themePortalContainer()}
       overlayClassName="fixed inset-0 z-50 bg-(--overlay)"
-      contentClassName="float-in floating fixed top-[18%] left-1/2 z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-xl"
+      contentClassName="float-in fixed top-[18%] left-1/2 z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-xl border border-border bg-(--color-panel-solid) shadow-(--shadow-6)"
     >
       <Command.Input
         placeholder="Type a command…"
