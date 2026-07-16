@@ -1,209 +1,133 @@
-<title>Frog — Brand Identity System</title>
+<title>Frog — Brand Identity & Design System</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   /* ============================================================
-     FROG — BRAND IDENTITY SYSTEM
+     FROG — BRAND IDENTITY & DESIGN SYSTEM
      A deadpan amphibian running a dead-serious statistics lab.
      Neutral ink ground · frog-green accent · 0px radius · 8px grid.
+     Re-skin of the shipped Radix Themes 3 system.
      ============================================================ */
 
   :root {
     /* --- frog-green ramp (accent + semantic success) --- */
-    --frog-50:  #EAFBEF;
-    --frog-100: #C9F5D6;
-    --frog-200: #9CEBB4;
-    --frog-300: #6BE291;
-    --frog-400: #43DD6E;   /* accent — dark theme primary */
-    --frog-500: #22C455;   /* accent — solid fill */
-    --frog-600: #16A34A;   /* accent text on light */
-    --frog-700: #12833C;
-    --frog-800: #106A33;
-    --frog-900: #0C4D26;
+    --frog-50:  #EAFBEF;  --frog-100: #C9F5D6; --frog-200: #9CEBB4;
+    --frog-300: #6BE291;  --frog-400: #43DD6E; --frog-500: #22C455;
+    --frog-600: #16A34A;  --frog-700: #12833C; --frog-800: #106A33; --frog-900: #0C4D26;
 
     /* --- neutral ink ramp (chosen: faint green-cool bias) --- */
-    --ink-950: #0B0F0E;
-    --ink-900: #101613;
-    --ink-850: #121714;
-    --ink-800: #171E1A;
-    --ink-700: #243029;
-    --ink-600: #33453B;
-    --ink-500: #4A574F;
-    --ink-400: #5A6560;
-    --ink-300: #8B968F;
-    --ink-200: #B7C0BA;
-    --ink-100: #DCE4DE;
-    --ink-50:  #F5F8F5;
-    --paper:   #FFFFFF;
+    --ink-950: #0B0F0E; --ink-900: #101613; --ink-850: #121714; --ink-800: #171E1A;
+    --ink-700: #243029; --ink-600: #33453B; --ink-500: #4A574F; --ink-400: #5A6560;
+    --ink-300: #8B968F; --ink-200: #B7C0BA; --ink-100: #DCE4DE; --ink-50: #F5F8F5; --paper: #FFFFFF;
 
     /* --- semantic (kept legible, separate from accent hue) --- */
-    --amber: #E6B24A;
-    --red:   #E5484D;
+    --amber: #E6B24A; --red: #E5484D;
 
     /* --- role tokens: DARK is the default --- */
-    --bg:            var(--ink-950);
-    --bg-grid:       rgba(67,221,110,0.045);
-    --surface:       var(--ink-850);
-    --surface-2:     var(--ink-800);
-    --border:        var(--ink-700);
-    --border-strong: var(--ink-600);
-    --text:          #E7EDE9;
-    --text-muted:    var(--ink-300);
-    --text-faint:    var(--ink-400);
-    --accent:        var(--frog-400);
-    --accent-solid:  var(--frog-500);
-    --accent-text:   var(--frog-400);
-    --on-accent:     var(--ink-950);
-    --warn:          var(--amber);
-    --err:           var(--red);
+    --bg: var(--ink-950); --bg-grid: rgba(67,221,110,0.045);
+    --surface: var(--ink-850); --surface-2: var(--ink-800);
+    --border: var(--ink-700); --border-strong: var(--ink-600);
+    --text: #E7EDE9; --text-muted: var(--ink-300); --text-faint: var(--ink-400);
+    --accent: var(--frog-400); --accent-solid: var(--frog-500); --accent-text: var(--frog-400);
+    --on-accent: var(--ink-950); --warn: var(--amber); --err: var(--red);
 
     --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
     --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     --font-mono: "JetBrains Mono", "Commit Mono", ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
 
-    --maxw: 1080px;
-    --u: 8px; /* the grid unit */
+    --maxw: 1080px; --u: 8px;
   }
 
   @media (prefers-color-scheme: light) {
     :root {
-      --bg:            var(--ink-50);
-      --bg-grid:       rgba(16,120,60,0.06);
-      --surface:       var(--paper);
-      --surface-2:     #EEF3EE;
-      --border:        var(--ink-100);
-      --border-strong: #C3CEC6;
-      --text:          #10160F;
-      --text-muted:    #566159;
-      --text-faint:    #8B968F;
-      --accent:        var(--frog-500);
-      --accent-solid:  var(--frog-500);
-      --accent-text:   var(--frog-600);
-      --on-accent:     var(--paper);
+      --bg: var(--ink-50); --bg-grid: rgba(16,120,60,0.06);
+      --surface: var(--paper); --surface-2: #EEF3EE;
+      --border: var(--ink-100); --border-strong: #C3CEC6;
+      --text: #10160F; --text-muted: #566159; --text-faint: #8B968F;
+      --accent: var(--frog-500); --accent-solid: var(--frog-500); --accent-text: var(--frog-600); --on-accent: var(--paper);
     }
   }
-  /* Explicit toggle wins over media query, both directions */
   :root[data-theme="light"] {
     --bg: var(--ink-50); --bg-grid: rgba(16,120,60,0.06);
     --surface: var(--paper); --surface-2: #EEF3EE;
     --border: var(--ink-100); --border-strong: #C3CEC6;
     --text: #10160F; --text-muted: #566159; --text-faint: #8B968F;
-    --accent: var(--frog-500); --accent-solid: var(--frog-500);
-    --accent-text: var(--frog-600); --on-accent: var(--paper);
+    --accent: var(--frog-500); --accent-solid: var(--frog-500); --accent-text: var(--frog-600); --on-accent: var(--paper);
   }
   :root[data-theme="dark"] {
     --bg: var(--ink-950); --bg-grid: rgba(67,221,110,0.045);
     --surface: var(--ink-850); --surface-2: var(--ink-800);
     --border: var(--ink-700); --border-strong: var(--ink-600);
     --text: #E7EDE9; --text-muted: var(--ink-300); --text-faint: var(--ink-400);
-    --accent: var(--frog-400); --accent-solid: var(--frog-500);
-    --accent-text: var(--frog-400); --on-accent: var(--ink-950);
+    --accent: var(--frog-400); --accent-solid: var(--frog-500); --accent-text: var(--frog-400); --on-accent: var(--ink-950);
   }
 
   * { box-sizing: border-box; }
-
   body {
     margin: 0;
     background-color: var(--bg);
-    background-image:
-      linear-gradient(var(--bg-grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+    background-image: linear-gradient(var(--bg-grid) 1px, transparent 1px), linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
     background-size: 24px 24px;
-    color: var(--text);
-    font-family: var(--font-sans);
-    font-size: 15px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
+    color: var(--text); font-family: var(--font-sans); font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
   }
-
-  .tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+  .tnum, .tlnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
   .mono { font-family: var(--font-mono); }
-
   a { color: var(--accent-text); text-decoration: none; }
   a:hover { text-decoration: underline; text-underline-offset: 3px; }
-
   ::selection { background: var(--accent); color: var(--on-accent); }
 
-  /* ---------- shell ---------- */
   .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
 
   /* ---------- top bar ---------- */
-  header.bar {
-    position: sticky; top: 0; z-index: 50;
-    background: color-mix(in oklab, var(--bg) 88%, transparent);
-    backdrop-filter: blur(8px);
-    border-bottom: 1px solid var(--border);
-  }
-  .bar-in { display: flex; align-items: center; gap: 16px; height: 52px; max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  header.bar { position: sticky; top: 0; z-index: 50; background: color-mix(in oklab, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+  .bar-in { display: flex; align-items: center; gap: 12px; height: 52px; max-width: var(--maxw); margin: 0 auto; padding: 0 16px; }
   .brand { display: flex; align-items: center; gap: 9px; font-family: var(--font-display); font-weight: 800; letter-spacing: -0.04em; font-size: 18px; }
   .brand svg { display: block; }
-  .bar-nav { display: none; gap: 2px; margin-left: auto; }
-  .bar-nav a {
-    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.02em;
-    color: var(--text-muted); padding: 6px 8px; border: 1px solid transparent;
-  }
+  .bar-nav { display: none; gap: 2px; margin-left: 12px; }
+  .bar-nav a { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); padding: 6px 7px; border: 1px solid transparent; }
   .bar-nav a:hover { color: var(--text); text-decoration: none; border-color: var(--border); }
-  .bar-tag { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-  .pill {
-    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase;
-    color: var(--text-muted); border: 1px solid var(--border); padding: 4px 8px; white-space: nowrap;
-  }
-  .pill b { color: var(--accent-text); font-weight: 600; }
-  .theme-btn {
-    font-family: var(--font-mono); font-size: 11px; color: var(--text);
-    background: var(--surface); border: 1px solid var(--border); padding: 6px 10px; cursor: pointer;
-  }
+  .bar-tools { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .theme-btn { font-family: var(--font-mono); font-size: 11px; color: var(--text); background: var(--surface); border: 1px solid var(--border); padding: 7px 10px; cursor: pointer; }
   .theme-btn:hover { border-color: var(--border-strong); }
-  @media (min-width: 940px) {
-    .bar-nav { display: flex; }
-    .bar-tag { margin-left: 8px; }
-  }
+  @media (min-width: 1000px) { .bar-nav { display: flex; } }
+
+  /* ---------- segmented control (language switcher) ---------- */
+  .segment { display: inline-flex; border: 1px solid var(--border); background: var(--surface); }
+  .segment button { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.03em; text-transform: uppercase; padding: 8px 13px; background: transparent; color: var(--text-muted); border: 0; border-right: 1px solid var(--border); cursor: pointer; }
+  .segment button:last-child { border-right: 0; }
+  .segment button[aria-pressed="true"] { background: var(--accent-solid); color: var(--on-accent); font-weight: 600; }
+  .segment.compact button { padding: 7px 9px; font-size: 11px; }
+  .segment .full { display: none; } .segment .abbr { display: inline; }
+  @media (min-width: 680px) { .segment .full { display: inline; } .segment .abbr { display: none; } }
 
   /* ---------- hero ---------- */
   .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--border); }
-  .hero-in { position: relative; z-index: 2; padding: 88px 24px 72px; max-width: var(--maxw); margin: 0 auto; }
-  .eyebrow {
-    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--accent-text); margin: 0 0 20px;
-  }
-  .wordmark {
-    font-family: var(--font-display); font-weight: 800; letter-spacing: -0.05em; line-height: 0.92;
-    font-size: clamp(64px, 15vw, 168px); margin: 0; display: flex; align-items: center; gap: 0.02em; flex-wrap: wrap;
-  }
+  .hero-in { position: relative; z-index: 2; padding: 80px 24px 64px; max-width: var(--maxw); margin: 0 auto; }
+  .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-text); margin: 0 0 20px; }
+  .wordmark { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.05em; line-height: 0.92; font-size: clamp(64px, 15vw, 168px); margin: 0; display: flex; align-items: center; gap: 0.02em; flex-wrap: wrap; }
   .wordmark .eye { display: inline-block; }
   .hero-sub { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; font-size: clamp(20px, 3.4vw, 30px); margin: 24px 0 0; max-width: 22ch; text-wrap: balance; }
   .hero-lede { color: var(--text-muted); max-width: 62ch; margin: 18px 0 0; font-size: 16px; }
   .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
-
-  /* ripple rings (decorative, motion-safe) */
   .ripples { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
-  .ripples span {
-    position: absolute; top: 42%; right: -6%; width: 10px; height: 10px;
-    border: 1px solid var(--accent); border-radius: 50%; opacity: 0;
-    animation: ripple 6.5s linear infinite;
-  }
-  .ripples span:nth-child(2) { animation-delay: 2.1s; }
-  .ripples span:nth-child(3) { animation-delay: 4.2s; }
-  @keyframes ripple {
-    0%   { transform: scale(1); opacity: 0.5; }
-    70%  { opacity: 0.10; }
-    100% { transform: scale(60); opacity: 0; }
-  }
+  .ripples span { position: absolute; top: 42%; right: -6%; width: 10px; height: 10px; border: 1px solid var(--accent); border-radius: 50%; opacity: 0; animation: ripple 6.5s linear infinite; }
+  .ripples span:nth-child(2) { animation-delay: 2.1s; } .ripples span:nth-child(3) { animation-delay: 4.2s; }
+  @keyframes ripple { 0% { transform: scale(1); opacity: 0.5; } 70% { opacity: 0.10; } 100% { transform: scale(60); opacity: 0; } }
 
   /* ---------- sections ---------- */
-  section { padding: 72px 0; border-bottom: 1px solid var(--border); }
-  .sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 32px; }
+  section { padding: 64px 0; border-bottom: 1px solid var(--border); }
+  .sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 28px; }
   .sec-num { font-family: var(--font-mono); font-size: 13px; color: var(--accent-text); letter-spacing: 0.05em; padding-top: 6px; }
-  .sec-title { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.03em; font-size: clamp(28px, 4.5vw, 40px); margin: 0; line-height: 1.02; text-wrap: balance; }
-  .sec-kicker { color: var(--text-muted); margin: 8px 0 0; max-width: 64ch; }
+  .sec-title { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.03em; font-size: clamp(26px, 4.4vw, 38px); margin: 0; line-height: 1.02; text-wrap: balance; }
+  .sec-kicker { color: var(--text-muted); margin: 8px 0 0; max-width: 66ch; }
   .lead { font-size: 17px; max-width: 68ch; }
-
   h3.blk { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; font-size: 18px; margin: 0 0 12px; }
   .label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); }
+  .note { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); margin-top: 14px; line-height: 1.7; }
+  .callout { border-left: 2px solid var(--accent); padding: 4px 0 4px 16px; color: var(--text-muted); margin: 20px 0; }
+  .callout b { color: var(--text); }
 
-  /* card */
   .card { background: var(--surface); border: 1px solid var(--border); padding: 24px; }
-  .card + .card { margin-top: 16px; }
   .grid2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
   .grid3 { display: grid; grid-template-columns: 1fr; gap: 16px; }
   @media (min-width: 760px) { .grid2 { grid-template-columns: 1fr 1fr; } .grid3 { grid-template-columns: repeat(3, 1fr); } }
@@ -211,62 +135,63 @@
   /* zone tags */
   .zone { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 9px; border: 1px solid var(--border); }
   .zone::before { content: ""; width: 8px; height: 8px; display: inline-block; }
-  .zone.sacred { color: var(--text-muted); }
-  .zone.sacred::before { background: var(--text-faint); }
+  .zone.sacred { color: var(--text-muted); } .zone.sacred::before { background: var(--text-faint); }
   .zone.play { color: var(--accent-text); border-color: color-mix(in oklab, var(--accent) 40%, var(--border)); }
   .zone.play::before { background: var(--accent); }
+  .pill { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); border: 1px solid var(--border); padding: 4px 8px; white-space: nowrap; }
+  .pill b { color: var(--accent-text); font-weight: 600; }
 
-  /* the split spectrum */
+  /* spectrum */
   .spectrum { border: 1px solid var(--border); background: var(--surface); }
   .spectrum-bar { height: 10px; background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-2) 46%, color-mix(in oklab, var(--accent) 22%, var(--surface-2)) 74%, var(--accent) 100%); border-bottom: 1px solid var(--border); }
   .spectrum-cols { display: grid; grid-template-columns: 1fr 1fr; }
-  .spectrum-cols > div { padding: 20px 24px; }
+  .spectrum-cols > div { padding: 20px 22px; }
   .spectrum-cols > div:first-child { border-right: 1px solid var(--border); }
   .spectrum-cols h4 { margin: 0 0 8px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
   .spectrum-cols ul { margin: 0; padding-left: 18px; color: var(--text-muted); font-size: 13.5px; }
   .spectrum-cols li { margin: 4px 0; }
 
-  /* mock UI chrome (product moments) */
-  .mock { background: var(--ink-950); color: #E7EDE9; border: 1px solid var(--ink-700); font-family: var(--font-mono); }
-  :root[data-theme="light"] .mock { background: #0B0F0E; }
-  .mock-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--ink-700); font-size: 11px; color: var(--ink-300); letter-spacing: 0.06em; text-transform: uppercase; }
+  /* mock UI chrome */
+  .mock { background: #0B0F0E; color: #E7EDE9; border: 1px solid #243029; font-family: var(--font-mono); }
+  .mock-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #243029; font-size: 11px; color: #8B968F; letter-spacing: 0.06em; text-transform: uppercase; }
   .mock-body { padding: 16px; }
   .mock .big { font-size: 30px; font-weight: 500; letter-spacing: -0.01em; color: #E7EDE9; }
   .mock .accent { color: var(--frog-400); }
-  .mock .muted { color: var(--ink-300); }
-  .mock .row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px dashed var(--ink-800); }
+  .mock .muted { color: #8B968F; }
+  .mock .tlnum { color: var(--frog-400); }
+  .mock .row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px dashed #171E1A; }
   .mock .row:last-child { border-bottom: 0; }
-
-  /* microcopy sample */
   .copy-title { color: var(--frog-400); font-size: 13px; letter-spacing: 0.02em; }
   .copy-body { color: #C4CDC7; font-size: 13px; line-height: 1.55; margin-top: 6px; }
-  .copy-nums { color: var(--ink-300); font-size: 12px; margin-top: 10px; }
+  .copy-nums { color: #8B968F; font-size: 12px; margin-top: 10px; }
 
-  /* buttons never bare */
+  /* buttons */
   .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.03em; text-transform: uppercase; padding: 9px 14px; border: 1px solid var(--frog-500); background: var(--frog-500); color: #06180C; cursor: pointer; }
-  .btn.ghost { background: transparent; color: var(--frog-400); }
+  .btn.ghost { background: transparent; color: var(--accent-text); border-color: var(--border-strong); }
+  .btn.danger { background: transparent; color: var(--err); border-color: color-mix(in oklab, var(--err) 50%, var(--border)); }
   .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
 
-  /* color system */
+  /* color ramps */
   .ramp { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--border); }
   @media (min-width: 640px) { .ramp { grid-template-columns: repeat(10, 1fr); } }
+  .ramp12 { display: grid; grid-template-columns: repeat(6, 1fr); border: 1px solid var(--border); }
+  @media (min-width: 640px) { .ramp12 { grid-template-columns: repeat(12, 1fr); } }
   .swatch { aspect-ratio: 1 / 1.15; display: flex; flex-direction: column; justify-content: flex-end; padding: 6px; border-right: 1px solid color-mix(in oklab, var(--bg) 50%, transparent); }
   .swatch:last-child { border-right: 0; }
   .swatch small { font-family: var(--font-mono); font-size: 9.5px; line-height: 1.3; }
+  .step-legend { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); line-height: 1.7; margin-top: 8px; }
+  .step-legend b { color: var(--text-muted); font-weight: 400; }
   .token-tbl { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12.5px; }
   .token-tbl th, .token-tbl td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
   .token-tbl th { color: var(--text-faint); font-weight: 400; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
   .chip { display: inline-block; width: 13px; height: 13px; border: 1px solid var(--border-strong); vertical-align: -2px; margin-right: 8px; }
   .scroll-x { overflow-x: auto; }
 
-  /* logo concepts */
+  /* logos */
   .logos { display: grid; grid-template-columns: 1fr; gap: 16px; }
   @media (min-width: 680px) { .logos { grid-template-columns: 1fr 1fr; } }
   .logo-card { background: var(--surface); border: 1px solid var(--border); display: flex; flex-direction: column; }
-  .logo-stage { display: flex; align-items: center; justify-content: center; gap: 28px; padding: 30px 24px; border-bottom: 1px solid var(--border); min-height: 150px; background:
-      linear-gradient(var(--bg-grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
-    background-size: 12px 12px; }
+  .logo-stage { display: flex; align-items: center; justify-content: center; gap: 28px; padding: 30px 24px; border-bottom: 1px solid var(--border); min-height: 150px; background: linear-gradient(var(--bg-grid) 1px, transparent 1px), linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px); background-size: 12px 12px; }
   .logo-stage .big-mark { color: var(--text); }
   .logo-stage .tiny { display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .logo-stage .tiny small { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
@@ -275,17 +200,50 @@
   .logo-meta h4 { margin: 0 0 4px; font-family: var(--font-display); font-weight: 700; font-size: 15px; }
   .logo-meta p { margin: 0; color: var(--text-muted); font-size: 13px; }
   .rec { border-color: color-mix(in oklab, var(--accent) 55%, var(--border)); }
-  .rec .logo-meta h4::after { content: "RECOMMENDED"; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--on-accent); background: var(--accent); padding: 2px 6px; margin-left: 8px; vertical-align: 2px; }
+  .rec .logo-meta h4::after { content: "LOCKED"; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--on-accent); background: var(--accent); padding: 2px 6px; margin-left: 8px; vertical-align: 2px; }
 
-  /* type specimen */
-  .spec-row { padding: 16px 0; border-bottom: 1px solid var(--border); }
-  .spec-row:last-child { border-bottom: 0; }
+  /* type */
   .spec-display { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.03em; font-size: clamp(30px, 6vw, 52px); line-height: 1; margin: 6px 0 0; }
   .spec-body { font-size: 17px; max-width: 60ch; margin: 6px 0 0; }
   .spec-mono { font-family: var(--font-mono); font-size: clamp(22px, 4vw, 34px); letter-spacing: -0.01em; margin: 6px 0 0; }
 
-  /* rules table */
-  .rules { display: grid; grid-template-columns: 1fr; gap: 0; border: 1px solid var(--border); }
+  /* registers */
+  .reg { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 820px) { .reg { grid-template-columns: repeat(3, 1fr); } }
+  .reg-card { border: 1px solid var(--border); background: var(--surface); padding: 18px; }
+  .reg-card.on { border-color: color-mix(in oklab, var(--accent) 55%, var(--border)); }
+  .reg-card h4 { margin: 0 0 4px; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.04em; }
+  .reg-card p.d { margin: 0; color: var(--text-muted); font-size: 13px; }
+  .reg-card .ex { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-muted); margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 12px; line-height: 1.6; }
+
+  /* foundations */
+  .scale-row { display: flex; align-items: center; gap: 14px; padding: 4px 0; }
+  .scale-row .bar { height: 12px; background: var(--accent); }
+  .scale-row code { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); width: 92px; flex: none; }
+  .radius-demo { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+  .radius-demo figure { margin: 0; text-align: center; }
+  .radius-demo .box { width: 56px; height: 56px; background: var(--surface-2); border: 1px solid var(--border-strong); }
+  .radius-demo figcaption { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-faint); margin-top: 6px; }
+  .icons { display: flex; gap: 20px; flex-wrap: wrap; color: var(--text); align-items: center; }
+  .icons svg { display: block; }
+
+  /* components */
+  .comp { background: var(--surface); border: 1px solid var(--border); padding: 20px; }
+  .comp .demo { padding: 18px; border: 1px solid var(--border); background: var(--bg); margin-top: 12px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.03em; padding: 3px 8px; border: 1px solid var(--border); text-transform: uppercase; }
+  .badge.pos { color: var(--accent-text); border-color: color-mix(in oklab, var(--accent) 40%, var(--border)); }
+  .badge.neg { color: var(--err); border-color: color-mix(in oklab, var(--err) 40%, var(--border)); }
+  .badge.warn { color: var(--warn); border-color: color-mix(in oklab, var(--warn) 40%, var(--border)); }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 150px; }
+  .field label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
+  .fauxinput { font-family: var(--font-mono); font-size: 15px; background: var(--bg); border: 1px solid var(--border-strong); color: var(--text); padding: 9px 12px; }
+  .fauxinput.focus { border-color: var(--accent); outline: 2px solid color-mix(in oklab, var(--accent) 40%, transparent); outline-offset: 1px; }
+  .numpad { display: grid; grid-template-columns: repeat(3, 46px); gap: 6px; }
+  .numpad button { height: 46px; font-family: var(--font-mono); font-size: 16px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); cursor: pointer; }
+  .numpad button:hover { border-color: var(--accent); }
+
+  /* rules table (may/may-not, do/don't) */
+  .rules { display: grid; grid-template-columns: 1fr; border: 1px solid var(--border); }
   @media (min-width: 720px) { .rules { grid-template-columns: 1fr 1fr; } }
   .rules > div { padding: 20px 22px; }
   .rules > div:first-child { border-bottom: 1px solid var(--border); }
@@ -295,23 +253,25 @@
   .rules li { display: flex; gap: 10px; padding: 7px 0; font-size: 14px; border-bottom: 1px dashed var(--border); }
   .rules li:last-child { border-bottom: 0; }
   .rules .mark { flex: none; width: 18px; font-weight: 700; }
-  .may .mark { color: var(--accent-text); }
-  .maynot .mark { color: var(--err); }
+  .may .mark, .do .mark { color: var(--accent-text); }
+  .maynot .mark, .dont .mark { color: var(--err); }
 
-  /* findings reveal (motion) */
+  /* findings reveal */
   .conf { margin-top: 12px; }
   .conf-track { height: 6px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
   .conf-fill { height: 100%; width: 0; background: var(--accent); transition: width 900ms cubic-bezier(0.22,0.61,0.36,1); }
   .revealed .conf-fill { width: var(--to, 78%); }
 
+  /* radix diff */
+  .ok { color: var(--accent-text); font-weight: 600; }
+  .diff-old { color: var(--text-faint); text-decoration: line-through; }
+  .diff-new { color: var(--accent-text); }
+  .codeblk { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; overflow-x: auto; white-space: pre; color: var(--text-muted); }
+  .codeblk .add { color: var(--accent-text); } .codeblk .del { color: var(--err); } .codeblk .cmt { color: var(--text-faint); }
+
   .foot { padding: 56px 0 72px; }
-  .northstar { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; font-size: clamp(22px, 3.6vw, 34px); text-wrap: balance; max-width: 26ch; margin: 0; }
+  .northstar { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; font-size: clamp(22px, 3.6vw, 34px); text-wrap: balance; max-width: 30ch; margin: 0; }
   .foot small { display: block; margin-top: 20px; color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; line-height: 1.7; }
-
-  .callout { border-left: 2px solid var(--accent); padding: 4px 0 4px 16px; color: var(--text-muted); margin: 20px 0; }
-  .callout b { color: var(--text); }
-
-  .note { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); margin-top: 14px; }
 
   @media (prefers-reduced-motion: reduce) {
     .ripples span { animation: none; display: none; }
@@ -334,19 +294,18 @@
       Frog
     </span>
     <nav class="bar-nav" aria-label="Sections">
-      <a href="#split">01·Split</a>
-      <a href="#persona">02·Persona</a>
-      <a href="#color">03·Color</a>
-      <a href="#logo">04·Logo</a>
-      <a href="#type">05·Type</a>
-      <a href="#feel">06·Feel</a>
-      <a href="#voice">07·Voice</a>
-      <a href="#mascot">09·Rules</a>
-      <a href="#radix">10·Radix</a>
+      <a href="#split">01</a><a href="#persona">02</a><a href="#lang">03</a><a href="#voice">04</a>
+      <a href="#color">05</a><a href="#type">06</a><a href="#foundations">07</a><a href="#components">08</a>
+      <a href="#numbers">09</a><a href="#feel">10</a><a href="#motion">11</a><a href="#a11y">12</a>
+      <a href="#mascot">13</a><a href="#radix">14</a>
     </nav>
-    <div class="bar-tag">
-      <span class="pill">CI <b>95%</b> · p&lt;0.05</span>
-      <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle theme">◐ theme</button>
+    <div class="bar-tools">
+      <div class="segment compact" id="langBar" role="group" aria-label="App language register">
+        <button type="button" data-reg="human" aria-pressed="false"><span class="full">Human</span><span class="abbr">H</span></button>
+        <button type="button" data-reg="frog" aria-pressed="true"><span class="full">Frog</span><span class="abbr">F</span></button>
+        <button type="button" data-reg="ultra" aria-pressed="false"><span class="full">Ultra</span><span class="abbr">U</span></button>
+      </div>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle theme">◐</button>
     </div>
   </div>
 </header>
@@ -354,7 +313,7 @@
 <div class="hero">
   <div class="ripples" aria-hidden="true"><span></span><span></span><span></span></div>
   <div class="hero-in">
-    <p class="eyebrow">Brand Identity System · v1 proposal · a re-skin of Radix Themes&nbsp;3 · “SBL” → <b>Frog</b></p>
+    <p class="eyebrow">Brand identity &amp; design system · v1 · a re-skin of Radix Themes&nbsp;3 · “SBL” → <b>Frog</b></p>
     <h1 class="wordmark">
       FR<span class="eye" aria-hidden="true">
         <svg width="0.86em" height="0.86em" viewBox="0 0 64 64" fill="none" style="vertical-align:-0.02em">
@@ -376,6 +335,7 @@
       <span class="pill">0px radius</span>
       <span class="pill">8px grid</span>
       <span class="pill">tabular nums</span>
+      <span class="pill"><b>Human</b> · Frog · Ultra</span>
     </div>
   </div>
 </div>
@@ -384,31 +344,20 @@
 
   <!-- 00 NORTH STAR -->
   <section id="north">
-    <div class="sec-head">
-      <span class="sec-num">00</span>
-      <div><h2 class="sec-title">North star</h2></div>
-    </div>
-    <p class="northstar" style="max-width:34ch">The driest, most rigorous instrument you’ve ever trusted — and, unmistakably, a frog runs it.</p>
+    <div class="sec-head"><span class="sec-num">00</span><div><h2 class="sec-title">North star</h2></div></div>
+    <p class="northstar">The driest, most rigorous instrument you’ve ever trusted — and, unmistakably, a frog runs it.</p>
     <p class="lead" style="margin-top:24px;color:var(--text-muted)">
-      If a lifter ever distrusts a Finding because the app “seems like a joke,” the balance is wrong.
-      Everything below exists to keep the numbers credible while the frog gets to be a goofball at the edges.
+      If a lifter ever distrusts a Finding because the app “seems like a joke,” the balance is wrong. Everything below keeps the numbers credible while the frog gets to be a goofball at the edges.
     </p>
   </section>
 
   <!-- 01 THE SPLIT -->
   <section id="split">
-    <div class="sec-head">
-      <span class="sec-num">01</span>
-      <div>
-        <h2 class="sec-title">The split — one principle</h2>
-        <p class="sec-kicker">The whole brand rides on one rule. Print it on the wall.</p>
-      </div>
-    </div>
-
-    <div class="callout" style="border-left-width:3px">
-      <b>The closer to the data, the more serious. The closer to the edges, the more the frog is an idiot.</b>
-    </div>
-
+    <div class="sec-head"><span class="sec-num">01</span><div>
+      <h2 class="sec-title">The split — one principle</h2>
+      <p class="sec-kicker">The whole brand rides on one rule. Print it on the wall.</p>
+    </div></div>
+    <div class="callout" style="border-left-width:3px"><b>The closer to the data, the more serious. The closer to the edges, the more the frog is an idiot.</b></div>
     <div class="spectrum" style="margin:24px 0 8px">
       <div class="spectrum-bar" aria-hidden="true"></div>
       <div class="spectrum-cols">
@@ -420,17 +369,17 @@
             <li>Findings: the statistic, its confidence, its caveat</li>
             <li>Anything a lifter makes a training decision on</li>
           </ul>
-          <p class="label" style="margin-top:12px">Quiet · precise · tabular · brutalist. The frog does not clutter the data.</p>
+          <p class="label" style="margin-top:12px">Quiet · precise · tabular · brutalist.</p>
         </div>
         <div>
           <h4 style="color:var(--accent-text)">◆ Playground — the frog lives here</h4>
           <ul>
             <li>Wordmark &amp; mascot, onboarding, empty states</li>
-            <li>Loading, PR celebrations, streaks, rest-timer alerts</li>
+            <li>Loading, PR celebrations, streaks, alerts</li>
             <li>Errors, 404s, notifications, achievement names</li>
             <li>The settings / about corners</li>
           </ul>
-          <p class="label" style="margin-top:12px">Deadpan · dry · quietly absurd. Never random. Never cartoonish.</p>
+          <p class="label" style="margin-top:12px">Deadpan · dry · quietly absurd. Never random.</p>
         </div>
       </div>
     </div>
@@ -439,41 +388,27 @@
 
   <!-- 02 PERSONA -->
   <section id="persona">
-    <div class="sec-head">
-      <span class="sec-num">02</span>
-      <div>
-        <h2 class="sec-title">The frog</h2>
-        <p class="sec-kicker">One character. A serious mark for the chrome; an expressive mascot for the playground. Both, so neither has to compromise.</p>
-      </div>
-    </div>
-
+    <div class="sec-head"><span class="sec-num">02</span><div>
+      <h2 class="sec-title">The frog</h2>
+      <p class="sec-kicker">One character. A serious mark for the chrome; an expressive mascot for the playground. Both, so neither compromises.</p>
+    </div></div>
     <div class="grid2">
       <div class="card">
         <span class="label">Persona · 3 lines</span>
         <div style="display:flex;gap:20px;align-items:flex-start;margin-top:16px">
           <svg width="96" height="96" viewBox="0 0 96 96" fill="none" aria-label="Dr. Frog mascot" style="flex:none">
-            <!-- lab coat collar -->
             <path d="M20 96 L34 70 L48 78 L62 70 L76 96 Z" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="2"/>
             <line x1="48" y1="78" x2="48" y2="96" stroke="var(--border-strong)" stroke-width="2"/>
             <rect x="44" y="80" width="8" height="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5"/>
-            <!-- head -->
             <rect x="26" y="34" width="44" height="40" fill="var(--surface)" stroke="currentColor" stroke-width="2.5"/>
-            <!-- eye humps -->
             <rect x="26" y="22" width="16" height="16" fill="var(--surface)" stroke="currentColor" stroke-width="2.5"/>
             <rect x="54" y="22" width="16" height="16" fill="var(--surface)" stroke="currentColor" stroke-width="2.5"/>
-            <!-- deadpan half-lidded pupils -->
-            <rect x="31" y="31" width="6" height="4" fill="var(--accent)"/>
-            <rect x="59" y="31" width="6" height="4" fill="var(--accent)"/>
-            <line x1="26" y1="30" x2="42" y2="30" stroke="currentColor" stroke-width="2"/>
-            <line x1="54" y1="30" x2="70" y2="30" stroke="currentColor" stroke-width="2"/>
-            <!-- flat mouth -->
+            <rect x="31" y="31" width="6" height="4" fill="var(--accent)"/><rect x="59" y="31" width="6" height="4" fill="var(--accent)"/>
+            <line x1="26" y1="30" x2="42" y2="30" stroke="currentColor" stroke-width="2"/><line x1="54" y1="30" x2="70" y2="30" stroke="currentColor" stroke-width="2"/>
             <line x1="34" y1="62" x2="62" y2="62" stroke="currentColor" stroke-width="2.5"/>
-            <!-- clipboard -->
             <rect x="6" y="52" width="22" height="28" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="2"/>
             <rect x="13" y="49" width="8" height="5" fill="var(--accent)"/>
-            <line x1="10" y1="60" x2="24" y2="60" stroke="var(--text-faint)" stroke-width="1.5"/>
-            <line x1="10" y1="66" x2="24" y2="66" stroke="var(--text-faint)" stroke-width="1.5"/>
-            <line x1="10" y1="72" x2="20" y2="72" stroke="var(--text-faint)" stroke-width="1.5"/>
+            <line x1="10" y1="60" x2="24" y2="60" stroke="var(--text-faint)" stroke-width="1.5"/><line x1="10" y1="66" x2="24" y2="66" stroke="var(--text-faint)" stroke-width="1.5"/><line x1="10" y1="72" x2="20" y2="72" stroke="var(--text-faint)" stroke-width="1.5"/>
           </svg>
           <div>
             <p style="margin:0 0 10px"><b>Dr. Frog, PhD (unaccredited).</b> An amphibian who read every paper on autoregulation and now runs a lab out of a pond.</p>
@@ -482,16 +417,15 @@
           </div>
         </div>
       </div>
-
       <div class="card" style="display:flex;flex-direction:column;gap:14px">
         <span class="label">Proof: funny while presenting a p-value</span>
         <div class="mock">
-          <div class="mock-head"><span>◆ finding · playground voice</span><span>n=19</span></div>
+          <div class="mock-head"><span>◆ finding · frog voice</span><span>n=19</span></div>
           <div class="mock-body">
             <div class="big">Heavier on sleep.</div>
-            <p class="copy-body" style="margin-top:8px">Your top sets average <span class="accent">+4.2%</span> heavier after 7h+ sleep. The frog has seen the data and is nodding slowly, which for a frog is a standing ovation.</p>
-            <div class="row"><span class="muted">correlation r</span><span class="tnum">0.61</span></div>
-            <div class="row"><span class="muted">p-value</span><span class="tnum accent">0.007</span></div>
+            <p class="copy-body tl" data-h="Your top sets average +4.2% heavier after 7h+ sleep." data-f="Your top sets average +4.2% heavier after 7h+ sleep. The frog has seen the data and is nodding slowly, which for a frog is a standing ovation."></p>
+            <div class="row"><span class="muted">correlation r</span><span class="tlnum">0.61</span></div>
+            <div class="row"><span class="muted">p-value</span><span class="tlnum accent">0.007</span></div>
             <div class="row"><span class="muted">the caveat</span><span class="muted" style="font-size:11px">correlation, not causation</span></div>
           </div>
         </div>
@@ -500,16 +434,153 @@
     </div>
   </section>
 
-  <!-- 03 COLOR -->
-  <section id="color">
-    <div class="sec-head">
-      <span class="sec-num">03</span>
-      <div>
-        <h2 class="sec-title">Color</h2>
-        <p class="sec-kicker">Chosen direction: a neutral lab-ink ground so the data reads honest — and a single frog-green that is the only living thing on screen. Green doubles as semantic success: a PR is green, and the frog is pleased.</p>
+  <!-- 03 LANGUAGE REGISTERS -->
+  <section id="lang">
+    <div class="sec-head"><span class="sec-num">03</span><div>
+      <h2 class="sec-title">Language registers — Human · Frog · Ultrafrog</h2>
+      <p class="sec-kicker">One setting changes how the whole app <em>talks</em> — never what it <em>reports</em>. The numbers are identical in every register; only the words around them change. Flip the switch below (or in the top bar) and watch this entire page re-voice itself.</p>
+    </div></div>
+
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:24px">
+      <div class="segment" id="langMain" role="group" aria-label="App language register">
+        <button type="button" data-reg="human" aria-pressed="false">Human</button>
+        <button type="button" data-reg="frog" aria-pressed="true">Frog</button>
+        <button type="button" data-reg="ultra" aria-pressed="false">Ultrafrog</button>
+      </div>
+      <span class="note" style="margin:0">Live — affects every sample of app copy on this page.</span>
+    </div>
+
+    <div class="reg">
+      <div class="reg-card" data-regcard="human">
+        <h4>Human</h4>
+        <p class="d">Plain, clear, zero personality. The accessibility / serious-mode escape hatch. What a lifter switches to when they want facts and nothing else.</p>
+        <div class="ex">Rest complete — 3:00 elapsed. Next: bench <span class="tlnum">100.0</span> kg.</div>
+      </div>
+      <div class="reg-card on" data-regcard="frog">
+        <h4>Frog <span style="color:var(--accent-text)">· default</span></h4>
+        <p class="d">The deadpan brand voice. Dry, exacting, too into frogs. Editorialises around the number, never on it.</p>
+        <div class="ex">Rest complete. The frog suggests you pick up the bar in <span class="tlnum">3:00</span>. Next: bench <span class="tlnum">100.0</span> kg.</div>
+      </div>
+      <div class="reg-card" data-regcard="ultra">
+        <h4>Ultrafrog</h4>
+        <p class="d">Every word becomes <em>ribbit</em> (case preserved). Numbers and units survive untouched — so all information rides on the figures. Absurd, and a live proof that the data is the only thing that matters.</p>
+        <div class="ex">Ribbit ribbit. Ribbit ribbit ribbit ribbit ribbit ribbit <span class="tlnum">3:00</span>. Ribbit: ribbit <span class="tlnum">100.0</span> kg.</div>
       </div>
     </div>
 
+    <div class="callout" style="margin-top:24px">
+      <b>The rule that makes Ultrafrog safe:</b> the transform keeps any token containing a digit, plus a whitelist of units (kg, lb, %, s, RIR, e1RM, n, ×). Everything a lifter needs to make a decision survives; everything else ribbits. This is the split principle, executed in grammar.
+    </div>
+    <p class="note">Engineering note: registers are a pure text transform at render time. Data, timers, and charts are untouched — Ultrafrog is a skin on strings, never on state. Human is also the i18n seam: real translations slot in beside the frog voice.</p>
+  </section>
+
+  <!-- 04 VOICE & WORDING -->
+  <section id="voice">
+    <div class="sec-head"><span class="sec-num">04</span><div>
+      <h2 class="sec-title">Voice &amp; wording rules</h2>
+      <p class="sec-kicker">Dry, smart, quietly absurd — a scientist who is too into frogs, delivered straight-faced next to real numbers. Never random-quirky. This is where the brand is won. Every sample below is live — switch registers up top.</p>
+    </div></div>
+
+    <div class="grid2">
+      <div class="mock">
+        <div class="mock-head"><span>◆ PR celebration</span><span>squat</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" data-h="New personal record · 172.4 kg" data-f="New personal record · 172.4 kg"></div>
+          <p class="copy-body tl" data-h="Your best squat e1RM has been updated." data-f="The frog has recorded your personal record and updated the relevant distributions. It is not impressed easily. It is, on this occasion, impressed."></p>
+          <p class="copy-nums tl" data-h="+3.1 kg over 84 days · n=19" data-f="▲ +3.1 kg over 84 days · n=19"></p>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-head"><span>◆ empty Findings</span><span>not enough data</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" data-h="Not enough data yet." data-f="The frog refuses to speculate."></div>
+          <p class="copy-body tl" data-h="You have logged 4 sessions. Findings need about 12 sessions before they are statistically meaningful. Keep logging sleep and carbs." data-f="You’ve logged 4 sessions. A correlation needs roughly 12 before the frog will put its name on it. Keep logging sleep and carbs — it is watching, it is patient, and it has nowhere else to be."></p>
+          <p class="copy-nums tl" data-h="4 of 12 sessions · 0 findings" data-f="4 / 12 sessions · 0 findings"></p>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-head"><span>◆ rest-timer done</span><span>3:00</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" data-h="Rest complete." data-f="Rest complete."></div>
+          <p class="copy-body tl" data-h="Your rest period is over. Time for your next set." data-f="Adenosine triphosphate: replenished (approximately). The frog suggests you pick up the bar. The frog is not going to lift it for you."></p>
+          <p class="copy-nums tl" data-h="elapsed 3:00 · next: bench 100.0 kg" data-f="elapsed 3:00 · next: bench 100.0 kg"></p>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-head"><span>◆ failed sync</span><span style="color:var(--err)">● offline</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" style="color:var(--err)" data-h="Sync failed." data-f="Sync failed. Your data is safe; the frog is annoyed."></div>
+          <p class="copy-body tl" data-h="2 sets could not upload and are saved on this device. Retrying every 30s. No data was lost." data-f="Two sets are stranded on this device and could not reach the lab. Retrying every 30s. Nothing was lost — the frog keeps meticulous local records, as any serious amphibian would."></p>
+          <p class="copy-nums tl" data-h="2 sets queued · retry in 0:27" data-f="2 sets queued · retry in 0:27"></p>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-head"><span>◆ notification</span><span>day 7</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" data-h="7-day streak." data-f="You logged before noon."></div>
+          <p class="copy-body tl" data-h="You have logged 7 days in a row. Keep it up. →" data-f="The frog noticed. It has said nothing, but it noticed. Consistency, n=7. →"></p>
+          <p class="copy-nums tl" data-h="streak 7 · logged 11:42" data-f="streak 7 · logged 11:42"></p>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-head"><span>◆ 404 / achievement</span><span>edge</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" data-h="Page not found." data-f="This page is not in the literature."></div>
+          <p class="copy-body tl" data-h="We could not find this page. Check the URL or head back home." data-f="The frog searched every folder and one lily pad. Nothing here. Achievement unlocked: “Control Group” — you visited a page with no data whatsoever."></p>
+          <p class="copy-nums tl" data-h="HTTP 404 · specimens found: 0" data-f="HTTP 404 · specimens found: 0"></p>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="blk" style="margin:32px 0 12px">Do / don’t</h3>
+    <div class="rules">
+      <div class="do">
+        <h4 style="color:var(--accent-text)">✓ Do</h4>
+        <ul>
+          <li><span class="mark">✓</span> State the real number first or last; let the frog editorialise in between.</li>
+          <li><span class="mark">✓</span> Deadpan. Understate. The frog is impressed by nodding slowly.</li>
+          <li><span class="mark">✓</span> Use real terms: e1RM, RIR, correlation, n=, p-value.</li>
+          <li><span class="mark">✓</span> Keep the caveat: “correlation, not causation.”</li>
+          <li><span class="mark">✓</span> Sentence case. Periods. One idea per line.</li>
+        </ul>
+      </div>
+      <div class="dont">
+        <h4 style="color:var(--err)">✕ Don’t</h4>
+        <ul>
+          <li><span class="mark">✕</span> Let a joke touch the figure itself.</li>
+          <li><span class="mark">✕</span> Exclaim. No “!”, no “Oops!”, no “Woohoo!”.</li>
+          <li><span class="mark">✕</span> Emoji inside data, charts, or Findings.</li>
+          <li><span class="mark">✕</span> Be zany or random. The humour is contrast, not chaos.</li>
+          <li><span class="mark">✕</span> Fake certainty — never round a caveat away.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="blk" style="margin:32px 0 12px">Glossary — human ↔ frog</h3>
+    <div class="scroll-x">
+      <table class="token-tbl">
+        <thead><tr><th>concept</th><th>human</th><th>frog</th></tr></thead>
+        <tbody>
+          <tr><td>workout</td><td>session</td><td>session / today’s experiment</td></tr>
+          <tr><td>personal record</td><td>new record</td><td>the frog is, on this occasion, impressed</td></tr>
+          <tr><td>streak</td><td>7-day streak</td><td>consistency, n=7</td></tr>
+          <tr><td>loading</td><td>loading…</td><td>the frog is thinking</td></tr>
+          <tr><td>no data</td><td>not enough data yet</td><td>the frog refuses to speculate</td></tr>
+          <tr><td>error</td><td>something went wrong</td><td>the frog is annoyed (your data is safe)</td></tr>
+          <tr><td>success</td><td>saved</td><td>recorded. the frog nods, slowly</td></tr>
+          <tr><td>settings</td><td>settings</td><td>the lab</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Number formatting is fixed regardless of register: tabular mono, decimals aligned, unit after a hair space (172.4 kg), time as m:ss, correlations to 2 dp, p-values to 3. Never localise a decimal into a comma inside the data path.</p>
+  </section>
+
+  <!-- 05 COLOR -->
+  <section id="color">
+    <div class="sec-head"><span class="sec-num">05</span><div>
+      <h2 class="sec-title">Color</h2>
+      <p class="sec-kicker">Neutral lab-ink ground so the data reads honest — and a single frog-green that is the only living thing on screen. Green doubles as semantic success: a PR is green, and the frog is pleased.</p>
+    </div></div>
     <div class="grid2" style="align-items:start">
       <div>
         <h3 class="blk">Accent — Frog Green</h3>
@@ -525,8 +596,7 @@
           <div class="swatch" style="background:var(--frog-800);color:#EAFBEF"><small>800</small></div>
           <div class="swatch" style="background:var(--frog-900);color:#EAFBEF"><small>900</small></div>
         </div>
-        <p class="note">Base <span class="mono">#43DD6E</span> (400). Steps = <span class="mono">color-mix(in oklab, #43DD6E, black/white %)</span>. 400 is the dark-theme accent; 500 the solid fill; 600 the accent for text on light.</p>
-
+        <p class="note">Base <span class="mono">#43DD6E</span> (400). 400 = dark accent; 500 = solid fill; 600 = accent text on light.</p>
         <h3 class="blk" style="margin-top:28px">Neutral — Lab Ink (green-cool bias)</h3>
         <div class="ramp" role="img" aria-label="Neutral ink ramp">
           <div class="swatch" style="background:var(--ink-950)"><small style="color:#B7C0BA">950</small></div>
@@ -540,9 +610,8 @@
           <div class="swatch" style="background:var(--ink-100)"><small style="color:#0B0F0E">100</small></div>
           <div class="swatch" style="background:var(--ink-50)"><small style="color:#0B0F0E">50</small></div>
         </div>
-        <p class="note">Not a dead grey — a hair of green-cool so the neutral reads <em>chosen</em>. Ground <span class="mono">#0B0F0E</span> (dark) / <span class="mono">#F5F8F5</span> (light).</p>
+        <p class="note">Not a dead grey — a hair of green-cool so the neutral reads <em>chosen</em>. Ground <span class="mono">#0B0F0E</span> dark / <span class="mono">#F5F8F5</span> light.</p>
       </div>
-
       <div>
         <h3 class="blk">Role tokens — dark &amp; light</h3>
         <div class="scroll-x">
@@ -555,231 +624,238 @@
               <tr><td><span class="chip" style="background:#E7EDE9"></span>text</td><td>#E7EDE9</td><td>#10160F</td></tr>
               <tr><td><span class="chip" style="background:#8B968F"></span>text-muted</td><td>#8B968F</td><td>#566159</td></tr>
               <tr><td><span class="chip" style="background:#43DD6E"></span>accent</td><td>#43DD6E</td><td>#22C455</td></tr>
-              <tr><td><span class="chip" style="background:#16A34A"></span>accent-text</td><td>#43DD6E</td><td>#16A34A</td></tr>
               <tr><td><span class="chip" style="background:#E6B24A"></span>warning</td><td>#E6B24A</td><td>#B7842A</td></tr>
               <tr><td><span class="chip" style="background:#E5484D"></span>error</td><td>#E5484D</td><td>#D13B40</td></tr>
             </tbody>
           </table>
         </div>
-
-        <h3 class="blk" style="margin-top:24px">Semantic — kept legible, separate from accent</h3>
+        <h3 class="blk" style="margin-top:24px">Semantic — three signals, no more</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <span class="zone" style="border-color:var(--accent);color:var(--accent-text)">✓ success = frog green</span>
-          <span class="zone" style="border-color:var(--warn);color:var(--warn)">! warning = amber</span>
-          <span class="zone" style="border-color:var(--err);color:var(--err)">✕ error = red</span>
+          <span class="badge pos">✓ success = frog</span><span class="badge warn">! warning = amber</span><span class="badge neg">✕ error = red</span>
         </div>
-        <p class="note">Success <em>is</em> the frog — a PR, a green trend, a completed session all mean “good / go / alive.” Amber = caution / low confidence. Red = regression / error. Only ever three signal colors; no blue competes for attention.</p>
-
-        <div class="callout" style="margin-top:20px">
-          <b>Discipline held:</b> single base color, percentage steps — same rule you have today. We swapped the base <em>hue</em> from blue to neutral ink and moved the one accent to green. Nothing else multiplies.
-        </div>
+        <p class="note">Success <em>is</em> the frog. Amber = caution / low confidence. Red = regression / error. No blue competes for attention.</p>
       </div>
     </div>
 
-    <!-- Radix-native step scales -->
-    <style>
-      .ramp12 { display: grid; grid-template-columns: repeat(6, 1fr); border: 1px solid var(--border); }
-      @media (min-width: 640px) { .ramp12 { grid-template-columns: repeat(12, 1fr); } }
-      .step-legend { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); line-height: 1.7; margin-top: 8px; }
-      .step-legend b { color: var(--text-muted); font-weight: 400; }
-    </style>
     <div style="margin-top:32px">
       <h3 class="blk">Radix 12-step scales — the real tokens the app renders</h3>
-      <p class="sec-kicker" style="margin:0 0 16px">The brand ramps above map 1:1 onto Radix Themes’ 12-step scales. Accent = <span class="mono">grass</span>; neutral = <span class="mono">sage</span> (green-cool gray). Steps carry fixed semantics — the app never picks a hex, it picks a step.</p>
-
+      <p class="sec-kicker" style="margin:0 0 16px">The ramps above map 1:1 onto Radix Themes’ 12-step scales. Accent = <span class="mono">grass</span>; neutral = <span class="mono">sage</span> (green-cool gray). The app never picks a hex — it picks a step.</p>
       <span class="label">accentColor = grass</span>
-      <div class="ramp12" role="img" aria-label="Radix grass dark scale, steps 1 to 12">
-        <div class="swatch" style="background:#0e1511"><small style="color:#71d083">1</small></div>
-        <div class="swatch" style="background:#141a15"><small style="color:#71d083">2</small></div>
-        <div class="swatch" style="background:#1b2a1e"><small style="color:#71d083">3</small></div>
-        <div class="swatch" style="background:#1d3a24"><small style="color:#c2f0c2">4</small></div>
-        <div class="swatch" style="background:#25482d"><small style="color:#c2f0c2">5</small></div>
-        <div class="swatch" style="background:#2d5736"><small style="color:#c2f0c2">6</small></div>
-        <div class="swatch" style="background:#366740"><small style="color:#c2f0c2">7</small></div>
-        <div class="swatch" style="background:#3e7949"><small style="color:#eafbef">8</small></div>
-        <div class="swatch" style="background:#46a758"><small style="color:#06180c">9</small></div>
-        <div class="swatch" style="background:#53b365"><small style="color:#06180c">10</small></div>
-        <div class="swatch" style="background:#71d083"><small style="color:#06180c">11</small></div>
-        <div class="swatch" style="background:#c2f0c2"><small style="color:#06180c">12</small></div>
+      <div class="ramp12" role="img" aria-label="Radix grass dark scale">
+        <div class="swatch" style="background:#0e1511"><small style="color:#71d083">1</small></div><div class="swatch" style="background:#141a15"><small style="color:#71d083">2</small></div><div class="swatch" style="background:#1b2a1e"><small style="color:#71d083">3</small></div><div class="swatch" style="background:#1d3a24"><small style="color:#c2f0c2">4</small></div><div class="swatch" style="background:#25482d"><small style="color:#c2f0c2">5</small></div><div class="swatch" style="background:#2d5736"><small style="color:#c2f0c2">6</small></div><div class="swatch" style="background:#366740"><small style="color:#c2f0c2">7</small></div><div class="swatch" style="background:#3e7949"><small style="color:#eafbef">8</small></div><div class="swatch" style="background:#46a758"><small style="color:#06180c">9</small></div><div class="swatch" style="background:#53b365"><small style="color:#06180c">10</small></div><div class="swatch" style="background:#71d083"><small style="color:#06180c">11</small></div><div class="swatch" style="background:#c2f0c2"><small style="color:#06180c">12</small></div>
       </div>
-
       <span class="label" style="display:block;margin-top:20px">grayColor = sage</span>
-      <div class="ramp12" role="img" aria-label="Radix sage dark scale, steps 1 to 12">
-        <div class="swatch" style="background:#101211"><small style="color:#adb5b2">1</small></div>
-        <div class="swatch" style="background:#171918"><small style="color:#adb5b2">2</small></div>
-        <div class="swatch" style="background:#202221"><small style="color:#adb5b2">3</small></div>
-        <div class="swatch" style="background:#272a29"><small style="color:#adb5b2">4</small></div>
-        <div class="swatch" style="background:#2e3130"><small style="color:#adb5b2">5</small></div>
-        <div class="swatch" style="background:#373b39"><small style="color:#eceeed">6</small></div>
-        <div class="swatch" style="background:#444947"><small style="color:#eceeed">7</small></div>
-        <div class="swatch" style="background:#5b625f"><small style="color:#eceeed">8</small></div>
-        <div class="swatch" style="background:#63706b"><small style="color:#eceeed">9</small></div>
-        <div class="swatch" style="background:#717d79"><small style="color:#eceeed">10</small></div>
-        <div class="swatch" style="background:#adb5b2"><small style="color:#101211">11</small></div>
-        <div class="swatch" style="background:#eceeed"><small style="color:#101211">12</small></div>
+      <div class="ramp12" role="img" aria-label="Radix sage dark scale">
+        <div class="swatch" style="background:#101211"><small style="color:#adb5b2">1</small></div><div class="swatch" style="background:#171918"><small style="color:#adb5b2">2</small></div><div class="swatch" style="background:#202221"><small style="color:#adb5b2">3</small></div><div class="swatch" style="background:#272a29"><small style="color:#adb5b2">4</small></div><div class="swatch" style="background:#2e3130"><small style="color:#adb5b2">5</small></div><div class="swatch" style="background:#373b39"><small style="color:#eceeed">6</small></div><div class="swatch" style="background:#444947"><small style="color:#eceeed">7</small></div><div class="swatch" style="background:#5b625f"><small style="color:#eceeed">8</small></div><div class="swatch" style="background:#63706b"><small style="color:#eceeed">9</small></div><div class="swatch" style="background:#717d79"><small style="color:#eceeed">10</small></div><div class="swatch" style="background:#adb5b2"><small style="color:#101211">11</small></div><div class="swatch" style="background:#eceeed"><small style="color:#101211">12</small></div>
       </div>
-
-      <p class="step-legend">
-        <b>1</b> app bg · <b>2</b> subtle bg · <b>3</b> element bg · <b>4</b> hover · <b>5</b> active · <b>6</b> subtle border · <b>7</b> element border · <b>8</b> strong/focus border · <b>9</b> solid fill · <b>10</b> solid hover · <b>11</b> low-contrast text · <b>12</b> high-contrast text
-      </p>
-      <p class="note">Note: built-in <span class="mono">grass</span> lands a touch more botanical than the <span class="mono">#43DD6E</span> neon (grass-9 ≈ <span class="mono">#46A758</span>, grass-11 ≈ <span class="mono">#71D083</span>). Ship on <span class="mono">grass</span>; a generated custom accent scale hits the exact neon later — both are supported. See §10.</p>
+      <p class="step-legend"><b>1</b> app bg · <b>2</b> subtle bg · <b>3</b> element bg · <b>4</b> hover · <b>5</b> active · <b>6</b> subtle border · <b>7</b> element border · <b>8</b> strong border · <b>9</b> solid fill · <b>10</b> solid hover · <b>11</b> low-contrast text · <b>12</b> high-contrast text</p>
+      <p class="note">Built-in <span class="mono">grass</span> reads a shade more botanical than the <span class="mono">#43DD6E</span> neon (grass-9 ≈ <span class="mono">#46A758</span>, grass-11 ≈ <span class="mono">#71D083</span>). Ship on grass; a generated custom scale hits the exact neon later. See §14.</p>
     </div>
   </section>
 
-  <!-- 04 LOGO -->
-  <section id="logo">
-    <div class="sec-head">
-      <span class="sec-num">04</span>
-      <div>
-        <h2 class="sec-title">Logomark — four directions</h2>
-        <p class="sec-kicker">Each must survive at 16px and feel engineered even while being a frog. No cute blobs. Shown large, then at favicon size.</p>
-      </div>
-    </div>
-
-    <div class="logos">
-      <!-- 1 GRID FROG -->
-      <div class="logo-card">
-        <div class="logo-stage">
-          <svg class="big-mark" width="88" height="88" viewBox="0 0 64 64" fill="none" aria-label="Grid frog">
-            <rect x="14" y="22" width="36" height="30" stroke="currentColor" stroke-width="2.5"/>
-            <rect x="14" y="10" width="12" height="12" stroke="currentColor" stroke-width="2.5"/>
-            <rect x="38" y="10" width="12" height="12" stroke="currentColor" stroke-width="2.5"/>
-            <rect x="18" y="14" width="4" height="4" fill="var(--accent)"/>
-            <rect x="42" y="14" width="4" height="4" fill="var(--accent)"/>
-            <line x1="22" y1="42" x2="42" y2="42" stroke="currentColor" stroke-width="2.5"/>
-            <rect x="27" y="30" width="3" height="3" fill="currentColor"/>
-            <rect x="34" y="30" width="3" height="3" fill="currentColor"/>
-          </svg>
-          <span class="tiny">
-            <svg class="logo-16" viewBox="0 0 64 64" fill="none"><rect x="14" y="22" width="36" height="30" stroke="currentColor" stroke-width="4"/><rect x="14" y="10" width="12" height="12" stroke="currentColor" stroke-width="4"/><rect x="38" y="10" width="12" height="12" stroke="currentColor" stroke-width="4"/><line x1="22" y1="42" x2="42" y2="42" stroke="currentColor" stroke-width="4"/></svg>
-            <small>16px</small>
-          </span>
-        </div>
-        <div class="logo-meta"><h4>A · Grid Frog</h4><p>Built rectilinear on the 8px grid — two eye-blocks, a wide mouth, green pupils. Reads as pure engineering. The most brutalist option; the frog is implied by structure, not softness.</p></div>
-      </div>
-
-      <!-- 2 FROG-EYE / DATA POINT (RECOMMENDED) -->
-      <div class="logo-card rec">
-        <div class="logo-stage">
-          <svg class="big-mark" width="88" height="88" viewBox="0 0 64 64" fill="none" aria-label="Frog eye data point">
-            <line x1="32" y1="6" x2="32" y2="58" stroke="var(--border-strong)" stroke-width="1"/>
-            <line x1="6" y1="32" x2="58" y2="32" stroke="var(--border-strong)" stroke-width="1"/>
-            <circle cx="32" cy="32" r="22" stroke="currentColor" stroke-width="3"/>
-            <path d="M12 26 Q32 14 52 26" stroke="currentColor" stroke-width="3" fill="none"/>
-            <circle cx="32" cy="34" r="6.5" fill="var(--accent)"/>
-          </svg>
-          <span class="tiny">
-            <svg class="logo-16" viewBox="0 0 64 64" fill="none"><circle cx="32" cy="32" r="22" stroke="currentColor" stroke-width="5"/><path d="M12 26 Q32 12 52 26" stroke="currentColor" stroke-width="5" fill="none"/><circle cx="32" cy="34" r="9" fill="var(--accent)"/></svg>
-            <small>16px</small>
-          </span>
-        </div>
-        <div class="logo-meta"><h4>B · Frog-Eye = Data Point</h4><p>A single hooded frog eye whose pupil is a plotted data point sitting on a crosshair — and doubles as a decimal point. The whole thesis in one mark: an eye watching your data. Cleanest at 16px (a ringed green dot).</p></div>
-      </div>
-
-      <!-- 3 FROG ON GRAPH PAPER -->
-      <div class="logo-card">
-        <div class="logo-stage">
-          <svg class="big-mark" width="100" height="88" viewBox="0 0 80 64" fill="none" aria-label="Frog on graph paper">
-            <line x1="6" y1="50" x2="74" y2="50" stroke="var(--border-strong)" stroke-width="1.5"/>
-            <line x1="6" y1="38" x2="74" y2="38" stroke="var(--border)" stroke-width="1"/>
-            <path d="M18 50 C18 34 26 30 32 30 C34 22 46 22 48 30 C54 30 62 34 62 50" stroke="currentColor" stroke-width="3" fill="none"/>
-            <circle cx="33" cy="29" r="2.5" fill="var(--accent)"/>
-            <circle cx="47" cy="29" r="2.5" fill="var(--accent)"/>
-            <path d="M18 50 L14 54 M62 50 L66 54" stroke="currentColor" stroke-width="3"/>
-          </svg>
-          <span class="tiny">
-            <svg class="logo-16" viewBox="0 0 80 64" fill="none"><line x1="6" y1="52" x2="74" y2="52" stroke="currentColor" stroke-width="3"/><path d="M20 52 C20 34 28 30 34 30 C36 22 46 22 48 30 C54 30 60 34 60 52" stroke="currentColor" stroke-width="5" fill="none"/></svg>
-            <small>16px</small>
-          </span>
-        </div>
-        <div class="logo-meta"><h4>C · Frog on Graph Paper</h4><p>A single-line sitting frog perched on a graph baseline — the lab-notebook soul made literal. Warmest, most narrative option. Loses a little detail at 16px but the silhouette holds.</p></div>
-      </div>
-
-      <!-- 4 SINGLE-LINE FROG -->
-      <div class="logo-card">
-        <div class="logo-stage">
-          <svg class="big-mark" width="100" height="88" viewBox="0 0 80 56" fill="none" aria-label="Single line frog">
-            <path d="M8 40 C8 20 26 20 26 34 C26 40 32 42 40 42 C48 42 54 40 54 34 C54 20 72 20 72 40" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
-            <circle cx="17" cy="26" r="2.5" fill="var(--accent)"/>
-            <circle cx="63" cy="26" r="2.5" fill="var(--accent)"/>
-          </svg>
-          <span class="tiny">
-            <svg class="logo-16" viewBox="0 0 80 56" fill="none"><path d="M8 40 C8 20 26 20 26 34 C26 40 32 42 40 42 C48 42 54 40 54 34 C54 20 72 20 72 40" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
-            <small>16px</small>
-          </span>
-        </div>
-        <div class="logo-meta"><h4>D · Single-Line Frog</h4><p>One continuous stroke: two eye-humps and a wide flat grin. Ultra-minimal, works as an inline glyph, animates as a single path. The friendliest; use for the mascot’s lightweight “face” cue.</p></div>
-      </div>
-    </div>
-
-    <div class="callout" style="margin-top:24px;border-left-color:var(--accent)">
-      <b>Decision · locked:</b> <b>B (Frog-Eye = Data Point)</b> is the primary mark — chrome, favicon, app icon. It carries the full “watching your data” thesis and is bulletproof at 16px. <b>D</b> is the mascot’s minimal face cue; <b>C</b> is for playground/marketing warmth; <b>A</b> is the monochrome stamp fallback. The wordmark uses B in place of the “O”.
-    </div>
-  </section>
-
-  <!-- 05 TYPE -->
+  <!-- 06 TYPE -->
   <section id="type">
-    <div class="sec-head">
-      <span class="sec-num">05</span>
-      <div>
-        <h2 class="sec-title">Typography</h2>
-        <p class="sec-kicker">Keep the pairing you have — evolve its discipline. Numbers are the serious anchor and are always mono &amp; tabular. That rule is non-negotiable; it is what makes the data look measured.</p>
-      </div>
-    </div>
-
+    <div class="sec-head"><span class="sec-num">06</span><div>
+      <h2 class="sec-title">Typography</h2>
+      <p class="sec-kicker">Keep the shipped pairing — evolve its discipline. Numbers are the serious anchor: always mono &amp; tabular. Non-negotiable.</p>
+    </div></div>
     <div class="grid3" style="margin-bottom:8px">
-      <div class="card">
-        <span class="label">Display · headings</span>
-        <div class="spec-display">Frog</div>
-        <p class="note"><b>Bricolage Grotesque</b>, 700–800, tight tracking (−0.03em). Carries warmth &amp; personality — this is where headings are allowed to smile.</p>
-      </div>
-      <div class="card">
-        <span class="label">Body · prose</span>
-        <p class="spec-body" style="font-size:19px">Log the work, and the conditions around it.</p>
-        <p class="note"><b>Inter</b> / system sans, 400–500. Quiet, neutral, high-legibility. Never competes with the data.</p>
-      </div>
-      <div class="card">
-        <span class="label">Data · the anchor</span>
-        <div class="spec-mono tnum">142.5<span style="color:var(--text-faint)">kg</span></div>
-        <p class="note"><b>JetBrains&nbsp;Mono</b> / Commit Mono, <span class="mono">tabular-nums</span>. Every weight, rep, RIR, e1RM, timer, p-value. Digits line up in columns, always.</p>
-      </div>
+      <div class="card"><span class="label">Display · headings</span><div class="spec-display">Frog</div><p class="note"><b>Bricolage Grotesque</b>, 700–800, tracking −0.03em. Where headings smile.</p></div>
+      <div class="card"><span class="label">Body · prose</span><p class="spec-body" style="font-size:19px">Log the work, and the conditions around it.</p><p class="note"><b>Inter</b> / system sans, 400–500. Quiet, never competes with data.</p></div>
+      <div class="card"><span class="label">Data · the anchor</span><div class="spec-mono tnum">142.5<span style="color:var(--text-faint)">kg</span></div><p class="note"><b>JetBrains Mono</b>, <span class="mono">tabular-nums</span>. Every weight, rep, RIR, e1RM, timer, p-value.</p></div>
     </div>
-
     <div class="card">
-      <span class="label">Tabular proof — why mono numbers matter</span>
+      <span class="label">Type scale (matches shipped theme.css)</span>
       <div class="scroll-x" style="margin-top:12px">
-        <table class="token-tbl tnum" style="max-width:420px">
+        <table class="token-tbl">
+          <thead><tr><th>token</th><th>size / line</th><th>use</th></tr></thead>
           <tbody>
-            <tr><td>Squat</td><td style="text-align:right">142.5 kg</td><td style="text-align:right;color:var(--accent-text)">e1RM 168.2</td></tr>
-            <tr><td>Bench</td><td style="text-align:right">100.0 kg</td><td style="text-align:right;color:var(--accent-text)">e1RM 118.9</td></tr>
-            <tr><td>Deadlift</td><td style="text-align:right">180.0 kg</td><td style="text-align:right;color:var(--accent-text)">e1RM 205.7</td></tr>
+            <tr><td>text-2xs</td><td>12 / 16</td><td>micro-labels, captions</td></tr>
+            <tr><td>text-xs</td><td>13 / 18</td><td>dense UI, table cells</td></tr>
+            <tr><td>text-sm</td><td>15 / 22</td><td>body base</td></tr>
+            <tr><td>text-base</td><td>17 / 26</td><td>lede, prose</td></tr>
+            <tr><td>text-lg → 2xl</td><td>20 → 26</td><td>headings</td></tr>
           </tbody>
         </table>
       </div>
-      <p class="note">Columns align to the decimal because the figures are monospaced. Proportional numerals would ripple — and rippling numbers read as “approximate.” Frog’s numbers are never approximate.</p>
     </div>
-    <p class="note">Fit with the shipped system: Bricolage is already wired as Radix’s <span class="mono">--default-font-family</span>; numeric data already runs through a <span class="mono">num</span> utility (system mono + <span class="mono">tabular-nums</span>) because Bricolage has no tabular figures. A branded mono (JetBrains / Commit Mono) is optional — self-host and set <span class="mono">--font-mono</span>. Nothing here changes the type stack; it endorses it. (This page falls back to a grotesque + system mono; font CDNs are blocked in artifacts.)</p>
+    <p class="note">Fit with the shipped system: Bricolage is already <span class="mono">--default-font-family</span>; data already routes through a <span class="mono">num</span> utility (system mono + <span class="mono">tabular-nums</span>) because Bricolage has no tabular figures. A branded mono (JetBrains) is optional — self-host and set <span class="mono">--font-mono</span>. This page falls back to grotesque + system mono; font CDNs are blocked in artifacts.</p>
   </section>
 
-  <!-- 06 LOOK & FEEL -->
-  <section id="feel">
-    <div class="sec-head">
-      <span class="sec-num">06</span>
-      <div>
-        <h2 class="sec-title">Look &amp; feel</h2>
-        <p class="sec-kicker">How “goofy frog + serious lab notebook + brutalist terminal” coheres: graph-paper surfaces, deadpan line-art, terminal-green cues, sparse ripple motifs. Flat, 0px radius, 1px borders — nothing slows the data path.</p>
+  <!-- 07 FOUNDATIONS -->
+  <section id="foundations">
+    <div class="sec-head"><span class="sec-num">07</span><div>
+      <h2 class="sec-title">Foundations</h2>
+      <p class="sec-kicker">The invisible grid everything snaps to. Spacing, radius, borders, elevation, breakpoints, motion, icons — all derived from the 8px unit.</p>
+    </div></div>
+    <div class="grid2" style="align-items:start">
+      <div class="card">
+        <span class="label">Spacing — 8px grid</span>
+        <div style="margin-top:14px">
+          <div class="scale-row"><code>4 · half</code><span class="bar" style="width:4px"></span></div>
+          <div class="scale-row"><code>8 · 1u</code><span class="bar" style="width:8px"></span></div>
+          <div class="scale-row"><code>12</code><span class="bar" style="width:12px"></span></div>
+          <div class="scale-row"><code>16 · 2u</code><span class="bar" style="width:16px"></span></div>
+          <div class="scale-row"><code>24 · 3u</code><span class="bar" style="width:24px"></span></div>
+          <div class="scale-row"><code>32 · 4u</code><span class="bar" style="width:32px"></span></div>
+          <div class="scale-row"><code>48 · 6u</code><span class="bar" style="width:48px"></span></div>
+          <div class="scale-row"><code>64 · 8u</code><span class="bar" style="width:64px"></span></div>
+        </div>
+        <p class="note">Every margin, pad, and gap is a multiple of 8 (4 allowed for tight optical fixes). Nothing off-grid.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <span class="label">Radius — none (0px)</span>
+          <div class="radius-demo" style="margin-top:14px">
+            <figure><div class="box"></div><figcaption>everything · 0px</figcaption></figure>
+            <figure><div class="box" style="border-radius:9999px"></div><figcaption>avatars only · full</figcaption></figure>
+          </div>
+          <p class="note">Sharp corners = precise instrument. The <em>only</em> exception is a circular avatar / the eye mark. Reverses the shipped <span class="mono">radius="small"</span> — see §14.</p>
+        </div>
+        <div class="card">
+          <span class="label">Borders &amp; elevation</span>
+          <ul style="margin:12px 0 0;padding-left:18px;color:var(--text-muted);font-size:14px">
+            <li>Hairlines only — <b style="color:var(--text)">1px</b>, <span class="mono">--border</span>.</li>
+            <li>Flat by default — <b style="color:var(--text)">no shadows</b> on surfaces.</li>
+            <li>Shadow appears on <em>one</em> thing: floating layers (menus, palette, toasts).</li>
+          </ul>
+        </div>
       </div>
     </div>
 
+    <div class="grid2" style="margin-top:16px;align-items:start">
+      <div class="card">
+        <span class="label">Breakpoints — mobile-first</span>
+        <div class="scroll-x" style="margin-top:12px">
+          <table class="token-tbl">
+            <tbody>
+              <tr><td>base</td><td>0–639</td><td>phone (design target)</td></tr>
+              <tr><td>sm</td><td>640</td><td>large phone / small tablet</td></tr>
+              <tr><td>md</td><td>760</td><td>tablet — 2-col</td></tr>
+              <tr><td>lg</td><td>1000</td><td>desktop — full nav</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <span class="label">Motion tokens</span>
+        <div class="scroll-x" style="margin-top:12px">
+          <table class="token-tbl">
+            <tbody>
+              <tr><td>micro</td><td>100–150ms</td><td>hover, press, toggle</td></tr>
+              <tr><td>float-in</td><td>160ms</td><td>menus, toasts (fade + 2px)</td></tr>
+              <tr><td>commit-flash</td><td>480ms</td><td>set-row saved (accent inset)</td></tr>
+              <tr><td>reveal</td><td>900ms</td><td>Findings confidence fill</td></tr>
+              <tr><td>ease</td><td colspan="2">out-quad default · <span class="mono">cubic-bezier(.25,.46,.45,.94)</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <span class="label">Iconography — line, 1.75px, square joins</span>
+      <div class="icons" style="margin-top:16px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="dumbbell"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="timer"><circle cx="12" cy="13" r="8"/><path d="M12 13V8M9 2h6"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="chart"><path d="M4 20V4M4 20h16M8 16l4-5 3 3 4-6"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="notebook"><rect x="5" y="3" width="14" height="18"/><path d="M9 3v18M12 8h4M12 12h4"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="frog eye"><circle cx="12" cy="12" r="8"/><path d="M6 9q6-4 12 0"/><circle cx="12" cy="12.5" r="2" fill="var(--accent)" stroke="none"/></svg>
+      </div>
+      <p class="note">Stroke line icons, uniform 1.75px, no fills except the accent frog-eye pupil. Match the engineered, drawn-in-a-notebook feel.</p>
+    </div>
+  </section>
+
+  <!-- 08 COMPONENTS -->
+  <section id="components">
+    <div class="sec-head"><span class="sec-num">08</span><div>
+      <h2 class="sec-title">Components</h2>
+      <p class="sec-kicker">The core kit, in the frog skin. Flat, 1px, 0px radius, mono numerals. Buttons always carry a visible background — never bare text.</p>
+    </div></div>
+
+    <div class="grid2" style="align-items:start">
+      <div class="comp">
+        <h3 class="blk">Buttons</h3>
+        <div class="demo">
+          <button class="btn" type="button">Log set</button>
+          <button class="btn ghost" type="button">Skip</button>
+          <button class="btn danger" type="button">Discard</button>
+        </div>
+        <p class="note">Primary = green fill. Ghost = hairline. Danger = red hairline. Never text-only.</p>
+      </div>
+      <div class="comp">
+        <h3 class="blk">Badges &amp; chips</h3>
+        <div class="demo">
+          <span class="badge pos">▲ PR</span><span class="badge warn">low confidence</span><span class="badge neg">▼ regression</span>
+          <span class="pill">RIR 1</span><span class="pill"><b>e1RM</b> 168.2</span>
+        </div>
+        <p class="note">Semantic badges carry a glyph + word, never color alone (a11y).</p>
+      </div>
+      <div class="comp">
+        <h3 class="blk">Inputs &amp; number pad</h3>
+        <div class="demo" style="align-items:flex-start">
+          <div class="field"><label>weight · kg</label><span class="fauxinput focus tnum">142.5</span></div>
+          <div class="field"><label>reps</label><span class="fauxinput tnum">5</span></div>
+          <div class="numpad" aria-hidden="true">
+            <button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button>.</button><button>0</button><button>⌫</button>
+          </div>
+        </div>
+        <p class="note">Inputs are 16px min (no iOS zoom), mono, no spinners on the logging path. Focus = accent ring.</p>
+      </div>
+      <div class="comp">
+        <h3 class="blk">Table — tabular data</h3>
+        <div class="demo" style="display:block;padding:0">
+          <table class="token-tbl tnum" style="font-size:12.5px">
+            <thead><tr><th>lift</th><th style="text-align:right">top set</th><th style="text-align:right">e1RM</th></tr></thead>
+            <tbody>
+              <tr><td>Squat</td><td style="text-align:right">142.5</td><td style="text-align:right;color:var(--accent-text)">168.2</td></tr>
+              <tr><td>Bench</td><td style="text-align:right">100.0</td><td style="text-align:right;color:var(--accent-text)">118.9</td></tr>
+              <tr><td>Deadlift</td><td style="text-align:right">180.0</td><td style="text-align:right;color:var(--accent-text)">205.7</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Numbers right-aligned, decimal-aligned, mono. Columns never ripple.</p>
+      </div>
+      <div class="comp">
+        <h3 class="blk">Toast — playground copy</h3>
+        <div class="demo" style="display:block;padding:0">
+          <div class="mock">
+            <div class="mock-head"><span>◆ toast</span><span class="tl" data-h="saved" data-f="recorded"></span></div>
+            <div class="mock-body"><p class="copy-body tl" style="margin:0" data-h="Set saved. 142.5 kg × 5 · RIR 1." data-f="Recorded. 142.5 kg × 5 · RIR 1. The frog nods, slowly."></p></div>
+          </div>
+        </div>
+        <p class="note">Toasts get the frog. The numbers inside stay exact. Switch registers to see it re-voice.</p>
+      </div>
+      <div class="comp">
+        <h3 class="blk">Empty state — playground copy</h3>
+        <div class="demo" style="display:block;padding:0">
+          <div class="mock">
+            <div class="mock-head"><span>◆ empty · history</span><span>0</span></div>
+            <div class="mock-body">
+              <p class="copy-title tl" style="margin:0" data-h="No sessions yet." data-f="The lab is empty. The frog is waiting."></p>
+              <p class="copy-body tl" data-h="Log your first set to begin." data-f="Log your first set. The frog will begin taking notes immediately, possibly before you finish."></p>
+            </div>
+          </div>
+        </div>
+        <p class="note">Empty states are prime frog territory — but they still point at the next action.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 NUMBERS & DATA -->
+  <section id="numbers">
+    <div class="sec-head"><span class="sec-num">09</span><div>
+      <h2 class="sec-title">Numbers &amp; data — the sacred spec</h2>
+      <p class="sec-kicker">This is the instrument. No jokes, no mascot, no register change touches it. Consistency here is what lets the frog be an idiot everywhere else.</p>
+    </div></div>
     <div class="grid2" style="align-items:start">
       <div class="card">
-        <span class="zone sacred" style="margin-bottom:14px">Sacred proof · a real Findings card</span>
-        <div class="mock reveal" id="findingsCard" style="--to:78%">
+        <span class="zone sacred" style="margin-bottom:14px">Sacred proof · Findings card</span>
+        <div class="mock reveal" style="--to:78%">
           <div class="mock-head"><span>◻ finding</span><span>7d sleep vs top set</span></div>
           <div class="mock-body">
             <div class="big"><span class="accent tnum">+4.2%</span> heavier</div>
             <p class="muted" style="font-size:12px;margin:6px 0 0">on nights with 7h+ sleep · n=19 sessions</p>
-            <!-- sparkline -->
             <svg viewBox="0 0 260 64" width="100%" height="64" style="margin-top:14px" aria-label="trend sparkline">
               <line x1="0" y1="16" x2="260" y2="16" stroke="#243029" stroke-width="1"/>
               <line x1="0" y1="32" x2="260" y2="32" stroke="#243029" stroke-width="1"/>
@@ -789,157 +865,105 @@
               <circle cx="260" cy="18" r="3.5" fill="var(--frog-400)"/>
             </svg>
             <div class="conf">
-              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-300)"><span>confidence</span><span class="tnum">95%</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#8B968F"><span>confidence</span><span class="tnum">95%</span></div>
               <div class="conf-track"><div class="conf-fill"></div></div>
             </div>
-            <p class="muted" style="font-size:11px;margin-top:12px">correlation, not causation. controls: bodyweight, caffeine. </p>
+            <p class="muted" style="font-size:11px;margin-top:12px">correlation, not causation. controls: bodyweight, caffeine.</p>
           </div>
         </div>
-        <p class="note">Zero jokes. Faint grid, area fill, emphasized endpoint, tabular figures, an honest confidence bar and caveat. This is the instrument.</p>
+        <p class="note">Faint grid, area fill, emphasised endpoint, tabular figures, honest confidence bar + mandatory caveat.</p>
       </div>
-
-      <div style="display:flex;flex-direction:column;gap:16px">
-        <div class="card">
-          <span class="label">Motifs</span>
-          <ul style="margin:12px 0 0;padding-left:18px;color:var(--text-muted);font-size:14px">
-            <li><b style="color:var(--text)">Graph paper</b> — faint 8px/24px grid on empty surfaces &amp; playground zones. The notebook you scribble in.</li>
-            <li><b style="color:var(--text)">Dissection-diagram line art</b> — deadpan labelled illustrations (a frog, a barbell) with leader lines &amp; specimen numbers.</li>
-            <li><b style="color:var(--text)">Terminal-green cues</b> — the accent as a phosphor blink: cursor, active state, the one thing that’s alive.</li>
-            <li><b style="color:var(--text)">Lily-pad ripple</b> — a single expanding ring for a “leap” moment. Sparse. Never on the data.</li>
-          </ul>
-        </div>
-        <div class="card">
-          <span class="label">Surfaces</span>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-            <span class="pill">Flat — no shadows</span>
-            <span class="pill">0px radius</span>
-            <span class="pill">1px hairline borders</span>
-            <span class="pill">8px grid spacing</span>
-            <span class="pill">Dense 13px UI</span>
-            <span class="pill">Dark default + light</span>
-          </div>
-          <p class="note">Buttons always carry a visible background — never bare text. The frog is loud; the surfaces are silent.</p>
-          <div class="btn-row">
-            <button class="btn" type="button">Log set</button>
-            <button class="btn ghost" type="button">Skip</button>
-          </div>
-        </div>
+      <div class="card">
+        <span class="label">Rules for every number</span>
+        <ul style="margin:12px 0 0;padding-left:18px;color:var(--text-muted);font-size:14px;line-height:1.7">
+          <li><b style="color:var(--text)">Mono &amp; tabular</b> always — weights, reps, RIR, e1RM, timers, p-values.</li>
+          <li><b style="color:var(--text)">Decimals aligned</b>; fixed dp per type (weight 1, correlation 2, p 3).</li>
+          <li><b style="color:var(--text)">Units after a hair space</b>: 172.4 kg, not 172.4kg.</li>
+          <li><b style="color:var(--text)">Time</b> as m:ss (3:00), never 180s in the UI.</li>
+          <li><b style="color:var(--text)">Confidence is visible</b> — a bar + %, never hidden.</li>
+          <li><b style="color:var(--text)">Caveat is mandatory</b> — “correlation, not causation” ships with every Finding.</li>
+          <li><b style="color:var(--text)">No black boxes</b> — formulas (e1RM) are inspectable; the frog shows its working.</li>
+          <li><b style="color:var(--text)">Never round a lie</b> — n is shown; low n reads “not enough data.”</li>
+        </ul>
       </div>
     </div>
   </section>
 
-  <!-- 07 VOICE -->
-  <section id="voice">
-    <div class="sec-head">
-      <span class="sec-num">07</span>
-      <div>
-        <h2 class="sec-title">Tone of voice</h2>
-        <p class="sec-kicker">Dry, smart, quietly absurd — a scientist who is too into frogs, delivered straight-faced next to real numbers. Never random-quirky. This is where the brand is won.</p>
+  <!-- 10 LOOK & FEEL -->
+  <section id="feel">
+    <div class="sec-head"><span class="sec-num">10</span><div>
+      <h2 class="sec-title">Look &amp; feel</h2>
+      <p class="sec-kicker">How “goofy frog + serious lab notebook + brutalist terminal” coheres: graph-paper surfaces, deadpan line-art, terminal-green cues, sparse ripple motifs.</p>
+    </div></div>
+    <div class="grid2" style="align-items:start">
+      <div class="card">
+        <span class="label">Motifs</span>
+        <ul style="margin:12px 0 0;padding-left:18px;color:var(--text-muted);font-size:14px;line-height:1.7">
+          <li><b style="color:var(--text)">Graph paper</b> — faint 8px/24px grid on empty &amp; playground surfaces.</li>
+          <li><b style="color:var(--text)">Dissection-diagram line art</b> — deadpan labelled illustrations with leader lines.</li>
+          <li><b style="color:var(--text)">Terminal-green cues</b> — the accent as a phosphor blink: cursor, active state.</li>
+          <li><b style="color:var(--text)">Lily-pad ripple</b> — one expanding ring for a “leap” moment. Sparse. Never on data.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="label">Surfaces</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <span class="pill">Flat — no shadows</span><span class="pill">0px radius</span><span class="pill">1px hairlines</span><span class="pill">8px grid</span><span class="pill">Dense 13px UI</span><span class="pill">Dark default + light</span>
+        </div>
+        <p class="note">Buttons always carry a visible background. The frog is loud; the surfaces are silent.</p>
+        <div class="btn-row"><button class="btn" type="button">Log set</button><button class="btn ghost" type="button">Skip</button></div>
       </div>
     </div>
-
-    <div class="grid2">
-      <div class="mock">
-        <div class="mock-head"><span>◆ PR celebration</span><span>squat</span></div>
-        <div class="mock-body">
-          <div class="copy-title">NEW e1RM · <span class="tnum">172.4 kg</span></div>
-          <p class="copy-body">The frog has recorded your personal record and updated the relevant distributions. It is not impressed easily. It is, on this occasion, impressed.</p>
-          <p class="copy-nums tnum">▲ +3.1 kg over 84 days · n=19</p>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-head"><span>◆ empty Findings</span><span>not enough data</span></div>
-        <div class="mock-body">
-          <div class="copy-title">The frog refuses to speculate.</div>
-          <p class="copy-body">You’ve logged <span class="tnum">4</span> sessions. A correlation needs roughly <span class="tnum">12</span> before the frog will put its name on it. Keep logging sleep and carbs — it is watching, it is patient, and it has nowhere else to be.</p>
-          <p class="copy-nums tnum">4 / 12 sessions · 0 findings</p>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-head"><span>◆ rest-timer done</span><span>3:00</span></div>
-        <div class="mock-body">
-          <div class="copy-title">Rest complete.</div>
-          <p class="copy-body">Adenosine triphosphate: replenished (approximately). The frog suggests you pick up the bar. The frog is not going to lift it for you.</p>
-          <p class="copy-nums tnum">elapsed 3:00 · next: bench 100.0 kg</p>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-head"><span>◆ failed sync</span><span style="color:var(--err)">● offline</span></div>
-        <div class="mock-body">
-          <div class="copy-title" style="color:var(--err)">Sync failed. Your data is safe; the frog is annoyed.</div>
-          <p class="copy-body">Two sets are stranded on this device and could not reach the lab. Retrying every 30s. Nothing was lost — the frog keeps meticulous local records, as any serious amphibian would.</p>
-          <p class="copy-nums tnum">2 sets queued · retry in 0:27</p>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-head"><span>◆ notification</span><span>day 7</span></div>
-        <div class="mock-body">
-          <div class="copy-title">You logged before noon.</div>
-          <p class="copy-body">The frog noticed. It has said nothing, but it noticed. Consistency, n=7. →</p>
-          <p class="copy-nums tnum">streak 7 · logged 11:42</p>
-        </div>
-      </div>
-
-      <div class="mock">
-        <div class="mock-head"><span>◆ 404 / achievement</span><span>edge</span></div>
-        <div class="mock-body">
-          <div class="copy-title">This page is not in the literature.</div>
-          <p class="copy-body">The frog searched every folder and one lily pad. Nothing here. Achievement unlocked: <span class="accent">“Control Group”</span> — you visited a page with no data whatsoever.</p>
-          <p class="copy-nums tnum">HTTP 404 · specimens found: 0</p>
-        </div>
-      </div>
-    </div>
-    <p class="note">Voice rules: state the real number first or last; let the frog editorialize in between; never let a joke touch the figure itself; never exclaim; the frog is deadpan, not zany.</p>
   </section>
 
-  <!-- 08 MOTION -->
+  <!-- 11 MOTION -->
   <section id="motion">
-    <div class="sec-head">
-      <span class="sec-num">08</span>
-      <div>
-        <h2 class="sec-title">Motion</h2>
-        <p class="sec-kicker">Micro-interactions 100–150ms. Nothing animates on the data path. A restrained “leap” or “ripple” earns a smile at the edges — never under a number a lifter is reading.</p>
-      </div>
-    </div>
-
+    <div class="sec-head"><span class="sec-num">11</span><div>
+      <h2 class="sec-title">Motion</h2>
+      <p class="sec-kicker">Micro-interactions 100–150ms. Nothing animates on the data path. A restrained “leap” or “ripple” earns a smile at the edges — never under a number.</p>
+    </div></div>
     <div class="grid3">
-      <div class="card">
-        <span class="label">Allowed · playground</span>
-        <p style="margin:12px 0 0;font-size:14px;color:var(--text-muted)">A single lily-pad ripple on a PR banner. A 120ms “leap” (translateY) on a streak. A confidence bar that fills once on Findings reveal. Cursor/phosphor blink on active input.</p>
-        <div class="btn-row">
-          <button class="btn leap" type="button" id="leapBtn">▲ New PR — tap</button>
-        </div>
-      </div>
-      <div class="card">
-        <span class="label">Forbidden · sacred</span>
-        <p style="margin:12px 0 0;font-size:14px;color:var(--text-muted)">No animation on set-save, on the logging keypad, on live charts, on timers, or on any figure. Feedback there is instant state change (&lt;100ms), not motion.</p>
-      </div>
-      <div class="card">
-        <span class="label">Findings reveal</span>
-        <p style="margin:12px 0 0;font-size:14px;color:var(--text-muted)">The statistic appears immediately; only its confidence bar animates its width once (900ms ease-out) as it scrolls in — the reveal is a flourish on the frame, never on the number.</p>
-        <div class="conf reveal" style="--to:88%">
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint)"><span>demo</span><span class="tnum">88%</span></div>
-          <div class="conf-track"><div class="conf-fill"></div></div>
-        </div>
-      </div>
+      <div class="card"><span class="label">Allowed · playground</span><p style="margin:12px 0 0;font-size:14px;color:var(--text-muted)">A lily-pad ripple on a PR banner. A 120ms leap on a streak. A confidence bar that fills once. Cursor blink on active input.</p><div class="btn-row"><button class="btn leap" type="button" id="leapBtn">▲ New PR — tap</button></div></div>
+      <div class="card"><span class="label">Forbidden · sacred</span><p style="margin:12px 0 0;font-size:14px;color:var(--text-muted)">No animation on set-save, keypad, live charts, timers, or any figure. Feedback there is instant state change (&lt;100ms), not motion.</p></div>
+      <div class="card"><span class="label">Findings reveal</span><p style="margin:12px 0 0;font-size:14px;color:var(--text-muted)">The statistic appears immediately; only its confidence bar animates once (900ms) on scroll-in — a flourish on the frame, never the number.</p><div class="conf reveal" style="--to:88%"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint)"><span>demo</span><span class="tnum">88%</span></div><div class="conf-track"><div class="conf-fill"></div></div></div></div>
     </div>
     <p class="note">All motion respects <span class="mono">prefers-reduced-motion</span> — ripples and fills disable cleanly, state still reads.</p>
   </section>
 
-  <!-- 09 MASCOT RULES -->
-  <section id="mascot">
-    <div class="sec-head">
-      <span class="sec-num">09</span>
-      <div>
-        <h2 class="sec-title">Mascot usage — where the frog may &amp; may not appear</h2>
-        <p class="sec-kicker">The single most important guardrail. The expressive mascot lives only in the playground. In the sacred zones, at most the abstract mark (B) may appear as quiet chrome — never the character.</p>
+  <!-- 12 ACCESSIBILITY -->
+  <section id="a11y">
+    <div class="sec-head"><span class="sec-num">12</span><div>
+      <h2 class="sec-title">Accessibility</h2>
+      <p class="sec-kicker">A rigorous instrument is legible to everyone. The frog never gets in the way of a lifter reading their numbers.</p>
+    </div></div>
+    <div class="grid2">
+      <div class="card">
+        <span class="label">Hard requirements</span>
+        <ul style="margin:12px 0 0;padding-left:18px;color:var(--text-muted);font-size:14px;line-height:1.7">
+          <li><b style="color:var(--text)">Contrast</b> — body text ≥ 4.5:1, large ≥ 3:1, on both themes (Radix step 11/12 guarantees it).</li>
+          <li><b style="color:var(--text)">Focus visible</b> — 2px accent ring, 2px offset, on every interactive element.</li>
+          <li><b style="color:var(--text)">Tap targets</b> — ≥ 44px on the logging path.</li>
+          <li><b style="color:var(--text)">16px inputs</b> — never smaller (blocks iOS zoom).</li>
+          <li><b style="color:var(--text)">Never color alone</b> — semantics carry a glyph + word too.</li>
+          <li><b style="color:var(--text)">Reduced motion</b> — honored; nothing essential lives in animation.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="label">Humour never blocks clarity</span>
+        <p style="margin:12px 0 0;font-size:14px;color:var(--text-muted);line-height:1.7">
+          <b style="color:var(--text)">Human register is an accessibility feature.</b> A lifter who finds the frog tiring — or who relies on a screen reader and wants plain strings — flips to Human and gets clean, literal copy with the same numbers. Ultrafrog is opt-in and never the default. The frog is a personality, not a barrier.
+        </p>
+        <div style="margin-top:14px"><span class="badge pos">Human = plain-language mode</span></div>
       </div>
     </div>
+  </section>
 
+  <!-- 13 MASCOT RULES -->
+  <section id="mascot">
+    <div class="sec-head"><span class="sec-num">13</span><div>
+      <h2 class="sec-title">Mascot usage — where the frog may &amp; may not appear</h2>
+      <p class="sec-kicker">The single most important guardrail. The expressive mascot lives only in the playground. In sacred zones, at most the abstract mark (B) appears as quiet chrome — never the character.</p>
+    </div></div>
     <div class="rules">
       <div class="may">
         <h4><span class="zone play" style="padding:2px 8px">May appear</span></h4>
@@ -971,26 +995,12 @@
     <p class="note">Test before shipping any frog: <em>“Is a lifter about to make a decision from this pixel?”</em> If yes, the frog leaves the room.</p>
   </section>
 
-  <!-- 10 RADIX -->
+  <!-- 14 RADIX -->
   <section id="radix">
-    <div class="sec-head">
-      <span class="sec-num">10</span>
-      <div>
-        <h2 class="sec-title">Built on Radix Themes — not beside it</h2>
-        <p class="sec-kicker">Frog is a <b>re-skin of the shipped Radix Themes 3 system</b>, not a rebuild. Every decision above is one prop or one token swap. Here is the exact diff and, for each, whether Radix supports it natively.</p>
-      </div>
-    </div>
-
-    <style>
-      .ok { color: var(--accent-text); font-weight: 600; }
-      .diff-old { color: var(--text-faint); text-decoration: line-through; }
-      .diff-new { color: var(--accent-text); }
-      .codeblk { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; overflow-x: auto; white-space: pre; color: var(--text-muted); }
-      .codeblk .add { color: var(--accent-text); }
-      .codeblk .del { color: var(--err); }
-      .codeblk .cmt { color: var(--text-faint); }
-    </style>
-
+    <div class="sec-head"><span class="sec-num">14</span><div>
+      <h2 class="sec-title">Built on Radix Themes — not beside it</h2>
+      <p class="sec-kicker">Frog is a <b>re-skin of the shipped Radix Themes 3 system</b>, not a rebuild. Every decision above is one prop or one token swap. Here is the exact diff and, for each, whether Radix supports it natively.</p>
+    </div></div>
     <div class="grid2" style="align-items:start">
       <div>
         <h3 class="blk">&lt;Theme&gt; props — the whole visual change</h3>
@@ -1008,7 +1018,6 @@
           </table>
         </div>
         <p class="note">All six are native Radix Theme props. <b>*</b> <span class="mono">radius="none"</span> restores the brief’s 0px mandate — a deliberate reversal, decided below.</p>
-
         <h3 class="blk" style="margin-top:28px">theme.css — the scale imports</h3>
         <div class="codeblk"><span class="del">- @import ".../colors/indigo.css";  /* accent */</span>
 <span class="del">- @import ".../colors/slate.css";   /* gray */</span>
@@ -1026,9 +1035,8 @@
   --pos:     <span class="add">var(--grass-11)</span>;  <span class="cmt">/* success = frog */</span>
   --border:  <span class="add">var(--sage-6)</span>;
   --ink:     <span class="add">var(--sage-12)</span>;</div>
-        <p class="note">Honors the file’s own 6-scale budget — this ends at <b>5</b> scales (sage · grass · red · amber · orange), one lighter than today. Referencing an un-imported scale silently breaks, so the swap is import-for-import.</p>
+        <p class="note">Honors the file’s 6-scale budget — ends at <b>5</b> scales (sage · grass · red · amber · orange), one lighter than today. Referencing an un-imported scale silently breaks, so the swap is import-for-import.</p>
       </div>
-
       <div>
         <h3 class="blk">Support matrix — everything proposed is native</h3>
         <div class="scroll-x">
@@ -1041,20 +1049,20 @@
               <tr><td>Dark default + light</td><td><span class="ok">✓</span> appearance (in place)</td></tr>
               <tr><td>Tabular numerals</td><td><span class="ok">✓</span> existing <span class="mono">num</span> utility</td></tr>
               <tr><td>Bricolage display</td><td><span class="ok">✓</span> --default-font-family</td></tr>
+              <tr><td>Language registers</td><td><span class="ok">✓</span> app-layer text transform (theme-agnostic)</td></tr>
               <tr><td>success / warn / error</td><td><span class="ok">✓</span> grass / amber / red</td></tr>
               <tr><td>Buttons never bare</td><td><span class="ok">✓</span> radix layer &gt; preflight</td></tr>
               <tr><td>Flat, no shadows</td><td><span class="ok">✓</span> panelBackground="solid"</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="note">Nothing in this identity needs a mechanism Radix Themes 3 doesn’t already ship. The frog lives in <em>content</em> — mascot SVGs, copy, empty states — none of which touches the theme engine.</p>
-
+        <p class="note">Nothing in this identity needs a mechanism Radix Themes 3 doesn’t already ship. The frog lives in <em>content</em> — mascot, copy, registers — none of which touches the theme engine.</p>
         <div class="card" style="margin-top:20px;border-color:color-mix(in oklab, var(--accent) 45%, var(--border))">
           <span class="label" style="color:var(--accent-text)">Decisions · locked</span>
           <ol style="margin:12px 0 0;padding-left:20px;font-size:14px;color:var(--text-muted)">
-            <li style="margin-bottom:10px"><b style="color:var(--text)">Radius → <span class="mono">none</span> (0px).</b> Deliberate reversal of the recent <span class="mono">radius="small"</span> call. Brutalist 0px is load-bearing for the terminal/lab-notebook soul — sharp corners read as “precise instrument.” Fallback if mobile tap-feel testing regresses: <span class="mono">radius="small"</span> on interactive controls only.</li>
-            <li style="margin-bottom:10px"><b style="color:var(--text)">Accent → built-in <span class="mono">grass</span> for v1.</b> Zero custom CSS, accessible, and it keeps the bundle light. Reads a shade more leaf-green than the <span class="mono">#43DD6E</span> neon; a generated custom scale can hit the exact neon later without touching anything else.</li>
-            <li><b style="color:var(--text)">Success = the frog.</b> Semantic success folds into the accent green (a PR <em>is</em> the frog’s green). Drops the separate <span class="mono">green</span> scale → 5 scales total, and reinforces the brand.</li>
+            <li style="margin-bottom:10px"><b style="color:var(--text)">Radius → <span class="mono">none</span> (0px).</b> Deliberate reversal of the recent <span class="mono">radius="small"</span> call. Brutalist 0px is load-bearing for the terminal/lab soul. Fallback if mobile tap-feel regresses: <span class="mono">small</span> on interactive controls only.</li>
+            <li style="margin-bottom:10px"><b style="color:var(--text)">Accent → built-in <span class="mono">grass</span> for v1.</b> Zero custom CSS, accessible, keeps the bundle light. Custom neon scale later without touching anything else.</li>
+            <li><b style="color:var(--text)">Success = the frog.</b> Folds into the accent green → 5 scales total, reinforces the brand.</li>
           </ol>
         </div>
       </div>
@@ -1066,8 +1074,8 @@
     <span class="label">North star</span>
     <p class="northstar" style="margin-top:14px">The driest, most rigorous instrument you’ve ever trusted — and, unmistakably, a frog runs it.</p>
     <small>
-      Frog · brand identity v1 proposal · neutral-ink + frog-green<br/>
-      base #0B0F0E · accent #43DD6E (= success) · 8px grid · tabular mono numerals<br/>
+      Frog · brand identity &amp; design system v1 · neutral-ink + frog-green<br/>
+      base #0B0F0E · accent #43DD6E (= success) · 8px grid · tabular mono numerals · registers: Human / Frog / Ultrafrog<br/>
       Radix Themes 3 re-skin: accentColor <span class="diff-old">indigo</span>→<span class="diff-new">grass</span> · grayColor <span class="diff-old">slate</span>→<span class="diff-new">sage</span> · radius <span class="diff-old">small</span>→<span class="diff-new">none</span><br/>
       “SBL” is a placeholder — this proposes the name <b style="color:var(--accent-text)">Frog</b>. Single-source it; keep it renameable.
     </small>
@@ -1077,42 +1085,76 @@
 
 <script>
   (function () {
-    // theme toggle — stamps data-theme so it wins over prefers-color-scheme
+    /* ---------- theme toggle ---------- */
     var btn = document.getElementById('themeBtn');
-    if (btn) {
-      btn.addEventListener('click', function () {
-        var root = document.documentElement;
-        var current = root.getAttribute('data-theme');
-        if (!current) {
-          current = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-        root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
-      });
+    if (btn) btn.addEventListener('click', function () {
+      var root = document.documentElement, cur = root.getAttribute('data-theme');
+      if (!cur) cur = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+    });
+
+    /* ---------- language registers: Human / Frog / Ultrafrog ---------- */
+    // Units that survive the ribbit transform so numbers stay interpretable.
+    var UNITS = new Set(['kg','lb','lbs','rir','e1rm','n','s','sec','min','hr','hrs','h','reps','rep','set','sets','bw','r','p','ci','x']);
+    function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function matchCase(core){
+      if (core === core.toUpperCase() && core !== core.toLowerCase()) return 'RIBBIT';
+      if (core[0] === core[0].toUpperCase() && core[0] !== core[0].toLowerCase()) return 'Ribbit';
+      return 'ribbit';
+    }
+    // token → html. kind: number (accent), unit (kept), word (kept or ribbit)
+    function renderToken(tok, reg){
+      if (/^\s+$/.test(tok)) return tok;
+      var m = tok.match(/^([^0-9A-Za-zÀ-ɏ]*)([\s\S]*?)([^0-9A-Za-zÀ-ɏ]*)$/);
+      var lead = m[1], core = m[2], trail = m[3];
+      if (core === '') return esc(tok);
+      var out;
+      if (/[0-9]/.test(core)) out = '<span class="tlnum">' + esc(core) + '</span>';        // number → survives, accented
+      else if (UNITS.has(core.toLowerCase())) out = esc(core);                               // unit → survives
+      else out = (reg === 'ultra') ? matchCase(core) : esc(core);                            // word → ribbit in ultra
+      return esc(lead) + out + esc(trail);
+    }
+    function render(str, reg){
+      return str.split(/(\s+)/).map(function(t){ return renderToken(t, reg); }).join('');
     }
 
-    // reveal confidence bars on scroll
+    var nodes = Array.prototype.slice.call(document.querySelectorAll('.tl'));
+    function setRegister(reg){
+      nodes.forEach(function(el){
+        var src = (reg === 'human') ? (el.getAttribute('data-h') || el.getAttribute('data-f') || '')
+                                    : (el.getAttribute('data-f') || '');
+        el.innerHTML = render(src, reg);
+      });
+      // sync both segmented controls + register cards
+      document.querySelectorAll('[data-reg]').forEach(function(b){
+        b.setAttribute('aria-pressed', b.getAttribute('data-reg') === reg ? 'true' : 'false');
+      });
+      document.querySelectorAll('[data-regcard]').forEach(function(c){
+        c.classList.toggle('on', c.getAttribute('data-regcard') === reg);
+      });
+    }
+    document.querySelectorAll('[data-reg]').forEach(function(b){
+      b.addEventListener('click', function(){ setRegister(b.getAttribute('data-reg')); });
+    });
+    setRegister('frog'); // default
+
+    /* ---------- reveal confidence bars ---------- */
     var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var reveals = document.querySelectorAll('.reveal');
     if (reduce || !('IntersectionObserver' in window)) {
       reveals.forEach(function (el) { el.classList.add('revealed'); });
     } else {
       var io = new IntersectionObserver(function (entries) {
-        entries.forEach(function (e) {
-          if (e.isIntersecting) { e.target.classList.add('revealed'); io.unobserve(e.target); }
-        });
+        entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('revealed'); io.unobserve(e.target); } });
       }, { threshold: 0.4 });
       reveals.forEach(function (el) { io.observe(el); });
     }
 
-    // leap micro-interaction demo (120ms)
+    /* ---------- leap micro-interaction ---------- */
     var leap = document.getElementById('leapBtn');
-    if (leap && !reduce) {
-      leap.addEventListener('click', function () {
-        leap.animate(
-          [{ transform: 'translateY(0)' }, { transform: 'translateY(-8px)' }, { transform: 'translateY(0)' }],
-          { duration: 320, easing: 'cubic-bezier(0.22,0.61,0.36,1)' }
-        );
-      });
-    }
+    if (leap && !reduce) leap.addEventListener('click', function () {
+      leap.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-8px)' }, { transform: 'translateY(0)' }],
+        { duration: 320, easing: 'cubic-bezier(0.22,0.61,0.36,1)' });
+    });
   })();
 </script>
