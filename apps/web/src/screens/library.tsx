@@ -72,6 +72,22 @@ import { useVoice } from "@/lib/voice";
 
 const TIERS: Tier[] = ["S", "A", "B", "C"];
 
+// One name per line, trimmed, blanks dropped, case-insensitive dedupe within
+// the paste (keeps the first occurrence's casing).
+function parseBulkExerciseNames(text: string): string[] {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    names.push(trimmed);
+  }
+  return names;
+}
+
 // Skip layout/paint for off-screen rows (~900 in the seeded library). The
 // `auto` keyword lets the browser cache each row's real height after first
 // render, so the estimate only matters before a row has ever been shown.
@@ -99,12 +115,24 @@ export default function LibraryScreen() {
   const [filterMuscle, setFilterMuscle] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState("");
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
 
   const setMetrics = metrics.filter(
     (m) => m.scope === "set" && m.ownerId !== null,
   );
   const filtered = filterExercises(exercises, query, filterMuscle);
   const groups = groupByPrimaryMuscle(filtered);
+
+  const existingNames = new Set(exercises.map((e) => e.name.toLowerCase()));
+  const bulkNames = parseBulkExerciseNames(bulkText);
+  const bulkDuplicates = bulkNames.filter((n) =>
+    existingNames.has(n.toLowerCase()),
+  );
+  const bulkToCreate = skipDuplicates
+    ? bulkNames.filter((n) => !existingNames.has(n.toLowerCase()))
+    : bulkNames;
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -122,6 +150,15 @@ export default function LibraryScreen() {
     setMuscle("");
     setType("weight_reps");
     setEquipment("");
+  }
+
+  function onBulkSubmit(e: FormEvent) {
+    e.preventDefault();
+    for (const n of bulkToCreate) {
+      create.mutate({ name: n, opts: {} });
+    }
+    setBulkText("");
+    setBulkOpen(false);
   }
 
   function toggleGroup(key: string) {
@@ -213,6 +250,64 @@ export default function LibraryScreen() {
           </Select.Root>
         </div>
       </form>
+
+      <div className="mt-2">
+        <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              data-testid="bulk-add-exercises-trigger"
+            >
+              Bulk add
+            </Button>
+          </DialogTrigger>
+          <DialogContent title="Bulk add exercises">
+            <form onSubmit={onBulkSubmit} className="flex flex-col gap-3">
+              <textarea
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                placeholder="One exercise name per line"
+                rows={8}
+                className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
+                data-testid="bulk-add-textarea"
+              />
+              {bulkDuplicates.length > 0 && (
+                <p
+                  className="text-2xs text-warn"
+                  data-testid="bulk-add-duplicate-warning"
+                >
+                  {bulkDuplicates.length} name
+                  {bulkDuplicates.length === 1 ? "" : "s"} already in your
+                  library: {bulkDuplicates.join(", ")}
+                </p>
+              )}
+              <label className="flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={skipDuplicates}
+                  onChange={(e) => setSkipDuplicates(e.target.checked)}
+                  className="size-4 accent-(--accent)"
+                  data-testid="bulk-add-skip-duplicates"
+                />
+                Skip duplicates
+              </label>
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={bulkToCreate.length === 0}
+                  data-testid="bulk-add-submit"
+                >
+                  {bulkToCreate.length > 0
+                    ? `Add ${bulkToCreate.length} exercise${bulkToCreate.length === 1 ? "" : "s"}`
+                    : "Add exercises"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <div className="mt-4">
         <ExerciseFilterBar
