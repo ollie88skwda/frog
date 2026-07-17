@@ -286,6 +286,7 @@ export default function RoutineEditScreen() {
         <h1 className="text-lg font-semibold tracking-tight">
           {id ? "Edit routine" : "New routine"}
         </h1>
+        {/* TODO(lessons): <InfoTip lessonId="programming-a-routine" /> once copy exists */}
         <div className="flex gap-2">
           <Button variant="ghost" onClick={() => navigate("/train")}>
             Cancel

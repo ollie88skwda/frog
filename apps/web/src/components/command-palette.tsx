@@ -6,6 +6,7 @@ import {
   FlaskConical,
   History,
   Home,
+  Lightbulb,
   LogOut,
   Moon,
   type Play,
@@ -85,6 +86,12 @@ export function CommandPalette() {
       keywords: "body weight measurements photos",
     },
     { label: "Settings", icon: Settings, action: () => navigate("/settings") },
+    {
+      label: "Training tips",
+      icon: Lightbulb,
+      action: () => navigate("/tips"),
+      keywords: "lessons education info help",
+    },
   ];
 
   const actions: Item[] = [

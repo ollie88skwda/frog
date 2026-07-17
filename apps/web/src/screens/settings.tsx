@@ -348,6 +348,7 @@ function WorkoutsSection() {
   return (
     <Section title="Workouts">
       <div className="mt-1 divide-y divide-border">
+        {/* TODO(lessons): <InfoTip lessonId="rest-between-sets" /> once copy exists */}
         <Row
           label="Default rest timer"
           hint="Applied to sets with no per-exercise rest set."

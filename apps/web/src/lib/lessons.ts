@@ -5,15 +5,15 @@ import { useCallback, useSyncExternalStore } from "react";
 // the future PubMed coaching plugs into). Seen-state is a local device
 // setting, same pattern as lib/settings.ts.
 
-export type LessonId = "rir";
-
 export type Lesson = {
   title: string;
   body: string[]; // one string = one short line
   citations?: string[]; // PMIDs / DOIs, rendered as small links
 };
 
-export const LESSONS: Record<LessonId, Lesson> = {
+// Add a new lesson by adding one entry here — LessonId is derived below, so
+// every InfoTip/LESSONS lookup stays type-checked with no undefined-guard.
+export const LESSONS = {
   // PLACEHOLDER copy — Ollie supplies the final wording.
   rir: {
     title: "RIR — reps in reserve",
@@ -23,7 +23,9 @@ export const LESSONS: Record<LessonId, Lesson> = {
       "Beginner? Go near failure to learn what failure feels like. Intermediate+? Stay at 1–2.",
     ],
   },
-};
+} satisfies Record<string, Lesson>;
+
+export type LessonId = keyof typeof LESSONS;
 
 const KEY = "lessons-seen";
 const listeners = new Set<() => void>();

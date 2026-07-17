@@ -1,11 +1,20 @@
 import { Info } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { LESSONS, type LessonId, useLessonSeen } from "@/lib/lessons";
+import {
+  LESSONS,
+  type Lesson,
+  type LessonId,
+  useLessonSeen,
+} from "@/lib/lessons";
 
 // Tiny info affordance that opens a quick lesson. Unseen lessons show an
 // accent square dot; opening marks them seen (localStorage).
 export function InfoTip({ lessonId }: { lessonId: LessonId }) {
-  const lesson = LESSONS[lessonId];
+  // Widen to `Lesson` — indexing `LESSONS` directly infers each entry's exact
+  // literal shape, which omits `citations` entirely for entries that don't
+  // set it (not `citations: undefined`), so the optional field wouldn't
+  // type-check below without this annotation.
+  const lesson: Lesson = LESSONS[lessonId];
   const { seen, markSeen } = useLessonSeen(lessonId);
 
   return (

@@ -2545,6 +2545,7 @@ function CommittedRow({
                 </div>
                 <div className="flex flex-col gap-1">
                   <span className={labelCls}>RPE</span>
+                  {/* TODO(lessons): <InfoTip lessonId="rpe" /> once copy exists */}
                   <RpeSelect
                     value={rpe}
                     onChange={setRpe}
@@ -3171,6 +3172,7 @@ function ActiveRow({
                   <span className="text-2xs font-medium tracking-wide text-faint uppercase">
                     RPE
                   </span>
+                  {/* TODO(lessons): <InfoTip lessonId="rpe" /> once copy exists */}
                   <RpeSelect
                     value={rpe}
                     onChange={setRpe}
