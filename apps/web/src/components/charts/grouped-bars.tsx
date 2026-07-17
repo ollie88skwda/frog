@@ -3,6 +3,8 @@
 // stats hub distribution view (M8). The first series uses the accent; extra
 // series step down to quieter neutral fills so the "current" bar stays dominant.
 
+import { useVoice } from "@/lib/voice";
+
 export type BarGroup = { label: string; values: number[] };
 
 const W = 320;
@@ -23,6 +25,7 @@ export function GroupedBarChart({
   ariaLabel?: string;
   testId?: string;
 }) {
+  const { t } = useVoice();
   if (groups.length === 0) {
     return (
       <div
@@ -30,7 +33,7 @@ export function GroupedBarChart({
         style={{ height }}
         data-testid={testId}
       >
-        No data yet.
+        {t("No data yet.", "No data yet. The frog refuses to speculate.")}
       </div>
     );
   }

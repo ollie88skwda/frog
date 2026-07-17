@@ -1,4 +1,4 @@
-// SBL service worker — app-shell asset cache only. Deliberately NOT an offline
+// Frog service worker — app-shell asset cache only. Deliberately NOT an offline
 // data layer (v1 web is online-first): it caches the built shell so repeat
 // loads are instant and survive flaky networks, and it relays web-push +
 // local rest-timer notifications. Data always comes from the network.
@@ -60,7 +60,10 @@ self.addEventListener("fetch", (event) => {
 
 // Web push: the send-rest-push Edge Function posts a JSON payload; show it.
 self.addEventListener("push", (event) => {
-  let data = { title: "SBL", body: "Rest timer done" };
+  let data = {
+    title: "Frog",
+    body: "Rest complete. The frog suggests you pick up the bar.",
+  };
   try {
     if (event.data) data = { ...data, ...event.data.json() };
   } catch {

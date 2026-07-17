@@ -1,5 +1,6 @@
 import type { Repo } from "@sbl/core";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { voice } from "./voice";
 
 // PWA plumbing: service-worker registration, the install prompt, notification
 // permission, and thin web-push subscription. Everything is behind capability
@@ -154,8 +155,15 @@ async function currentSubscription(): Promise<PushSubscription | null> {
 /** Subscribes this device to push and persists the subscription (repo). Throws
  * if push isn't configured/supported — the caller gates on pushConfigured. */
 export async function subscribeToPush(repo: Repo): Promise<void> {
+  // These messages surface verbatim in the settings UI (setError(e.message)),
+  // so they carry the voice register.
   if (!pushConfigured || !pushSupported()) {
-    throw new Error("push not configured on this device");
+    throw new Error(
+      voice(
+        "Push is not configured on this device.",
+        "The frog is annoyed (your data is safe). Push is not configured on this device.",
+      ),
+    );
   }
   const reg = await navigator.serviceWorker.ready;
   const sub = await reg.pushManager.subscribe({
@@ -166,7 +174,13 @@ export async function subscribeToPush(repo: Repo): Promise<void> {
   });
   const json = sub.toJSON();
   const keys = json.keys as { p256dh: string; auth: string } | undefined;
-  if (!json.endpoint || !keys) throw new Error("subscription missing keys");
+  if (!json.endpoint || !keys)
+    throw new Error(
+      voice(
+        "The push subscription came back without keys.",
+        "The frog is annoyed (your data is safe). The push subscription came back without keys.",
+      ),
+    );
   await repo.savePushSubscription(json.endpoint, keys);
 }
 

@@ -1,6 +1,6 @@
-# SBL
+# Frog
 
-> SBL is a training lab notebook: users log workouts (exercises, sets of
+> Frog (formerly "SBL") is a training lab notebook: users log workouts (exercises, sets of
 > weight×reps, RIR, notes) AND the conditions around them (sleep, bodyweight,
 > pre-workout carbs, caffeine, stress, meal timing), then the app surfaces
 > correlations between inputs and outputs ("Findings"). All user data is
@@ -39,7 +39,8 @@ Full schema reference: docs/schema.md in the repo. API reference: docs/api.md.
 
 ## MCP server
 
-TypeScript stdio server (`sbl-mcp`, packages/mcp in the repo). Config env:
+TypeScript stdio server (`sbl-mcp`, packages/mcp in the repo). Config env
+(names keep the legacy SBL prefix for compatibility):
 SBL_TOKEN (required), SBL_API_URL. Tools: list_exercises, list_sessions,
 get_session, get_sets, get_progression (runs the findings engine locally),
 export_all.

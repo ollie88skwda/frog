@@ -24,6 +24,7 @@ import {
   useUpdateUserPrefs,
   useUserPrefs,
 } from "@/lib/profile-queries";
+import { useVoice } from "@/lib/voice";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const ACTIVITY_WEEKS = 13; // ~3 months
@@ -31,6 +32,7 @@ const ACTIVITY_WEEKS = 13; // ~3 months
 const monthFmt = new Intl.DateTimeFormat(undefined, { month: "short" });
 
 export default function ProfileScreen() {
+  const { t } = useVoice();
   const { name: authName, email } = useUserInfo();
   const { data: prefs } = useUserPrefs();
   const { data: sessions = [] } = useAllSessions();
@@ -137,7 +139,10 @@ export default function ProfileScreen() {
         </div>
         {recent.length === 0 ? (
           <p className="border-t border-border px-4 py-6 text-center text-xs text-faint">
-            No sessions yet — start one from Training.
+            {t(
+              "No sessions yet — start one from Training.",
+              "No sessions yet. The frog refuses to speculate — start one from Training.",
+            )}
           </p>
         ) : (
           <ul className="divide-y divide-border border-t border-border">

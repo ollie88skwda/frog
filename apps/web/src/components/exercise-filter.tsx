@@ -1,5 +1,5 @@
-import { MUSCLES, type MuscleTarget } from "@sbl/core";
 import { Select } from "@radix-ui/themes";
+import { MUSCLES, type MuscleTarget } from "@sbl/core";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 

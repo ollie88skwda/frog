@@ -1,6 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <title>SBL</title>
-  <rect width="512" height="512" rx="96" fill="#111113"/>
-  <rect x="16" y="16" width="480" height="480" rx="84" fill="none" stroke="#3e63dd" stroke-opacity="0.4" stroke-width="8"/>
-  <text x="256" y="308" font-family="-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="164" font-weight="650" letter-spacing="-6" text-anchor="middle" fill="#e8eaed">SBL</text>
+  <title>Frog</title>
+  <!-- Frog-eye mark (docs/brand/frog-brand-identity.html): a heavy-lidded eye
+       on the lab-ink ground, grass pupil. The only circle in a 0px-radius brand. -->
+  <rect width="512" height="512" rx="96" fill="#101211"/>
+  <circle cx="256" cy="256" r="150" stroke="#ECEEED" stroke-width="22" fill="none"/>
+  <path d="M128 213 Q256 149 384 213" stroke="#ECEEED" stroke-width="22" fill="none"/>
+  <circle cx="256" cy="267" r="43" fill="#46A758"/>
 </svg>

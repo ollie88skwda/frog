@@ -10,6 +10,7 @@ import {
   useUpdateMachine,
   useUploadMachinePhoto,
 } from "@/lib/queries";
+import { useVoice } from "@/lib/voice";
 
 type CatalogModule = typeof import("@sbl/core/data/machine-catalog");
 
@@ -54,6 +55,7 @@ export function MachinesSection({ machines }: { machines: Machine[] }) {
 
 function AddMachine() {
   const create = useCreateMachine();
+  const { t } = useVoice();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<
     { key: string; brand: string; model: string; category: string }[]
@@ -110,6 +112,11 @@ function AddMachine() {
           data-testid="machine-catalog-search"
         />
       </div>
+      {query.trim() !== "" && results.length === 0 && (
+        <p className="mt-1 px-2 text-xs text-faint">
+          {t("No matches in the catalog.", "No specimens match the catalog.")}
+        </p>
+      )}
       {results.length > 0 && (
         <ul className="mt-1 divide-y divide-border border border-border bg-surface">
           {results.map((r) => (

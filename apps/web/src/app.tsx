@@ -27,6 +27,7 @@ const StatsScreen = lazy(() => import("@/screens/stats"));
 const MonthlyReportScreen = lazy(() => import("@/screens/monthly-report"));
 const YearReviewScreen = lazy(() => import("@/screens/year-review"));
 const SettingsScreen = lazy(() => import("@/screens/settings"));
+const NotFoundScreen = lazy(() => import("@/screens/not-found"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,13 +55,15 @@ const ThemePanel = showThemePanel
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Single source of look-and-feel — docs/DECISIONS.md 2026-07-15.
+      {/* Single source of look-and-feel — Frog re-skin, docs/DECISIONS.md
+          2026-07-16 (grass accent · sage gray · 0px radius, per
+          docs/brand/frog-brand-identity.html §14).
           `appearance` is deliberately unset: Radix reads the light/dark class
           that index.html sets pre-paint, which avoids a flash of wrong theme. */}
       <Theme
-        accentColor="indigo"
-        grayColor="slate"
-        radius="small"
+        accentColor="grass"
+        grayColor="sage"
+        radius="none"
         scaling="100%"
         panelBackground="solid"
       >
@@ -110,6 +113,7 @@ export function App() {
                       />
                       <Route path="stats/year" element={<YearReviewScreen />} />
                       <Route path="settings" element={<SettingsScreen />} />
+                      <Route path="*" element={<NotFoundScreen />} />
                     </Route>
                   </Route>
                 </Routes>

@@ -57,11 +57,11 @@ function paletteFor(variant: Variant, accent: string): Palette {
   switch (variant) {
     case "light":
       return {
-        bg: "#ffffff",
-        ink: "#0d0f12",
-        soft: "#565c66",
-        faint: "#9aa1ab",
-        hair: "#e4e7ec",
+        bg: "#f5f8f5",
+        ink: "#1a211e",
+        soft: "#5f6563",
+        faint: "#868e8b",
+        hair: "#dfe2e0",
         accent,
         shadow: false,
       };
@@ -77,11 +77,11 @@ function paletteFor(variant: Variant, accent: string): Palette {
       };
     default:
       return {
-        bg: "#0b0d10",
-        ink: "#f3f5f7",
-        soft: "#aab1bb",
-        faint: "#6b727c",
-        hair: "#23272e",
+        bg: "#101211",
+        ink: "#eceeed",
+        soft: "#adb5b2",
+        faint: "#717d79",
+        hair: "#2e3130",
         accent,
         shadow: false,
       };
@@ -298,8 +298,8 @@ function ShareSheet({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [variant, setVariant] = useState<Variant>("dark");
   const [busy, setBusy] = useState(false);
-  // Sampled once — the app accent is the same indigo in light and dark.
-  const accent = useRef(sampleToken("--accent", "#3e63dd")).current;
+  // Sampled once — the app accent is the same grass green in light and dark.
+  const accent = useRef(sampleToken("--accent", "#46a758")).current;
   const canShareFiles =
     typeof navigator !== "undefined" &&
     typeof navigator.canShare === "function";

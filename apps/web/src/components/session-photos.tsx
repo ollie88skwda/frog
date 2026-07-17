@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useDeleteSessionMedia, useSessionMedia } from "@/lib/media-queries";
 import { resizePhoto } from "@/lib/photo";
 import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
 
 // Workout photos (Hevy-parity M9). Two surfaces share this file: the finish
 // overlay's add-strip (≤3, reorder/remove BEFORE save — uploads are deferred to
@@ -144,6 +145,7 @@ export function FinishPhotoStrip({
 /** History-detail photo carousel with per-photo delete (⋯ → confirm). Renders
  * nothing until the session has at least one photo. */
 export function SessionPhotoCarousel({ sessionId }: { sessionId: string }) {
+  const { t } = useVoice();
   const { data: photos = [] } = useSessionMedia(sessionId);
   const del = useDeleteSessionMedia(sessionId);
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -169,8 +171,8 @@ export function SessionPhotoCarousel({ sessionId }: { sessionId: string }) {
               className="h-40 w-auto max-w-full border border-border object-cover"
             />
           ) : (
-            <div className="flex h-40 w-40 items-center justify-center border border-border bg-surface-2 text-2xs text-faint">
-              Unavailable
+            <div className="flex h-40 w-40 items-center justify-center border border-border bg-surface-2 px-2 text-center text-2xs text-faint">
+              {t("Unavailable", "Unavailable. The frog is annoyed.")}
             </div>
           )}
           {confirmId === row.id ? (

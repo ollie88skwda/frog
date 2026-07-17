@@ -1,5 +1,6 @@
 import { computeStreak } from "@sbl/core";
 import { Flame } from "lucide-react";
+import { useVoice } from "@/lib/voice";
 
 // Weekly-streak summary card (Hevy-parity M6). A streak is consecutive calendar
 // weeks with ≥1 logged workout; the current week counts even before its first
@@ -16,6 +17,7 @@ export function StreakCard({
   firstWeekday: number;
   className?: string;
 }) {
+  const { t } = useVoice();
   const { weeks, currentWeekPending, restDays } = computeStreak(
     starts,
     firstWeekday,
@@ -37,7 +39,7 @@ export function StreakCard({
       <div className="min-w-0">
         <div className="flex items-center gap-1.5 text-2xs font-medium tracking-widest text-faint uppercase">
           <Flame className="size-3.5" />
-          Streak
+          {t("Streak", "Consistency")}
         </div>
         <p className="mt-1 flex items-baseline gap-1">
           <span
@@ -52,12 +54,18 @@ export function StreakCard({
         </p>
         {weeks > 0 && currentWeekPending && (
           <p className="mt-0.5 text-2xs text-faint">
-            Log this week to keep it going.
+            {t(
+              "Log this week to keep it going.",
+              `Consistency, n=${weeks}. Log this week to keep it.`,
+            )}
           </p>
         )}
         {weeks === 0 && (
           <p className="mt-0.5 text-2xs text-faint">
-            Log a workout this week to start one.
+            {t(
+              "Log a workout this week to start one.",
+              "The frog refuses to speculate. Log a workout this week to start.",
+            )}
           </p>
         )}
       </div>

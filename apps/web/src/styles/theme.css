@@ -9,18 +9,18 @@
 @import "tailwindcss";
 
 /* Radix Themes, imported modularly rather than as the all-in styles.css:
-   styles.css ships all 31 color scales (29 kB gz) of which we reference six.
-   base + 6 scales + components + utilities = ~65 kB gz vs ~87 kB gz for the
+   styles.css ships all 31 color scales (29 kB gz) of which we reference five.
+   base + 5 scales + components + utilities = ~65 kB gz vs ~87 kB gz for the
    bundle — the rest is scales we never name. Keep this list in sync with the
    bridge below: referencing a scale that isn't imported (e.g. a Radix
    `color="tomato"` prop) silently resolves to an invalid var, not an error. */
 @import "@radix-ui/themes/tokens/base.css" layer(radix);
-@import "@radix-ui/themes/tokens/colors/slate.css" layer(radix); /* grayColor */
-@import "@radix-ui/themes/tokens/colors/indigo.css" layer(radix); /* accentColor */
+@import "@radix-ui/themes/tokens/colors/sage.css" layer(radix); /* grayColor */
+@import "@radix-ui/themes/tokens/colors/grass.css" layer(radix); /* accentColor */
 @import "@radix-ui/themes/tokens/colors/red.css" layer(radix); /* --neg */
-@import "@radix-ui/themes/tokens/colors/green.css" layer(radix); /* --pos */
 @import "@radix-ui/themes/tokens/colors/amber.css" layer(radix); /* --warn */
 @import "@radix-ui/themes/tokens/colors/orange.css" layer(radix); /* --orange */
+/* success folds into the accent (green = the frog) — no separate green scale */
 @import "@radix-ui/themes/components.css" layer(radix);
 @import "@radix-ui/themes/utilities.css" layer(radix);
 
@@ -32,14 +32,16 @@
 }
 
 /* ---------------------------------------------------------------------------
- * SBL design language — Radix Themes 3 (docs/DECISIONS.md, 2026-07-15).
- * The <Theme accentColor="indigo" grayColor="slate" radius="small"> in app.tsx
+ * Frog design language — Radix Themes 3 re-skin (docs/DECISIONS.md 2026-07-16,
+ * docs/brand/frog-brand-identity.html). Neutral lab-ink ground (sage), one
+ * frog-green accent (grass) that doubles as semantic success, 0px radius.
+ * The <Theme accentColor="grass" grayColor="sage" radius="none"> in app.tsx
  * is the single source of look-and-feel. Everything in this block is a BRIDGE:
  * the legacy token names map onto Radix's scales so the ~1,900 existing Tailwind
  * classes render in the Radix palette while screens migrate component-by-
  * component. The bridge is deleted in Phase 5, once nothing references it.
  *
- * Why the RAW scales (`--slate-N`, `--indigo-N`) and not the aliases
+ * Why the RAW scales (`--sage-N`, `--grass-N`) and not the aliases
  * (`--gray-N`, `--accent-N`): Radix defines raw scales on `:root, .light` and
  * on `.dark` — i.e. on
  * <html> — but defines the aliases only inside `.radix-themes`. Bridging at
@@ -55,39 +57,40 @@
 :root {
   /* surfaces */
   --bg: white; /* matches Radix light --color-background */
-  --surface: var(--slate-2);
-  --surface-2: var(--slate-3);
-  --surface-3: var(--slate-4);
-  --surface-hover: var(--slate-4);
-  --surface-active: var(--slate-5);
-  --translucent: var(--slate-a3);
+  --surface: var(--sage-2);
+  --surface-2: var(--sage-3);
+  --surface-3: var(--sage-4);
+  --surface-hover: var(--sage-4);
+  --surface-active: var(--sage-5);
+  --translucent: var(--sage-a3);
 
   /* hairlines */
-  --border: var(--slate-6);
-  --border-strong: var(--slate-7);
-  --border-translucent: var(--slate-a6);
+  --border: var(--sage-6);
+  --border-strong: var(--sage-7);
+  --border-translucent: var(--sage-a6);
 
   /* text */
-  --ink: var(--slate-12);
-  --ink-2: var(--slate-11);
-  --soft: var(--slate-11);
-  --faint: var(--slate-10);
+  --ink: var(--sage-12);
+  --ink-2: var(--sage-11);
+  --soft: var(--sage-11);
+  --faint: var(--sage-10);
 
   /* accent — --brand is a fill (bg-brand), so it must be a solid step, not text */
-  --accent: var(--indigo-9);
-  --accent-hover: var(--indigo-10);
-  --accent-soft: var(--indigo-a3);
+  --accent: var(--grass-9);
+  --accent-hover: var(--grass-10);
+  --accent-soft: var(--grass-a3);
   --accent-fg: white;
-  --brand: var(--indigo-9);
+  --brand: var(--grass-9);
 
-  /* semantic exceptions — text/icons and tints only, never large fills */
-  --pos: var(--green-11);
+  /* semantic exceptions — text/icons and tints only, never large fills.
+     success IS the accent green: a PR is green, and the frog is pleased. */
+  --pos: var(--grass-11);
   --neg: var(--red-11);
   --warn: var(--amber-11);
   --orange: var(--orange-11);
 
-  --ring: var(--indigo-8);
-  --scrollbar: var(--slate-a7);
+  --ring: var(--grass-8);
+  --scrollbar: var(--sage-a7);
   --overlay: var(--black-a6);
 
   --shadow-low: 0px 1px 4px -1px rgba(0, 0, 0, 0.09);
@@ -102,7 +105,7 @@
    than by scale — every raw-scale reference above re-resolves on its own under
    the `.dark` class. */
 :root.dark {
-  --bg: var(--slate-1); /* matches Radix dark --color-background */
+  --bg: var(--sage-1); /* matches Radix dark --color-background */
   --overlay: var(--black-a8);
 
   --shadow-low: 0px 2px 4px rgba(0, 0, 0, 0.1);
@@ -148,10 +151,12 @@
   --color-warn: var(--warn);
   --color-ring: var(--ring);
 
-  /* Radii come from Radix (radius="small" → --radius-factor 0.75). `inline`
-     emits these as var() passthrough rather than resolving them at :root, which
+  /* Radii come from Radix (radius="none" → --radius-factor 0, restoring the
+     0px/square brand mandate — every rounded-* utility resolves to 0; only
+     rounded-full survives, for avatars and the frog's eye). `inline` emits
+     these as var() passthrough rather than resolving them at :root, which
      matters: Radix scopes --radius-1..6 to .radix-themes, so they only resolve
-     at the element. Supersedes the 0px/square mandate. */
+     at the element. */
   --radius-xs: var(--radius-1);
   --radius-sm: var(--radius-2);
   --radius-md: var(--radius-3);

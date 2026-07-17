@@ -14,7 +14,7 @@ type Size = "sm" | "md" | "lg" | "icon";
 // requires (AGENTS.md) — Radix's own `ghost` is transparent until hover.
 // `outline`/`ghost`/`danger` pin an explicit color because Radix defaults to
 // the theme accent, and these are quiet/neutral controls; only `primary` is
-// meant to carry indigo.
+// meant to carry the frog green.
 const VARIANT = {
   primary: { variant: "solid" },
   outline: { variant: "surface", color: "gray" },

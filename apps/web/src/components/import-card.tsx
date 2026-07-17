@@ -10,6 +10,7 @@ import { Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRepo } from "@/lib/repo";
+import { useVoice } from "@/lib/voice";
 
 type CsvState =
   | { phase: "idle" }
@@ -46,6 +47,7 @@ function WorkoutCsvImport({
 }) {
   const repo = useRepo();
   const qc = useQueryClient();
+  const { t } = useVoice();
   const [state, setState] = useState<CsvState>({ phase: "idle" });
 
   async function onFile(file: File | undefined) {
@@ -119,12 +121,24 @@ function WorkoutCsvImport({
         data-testid={`import-${testid}-status`}
       >
         {state.phase === "parsed" &&
-          `${state.sessions.length} sessions · ${state.sets} sets · ${state.exercises} exercises — re-import skips existing`}
-        {state.phase === "importing" && "Importing…"}
+          t(
+            `${state.sessions.length} sessions · ${state.sets} sets · ${state.exercises} exercises — re-import skips existing`,
+            `${state.sessions.length} sessions · ${state.sets} sets · ${state.exercises} exercises. Re-import skips existing; the frog does not double-count.`,
+          )}
+        {state.phase === "importing" &&
+          t("Importing…", "Importing… the frog is thinking.")}
         {state.phase === "done" &&
-          `Imported ${state.result.imported} sessions (${state.result.sets} sets, ${state.result.exercisesCreated} new exercises) · skipped ${state.result.skipped} existing`}
+          t(
+            `Imported ${state.result.imported} sessions (${state.result.sets} sets, ${state.result.exercisesCreated} new exercises) · skipped ${state.result.skipped} existing`,
+            `Recorded: ${state.result.imported} sessions (${state.result.sets} sets, ${state.result.exercisesCreated} new exercises) · skipped ${state.result.skipped} existing. The frog nods, slowly.`,
+          )}
         {state.phase === "error" && (
-          <span className="text-neg">{state.message}</span>
+          <span className="text-neg">
+            {t(
+              state.message,
+              `The frog is annoyed (your data is safe). ${state.message}`,
+            )}
+          </span>
         )}
       </p>
     </div>
@@ -134,6 +148,7 @@ function WorkoutCsvImport({
 export function ImportCard() {
   const repo = useRepo();
   const qc = useQueryClient();
+  const { t } = useVoice();
   const sleepFiles = useRef<HTMLInputElement>(null);
   const [sleep, setSleep] = useState<SleepState>({ phase: "idle" });
 
@@ -216,12 +231,25 @@ export function ImportCard() {
           className="num mt-2 text-2xs text-faint"
           data-testid="import-sleep-status"
         >
-          {sleep.phase === "parsed" && `${sleep.map.size} nights parsed`}
-          {sleep.phase === "applying" && "Applying…"}
+          {sleep.phase === "parsed" &&
+            t(
+              `${sleep.map.size} nights parsed`,
+              `${sleep.map.size} nights parsed. The frog awaits.`,
+            )}
+          {sleep.phase === "applying" &&
+            t("Applying…", "Applying… the frog is thinking.")}
           {sleep.phase === "done" &&
-            `Filled sleep on ${sleep.filled} sessions (existing values untouched)`}
+            t(
+              `Filled sleep on ${sleep.filled} sessions (existing values untouched)`,
+              `Filled sleep on ${sleep.filled} sessions (existing values untouched). The frog nods, slowly.`,
+            )}
           {sleep.phase === "error" && (
-            <span className="text-neg">{sleep.message}</span>
+            <span className="text-neg">
+              {t(
+                sleep.message,
+                `The frog is annoyed (your data is safe). ${sleep.message}`,
+              )}
+            </span>
           )}
         </p>
       </div>

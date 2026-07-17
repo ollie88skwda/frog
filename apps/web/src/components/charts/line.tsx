@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useVoice } from "@/lib/voice";
 
 // In-house SVG chart kit (Hevy-parity §D) — zero dependencies, Radix color
 // tokens (theme-safe in light + dark), tabular numerals, container-driven width
@@ -31,6 +32,7 @@ export function LineChart({
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [active, setActive] = useState<number | null>(null);
+  const { t } = useVoice();
 
   if (points.length === 0) {
     return (
@@ -39,7 +41,7 @@ export function LineChart({
         style={{ height }}
         data-testid={testId}
       >
-        No data yet.
+        {t("No data yet.", "No data yet. The frog refuses to speculate.")}
       </div>
     );
   }

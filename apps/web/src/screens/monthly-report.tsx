@@ -22,6 +22,7 @@ import {
 } from "@/lib/report-format";
 import { type ReportData, useReportData } from "@/lib/report-queries";
 import { distanceUnitFor, type Unit, useUnit } from "@/lib/settings";
+import { useVoice } from "@/lib/voice";
 
 const monthYearFmt = new Intl.DateTimeFormat(undefined, {
   month: "long",
@@ -40,6 +41,7 @@ export default function MonthlyReportScreen() {
   const navigate = useNavigate();
   const { data, isLoading } = useReportData();
   const { unit } = useUnit();
+  const { t } = useVoice();
 
   const months = useMemo(
     () => (data ? reportableMonths(data.history) : []),
@@ -86,8 +88,10 @@ export default function MonthlyReportScreen() {
 
       {months.length === 0 || !activeKey ? (
         <p className="mt-8 text-sm text-faint" data-testid="monthly-empty">
-          No completed months yet — log a few workouts and your first report
-          appears here.
+          {t(
+            "No completed months yet — log a few workouts and your first report appears here.",
+            "No completed months on record. The frog does not report on partial data. Log a few workouts.",
+          )}
         </p>
       ) : (
         <>

@@ -38,6 +38,7 @@ import {
   useUnit,
 } from "@/lib/settings";
 import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
 
 type Tab = "summary" | "history" | "howto";
 type Range = "3m" | "1y" | "all";
@@ -53,6 +54,7 @@ const RANGE_LABELS: Record<Range, string> = {
 };
 
 export default function ExerciseDetailScreen() {
+  const { t } = useVoice();
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const { data: exercises = [], isLoading: exLoading } = useExercises();
@@ -65,14 +67,19 @@ export default function ExerciseDetailScreen() {
   if (exLoading || recLoading) {
     return (
       <p className="mx-auto max-w-2xl px-4 py-10 text-center text-xs text-faint">
-        Loading…
+        {t("Loading…", "The frog is thinking…")}
       </p>
     );
   }
   if (!exercise) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10 text-center">
-        <p className="text-sm text-soft">Exercise not found.</p>
+        <p className="text-sm text-soft">
+          {t(
+            "Exercise not found.",
+            "Specimen not found. The frog checked twice.",
+          )}
+        </p>
         <Link to="/library" className="mt-2 inline-block text-xs text-accent">
           Back to library
         </Link>
@@ -300,6 +307,7 @@ function RecordsPanel({
   unit: Unit;
   distUnit: DistanceUnit;
 }) {
+  const { t } = useVoice();
   const prTypes = PR_TYPES_BY_EXERCISE_TYPE[type] ?? [];
   const bests = prTypes
     .map((pr) => ({ pr, entry: records?.bests[pr] }))
@@ -331,7 +339,10 @@ function RecordsPanel({
       </div>
       {bests.length === 0 ? (
         <p className="mt-2 text-xs text-faint" data-testid="records-empty">
-          No records yet — log a few sessions to set your first.
+          {t(
+            "No records yet — log a few sessions to set your first.",
+            "No records yet. The frog refuses to speculate — log a few sessions to set your first.",
+          )}
         </p>
       ) : (
         <ul className="mt-2 divide-y divide-border border border-border bg-surface">
@@ -365,6 +376,7 @@ function SetRecordsTable({
   records: ExerciseRecords | undefined;
   unit: Unit;
 }) {
+  const { t } = useVoice();
   const [open, setOpen] = useState(false);
   const rows = useMemo(() => {
     const map = records?.setRecords;
@@ -395,8 +407,10 @@ function SetRecordsTable({
       {open &&
         (rows.length === 0 ? (
           <p className="mt-2 text-xs text-faint">
-            Heaviest weight per rep count appears here once you log weighted
-            sets.
+            {t(
+              "Heaviest weight per rep count appears here once you log weighted sets.",
+              "Heaviest weight per rep count appears here once you log weighted sets. The frog waits.",
+            )}
           </p>
         ) : (
           <ul className="mt-2 divide-y divide-border border border-border bg-surface">
@@ -431,6 +445,7 @@ function HistoryTab({
   data: RecordsData | undefined;
   unit: Unit;
 }) {
+  const { t } = useVoice();
   const distUnit = distanceUnitFor(unit);
   // Newest first (history arrives ascending).
   const sessions = (data?.history ?? [])
@@ -441,7 +456,10 @@ function HistoryTab({
   if (sessions.length === 0) {
     return (
       <p className="text-xs text-faint" data-testid="history-empty">
-        No sessions with this exercise yet.
+        {t(
+          "No sessions with this exercise yet.",
+          "No sessions with this specimen yet.",
+        )}
       </p>
     );
   }
@@ -489,6 +507,7 @@ function HistoryTab({
 
 // ── How-to: frames + numbered steps + "why it's rated" science ───────────────
 function HowToTab({ exercise }: { exercise: Exercise }) {
+  const { t } = useVoice();
   const frames = exercise.imageUrls ?? [];
   const steps = exercise.instructions ?? [];
   const ratings = ratingsForExercise(exercise).filter((r) => r.tier != null);
@@ -524,7 +543,10 @@ function HowToTab({ exercise }: { exercise: Exercise }) {
         </ol>
       ) : (
         <p className="text-xs text-faint">
-          No instructions for this exercise yet.
+          {t(
+            "No instructions for this exercise yet.",
+            "No instructions. The frog assumes you know what you are doing.",
+          )}
         </p>
       )}
 

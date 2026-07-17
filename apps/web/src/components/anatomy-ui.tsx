@@ -9,7 +9,7 @@ import { Dumbbell, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Exercise quality is encoded by the brightness of the name text: the better
-// the exercise (for that muscle), the brighter/lighter the blue. No letters on
+// the exercise (for that muscle), the brighter/lighter the text. No letters on
 // the reading path — see TierLegend for the key. (S = best … C = worst.)
 const TIER_NAME_CLASS: Record<Tier, string> = {
   S: "text-ink",

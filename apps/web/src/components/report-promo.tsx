@@ -2,6 +2,7 @@ import { CalendarDays, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { useAllSessions } from "@/lib/profile-queries";
+import { useVoice } from "@/lib/voice";
 
 // Home promo cards (M10): during the first 7 days of a month, a dismissible
 // "your <last month> report is ready" nudge → /stats/monthly; every December,
@@ -20,6 +21,7 @@ function dismissed(key: string): boolean {
 }
 
 export function ReportPromo() {
+  const { t } = useVoice();
   const { data: sessions = [] } = useAllSessions();
   const [hidden, setHidden] = useState<Set<string>>(new Set());
 
@@ -64,8 +66,14 @@ export function ReportPromo() {
         <PromoCard
           to="/stats/monthly"
           icon={<Sparkles className="size-4" />}
-          label={`Your ${monthNameFmt.format(prev)} report is ready`}
-          sub="See last month's totals, PRs, and muscle split."
+          label={t(
+            `Your ${monthNameFmt.format(prev)} report is ready`,
+            `The ${monthNameFmt.format(prev)} report is in`,
+          )}
+          sub={t(
+            "See last month's totals, PRs, and muscle split.",
+            "Totals, PRs, muscle split. Compiled by the frog.",
+          )}
           onDismiss={() => dismiss(monthlyKey)}
           testId="promo-monthly"
         />
@@ -74,8 +82,14 @@ export function ReportPromo() {
         <PromoCard
           to="/stats/year"
           icon={<CalendarDays className="size-4" />}
-          label={`Your ${now.getFullYear()} in Review`}
-          sub="A year of training, wrapped."
+          label={t(
+            `Your ${now.getFullYear()} in Review`,
+            `Your ${now.getFullYear()}, in review`,
+          )}
+          sub={t(
+            "A year of training, wrapped.",
+            "A year of training, peer-reviewed by the frog.",
+          )}
           onDismiss={() => dismiss(yearKey)}
           testId="promo-year"
         />

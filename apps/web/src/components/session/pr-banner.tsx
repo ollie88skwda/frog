@@ -1,6 +1,7 @@
 import { PR_TYPE_LABELS, type PrType } from "@sbl/core";
 import { Medal, X } from "lucide-react";
 import { useEffect } from "react";
+import { useVoice } from "@/lib/voice";
 
 export type PrBannerData = {
   // A monotonically increasing id so re-hitting the same record re-triggers the
@@ -22,14 +23,15 @@ export function PrBanner({
   data: PrBannerData | null;
   onDismiss: () => void;
 }) {
+  const { t } = useVoice();
   useEffect(() => {
     if (!data) return;
-    const t = setTimeout(onDismiss, 4000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(onDismiss, 4000);
+    return () => clearTimeout(timer);
   }, [data, onDismiss]);
 
   if (!data) return null;
-  const labels = data.prTypes.map((t) => PR_TYPE_LABELS[t]).join(" · ");
+  const labels = data.prTypes.map((p) => PR_TYPE_LABELS[p]).join(" · ");
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-14 z-30 flex justify-center px-4">
@@ -46,6 +48,14 @@ export function PrBanner({
             data-testid="pr-banner-types"
           >
             {labels}
+          </span>
+          {/* Editorial framing only — the exercise name and record types above
+              stay bare literals (data never routes through a register). */}
+          <span className="block text-2xs text-faint">
+            {t(
+              "Saved to your records.",
+              "The frog has recorded your personal record and updated the relevant distributions. It is not impressed easily. It is, on this occasion, impressed.",
+            )}
           </span>
         </span>
         <button

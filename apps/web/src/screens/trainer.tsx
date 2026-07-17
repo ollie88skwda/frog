@@ -1,5 +1,6 @@
 import { Select } from "@radix-ui/themes";
 import {
+  APP_NAME,
   distributionBetween,
   EQUIPMENT_KINDS,
   EQUIPMENT_LABELS,
@@ -60,6 +61,7 @@ import {
   useTrainerData,
 } from "@/lib/trainer";
 import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
 
 // Radix Select forbids an empty-string value; the "None" focus-muscle option
 // uses a sentinel mapped back to null at the boundary.
@@ -354,6 +356,7 @@ function GeneratedPreview({
 // ── Onboarding (no active program) ───────────────────────────────────────────
 
 function TrainerOnboarding() {
+  const { t } = useVoice();
   const [config, setConfig] = useState<GeneratorConfig>(DEFAULT_CONFIG);
   const { data: exercises = [] } = useExercises();
   const { data: prefs = [] } = useExercisePrefs();
@@ -391,9 +394,10 @@ function TrainerOnboarding() {
     <div className="mt-4 flex flex-col gap-5">
       <div className="border border-border bg-surface p-4">
         <p className="text-sm text-soft">
-          Answer a few questions and the Trainer builds a full program from
-          SBL's exercise tiers. Each week it prescribes a small weight increase
-          on lifts where you hit the top of the rep range — no guesswork, no AI.
+          {t(
+            `Answer a few questions and the Trainer builds a full program from ${APP_NAME}'s exercise tiers. Each week it prescribes a small weight increase on lifts where you hit the top of the rep range — no guesswork, no AI.`,
+            "Answer a few questions. The frog assembles a full program from its exercise tiers, then prescribes a small weight increase wherever you hit the top of the rep range. No guesswork. No AI. Just a frog with a spreadsheet.",
+          )}
         </p>
       </div>
 
@@ -406,7 +410,9 @@ function TrainerOnboarding() {
         onClick={() => void start()}
         data-testid="start-program-btn"
       >
-        {materialize.isPending ? "Building…" : "Start program"}
+        {materialize.isPending
+          ? t("Building…", "The frog is assembling…")
+          : "Start program"}
       </Button>
 
       <div>
@@ -440,6 +446,7 @@ function estMinutes(detail: RoutineDetail | undefined): number {
 }
 
 function TrainerDashboard({ program }: { program: Program }) {
+  const { t } = useVoice();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const td = useTrainerData(program);
   const { data: exercises = [] } = useExercises();
@@ -482,7 +489,12 @@ function TrainerDashboard({ program }: { program: Program }) {
           nameById={nameById}
         />
       ) : (
-        <p className="text-xs text-faint">Loading your next workout…</p>
+        <p className="text-xs text-faint">
+          {t(
+            "Loading your next workout…",
+            "The frog is thinking. Your next workout is on its way.",
+          )}
+        </p>
       )}
 
       <ProgressReport program={program} td={td} nameById={nameById} />
@@ -823,6 +835,7 @@ function ReplaceDialog({
   excludeIds: Set<string>;
   onPick: (id: string) => void;
 }) {
+  const { t } = useVoice();
   const [query, setQuery] = useState("");
 
   const alternatives = useMemo(
@@ -843,7 +856,7 @@ function ReplaceDialog({
       <DialogContent title="Replace exercise">
         {muscle && !query.trim() && (
           <p className="mb-2 text-2xs text-faint">
-            Top {muscleLabel(muscle)} alternatives by SBL tier.
+            Top {muscleLabel(muscle)} alternatives by {APP_NAME} tier.
           </p>
         )}
         <Input
@@ -866,7 +879,12 @@ function ReplaceDialog({
           ))}
           {list.length === 0 && (
             <p className="py-4 text-center text-2xs text-faint">
-              {query.trim() ? "No matches." : "No alternatives available."}
+              {query.trim()
+                ? t("No matches.", "No matches. The frog checked twice.")
+                : t(
+                    "No alternatives available.",
+                    "No alternatives. The frog refuses to speculate.",
+                  )}
             </p>
           )}
         </div>
@@ -886,6 +904,7 @@ function ProgramSettingsDialog({
   onOpenChange: (o: boolean) => void;
   program: Program;
 }) {
+  const { t } = useVoice();
   const { data: exercises = [] } = useExercises();
   const { data: prefs = [] } = useExercisePrefs();
   const { data: records } = useRecordsData();
@@ -958,7 +977,9 @@ function ProgramSettingsDialog({
               onClick={doRegenerate}
               data-testid="regenerate-btn"
             >
-              {regenerate.isPending ? "Rebuilding…" : "Regenerate program"}
+              {regenerate.isPending
+                ? t("Rebuilding…", "The frog is reassembling…")
+                : "Regenerate program"}
             </Button>
           </>
         ) : (

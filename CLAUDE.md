@@ -21,7 +21,7 @@ Note: v1 web is **online-first** (Supabase-direct; account required). The PRD's 
 - Data: **Supabase** (Postgres + RLS + PostgREST) via supabase-js; auth is **Clerk** (Google + email, prebuilt UI) via Supabase third-party auth; Drizzle pg-core schema → drizzle-kit → `supabase/migrations/`.
 - Domain logic: framework-free TS in `packages/core` (units, e1rm, progression, session-reducer, findings) — keep it free of React/DOM/supabase imports (except `repo/`).
 - Dev/integration layer (a major focus): export + personal-token API + **MCP server** + AI-buildable docs — all **TypeScript**. **No Rust.**
-- Design: techie-modern **Linear-style** — neutral grays, single indigo accent, 1px borders, dense keyboard-first UI, ⌘K palette, tabular numerals. (The old graph-paper/blueprint direction is retired; legacy app archived on branch `legacy/expo`.)
+- Design: **Frog** — Radix Themes 3 re-skin (`docs/brand/frog-brand-identity.html`): sage lab-ink neutrals, single grass-green accent (= semantic success), 0px radius, 1px borders, dense keyboard-first UI, ⌘K palette, tabular numerals. Frog voice only at the edges (empty states, errors, celebrations) via the Human/Frog/Ultrafrog registers in `apps/web/src/lib/voice.ts`; data zones stay deadpan-serious. (Legacy app archived on branch `legacy/expo`.)
 
 ## Working style
 

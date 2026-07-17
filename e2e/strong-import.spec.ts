@@ -46,8 +46,9 @@ ${fmt(d2)},${pull},45m,Deadlift (Barbell),1,315,lbs,3,,,,,,
   );
 
   await page.getByTestId("import-strong-btn").click();
+  // Default register is frog: the done line reads "Recorded: 2 sessions (…)".
   await expect(page.getByTestId("import-strong-status")).toContainText(
-    "Imported 2 sessions",
+    "Recorded: 2 sessions",
   );
 
   // Server truth: warm-up set type preserved + deadlift 315 lb → ~142.9 kg.

@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { StatusRing } from "@/components/ui/status-ring";
 import { formatDate, formatTime } from "@/lib/format";
 import { useSessionHistory } from "@/lib/queries";
+import { useVoice } from "@/lib/voice";
 
 export default function HistoryScreen() {
+  const { t } = useVoice();
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } =
     useSessionHistory();
   const sessions = data?.pages.flat() ?? [];
@@ -16,11 +18,21 @@ export default function HistoryScreen() {
 
       <div className="mt-4 overflow-hidden rounded-lg border border-border bg-surface">
         {isLoading ? (
-          <p className="px-4 py-6 text-center text-xs text-faint">Loading…</p>
-        ) : sessions.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-faint">
-            No sessions yet — start one from Training.
+            {t("Loading…", "The frog is thinking…")}
           </p>
+        ) : sessions.length === 0 ? (
+          <div className="px-4 py-6 text-center text-xs text-faint">
+            <p>
+              {t("No sessions yet.", "The lab is empty. The frog is waiting.")}
+            </p>
+            <p className="mt-1">
+              {t(
+                "Start one from Training and it will show up here.",
+                "Log your first set. The frog will begin taking notes immediately, possibly before you finish.",
+              )}
+            </p>
+          </div>
         ) : (
           <ul className="divide-y divide-border">
             {sessions.map((s) => (

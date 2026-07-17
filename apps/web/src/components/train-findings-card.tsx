@@ -3,9 +3,11 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { computeFindings } from "@/lib/findings";
 import { useFindingsData, useMetrics } from "@/lib/queries";
+import { useVoice } from "@/lib/voice";
 
 /** Findings teaser on Train: the payoff is visible from day one. */
 export function TrainFindingsCard() {
+  const { t } = useVoice();
   const { data: sessions = [], isLoading } = useFindingsData();
   const { data: metrics = [] } = useMetrics();
   const { trends, countdowns, conditions, conditionCountdowns } = useMemo(
@@ -46,26 +48,36 @@ export function TrainFindingsCard() {
       </p>
     );
   } else if (next) {
+    const word = next.sessionsNeeded === 1 ? "session" : "sessions";
     body = (
       <p className="text-sm text-soft" data-testid="findings-countdown">
-        <span className="num text-ink">{next.sessionsNeeded}</span> more{" "}
-        {next.sessionsNeeded === 1 ? "session" : "sessions"} of{" "}
-        {next.exerciseName} until your first finding
+        <span className="num text-ink">{next.sessionsNeeded}</span>{" "}
+        {t(
+          `more ${word} of ${next.exerciseName} until your first finding`,
+          `more ${word} of ${next.exerciseName} before the frog will comment.`,
+        )}
       </p>
     );
   } else if (nextCond) {
+    const word = nextCond.sessionsNeeded === 1 ? "session" : "sessions";
     body = (
       <p className="text-sm text-soft" data-testid="findings-countdown">
-        <span className="num text-ink">{nextCond.sessionsNeeded}</span> more{" "}
-        {nextCond.sessionsNeeded === 1 ? "session" : "sessions"} with{" "}
-        {nextCond.conditionName} logged until a correlation
+        <span className="num text-ink">{nextCond.sessionsNeeded}</span>{" "}
+        {t(
+          `more ${word} with ${nextCond.conditionName} logged until a correlation`,
+          `more ${word} with ${nextCond.conditionName} logged. Then the frog looks for a correlation.`,
+        )}
       </p>
     );
   } else {
     body = (
       <p className="text-sm text-soft" data-testid="findings-countdown">
-        Log <span className="num text-ink">5</span> sessions of any exercise to
-        earn your first finding
+        {t("Log", "The frog refuses to speculate. Log")}{" "}
+        <span className="num text-ink">5</span>{" "}
+        {t(
+          "sessions of any exercise to earn your first finding",
+          "sessions of any exercise and it will reconsider.",
+        )}
       </p>
     );
   }

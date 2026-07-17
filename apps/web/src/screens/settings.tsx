@@ -1,5 +1,6 @@
 import { Select } from "@radix-ui/themes";
 import {
+  APP_NAME,
   type ApiToken,
   measurementsCsv,
   setsCsv,
@@ -38,6 +39,7 @@ import {
 } from "@/lib/settings";
 import { playRestBlip } from "@/lib/sound";
 import { cn } from "@/lib/utils";
+import { type Register, useRegister, useVoice, voice } from "@/lib/voice";
 import { getWarmupMethod, useWarmupMethod } from "@/lib/warmup-method";
 import {
   useKeepAwake,
@@ -185,6 +187,7 @@ export default function SettingsScreen() {
       <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
 
       <UnitsSection />
+      <VoiceSection />
       <WorkoutsSection />
       <DisplaySection />
       <NotificationsSection />
@@ -215,6 +218,7 @@ const DISTANCE_UNITS: DistanceUnit[] = ["mi", "km"];
 const MEASUREMENT_UNITS: MeasurementUnit[] = ["in", "cm"];
 
 function UnitsSection() {
+  const { t } = useVoice();
   const { unit, setUnit } = useUnit();
   const { distanceUnit, setDistanceUnit } = useDistanceUnit();
   const { measurementUnit, setMeasurementUnit } = useMeasurementUnit();
@@ -222,7 +226,10 @@ function UnitsSection() {
   return (
     <Section
       title="Units"
-      hint="Display only — data is stored canonically (kg, meters, cm)."
+      hint={t(
+        "Display only — data is stored canonically (kg, meters, cm).",
+        "Display only. Underneath, the frog keeps everything canonical (kg, meters, cm).",
+      )}
     >
       <div className="mt-1 divide-y divide-border">
         <Row label="Weight">
@@ -257,6 +264,40 @@ function UnitsSection() {
   );
 }
 
+// ── Voice ───────────────────────────────────────────────────────────────────
+
+const REGISTERS: { label: string; value: Register }[] = [
+  { label: "Human", value: "human" },
+  { label: "Frog", value: "frog" },
+  { label: "Ultrafrog", value: "ultra" },
+];
+
+function VoiceSection() {
+  const { register, setRegister } = useRegister();
+  const { t } = useVoice();
+
+  return (
+    <Section
+      title="Voice"
+      hint={t(
+        "How the app talks. The numbers never change.",
+        "How the frog talks. The numbers never change.",
+      )}
+    >
+      <div className="mt-1 divide-y divide-border">
+        <Row label="Register">
+          <Segmented
+            options={REGISTERS}
+            value={register}
+            onChange={setRegister}
+            testid="voice-register"
+          />
+        </Row>
+      </div>
+    </Section>
+  );
+}
+
 // ── Workouts ────────────────────────────────────────────────────────────────
 
 const REST_OPTIONS: { label: string; sec: number | null }[] = [
@@ -280,6 +321,7 @@ const SOUND_PRESETS: { label: string; value: number }[] = [
 ];
 
 function WorkoutsSection() {
+  const { t } = useVoice();
   const { data: prefs } = useUserPrefs();
   const updatePrefs = useUpdateUserPrefs();
   const qc = useQueryClient();
@@ -364,7 +406,10 @@ function WorkoutsSection() {
 
         <Row
           label="Live PR banner"
-          hint="Celebrate records the moment you beat them."
+          hint={t(
+            "Celebrate records the moment you beat them.",
+            "The moment you beat a record, the frog will be, on that occasion, impressed.",
+          )}
         >
           <Toggle on={livePr} onChange={setLivePr} testid="live-pr" />
         </Row>
@@ -557,6 +602,7 @@ function DisplaySection() {
 // ── Notifications + push ────────────────────────────────────────────────────
 
 function NotificationsSection() {
+  const { t } = useVoice();
   const repo = useRepo();
   const { permission, request } = useNotificationPermission();
   const { subscribed, refresh } = usePushSubscribed();
@@ -567,9 +613,13 @@ function NotificationsSection() {
 
   async function sendTest() {
     if (permission !== "granted") return;
+    const body = voice(
+      "Rest timer test",
+      "Rest timer test. The frog cleared its throat.",
+    );
     const reg = await swRegistration();
-    if (reg) await reg.showNotification("SBL", { body: "Rest timer test" });
-    else new Notification("SBL", { body: "Rest timer test" });
+    if (reg) await reg.showNotification(APP_NAME, { body });
+    else new Notification(APP_NAME, { body });
   }
 
   async function togglePush(on: boolean) {
@@ -580,7 +630,12 @@ function NotificationsSection() {
         if (permission !== "granted") {
           const result = await request();
           if (result !== "granted") {
-            setError("Notification permission is required for push.");
+            setError(
+              voice(
+                "Notification permission is required for push.",
+                "The frog cannot push without notification permission.",
+              ),
+            );
             return;
           }
         }
@@ -599,7 +654,10 @@ function NotificationsSection() {
   return (
     <Section
       title="Notifications"
-      hint="Rest-timer alerts fire in-app; a system notification also shows when the tab is in the background."
+      hint={t(
+        "Rest-timer alerts fire in-app; a system notification also shows when the tab is in the background.",
+        "Rest-timer alerts fire in-app. If the tab is in the background, the frog also posts a system notification.",
+      )}
     >
       <div className="mt-1 divide-y divide-border">
         <Row
@@ -609,7 +667,7 @@ function NotificationsSection() {
               ? "Blocked — re-enable in your browser settings."
               : permission === "unsupported"
                 ? "Not supported on this device."
-                : "Allow SBL to post rest-timer alerts."
+                : `Allow ${APP_NAME} to post rest-timer alerts.`
           }
         >
           {permission === "granted" ? (
@@ -643,7 +701,7 @@ function NotificationsSection() {
                 ? "Requires server keys — not configured."
                 : isIOS()
                   ? "iOS: install the app to Home Screen first."
-                  : "Get rest-timer alerts even when SBL is closed."
+                  : `Get rest-timer alerts even when ${APP_NAME} is closed.`
           }
         >
           <Toggle
@@ -667,12 +725,16 @@ function NotificationsSection() {
 // ── Install (PWA) ───────────────────────────────────────────────────────────
 
 function InstallSection() {
+  const { t } = useVoice();
   const { canInstall, promptInstall, installed, ios } = useInstallPrompt();
   if (installed) {
     return (
       <Section title="Install app">
         <p className="mt-1 text-2xs text-faint" data-testid="install-status">
-          SBL is installed on this device.
+          {t(
+            `${APP_NAME} is installed on this device.`,
+            `${APP_NAME} is installed. The frog lives here now.`,
+          )}
         </p>
       </Section>
     );
@@ -680,7 +742,10 @@ function InstallSection() {
   return (
     <Section
       title="Install app"
-      hint="Add SBL to your home screen for a full-screen, app-like launch."
+      hint={t(
+        `Add ${APP_NAME} to your home screen for a full-screen, app-like launch.`,
+        `Add ${APP_NAME} to your home screen. Full screen, no browser chrome, one resident frog.`,
+      )}
     >
       {canInstall ? (
         <Button
@@ -699,7 +764,7 @@ function InstallSection() {
         </p>
       ) : (
         <p className="mt-1 text-2xs text-faint" data-testid="install-hint">
-          Use your browser’s “Install app” menu option to add SBL.
+          Use your browser’s “Install app” menu option to add {APP_NAME}.
         </p>
       )}
     </Section>
@@ -709,10 +774,12 @@ function InstallSection() {
 // ── Export ──────────────────────────────────────────────────────────────────
 
 function ExportSection() {
+  const { t } = useVoice();
   const repo = useRepo();
   const [exporting, setExporting] = useState<
     "json" | "csv" | "measurements" | null
   >(null);
+  const exportingLabel = t("Exporting…", "The frog is exporting…");
 
   async function exportData(kind: "json" | "csv" | "measurements") {
     setExporting(kind);
@@ -742,7 +809,10 @@ function ExportSection() {
   return (
     <Section
       title="Export"
-      hint="Your data, yours — full JSON graph, a flat CSV of every set, or your body measurements."
+      hint={t(
+        "Your data, yours — full JSON graph, a flat CSV of every set, or your body measurements.",
+        "Your data, yours. Full JSON graph, a flat CSV of every set, or your body measurements. The frog hoards nothing.",
+      )}
     >
       <div className="mt-3 flex flex-wrap gap-2">
         <Button
@@ -752,7 +822,7 @@ function ExportSection() {
           data-testid="export-json-btn"
         >
           <Download className="size-4" />
-          {exporting === "json" ? "Exporting…" : "JSON"}
+          {exporting === "json" ? exportingLabel : "JSON"}
         </Button>
         <Button
           size="sm"
@@ -761,7 +831,7 @@ function ExportSection() {
           data-testid="export-csv-btn"
         >
           <Download className="size-4" />
-          {exporting === "csv" ? "Exporting…" : "sets.csv"}
+          {exporting === "csv" ? exportingLabel : "sets.csv"}
         </Button>
         <Button
           size="sm"
@@ -770,7 +840,7 @@ function ExportSection() {
           data-testid="export-measurements-btn"
         >
           <Download className="size-4" />
-          {exporting === "measurements" ? "Exporting…" : "measurements.csv"}
+          {exporting === "measurements" ? exportingLabel : "measurements.csv"}
         </Button>
       </div>
     </Section>
@@ -780,6 +850,7 @@ function ExportSection() {
 // ── API tokens (unchanged) ──────────────────────────────────────────────────
 
 function ApiTokensSection() {
+  const { t } = useVoice();
   const repo = useRepo();
   const qc = useQueryClient();
   const { data: tokens = [] } = useQuery({
@@ -804,7 +875,10 @@ function ApiTokensSection() {
   return (
     <Section
       title="API tokens"
-      hint="Read-only access to your data for scripts, dashboards, and the MCP server."
+      hint={t(
+        "Read-only access to your data for scripts, dashboards, and the MCP server.",
+        "Read-only access to your data for scripts, dashboards, and the MCP server. Tokens can look, never touch.",
+      )}
     >
       <form
         className="mt-3 flex gap-2"
@@ -849,7 +923,10 @@ function ApiTokensSection() {
       >
         <DialogContent title="Token created — copy it now">
           <p className="text-xs text-soft">
-            This is shown once. Store it somewhere safe; only its hash is kept.
+            {t(
+              "This is shown once. Store it somewhere safe; only its hash is kept.",
+              "This is shown once. Only its hash is kept — the frog has already forgotten it.",
+            )}
           </p>
           <div className="mt-3 flex items-center gap-2">
             <code

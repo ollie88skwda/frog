@@ -24,6 +24,7 @@ import {
 import { useRepo } from "@/lib/repo";
 import { useCreateRoutine } from "@/lib/routine-queries";
 import { useUnit } from "@/lib/settings";
+import { useVoice } from "@/lib/voice";
 import type { SeedSet } from "./session";
 
 /** Average rest (mm:ss) across a block's sets, or null if none recorded. */
@@ -47,6 +48,7 @@ function toLocalInput(ms: number): string {
 
 export default function HistoryDetailScreen() {
   const { id = "" } = useParams();
+  const { t } = useVoice();
   const { unit } = useUnit();
   const repo = useRepo();
   const navigate = useNavigate();
@@ -218,8 +220,10 @@ export default function HistoryDetailScreen() {
       <Dialog open={savingRoutine} onOpenChange={setSavingRoutine}>
         <DialogContent title="Save as routine">
           <p className="text-xs text-soft">
-            This workout's logged sets become the routine's targets. You can
-            tweak it later in the builder.
+            {t(
+              "This workout's logged sets become the routine's targets. You can tweak it later in the builder.",
+              "This workout's logged sets become the routine's targets. You can tweak it later in the builder. The frog approves of repeatable experiments.",
+            )}
           </p>
           <Input
             placeholder="Routine name"
@@ -256,8 +260,10 @@ export default function HistoryDetailScreen() {
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent title="Delete this session?">
           <p className="text-xs text-soft">
-            The session and its sets disappear from history and findings.
-            (Soft-deleted — nothing is destroyed.)
+            {t(
+              "The session and its sets disappear from history and findings. (Soft-deleted — nothing is destroyed.)",
+              "The session and its sets disappear from history and findings. Soft-deleted — nothing is destroyed. The frog does not throw away data.",
+            )}
           </p>
           <div className="mt-3 flex justify-end gap-2">
             <Button
@@ -346,7 +352,10 @@ export default function HistoryDetailScreen() {
             ))}
             {block.sets.length === 0 && (
               <p className="border-t border-border px-4 py-3 text-center text-xs text-faint">
-                No sets logged.
+                {t(
+                  "No sets logged.",
+                  "No sets logged. The frog refuses to speculate.",
+                )}
               </p>
             )}
           </section>

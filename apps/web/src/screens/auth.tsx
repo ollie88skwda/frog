@@ -3,6 +3,7 @@ import { APP_NAME } from "@sbl/core";
 import { Navigate } from "react-router";
 import { useSignedIn } from "@/lib/auth";
 import { e2eBridge } from "@/lib/e2e-bridge";
+import { useVoice } from "@/lib/voice";
 
 // Clerk's prebuilt sign-in UI (Google + email — methods are configured in the
 // Clerk dashboard). Hash routing keeps Clerk's multi-step flow off
@@ -10,26 +11,56 @@ import { e2eBridge } from "@/lib/e2e-bridge";
 
 function ClerkAuthScreen() {
   const signedIn = useSignedIn();
+  const { t } = useVoice();
   if (signedIn) return <Navigate to="/" replace />;
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-bg px-4 py-8">
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-3">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-brand text-sm font-semibold text-accent-fg">
-            {APP_NAME[0]}
+          {/* Frog-eye brand mark — the abstract mark (quiet chrome), never
+              the expressive mascot; a circle is the brand's one radius. */}
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            aria-hidden="true"
+            className="size-8 shrink-0 text-ink"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="8.5"
+              stroke="currentColor"
+              strokeWidth={1.75}
+            />
+            <path
+              d="M5 9.5q7-4 14 0"
+              stroke="currentColor"
+              strokeWidth={1.75}
+            />
+            <circle cx="12" cy="12.5" r="2.4" fill="var(--accent)" />
+          </svg>
+          <div className="flex flex-col items-center gap-1">
+            <h1 className="text-lg font-semibold tracking-tight">
+              Sign in to {APP_NAME}
+            </h1>
+            <p className="text-center text-sm text-soft">
+              {t(
+                "A training lab notebook.",
+                "A training lab notebook that a frog wandered into and now runs.",
+              )}
+            </p>
           </div>
-          <h1 className="text-lg font-semibold tracking-tight">
-            Sign in to {APP_NAME}
-          </h1>
         </div>
         <SignIn
           routing="hash"
           fallbackRedirectUrl="/"
           appearance={{
             variables: {
-              colorPrimary: "#034078",
-              borderRadius: "8px",
+              // grass-9 — Clerk derives its shade scale from a literal
+              // color, so the var(--accent) bridge token can't be used here.
+              colorPrimary: "#46a758",
+              borderRadius: "0px",
             },
             // Clerk's card renders its own "Sign in to <Clerk app name>"
             // heading, which duplicates ours and shows the Clerk-side app

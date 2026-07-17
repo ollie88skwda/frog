@@ -20,6 +20,7 @@ import { useMaterializeProgram } from "@/lib/program-queries";
 import { useExercisePrefs, useExercises } from "@/lib/queries";
 import { selectableFrom } from "@/lib/trainer";
 import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
 
 // Explore program library (Hevy-parity M11). The catalog is a set of generator
 // configs + copy; the actual routines are materialized deterministically by
@@ -61,6 +62,7 @@ function Chip({
 }
 
 function ProgramCatalog() {
+  const { t } = useVoice();
   const [level, setLevel] = useState<ProgramLevel | "all">("all");
   const [goal, setGoal] = useState<ProgramGoal | "all">("all");
   const [equip, setEquip] = useState<EquipmentProfile | "all">("all");
@@ -157,7 +159,10 @@ function ProgramCatalog() {
         ))}
         {filtered.length === 0 && (
           <p className="py-8 text-center text-xs text-faint">
-            No programs match those filters.
+            {t(
+              "No programs match those filters.",
+              "No programs match those filters. The frog refuses to speculate.",
+            )}
           </p>
         )}
       </div>
@@ -195,6 +200,7 @@ function ProgramCard({ entry }: { entry: ProgramCatalogEntry }) {
 }
 
 function ProgramDetail({ programKey }: { programKey: string }) {
+  const { t } = useVoice();
   const navigate = useNavigate();
   const entry = catalogEntry(programKey);
   const { data: exercises = [] } = useExercises();
@@ -219,7 +225,12 @@ function ProgramDetail({ programKey }: { programKey: string }) {
   if (!entry) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10 text-center">
-        <p className="text-sm text-soft">Program not found.</p>
+        <p className="text-sm text-soft">
+          {t(
+            "Program not found.",
+            "Program not found. The frog looked everywhere.",
+          )}
+        </p>
         <Link to="/programs" className="mt-2 inline-block text-xs text-accent">
           Back to programs
         </Link>
@@ -276,7 +287,9 @@ function ProgramDetail({ programKey }: { programKey: string }) {
         onClick={() => void save()}
         data-testid="save-program-btn"
       >
-        {materialize.isPending ? "Saving…" : "Save program"}
+        {materialize.isPending
+          ? t("Saving…", "The frog is filing…")
+          : "Save program"}
       </Button>
 
       {/* Per-routine preview */}
@@ -317,7 +330,10 @@ function ProgramDetail({ programKey }: { programKey: string }) {
         ))}
         {generated == null && (
           <p className="py-8 text-center text-xs text-faint">
-            Loading your exercise library…
+            {t(
+              "Loading your exercise library…",
+              "The frog is thinking. Your exercise library is on its way.",
+            )}
           </p>
         )}
       </div>

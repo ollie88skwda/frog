@@ -1,13 +1,15 @@
-# SBL design language (Radix Themes 3)
+# Frog design language (Radix Themes 3)
 
-Read before touching UI. The design system is **Radix Themes**
-(`@radix-ui/themes`) — one `<Theme>` in `src/app.tsx` is the single source of
-look-and-feel (`docs/DECISIONS.md`, 2026-07-15). Use Themes components wherever
-one exists instead of hand-rolling; unstyled Radix primitives + Radix tokens
-cover the rest (the ⌘K palette, `StatusRing`, the set-logging grid).
+Read before touching UI. The brand is **Frog**
+(`docs/brand/frog-brand-identity.html` — the spec); the design system is
+**Radix Themes** (`@radix-ui/themes`) — one `<Theme>` in `src/app.tsx` is the
+single source of look-and-feel (`docs/DECISIONS.md`, 2026-07-16). Use Themes
+components wherever one exists instead of hand-rolling; unstyled Radix
+primitives + Radix tokens cover the rest (the ⌘K palette, `StatusRing`, the
+set-logging grid).
 
 ```tsx
-<Theme accentColor="indigo" grayColor="slate" radius="small"
+<Theme accentColor="grass" grayColor="sage" radius="none"
        scaling="100%" panelBackground="solid"> … </Theme>
 ```
 
@@ -19,13 +21,13 @@ legacy `data-theme`), which avoids a flash of the wrong theme.
 
 `src/styles/theme.css` maps the legacy Tailwind token names
 (`--bg`/`--ink`/`--brand`/`--border`/…) onto Radix's raw scales
-(`--slate-N`, `--indigo-N`) at `:root`, so the ~1,900 existing Tailwind classes
+(`--sage-N`, `--grass-N`) at `:root`, so the ~1,900 existing Tailwind classes
 render in the Radix palette while screens migrate component-by-component. New
 code should prefer **Themes components + props** over these classes; the bridge
 is deleted once nothing references it. Colours are imported modularly — only the
-six named scales (slate, indigo, red, green, amber, orange) — so a Radix
-`color="…"` prop naming any other scale silently resolves to an invalid var.
-Add the scale import if you need another.
+five named scales (sage, grass, red, amber, orange; success folds into grass) —
+so a Radix `color="…"` prop naming any other scale silently resolves to an
+invalid var. Add the scale import if you need another.
 
 ## MOBILE-FIRST — the primary target
 
@@ -41,16 +43,24 @@ and layout is designed for a ~390px viewport FIRST, then adapted up.
 - Navigation is the floating island tab bar on mobile; the sidebar exists ≥md.
 - Test every UI change at 390×844 before calling it done.
 
-## Accent + colour — indigo on slate
+## Accent + colour — grass on sage
 
-The theme is **slate grayscale + one indigo accent** (`accentColor="indigo"`,
-`grayColor="slate"`). Indigo carries ALL emphasis — primary buttons, selection,
-focus, active nav, done-states. Everything else is neutral slate. Semantic
-`--pos`/`--neg`/`--warn` (green/red/amber, Radix step 11) appear only in small
-data glyphs — findings verdicts, condition dots — never as large chrome fills.
+The theme is **sage lab-ink grayscale + one frog-green accent**
+(`accentColor="grass"`, `grayColor="sage"`). Grass carries ALL emphasis —
+primary buttons, selection, focus, active nav, done-states — and **doubles as
+semantic success**: a PR is green, and the frog is pleased (`--pos` =
+`grass-11`; there is no separate green scale). `--neg`/`--warn` (red/amber,
+Radix step 11) appear only in small data glyphs — findings verdicts, condition
+dots, destructive affordances — never as large chrome fills.
 
-Register: a **clinical instrument panel for measured optimization** — quiet,
-precise, evidence-forward. Not brutalist, not consumer-wellness loud.
+Register: **the driest, most rigorous instrument you've ever trusted — and,
+unmistakably, a frog runs it.** The split rule governs everything: the closer
+to the data, the more serious (logging path, charts, findings statistics are
+sacred — never goofy); the closer to the edges, the more the frog (empty
+states, loading, errors, celebrations, 404). Playground copy routes through
+the Human/Frog/Ultrafrog registers in `src/lib/voice.ts` (`useVoice().t(human,
+frog)`); sacred strings stay bare literals. The frog editorialises around a
+number, never on it — no "!", no emoji in data, deadpan.
 
 ## Principles
 
@@ -73,14 +83,16 @@ classes:
 - Surfaces: `bg-bg` (page) → `bg-surface` → `bg-surface-2/3`; hover
   `bg-surface-hover`, selected `bg-surface-active`, translucent `bg-translucent`.
   Dialog/overlay panels use Radix `--color-panel-solid`.
-- Text: `text-ink` (slate-12) → `text-ink-2`/`text-soft` (slate-11) →
-  `text-faint` (slate-10). Note slate-10 is ~4.5:1 — reserve `text-faint` for
+- Text: `text-ink` (sage-12) → `text-ink-2`/`text-soft` (sage-11) →
+  `text-faint` (sage-10). Note sage-10 is ~4.5:1 — reserve `text-faint` for
   genuinely tertiary meta, and lean on size/weight for hierarchy.
-- Accent: `bg-brand`/`bg-accent` (indigo-9), `hover:bg-accent-hover` (indigo-10),
-  tint `bg-accent-soft` (indigo-a3), on-accent text `text-accent-fg`.
-- Radii come from Radix `radius="small"` (`--radius-factor` 0.75). Tailwind
-  `rounded-sm…xl` map to `--radius-2…5`. **They only resolve inside
-  `.radix-themes`** — overlays must portal into the theme root (see below).
+- Accent: `bg-brand`/`bg-accent` (grass-9), `hover:bg-accent-hover` (grass-10),
+  tint `bg-accent-soft` (grass-a3), on-accent text `text-accent-fg`.
+- Radii come from Radix `radius="none"` (`--radius-factor` 0) — the brand's 0px
+  mandate: every `rounded-sm…xl` resolves to 0, so don't add them to new code;
+  `rounded-full` is reserved for avatars and the frog-eye mark. The radius vars
+  **only resolve inside `.radix-themes`** — overlays must portal into the theme
+  root (see below).
 - Type: base 15px (`text-sm`); **Bricolage Grotesque** head to toe, wired through
   Radix's `--default-font-family`/`--heading-font-family`. ALL numeric data gets
   `num` — Bricolage has no tabular figures, so `.num` routes digits through the
@@ -98,14 +110,16 @@ must portal into the theme root via `themePortalContainer()`
 ## Patterns
 
 - **Buttons**: `ui/button` maps to Radix `Button`/`IconButton`. `primary` =
-  solid indigo; `outline`/`ghost` are neutral (`color="gray"`, surface/soft);
+  solid grass; `outline`/`ghost` are neutral (`color="gray"`, surface/soft);
   `danger` = soft red. `ghost` uses Radix **soft** (a resting fill), never Radix
   `ghost` — no bare text-only buttons (every control keeps a visible surface).
 - **Inputs**: `ui/input` maps to Radix `TextField`; call-site classes
   (`num`, `h-8`, `flex-1`) land correctly (the input fills the wrapper).
 - **Status rings**: `<StatusRing state=… progress=… />` — empty ring = pending,
-  partial pie = in-progress, filled indigo + check = done.
+  partial pie = in-progress, filled grass + check = done.
 - **Empty states**: centered, small muted icon, one primary line, one
-  `text-faint` guidance line, primary action with its keycap shortcut.
+  `text-faint` guidance line, primary action with its keycap shortcut. Empty
+  states are prime frog territory — voice them with `t()` (e.g. "The lab is
+  empty. The frog is waiting.") but still point at the next action.
 - **Page headers**: title left, actions right, `px-4 py-6` content padding,
   `max-w-2xl` centered content column.

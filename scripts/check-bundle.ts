@@ -29,8 +29,7 @@ const html = readFileSync(join(distDir, "index.html"), "utf8");
 // <script type="module"> and <link rel="modulepreload">, normalise to a path
 // under assets/.
 const eager = new Set<string>();
-const tagRe =
-  /<(?:script[^>]*\bsrc|link[^>]*\bhref)=["']([^"']+\.js)["']/g;
+const tagRe = /<(?:script[^>]*\bsrc|link[^>]*\bhref)=["']([^"']+\.js)["']/g;
 for (const m of html.matchAll(tagRe)) {
   eager.add(m[1].replace(/^\/?/, "").replace(/^assets\//, ""));
 }

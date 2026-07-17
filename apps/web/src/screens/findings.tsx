@@ -4,8 +4,10 @@ import { useMemo } from "react";
 import { computeFindings } from "@/lib/findings";
 import { useFindingsData, useMetrics } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
 
 export default function FindingsScreen() {
+  const { t } = useVoice();
   const { data: sessions = [], isLoading } = useFindingsData();
   const { data: metrics = [] } = useMetrics();
   const { trends, countdowns, conditions, conditionCountdowns } = useMemo(
@@ -26,7 +28,9 @@ export default function FindingsScreen() {
       </p>
 
       {isLoading ? (
-        <p className="mt-8 text-center text-xs text-faint">Analyzing…</p>
+        <p className="mt-8 text-center text-xs text-faint">
+          {t("Analyzing…", "The frog is thinking…")}
+        </p>
       ) : (
         <div className="mt-6 flex flex-col gap-6">
           {trends.length > 0 && (
@@ -67,7 +71,11 @@ export default function FindingsScreen() {
                     <span className="text-soft">
                       <span className="num text-ink">{c.sessionsNeeded}</span>{" "}
                       more {c.sessionsNeeded === 1 ? "session" : "sessions"} of{" "}
-                      {c.exerciseName} until your first trend
+                      {c.exerciseName}{" "}
+                      {t(
+                        "until your first trend",
+                        "before the frog will commit to a trend",
+                      )}
                     </span>
                     <span className="num text-2xs text-faint">
                       {c.sessionsLogged}/5
@@ -83,7 +91,11 @@ export default function FindingsScreen() {
                     <span className="text-soft">
                       <span className="num text-ink">{c.sessionsNeeded}</span>{" "}
                       more {c.sessionsNeeded === 1 ? "session" : "sessions"}{" "}
-                      with {c.conditionName} logged until a correlation
+                      with {c.conditionName} logged{" "}
+                      {t(
+                        "until a correlation",
+                        "before the frog will commit to a correlation",
+                      )}
                     </span>
                     <span className="num text-2xs text-faint">
                       {c.sessionsLogged}/10
@@ -96,10 +108,14 @@ export default function FindingsScreen() {
 
           {empty && nothingOnTheWay && (
             <div className="rounded-lg border border-border bg-surface px-4 py-8 text-center">
-              <p className="text-sm text-soft">No findings yet.</p>
+              <p className="text-sm text-soft">
+                {t("No findings yet.", "The frog refuses to speculate.")}
+              </p>
               <p className="mt-1 text-xs text-faint">
-                Log sessions with conditions — trends appear after 5 sessions
-                per exercise.
+                {t(
+                  "Log sessions with conditions — trends appear after 5 sessions per exercise.",
+                  "A correlation needs roughly 10 sessions before the frog will put its name on it. Keep logging sleep and carbs — it is watching, it is patient, and it has nowhere else to be.",
+                )}
               </p>
             </div>
           )}
@@ -117,14 +133,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-const VERDICT_COLOR: Record<
-  TrendFinding["verdict"],
-  "green" | "gray" | "red"
-> = {
-  PROGRESSING: "green",
-  PLATEAU: "gray",
-  REGRESSING: "red",
-};
+const VERDICT_COLOR: Record<TrendFinding["verdict"], "grass" | "gray" | "red"> =
+  {
+    PROGRESSING: "grass",
+    PLATEAU: "gray",
+    REGRESSING: "red",
+  };
 
 function TrendRow({ trend }: { trend: TrendFinding }) {
   return (

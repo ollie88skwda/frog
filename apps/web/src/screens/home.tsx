@@ -13,9 +13,11 @@ import { useActiveSession } from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
 import { useStartSession } from "@/lib/start-session";
 import { useMuscleMap } from "@/lib/stats-queries";
+import { useVoice } from "@/lib/voice";
 
 export default function HomeScreen() {
   const navigate = useNavigate();
+  const { t } = useVoice();
   const { data: active } = useActiveSession();
   const { start, starting } = useStartSession();
   const { data: prefs } = useUserPrefs();
@@ -45,12 +47,17 @@ export default function HomeScreen() {
       <div className="mt-6 flex items-center justify-between gap-4 rounded-lg border border-border bg-surface p-4">
         <div className="min-w-0">
           <p className="text-sm font-medium">
-            {active ? "Session in progress" : "Ready to train?"}
+            {active
+              ? "Session in progress"
+              : t("Ready to train?", "The frog is ready when you are.")}
           </p>
           <p className="num mt-0.5 text-2xs text-faint">
             {active
               ? `started ${formatTime(active.startedAt)}`
-              : "Quick-start here, or open Training."}
+              : t(
+                  "Quick-start here, or open Training.",
+                  "Quick-start here, or open Training. The frog has no preference.",
+                )}
           </p>
         </div>
         <Button
@@ -102,7 +109,10 @@ export default function HomeScreen() {
           Library
         </div>
         <p className="mt-2 text-sm text-soft">
-          Browse exercises, machines, and tier ratings.
+          {t(
+            "Browse exercises, machines, and tier ratings.",
+            "Exercises, machines, and tier ratings. The frog has catalogued everything.",
+          )}
         </p>
       </Link>
 
@@ -113,7 +123,10 @@ export default function HomeScreen() {
           Feed &amp; graphs
         </div>
         <p className="mt-2 text-sm text-faint">
-          Coming soon — a training feed and progress charts.
+          {t(
+            "Coming soon — a training feed and progress charts.",
+            "A training feed and progress charts, eventually. The frog refuses to speculate on dates.",
+          )}
         </p>
       </div>
     </div>

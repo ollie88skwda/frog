@@ -68,6 +68,7 @@ import {
 import { useUnit } from "@/lib/settings";
 import { useInView } from "@/lib/use-in-view";
 import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
 
 const TIERS: Tier[] = ["S", "A", "B", "C"];
 
@@ -80,6 +81,7 @@ const CV_ROW: CSSProperties = {
 };
 
 export default function LibraryScreen() {
+  const { t } = useVoice();
   const { data: exercises = [], isLoading } = useExercises();
   const { data: metrics = [] } = useMetrics();
   const { data: machines = [] } = useMachines();
@@ -224,14 +226,19 @@ export default function LibraryScreen() {
 
       <div className="mt-4 overflow-hidden border border-border bg-surface">
         {isLoading ? (
-          <p className="px-4 py-6 text-center text-xs text-faint">Loading…</p>
+          <p className="px-4 py-6 text-center text-xs text-faint">
+            {t("Loading…", "The frog is thinking…")}
+          </p>
         ) : exercises.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-faint">
-            No exercises yet. Add your first above.
+            {t(
+              "No exercises yet. Add your first above.",
+              "No specimens yet. Add your first above.",
+            )}
           </p>
         ) : filtered.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-faint">
-            No exercises match your search.
+            {t("No exercises match your search.", "No specimens match.")}
           </p>
         ) : (
           groups.map((group) => (
@@ -303,6 +310,7 @@ function BestForMuscle({
   muscle: string;
   exercises: Exercise[];
 }) {
+  const { t } = useVoice();
   const ratings = ratingsForMuscle(muscle);
   const ranked = exercises
     .map((e) => ({
@@ -356,7 +364,10 @@ function BestForMuscle({
             </h3>
             {ranked.length === 0 ? (
               <p className="mt-2 text-2xs text-faint">
-                Nothing targets this muscle yet.
+                {t(
+                  "Nothing targets this muscle yet.",
+                  "Nothing targets this muscle yet. The frog refuses to speculate.",
+                )}
               </p>
             ) : (
               <ul className="mt-2 flex flex-col gap-1">
@@ -399,6 +410,7 @@ function ExerciseRow({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const { t } = useVoice();
   const toggleMetric = useSetMetricExercises();
   const setTags = useSetExerciseTags();
   const deleteExercise = useDeleteExercise();
@@ -492,8 +504,10 @@ function ExerciseRow({
         <div className="border-t border-border bg-surface-2 px-4 py-2 pl-10">
           {setMetrics.length === 0 ? (
             <p className="text-2xs text-faint">
-              No custom set metrics yet — create one below to track it per set
-              here.
+              {t(
+                "No custom set metrics yet — create one below to track it per set here.",
+                "No custom set metrics yet. Create one below and the frog will track it per set.",
+              )}
             </p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -841,7 +855,7 @@ function TagEditor({
       {(exercise.tags ?? []).map((t) => (
         <span
           key={t}
-          className="flex items-center gap-1 rounded-sm border border-border bg-surface px-2 py-0.5 text-2xs text-soft"
+          className="flex items-center gap-1 border border-border bg-surface px-2 py-0.5 text-2xs text-soft"
         >
           {t}
           <button
@@ -948,7 +962,7 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
       </form>
 
       {custom.length > 0 && (
-        <ul className="mt-3 divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+        <ul className="mt-3 divide-y divide-border overflow-hidden border border-border bg-surface">
           {custom.map((m) => (
             <li
               key={m.id}
@@ -964,7 +978,7 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
                   type="button"
                   title="Delete metric"
                   onClick={() => deleteMetric.mutate(m.id)}
-                  className="rounded-sm p-0.5 text-faint transition-colors duration-100 hover:text-neg"
+                  className="p-0.5 text-faint transition-colors duration-100 hover:text-neg"
                   data-testid={`delete-metric-${m.name}`}
                 >
                   ×

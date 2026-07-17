@@ -121,6 +121,7 @@ import {
 } from "@/lib/settings";
 import { alertRestDone, playRestBlip } from "@/lib/sound";
 import { cn } from "@/lib/utils";
+import { voice } from "@/lib/voice";
 import { getWarmupMethod } from "@/lib/warmup-method";
 import {
   useKeepAwake,
@@ -154,8 +155,8 @@ type CommitCtx = {
 };
 
 // Four accent-tinted left-border colors keyed to a superset group's slot, so
-// grouped exercises read as one unit (blue-monochrome: lightness steps of the
-// accent, not separate hues).
+// grouped exercises read as one unit (accent-monochrome: lightness steps of
+// the accent, not separate hues).
 const SUPERSET_COLORS = [
   "var(--accent)",
   "color-mix(in oklab, var(--accent) 62%, var(--surface))",
@@ -471,7 +472,14 @@ export default function SessionScreen() {
   const restDoneFor = useCallback(
     (seId: string, name: string) => {
       playRestBlip(restVolume);
-      alertRestDone(`Rest done — ${name}`);
+      // The exercise name stays outside voice() so it survives every register
+      // (Ultrafrog ribbits words; the name is data).
+      alertRestDone(
+        `${name}: ${voice(
+          "Rest complete.",
+          "Rest complete. Adenosine triphosphate: replenished (approximately). The frog suggests you pick up the bar.",
+        )}`,
+      );
       // Keep the "rest!" chip up briefly, then clear it.
       window.setTimeout(() => dismissRest(seId), 3000);
     },

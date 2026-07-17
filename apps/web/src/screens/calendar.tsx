@@ -15,6 +15,7 @@ import {
   useUserPrefs,
 } from "@/lib/profile-queries";
 import { useRepo } from "@/lib/repo";
+import { useVoice } from "@/lib/voice";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const WEEKDAY_NAMES = [
@@ -426,13 +427,19 @@ function DaySheet({
   onLog: () => void;
   onClose: () => void;
 }) {
+  const { t } = useVoice();
   const [y, m, d] = key.split("-").map(Number);
   const label = formatDate(new Date(y, m - 1, d).getTime());
   return (
     <DialogContent title={label}>
       <div className="flex flex-col gap-3">
         {sessions.length === 0 ? (
-          <p className="text-xs text-faint">No workouts logged this day.</p>
+          <p className="text-xs text-faint">
+            {t(
+              "No workouts logged this day.",
+              "Nothing logged this day. The frog refuses to speculate.",
+            )}
+          </p>
         ) : (
           <ul className="divide-y divide-border border border-border">
             {sessions.map((s) => (

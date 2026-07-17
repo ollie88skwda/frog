@@ -24,6 +24,7 @@ import { useRecordsData } from "@/lib/records-queries";
 import { useUnit } from "@/lib/settings";
 import { useMuscleMap } from "@/lib/stats-queries";
 import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
 
 const DAY = 24 * 60 * 60 * 1000;
 const WEEKDAY = ["S", "M", "T", "W", "T", "F", "S"];
@@ -41,6 +42,7 @@ export function PostSaveSummary({
   sessionId: string;
   onDismiss: () => void;
 }) {
+  const { t } = useVoice();
   const { unit } = useUnit();
   const { data: session } = useSession(sessionId);
   const { data: blocks = [] } = useSessionExercises(sessionId);
@@ -151,7 +153,7 @@ export function PostSaveSummary({
         }}
       >
         <p className="text-2xs font-medium tracking-widest text-accent uppercase">
-          Workout complete
+          {t("Workout complete", "Workout recorded")}
         </p>
         <p
           className="num mt-2 text-5xl font-bold tracking-tight"
@@ -171,7 +173,10 @@ export function PostSaveSummary({
               <span className="font-semibold">{streak.weeks}</span>
               <span className="text-soft">
                 {" "}
-                week{streak.weeks === 1 ? "" : "s"} in a row
+                {t(
+                  `week${streak.weeks === 1 ? "" : "s"} in a row`,
+                  `week${streak.weeks === 1 ? "" : "s"} in a row. Consistency, n=${streak.weeks}.`,
+                )}
               </span>
             </span>
           </div>
@@ -199,7 +204,10 @@ export function PostSaveSummary({
           <div className="flex items-center gap-2">
             <Trophy className="size-5 text-accent" />
             <p className="text-sm font-semibold" data-testid="summary-pr-count">
-              {prLines.length} new record{prLines.length === 1 ? "" : "s"}
+              {t(
+                `${prLines.length} new record${prLines.length === 1 ? "" : "s"}`,
+                `${prLines.length} new record${prLines.length === 1 ? "" : "s"}. The frog is, on this occasion, impressed.`,
+              )}
             </p>
           </div>
           <ul className="mt-4 flex w-full flex-col gap-2">
@@ -355,7 +363,9 @@ export function PostSaveSummary({
       data-testid="post-save-summary"
     >
       <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
-        <span className="text-sm font-semibold tracking-tight">Nice work</span>
+        <span className="text-sm font-semibold tracking-tight">
+          {t("Nice work", "The frog nods, slowly.")}
+        </span>
         <button
           type="button"
           onClick={onDismiss}

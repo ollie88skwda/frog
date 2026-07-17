@@ -2,6 +2,8 @@
 // width. Generic {label, value} bars with a value formatter; reused by the
 // stats hub (sets-per-muscle etc., M8) and reports (M10).
 
+import { useVoice } from "@/lib/voice";
+
 export type Bar = { label: string; value: number };
 
 const W = 320;
@@ -21,6 +23,7 @@ export function BarChart({
   ariaLabel?: string;
   testId?: string;
 }) {
+  const { t } = useVoice();
   if (bars.length === 0) {
     return (
       <div
@@ -28,7 +31,7 @@ export function BarChart({
         style={{ height }}
         data-testid={testId}
       >
-        No data yet.
+        {t("No data yet.", "No data yet. The frog refuses to speculate.")}
       </div>
     );
   }

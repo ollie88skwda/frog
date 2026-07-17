@@ -1,7 +1,7 @@
 // Stacked bar chart — in-house SVG, Radix tokens. Each group (a time bucket) is
 // one bar; its value array stacks segment-on-segment (a muscle per series).
 // Reused by the stats hub "sets per muscle group over time" module (M8). The
-// blue-monochrome palette steps through indigo + slate scale entries so up to
+// green-monochrome palette steps through grass + sage scale entries so up to
 // ~8 stacked series stay distinguishable while keeping the single-hue identity.
 
 export type BarGroup = { label: string; values: number[] };
@@ -10,17 +10,17 @@ const W = 320;
 const PAD_T = 8;
 const PAD_B = 22;
 
-// Distinguishable steps within the indigo/slate monochrome family (legend maps
+// Distinguishable steps within the grass/sage monochrome family (legend maps
 // each back to its muscle). Cycles if a caller exceeds the palette length.
 const PALETTE = [
-  "var(--indigo-9)",
-  "var(--slate-8)",
-  "var(--indigo-6)",
-  "var(--slate-11)",
-  "var(--indigo-11)",
-  "var(--slate-6)",
-  "var(--indigo-4)",
-  "var(--slate-9)",
+  "var(--grass-9)",
+  "var(--sage-8)",
+  "var(--grass-6)",
+  "var(--sage-11)",
+  "var(--grass-11)",
+  "var(--sage-6)",
+  "var(--grass-4)",
+  "var(--sage-9)",
 ];
 
 export function stackColor(i: number): string {

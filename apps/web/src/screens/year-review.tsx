@@ -8,6 +8,7 @@ import { formatDuration } from "@/lib/format";
 import { formatVolume, prValue } from "@/lib/report-format";
 import { type ReportData, useReportData } from "@/lib/report-queries";
 import { distanceUnitFor, type Unit, useUnit } from "@/lib/settings";
+import { useVoice } from "@/lib/voice";
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i);
 const monthLongFmt = new Intl.DateTimeFormat(undefined, { month: "long" });
@@ -17,6 +18,7 @@ export default function YearReviewScreen() {
   const navigate = useNavigate();
   const { data, isLoading } = useReportData();
   const { unit } = useUnit();
+  const { t } = useVoice();
 
   // Years with any logged workout, newest first.
   const years = useMemo(() => {
@@ -54,8 +56,10 @@ export default function YearReviewScreen() {
 
       {years.length === 0 || activeYear == null ? (
         <p className="mt-8 text-sm text-faint" data-testid="year-empty">
-          No workouts logged yet — your year in review appears here once you
-          train.
+          {t(
+            "No workouts logged yet — your year in review appears here once you train.",
+            "A year with n=0 workouts. The frog refuses to speculate. Train, and the review appears.",
+          )}
         </p>
       ) : (
         <>

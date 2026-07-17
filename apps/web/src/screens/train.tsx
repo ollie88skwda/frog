@@ -30,9 +30,11 @@ import {
 } from "@/lib/routine-queries";
 import { useStartSession } from "@/lib/start-session";
 import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
 
 export default function TrainScreen() {
   const navigate = useNavigate();
+  const { t } = useVoice();
   const { data: active } = useActiveSession();
   const { start, starting, error } = useStartSession();
   const { data: folders = [] } = useRoutineFolders();
@@ -110,7 +112,17 @@ export default function TrainScreen() {
             </span>
           )}
         </div>
-        {error && <p className="mt-2 text-xs text-neg">{error}</p>}
+        {/* Error framing is playground; the exact message stays outside t()
+            so the fact survives every register. */}
+        {error && (
+          <p className="mt-2 text-xs text-neg">
+            {t(
+              "Could not start the session.",
+              "The frog is annoyed. The session did not start.",
+            )}{" "}
+            {error}
+          </p>
+        )}
       </div>
 
       {/* Programs + Trainer entry points */}
@@ -162,7 +174,10 @@ export default function TrainScreen() {
         {routines.length === 0 && folders.length === 0 && (
           <div className="rounded-lg border border-border bg-surface p-6 text-center">
             <p className="text-sm text-soft">
-              No routines yet. Build one to make every session start pre-filled.
+              {t(
+                "No routines yet. Build one to make every session start pre-filled.",
+                "The lab is empty. The frog is waiting.",
+              )}
             </p>
             <Button
               variant="outline"
@@ -223,6 +238,7 @@ function FolderSection({
   routines: Routine[];
   folders: RoutineFolder[];
 }) {
+  const { t } = useVoice();
   const [open, setOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
@@ -311,7 +327,9 @@ function FolderSection({
             <RoutineCard key={r.id} routine={r} folders={folders} />
           ))}
           {routines.length === 0 && (
-            <p className="text-xs text-faint">Empty folder</p>
+            <p className="text-xs text-faint">
+              {t("Empty folder", "Empty. The frog checked.")}
+            </p>
           )}
         </div>
       )}

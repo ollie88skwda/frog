@@ -33,6 +33,7 @@ import { useRecordsData } from "@/lib/records-queries";
 import { useUnit } from "@/lib/settings";
 import { useLatestBodyweight, useMuscleMap } from "@/lib/stats-queries";
 import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -70,6 +71,7 @@ export default function StatsScreen() {
   const { data: prefs } = useUserPrefs();
   const muscleMap = useMuscleMap();
   const { unit } = useUnit();
+  const { t } = useVoice();
 
   const opts: StatsOptions = useMemo(
     () => ({
@@ -109,7 +111,10 @@ export default function StatsScreen() {
           className="mt-6 border border-border bg-surface p-4 text-xs text-faint"
           data-testid="stats-empty"
         >
-          Log a few workouts to see your training analytics here.
+          {t(
+            "Log a few workouts to see your training analytics here.",
+            "No workouts on record. The frog refuses to speculate. Log a few and your analytics appear here.",
+          )}
         </p>
       )}
 

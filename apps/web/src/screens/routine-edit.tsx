@@ -36,6 +36,7 @@ import {
 } from "@/lib/routine-queries";
 import { useUnit } from "@/lib/settings";
 import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
 
 // Draft model for the builder: targets in DISPLAY units (converted to kg on
 // save). Rep range mode = repsMax non-empty.
@@ -90,6 +91,7 @@ export default function RoutineEditScreen() {
   const { id } = useParams(); // undefined on /routines/new
   const navigate = useNavigate();
   const { unit } = useUnit();
+  const { t } = useVoice();
   const { data: exercises = [] } = useExercises();
   const { data: folders = [] } = useRoutineFolders();
   const { data: detail } = useRoutineDetail(id ?? null);
@@ -264,7 +266,7 @@ export default function RoutineEditScreen() {
       else await createRoutine.mutateAsync(input);
       navigate("/train");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
+      setError(e instanceof Error ? e.message : "Unknown error");
       setSaving(false);
     }
   }
@@ -328,7 +330,14 @@ export default function RoutineEditScreen() {
         </Select.Root>
       </div>
 
-      {error && <p className="mt-3 text-xs text-neg">{error}</p>}
+      {/* Frog frames the failure; the exact error stays outside t() so the
+          fact survives every register. */}
+      {error && (
+        <p className="mt-3 text-xs text-neg">
+          {t("Save failed.", "The frog is annoyed (your draft is safe).")}{" "}
+          {error}
+        </p>
+      )}
 
       <div className="mt-4 flex flex-col gap-3">
         {list.map((d, i) => {
@@ -394,7 +403,7 @@ export default function RoutineEditScreen() {
               </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <label className="flex items-center gap-1 text-2xs text-soft">
+                <span className="flex items-center gap-1 text-2xs text-soft">
                   Rest
                   <Select.Root
                     value={d.restSec == null ? REST_DEFAULT : String(d.restSec)}
@@ -408,6 +417,7 @@ export default function RoutineEditScreen() {
                   >
                     <Select.Trigger
                       variant="surface"
+                      aria-label="Rest"
                       data-testid={`routine-ex-${i}-rest`}
                     />
                     <Select.Content>
@@ -425,7 +435,7 @@ export default function RoutineEditScreen() {
                       ))}
                     </Select.Content>
                   </Select.Root>
-                </label>
+                </span>
                 <Input
                   placeholder="Exercise note (shows every session)"
                   value={d.note}
@@ -591,6 +601,14 @@ export default function RoutineEditScreen() {
             autoFocus
           />
           <div className="mt-2 flex flex-col gap-3">
+            {grouped.length === 0 && (
+              <p className="text-xs text-faint">
+                {t(
+                  "No exercises match your search.",
+                  "No exercises match. The frog refuses to speculate.",
+                )}
+              </p>
+            )}
             {grouped.map((g) => (
               <div key={g.key}>
                 <p className="text-2xs font-medium tracking-widest text-faint uppercase">
@@ -667,7 +685,7 @@ function SetTypeCell({
             <button
               key={t}
               type="button"
-              className="flex h-8 items-center rounded px-2 text-left text-xs hover:bg-surface-2"
+              className="flex h-8 items-center px-2 text-left text-xs hover:bg-surface-2"
               onClick={() => {
                 onChange(t);
                 setOpen(false);

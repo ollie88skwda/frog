@@ -12,6 +12,7 @@ import { Camera, Trash2 } from "lucide-react";
 // Radix Select forbids an empty-string value; the "None" comparison option
 // uses a sentinel mapped back to "" (no comparison) at the boundary.
 const COMPARE_NONE = "__none__";
+
 import { type ChangeEvent, useMemo, useState } from "react";
 import { ShareButton } from "@/components/share-card";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
   useUpsertMeasurement,
 } from "@/lib/measure-queries";
 import { type Unit, useUnit } from "@/lib/settings";
+import { useVoice } from "@/lib/voice";
 
 // ── Metric catalog ────────────────────────────────────────────────────────
 // Body weight + body fat + the 14 circumferences, in the schema's order. All
@@ -118,6 +120,7 @@ const parseLocal = (on: string) => new Date(`${on}T00:00:00`).getTime();
 const formatDay = (on: string) => formatDate(parseLocal(on));
 
 export default function MeasuresScreen() {
+  const { t } = useVoice();
   const { unit } = useUnit();
   const { data: measurements = [] } = useMeasurements();
   const upsert = useUpsertMeasurement();
@@ -144,8 +147,10 @@ export default function MeasuresScreen() {
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
       <h1 className="text-lg font-semibold tracking-tight">Measures</h1>
       <p className="mt-0.5 text-2xs text-faint">
-        Body weight, body fat, and girths — one entry per day. Progress photos
-        stay private.
+        {t(
+          "Body weight, body fat, and girths — one entry per day. Progress photos stay private.",
+          "Body weight, body fat, and girths — one entry per day. Progress photos stay private. The frog does not look.",
+        )}
       </p>
 
       {photos.length > 0 && <PhotoStrip photos={photos} />}
@@ -467,6 +472,7 @@ function TrendChart({
 }: {
   series: { m: Measurement; value: number }[];
 }) {
+  const { t } = useVoice();
   const W = 320;
   const H = 120;
   const padX = 10;
@@ -476,7 +482,10 @@ function TrendChart({
   if (series.length === 0) {
     return (
       <div className="mt-2 flex h-[110px] items-center justify-center text-xs text-faint">
-        No data yet — log a value above.
+        {t(
+          "No data yet — log a value above.",
+          "No data yet. The frog refuses to speculate — log a value above.",
+        )}
       </div>
     );
   }
@@ -697,7 +706,7 @@ function PhotoViewer({
         </div>
 
         {others.length > 0 && (
-          <label className="flex items-center gap-2 text-xs text-soft">
+          <span className="flex items-center gap-2 text-xs text-soft">
             Compare with
             <Select.Root
               value={compareId || COMPARE_NONE}
@@ -707,6 +716,7 @@ function PhotoViewer({
               <Select.Trigger
                 variant="surface"
                 className="flex-1"
+                aria-label="Compare with"
                 data-testid="photo-compare-select"
               />
               <Select.Content>
@@ -718,7 +728,7 @@ function PhotoViewer({
                 ))}
               </Select.Content>
             </Select.Root>
-          </label>
+          </span>
         )}
 
         <div className="flex items-center gap-2 border-t border-border pt-3">
