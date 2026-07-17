@@ -1,0 +1,64 @@
+// Parses one spoken set-logging utterance ("rear delt flies 250 lbs for 5
+// reps") into structured fields. Plain regex, no NLP — Web Speech API already
+// hands back clean digit-form numbers, so word-number conversion is out of
+// scope. Never guesses an exercise: matching the parsed name against a real
+// exercise list is the caller's job (see match-exercise.ts).
+
+export type ParsedSetUtterance = {
+  name: string;
+  weightDisplay: number | null;
+  unit: "kg" | "lb";
+  reps: number | null;
+};
+
+const UNIT_WORDS: Record<string, "kg" | "lb"> = {
+  lb: "lb",
+  lbs: "lb",
+  pound: "lb",
+  pounds: "lb",
+  kg: "kg",
+  kgs: "kg",
+  kilo: "kg",
+  kilos: "kg",
+};
+
+// name, weight, optional unit word, optional (connector + reps + optional "reps" word).
+const FULL_RE =
+  /^(.+?)\s+(\d+(?:\.\d+)?)\s*(lbs?|pounds?|kgs?|kilos?)?(?:\s*(?:for|x|by)\s*(\d+(?:\.\d+)?)\s*(reps?)?)?\s*$/i;
+
+// name + connector + reps only, no weight mentioned at all.
+const REPS_ONLY_RE = /^(.+?)\s+(?:for|x|by)\s*(\d+(?:\.\d+)?)\s*(reps?)?\s*$/i;
+
+export function parseSetUtterance(
+  text: string,
+  defaultUnit: "kg" | "lb",
+): ParsedSetUtterance | null {
+  const cleaned = text.trim().replace(/\s+/g, " ");
+  if (!cleaned) return null;
+
+  const full = cleaned.match(FULL_RE);
+  if (full) {
+    const name = full[1].trim();
+    if (!name) return null;
+    return {
+      name,
+      weightDisplay: Number.parseFloat(full[2]),
+      unit: full[3] ? UNIT_WORDS[full[3].toLowerCase()] : defaultUnit,
+      reps: full[4] != null ? Number.parseInt(full[4], 10) : null,
+    };
+  }
+
+  const repsOnly = cleaned.match(REPS_ONLY_RE);
+  if (repsOnly) {
+    const name = repsOnly[1].trim();
+    if (!name) return null;
+    return {
+      name,
+      weightDisplay: null,
+      unit: defaultUnit,
+      reps: Number.parseInt(repsOnly[2], 10),
+    };
+  }
+
+  return null;
+}

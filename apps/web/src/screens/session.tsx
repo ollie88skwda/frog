@@ -16,12 +16,15 @@ import {
   kmToM,
   type LoggedSet,
   lbToKg,
+  MATCH_CONFIDENCE_THRESHOLD,
   type Machine,
   type Metric,
+  matchExerciseName,
   miToM,
   type NewRoutineInput,
   newId,
   type PlateConfig,
+  parseSetUtterance,
   previousCells,
   type RestTimerState,
   type RoutineDetail,
@@ -50,11 +53,13 @@ import {
   History,
   Link2,
   Medal,
+  Mic,
   MoreHorizontal,
   MoreVertical,
   Pause,
   Play,
   Plus,
+  Search,
   Settings2,
   Square,
   Timer,
@@ -63,8 +68,10 @@ import {
   X,
 } from "lucide-react";
 import {
+  forwardRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useReducer,
   useRef,
@@ -566,6 +573,118 @@ export default function SessionScreen() {
     },
     [],
   );
+
+  // ActiveRow handles, keyed by block — the voice mic's target for applying a
+  // parsed weight/reps without going through onCommit.
+  const rowHandles = useRef<Map<string, ActiveRowHandle>>(new Map());
+  const registerRowHandle = useCallback(
+    (seId: string, handle: ActiveRowHandle | null) => {
+      if (handle) rowHandles.current.set(seId, handle);
+      else rowHandles.current.delete(seId);
+    },
+    [],
+  );
+
+  // Voice logging: speak a full utterance ("bench press 135 lbs for 8 reps")
+  // to fill the matching block's active row — parse → fuzzy-match against
+  // this session's own blocks → apply to that row's local state. Never
+  // auto-commits; Enter / Add set stays the explicit trigger. Feature-detect,
+  // don't render a dead control: iOS Safari support is inconsistent, Firefox
+  // has none, and the API requires a secure context.
+  const speechSupported =
+    typeof window !== "undefined" &&
+    window.isSecureContext &&
+    (window.SpeechRecognition != null ||
+      window.webkitSpeechRecognition != null);
+  const [listening, setListening] = useState(false);
+  const [micMessage, setMicMessage] = useState<string | null>(null);
+  const [voicePicker, setVoicePicker] = useState<{
+    query: string;
+    weightKg: number | null;
+    reps: number | null;
+  } | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  useEffect(() => {
+    return () => recognitionRef.current?.abort();
+  }, []);
+
+  function showMicMessage(message: string) {
+    setMicMessage(message);
+    window.setTimeout(() => setMicMessage(null), 2500);
+  }
+
+  function applyVoiceToBlock(
+    seId: string,
+    values: { weightKg: number | null; reps: number | null },
+  ) {
+    rowHandles.current.get(seId)?.applyVoice(values);
+  }
+
+  function handleVoiceResult(transcript: string) {
+    const parsed = parseSetUtterance(transcript, unit);
+    if (!parsed) {
+      showMicMessage(
+        voice("Didn't catch that.", "Didn't catch that — try again?"),
+      );
+      return;
+    }
+    const weightKg =
+      parsed.weightDisplay == null
+        ? null
+        : parsed.unit === "lb"
+          ? lbToKg(parsed.weightDisplay)
+          : parsed.weightDisplay;
+    const candidates = (blocks ?? []).map((b) => ({
+      id: b.seId,
+      name: b.name,
+    }));
+    const match = matchExerciseName(parsed.name, candidates);
+    if (match && match.score >= MATCH_CONFIDENCE_THRESHOLD) {
+      applyVoiceToBlock(match.id, { weightKg, reps: parsed.reps });
+    } else {
+      setVoicePicker({ query: parsed.name, weightKg, reps: parsed.reps });
+    }
+  }
+
+  function startListening() {
+    if (listening) return;
+    const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!Ctor) return;
+    const recognition = new Ctor();
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    const reset = () => {
+      setListening(false);
+      recognitionRef.current = null;
+    };
+    recognition.onresult = (e) => {
+      handleVoiceResult(e.results[0]?.[0]?.transcript ?? "");
+    };
+    recognition.onerror = () => {
+      reset();
+      showMicMessage(
+        voice("Didn't catch that.", "Didn't catch that — try again?"),
+      );
+    };
+    recognition.onnomatch = () => {
+      reset();
+      showMicMessage(
+        voice("Didn't catch that.", "Didn't catch that — try again?"),
+      );
+    };
+    recognition.onend = reset;
+    recognitionRef.current = recognition;
+    setMicMessage(null);
+    setListening(true);
+    recognition.start();
+  }
+
+  function stopListening() {
+    recognitionRef.current?.stop();
+  }
 
   // Distinct superset groups in block order → color slot (index % 4).
   const supersetSlot = useMemo(() => {
@@ -1073,6 +1192,33 @@ export default function SessionScreen() {
               />
             )}
             <RestTimer since={lastCommitAt} />
+            {speechSupported && (
+              <span className="relative flex items-center">
+                <button
+                  type="button"
+                  onClick={listening ? stopListening : startListening}
+                  title={listening ? "Stop listening" : "Log a set by voice"}
+                  aria-pressed={listening}
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-md border border-border transition-colors duration-100 md:size-8",
+                    listening
+                      ? "bg-accent text-accent-fg"
+                      : "bg-surface-2 text-soft hover:bg-surface-hover hover:text-ink",
+                  )}
+                  data-testid="voice-log-mic"
+                >
+                  <Mic className="size-4" />
+                </button>
+                {micMessage && (
+                  <span
+                    role="status"
+                    className="floating absolute top-full right-0 z-20 mt-1 whitespace-nowrap px-2 py-1 text-2xs text-faint"
+                  >
+                    {micMessage}
+                  </span>
+                )}
+              </span>
+            )}
             <Button
               size="sm"
               onClick={() => setFinishOpen(true)}
@@ -1137,6 +1283,7 @@ export default function SessionScreen() {
               onAddWarmup={(w) => addWarmup(block.seId, w)}
               prSetIds={prSetIds}
               registerRef={(el) => registerBlockRef(block.seId, el)}
+              registerRowRef={(handle) => registerRowHandle(block.seId, handle)}
               timerRunning={timer?.seId === block.seId}
               timerStartedAt={
                 timer?.seId === block.seId ? timer.startedAt : null
@@ -1163,6 +1310,22 @@ export default function SessionScreen() {
             onOpenChange={setPicking}
             onPick={pickExercise}
           />
+          {voicePicker && (
+            <VoiceMatchPicker
+              query={voicePicker.query}
+              blocks={blocks ?? []}
+              onOpenChange={(open) => {
+                if (!open) setVoicePicker(null);
+              }}
+              onPick={(seId) => {
+                applyVoiceToBlock(seId, {
+                  weightKg: voicePicker.weightKg,
+                  reps: voicePicker.reps,
+                });
+                setVoicePicker(null);
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -1487,6 +1650,68 @@ function ExercisePicker({
   );
 }
 
+// Voice-log fallback: the parsed name didn't clearly match one block, so ask
+// rather than guess. Scoped to this session's own blocks only (never the full
+// exercise library) — same search-box pattern as ExercisePicker, above.
+function VoiceMatchPicker({
+  query,
+  blocks,
+  onPick,
+  onOpenChange,
+}: {
+  query: string;
+  blocks: { seId: string; name: string }[];
+  onPick: (seId: string) => void;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [search, setSearch] = useState(query);
+  const filtered = blocks.filter((b) =>
+    b.name.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent title="Which exercise?" className="md:max-w-sm">
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-faint" />
+            <Input
+              placeholder="Search this session…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+              autoFocus
+              data-testid="voice-picker-search"
+            />
+          </div>
+          {filtered.length === 0 ? (
+            <p className="px-1 py-4 text-center text-xs text-faint">
+              {voice(
+                "No match in this session.",
+                "No match in this session — the frog looked, promise.",
+              )}
+            </p>
+          ) : (
+            <ul className="divide-y divide-border overflow-hidden border border-border bg-surface">
+              {filtered.map((b) => (
+                <li key={b.seId}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(b.seId)}
+                    className="block w-full px-4 py-3 text-left text-sm transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+                    data-testid={`voice-pick-${b.name}`}
+                  >
+                    {b.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // One picker row: the ribbon picks the exercise; a separate toggle reveals the
 // last-session history. The history query only mounts once expanded, so opening
 // the picker doesn't fire a lookup for every exercise at once.
@@ -1600,6 +1825,7 @@ function ExerciseBlock({
   onAddWarmup,
   prSetIds,
   registerRef,
+  registerRowRef,
   timerRunning,
   timerStartedAt,
   onToggleTimer,
@@ -1632,6 +1858,7 @@ function ExerciseBlock({
   onAddWarmup: (workingWeightKg: number) => void;
   prSetIds: Set<string>;
   registerRef: (el: HTMLElement | null) => void;
+  registerRowRef: (handle: ActiveRowHandle | null) => void;
   timerRunning: boolean;
   timerStartedAt: number | null;
   onToggleTimer: () => void;
@@ -1823,6 +2050,7 @@ function ExerciseBlock({
 
       <ActiveRow
         key={`${activeIndex}-${seedNonce}`}
+        ref={registerRowRef}
         seId={block.seId}
         index={activeIndex}
         unit={blockUnit}
@@ -2654,51 +2882,67 @@ function RpeSelect({
   );
 }
 
-function ActiveRow({
-  seId,
-  index,
-  unit,
-  distUnit,
-  type,
-  columns,
-  template,
-  showPrevious,
-  previous,
-  seed,
-  nextSeedType,
-  ghost,
-  hasGhost,
-  enabledMetrics,
-  autoFocusWeight,
-  barLoaded,
-  onOpenPlates,
-  timerRunning,
-  timerStartedAt,
-  onToggleTimer,
-  onCommit,
-}: {
-  seId: string;
-  index: number;
-  unit: Unit;
-  distUnit: DistanceUnit;
-  type: ExerciseType;
-  columns: Column[];
-  template: string;
-  showPrevious: boolean;
-  previous: GhostSet | null;
-  seed: SeedSet | undefined;
-  nextSeedType: string | null;
-  ghost: GhostSet;
-  hasGhost: boolean;
-  enabledMetrics: Metric[];
-  autoFocusWeight: boolean;
-  barLoaded: boolean;
-  onOpenPlates: (target: number | null) => void;
-  timerRunning: boolean;
-  timerStartedAt: number | null;
-  onToggleTimer: () => void;
-  onCommit: (set: CommitInput, ctx: CommitCtx) => void;
-}) {
+// Imperative escape hatch for voice logging: fills weight/reps as if typed,
+// converting kg to this row's own display unit. Never commits — same as a
+// manual edit, an explicit commit (Enter / Add set) still has to follow.
+type ActiveRowHandle = {
+  applyVoice: (values: {
+    weightKg: number | null;
+    reps: number | null;
+  }) => void;
+};
+
+const ActiveRow = forwardRef<
+  ActiveRowHandle,
+  {
+    seId: string;
+    index: number;
+    unit: Unit;
+    distUnit: DistanceUnit;
+    type: ExerciseType;
+    columns: Column[];
+    template: string;
+    showPrevious: boolean;
+    previous: GhostSet | null;
+    seed: SeedSet | undefined;
+    nextSeedType: string | null;
+    ghost: GhostSet;
+    hasGhost: boolean;
+    enabledMetrics: Metric[];
+    autoFocusWeight: boolean;
+    barLoaded: boolean;
+    onOpenPlates: (target: number | null) => void;
+    timerRunning: boolean;
+    timerStartedAt: number | null;
+    onToggleTimer: () => void;
+    onCommit: (set: CommitInput, ctx: CommitCtx) => void;
+  }
+>(function ActiveRow(
+  {
+    seId,
+    index,
+    unit,
+    distUnit,
+    type,
+    columns,
+    template,
+    showPrevious,
+    previous,
+    seed,
+    nextSeedType,
+    ghost,
+    hasGhost,
+    enabledMetrics,
+    autoFocusWeight,
+    barLoaded,
+    onOpenPlates,
+    timerRunning,
+    timerStartedAt,
+    onToggleTimer,
+    onCommit,
+  },
+  ref,
+) {
   // Restore any uncommitted keystrokes persisted for this block (draft wins over
   // the routine/copy seed once the user has started typing).
   const [draft] = useState<Partial<DraftSnapshot> | null>(() =>
@@ -2793,6 +3037,18 @@ function ActiveRow({
 
   const f = TYPE_FIELDS[type];
   const effort = supportsEffort(type);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyVoice({ weightKg, reps: repsValue }) {
+        if (f.weight && weightKg != null)
+          setWeight(String(toDisplayWeight(weightKg, unit)));
+        if (f.reps && repsValue != null) setReps(String(repsValue));
+      },
+    }),
+    [f.weight, f.reps, unit],
+  );
 
   // Live stopwatch readout while this row's timer runs (ticks each second).
   useEffect(() => {
@@ -3252,7 +3508,7 @@ function ActiveRow({
       </Button>
     </div>
   );
-}
+});
 
 // Top-bar duration readout that doubles as the pause / edit-start control
 // (Hevy: tapping the stopwatch opens Pause·Resume and start-date/time edits).
