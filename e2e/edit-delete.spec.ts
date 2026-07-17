@@ -27,11 +27,11 @@ test("edit a committed set; delete a set; both survive reload", async ({ page })
   // Log two sets.
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-reps").blur();
+  await page.getByTestId("set-0-reps").press("Enter");
   await expect(page.getByTestId("set-1-weight")).toBeVisible();
   await page.getByTestId("set-1-weight").fill("110");
   await page.getByTestId("set-1-reps").fill("3");
-  await page.getByTestId("set-1-reps").blur();
+  await page.getByTestId("set-1-reps").press("Enter");
   await expect(page.getByTestId("set-2-weight")).toBeVisible();
   // Both rows persisted → the optimistic temp ids have been swapped for real
   // ones, so edit/delete below target actual rows.

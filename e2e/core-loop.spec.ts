@@ -52,15 +52,14 @@ test("log sets persists to set_logs, and ghost prefill shows the prior session",
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 
-  // Session 1: log one set (135 x 5) — row commits on blur once both are set.
+  // Session 1: log one set (135 x 5) — row commits on Enter once both are set.
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   const before = await rowCount(page, "set_logs");
   await page.getByTestId("set-0-weight").fill("135");
-  await page.getByTestId("set-0-weight").blur();
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-reps").blur();
+  await page.getByTestId("set-0-reps").press("Enter");
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
 
   // The committed row renders and the next active row appears.
