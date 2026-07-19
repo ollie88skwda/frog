@@ -3207,7 +3207,6 @@ function ActiveRow({
                   placeholder="// note"
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  onKeyDown={onKeyDown}
                   autoFocus={lastAdded === "note"}
                   data-testid={`set-${index}-note`}
                   className="w-full resize-y rounded-md border border-border-strong bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
