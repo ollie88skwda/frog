@@ -158,6 +158,7 @@ export default function LibraryScreen() {
       create.mutate({ name: n, opts: {} });
     }
     setBulkText("");
+    setSkipDuplicates(true);
     setBulkOpen(false);
   }
 
@@ -252,7 +253,13 @@ export default function LibraryScreen() {
       </form>
 
       <div className="mt-2">
-        <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <Dialog
+          open={bulkOpen}
+          onOpenChange={(open) => {
+            setBulkOpen(open);
+            if (!open) setSkipDuplicates(true);
+          }}
+        >
           <DialogTrigger asChild>
             <Button
               variant="ghost"

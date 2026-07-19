@@ -47,7 +47,6 @@ export function useCreateExercise() {
       vars.opts.id = id;
       const opts = vars.opts;
       void qc.cancelQueries({ queryKey: ["exercises"] });
-      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
       const now = Date.now();
       const optimistic: Exercise = {
         id,
@@ -71,10 +70,16 @@ export function useCreateExercise() {
       qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
         [...old, optimistic].sort((a, b) => a.name.localeCompare(b.name)),
       );
-      return { prev };
+      return { id };
     },
-    onError: (_err, _name, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
+    // Roll back by removing only this mutation's optimistic row — a snapshot
+    // restore would clobber sibling optimistic rows when creates run
+    // concurrently (bulk add fires one mutation per name).
+    onError: (_err, _vars, ctx) => {
+      if (!ctx) return;
+      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
+        old.filter((e) => e.id !== ctx.id),
+      );
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
   });
