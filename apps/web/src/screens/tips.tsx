@@ -1,4 +1,10 @@
-import { LESSONS, type Lesson } from "@/lib/lessons";
+import { useEffect } from "react";
+import {
+  LESSONS,
+  type Lesson,
+  type LessonId,
+  useLessonSeen,
+} from "@/lib/lessons";
 import { useVoice } from "@/lib/voice";
 
 // Generic browse view over whatever's in LESSONS — no hardcoded lesson ids,
@@ -7,7 +13,7 @@ export default function TipsScreen() {
   const { t } = useVoice();
   // Widen each value to `Lesson` (see components/lesson.tsx) so the optional
   // `citations` field type-checks below even though no entry sets it yet.
-  const entries = Object.entries(LESSONS) as [string, Lesson][];
+  const entries = Object.entries(LESSONS) as [LessonId, Lesson][];
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
@@ -27,19 +33,7 @@ export default function TipsScreen() {
       ) : (
         <div className="mt-4 divide-y divide-border overflow-hidden border border-border bg-surface">
           {entries.map(([id, lesson]) => (
-            <div key={id} className="flex flex-col gap-2 px-4 py-3">
-              <h2 className="text-sm font-medium">{lesson.title}</h2>
-              {lesson.body.map((line) => (
-                <p key={line} className="text-xs text-ink-2">
-                  {line}
-                </p>
-              ))}
-              {lesson.citations && lesson.citations.length > 0 && (
-                <p className="text-2xs text-faint">
-                  {lesson.citations.join(" · ")}
-                </p>
-              )}
-            </div>
+            <LessonCard key={id} id={id} lesson={lesson} />
           ))}
         </div>
       )}
@@ -48,6 +42,29 @@ export default function TipsScreen() {
         <p className="mt-3 text-2xs text-faint">
           {t("More tips are on the way.", "The frog has more tips queued up.")}
         </p>
+      )}
+    </div>
+  );
+}
+
+// Browsing here counts as reading the lesson — marks it seen so its InfoTip
+// dot elsewhere in the app clears too, same as opening the InfoTip dialog.
+function LessonCard({ id, lesson }: { id: LessonId; lesson: Lesson }) {
+  const { markSeen } = useLessonSeen(id);
+  useEffect(() => {
+    markSeen();
+  }, [markSeen]);
+
+  return (
+    <div className="flex flex-col gap-2 px-4 py-3">
+      <h2 className="text-sm font-medium">{lesson.title}</h2>
+      {lesson.body.map((line) => (
+        <p key={line} className="text-xs text-ink-2">
+          {line}
+        </p>
+      ))}
+      {lesson.citations && lesson.citations.length > 0 && (
+        <p className="text-2xs text-faint">{lesson.citations.join(" · ")}</p>
       )}
     </div>
   );
