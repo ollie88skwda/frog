@@ -257,7 +257,10 @@ export default function LibraryScreen() {
           open={bulkOpen}
           onOpenChange={(open) => {
             setBulkOpen(open);
-            if (!open) setSkipDuplicates(true);
+            if (!open) {
+              setBulkText("");
+              setSkipDuplicates(true);
+            }
           }}
         >
           <DialogTrigger asChild>
