@@ -110,8 +110,8 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     // excluding the just-created (empty) session-exercise returns s1's sets in order
     const ghost = await repoA.lastSetsForExercise(ex.id, se2);
     expect(ghost).toEqual([
-      { weightKg: 140, reps: 5 },
-      { weightKg: 150, reps: 3 },
+      { weightKg: 140, reps: 5, durationSec: null, distanceM: null },
+      { weightKg: 150, reps: 3, durationSec: null, distanceM: null },
     ]);
   });
 
@@ -231,7 +231,11 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     // Seed exercises carry classifications from the migration…
     const seeds = (await repoB.listExercises()).filter((e) => !e.isCustom);
     expect(seeds.length).toBeGreaterThan(0);
-    expect(seeds.every((e) => e.muscleTargets?.length)).toBe(true);
+    // Neck-only rows are the one exception: free-exercise-db's "neck" muscle
+    // has no SBL key (scripts/import-free-exercise-db.ts drops it).
+    expect(
+      seeds.every((e) => e.muscleTargets?.length || e.name.includes("Neck")),
+    ).toBe(true);
     // …and stay read-only for clients.
     const squat = seeds.find((e) => e.name === "Squat");
     const { data: updatedRows } = await clientB
