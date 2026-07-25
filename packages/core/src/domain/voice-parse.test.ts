@@ -84,8 +84,28 @@ describe("parseSetUtterance", () => {
     });
   });
 
-  it("does not read a trailing bare 'reps' word as weight-only", () => {
-    expect(parseSetUtterance("bench press 225 reps", "kg")).toBeNull();
+  it("parses reps-only labelled by a trailing 'reps' word, no connector", () => {
+    expect(parseSetUtterance("pull ups 10 reps", "kg")).toEqual({
+      name: "pull ups",
+      weightDisplay: null,
+      unit: "kg",
+      unitExplicit: false,
+      reps: 10,
+    });
+  });
+
+  it("reads a number labelled 'reps' as reps, never as weight", () => {
+    expect(parseSetUtterance("bench press 225 reps", "kg")).toEqual({
+      name: "bench press",
+      weightDisplay: null,
+      unit: "kg",
+      unitExplicit: false,
+      reps: 225,
+    });
+  });
+
+  it("still returns null for a bare unlabelled trailing word", () => {
+    expect(parseSetUtterance("bench press 225 things", "kg")).toBeNull();
   });
 
   it("returns null for garbage with no numbers", () => {

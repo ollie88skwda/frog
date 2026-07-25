@@ -1,6 +1,7 @@
-// Minimal fuzzy matcher: normalize + token-overlap scoring. No stemming, no
-// edit distance — good enough to resolve a spoken exercise name against a
-// short candidate list (a session's own blocks), not a full exercise library.
+// Minimal fuzzy matcher: normalize + trailing-s plural fold + token-overlap
+// scoring. No real stemming, no edit distance — good enough to resolve a
+// spoken exercise name against a short candidate list (a session's own
+// blocks), not a full exercise library.
 // NOTE: no existing matcher was found elsewhere in the repo at the time this
 // was written (checked packages/core/src and other active branches) — if a
 // parallel routine-import task lands packages/core/src/generator/match-exercise.ts
@@ -21,9 +22,12 @@ export function normalizeExerciseName(name: string): string {
     .trim();
 }
 
+// Applied identically to query and candidates, so the fold stays symmetric:
+// "squats" and "Squat" both tokenize to "squat".
 function tokenize(name: string): string[] {
   const normalized = normalizeExerciseName(name);
-  return normalized ? normalized.split(" ") : [];
+  if (!normalized) return [];
+  return normalized.split(" ").map((t) => t.replace(/(.)s$/, "$1"));
 }
 
 // Jaccard-style overlap over token sets — order-independent, tolerant of

@@ -1695,6 +1695,10 @@ function VoiceMatchPicker({
   const filtered = blocks.filter((b) =>
     b.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
+  // The pre-filled spoken name usually isn't a substring of any block name
+  // (that's why the picker opened) — fall back to the full list rather than
+  // opening onto a dead-end empty state.
+  const shown = filtered.length > 0 ? filtered : blocks;
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent title="Which exercise?" className="md:max-w-sm">
@@ -1710,7 +1714,7 @@ function VoiceMatchPicker({
               data-testid="voice-picker-search"
             />
           </div>
-          {filtered.length === 0 ? (
+          {shown.length === 0 ? (
             <p className="px-1 py-4 text-center text-xs text-faint">
               {voice(
                 "No match in this session.",
@@ -1719,7 +1723,7 @@ function VoiceMatchPicker({
             </p>
           ) : (
             <ul className="divide-y divide-border overflow-hidden border border-border bg-surface">
-              {filtered.map((b) => (
+              {shown.map((b) => (
                 <li key={b.seId}>
                   <button
                     type="button"

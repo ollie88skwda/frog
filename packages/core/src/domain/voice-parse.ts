@@ -31,8 +31,11 @@ const UNIT_WORDS: Record<string, "kg" | "lb"> = {
 const FULL_RE =
   /^(.+?)\s+(\d+(?:\.\d+)?)\s*(lbs?|pounds?|kgs?|kilos?)?(?:(?:\s*(?:for|x|by)\s*|\s+)(\d+(?:\.\d+)?)\s*(reps?)?)?\s*$/i;
 
-// name + connector + reps only, no weight mentioned at all.
-const REPS_ONLY_RE = /^(.+?)\s+(?:for|x|by)\s*(\d+(?:\.\d+)?)\s*(reps?)?\s*$/i;
+// name + reps only, no weight mentioned at all. The single number must be
+// labelled as reps by a connector (for/x/by), a trailing "reps" word, or both
+// — a bare "<name> N" stays weight-only (FULL_RE catches it first).
+const REPS_ONLY_RE =
+  /^(.+?)\s+(?:(for|x|by)\s*)?(\d+(?:\.\d+)?)\s*(reps?)?\s*$/i;
 
 export function parseSetUtterance(
   text: string,
@@ -55,7 +58,7 @@ export function parseSetUtterance(
   }
 
   const repsOnly = cleaned.match(REPS_ONLY_RE);
-  if (repsOnly) {
+  if (repsOnly && (repsOnly[2] != null || repsOnly[4] != null)) {
     const name = repsOnly[1].trim();
     if (!name) return null;
     return {
@@ -63,7 +66,7 @@ export function parseSetUtterance(
       weightDisplay: null,
       unit: defaultUnit,
       unitExplicit: false,
-      reps: Number.parseInt(repsOnly[2], 10),
+      reps: Number.parseInt(repsOnly[3], 10),
     };
   }
 

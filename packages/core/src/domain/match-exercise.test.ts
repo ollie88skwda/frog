@@ -30,6 +30,18 @@ describe("matchExerciseName", () => {
     expect(match?.score).toBeGreaterThanOrEqual(MATCH_CONFIDENCE_THRESHOLD);
   });
 
+  it("matches a spoken plural against a singular candidate", () => {
+    const match = matchExerciseName("squats", [{ id: "9", name: "Squat" }]);
+    expect(match?.id).toBe("9");
+    expect(match?.score).toBe(1);
+  });
+
+  it("matches a spoken singular against a plural candidate", () => {
+    const match = matchExerciseName("pull up", CANDIDATES);
+    expect(match?.id).toBe("3");
+    expect(match?.score).toBe(1);
+  });
+
   it("scores an unrelated name low", () => {
     const match = matchExerciseName("banana smoothie", CANDIDATES);
     expect(match?.score).toBeLessThan(MATCH_CONFIDENCE_THRESHOLD);
