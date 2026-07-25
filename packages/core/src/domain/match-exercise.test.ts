@@ -35,6 +35,12 @@ describe("matchExerciseName", () => {
     expect(match?.score).toBeLessThan(MATCH_CONFIDENCE_THRESHOLD);
   });
 
+  it("keeps a single shared token out of two words below the threshold", () => {
+    const match = matchExerciseName("incline press", CANDIDATES);
+    expect(match?.id).toBe("2");
+    expect(match?.score).toBeLessThan(MATCH_CONFIDENCE_THRESHOLD);
+  });
+
   it("returns null with no candidates", () => {
     expect(matchExerciseName("bench press", [])).toBeNull();
   });

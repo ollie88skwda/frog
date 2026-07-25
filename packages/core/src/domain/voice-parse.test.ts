@@ -9,6 +9,7 @@ describe("parseSetUtterance", () => {
       name: "rear delt flies",
       weightDisplay: 250,
       unit: "lb",
+      unitExplicit: true,
       reps: 5,
     });
   });
@@ -18,16 +19,48 @@ describe("parseSetUtterance", () => {
       name: "deadlift",
       weightDisplay: 100,
       unit: "kg",
+      unitExplicit: true,
       reps: 3,
     });
   });
 
-  it("defaults the unit when omitted from speech", () => {
+  it("defaults the unit when omitted from speech and flags it implicit", () => {
     expect(parseSetUtterance("squat 225 for 3", "kg")).toEqual({
       name: "squat",
       weightDisplay: 225,
       unit: "kg",
+      unitExplicit: false,
       reps: 3,
+    });
+  });
+
+  it("parses reps without a connector word", () => {
+    expect(parseSetUtterance("bench press 225 8", "lb")).toEqual({
+      name: "bench press",
+      weightDisplay: 225,
+      unit: "lb",
+      unitExplicit: false,
+      reps: 8,
+    });
+  });
+
+  it("parses reps without a connector word after a unit word", () => {
+    expect(parseSetUtterance("bench press 225 lbs 8 reps", "kg")).toEqual({
+      name: "bench press",
+      weightDisplay: 225,
+      unit: "lb",
+      unitExplicit: true,
+      reps: 8,
+    });
+  });
+
+  it("still prefers the connector interpretation when one is spoken", () => {
+    expect(parseSetUtterance("squat 5 x 5", "kg")).toEqual({
+      name: "squat",
+      weightDisplay: 5,
+      unit: "kg",
+      unitExplicit: false,
+      reps: 5,
     });
   });
 
@@ -36,6 +69,7 @@ describe("parseSetUtterance", () => {
       name: "bicep curl",
       weightDisplay: 25,
       unit: "lb",
+      unitExplicit: true,
       reps: null,
     });
   });
@@ -45,8 +79,13 @@ describe("parseSetUtterance", () => {
       name: "pull ups",
       weightDisplay: null,
       unit: "kg",
+      unitExplicit: false,
       reps: 10,
     });
+  });
+
+  it("does not read a trailing bare 'reps' word as weight-only", () => {
+    expect(parseSetUtterance("bench press 225 reps", "kg")).toBeNull();
   });
 
   it("returns null for garbage with no numbers", () => {

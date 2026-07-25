@@ -23,6 +23,7 @@ import {
   miToM,
   type NewRoutineInput,
   newId,
+  type ParsedSetUtterance,
   type PlateConfig,
   parseSetUtterance,
   previousCells,
@@ -422,6 +423,7 @@ export default function SessionScreen() {
   const [livePrEnabled] = useLivePrBanner();
   const [keepAwake] = useKeepAwake();
   const { data: userPrefs } = useUserPrefs();
+  const { data: exercisePrefs = [] } = useExercisePrefs();
   const updatePrefs = useUpdateUserPrefs();
   const defaultRestSec = userPrefs?.defaultRestSec ?? null;
   const plateConfig = userPrefs?.plateConfig ?? null;
@@ -598,27 +600,59 @@ export default function SessionScreen() {
       window.webkitSpeechRecognition != null);
   const [listening, setListening] = useState(false);
   const [micMessage, setMicMessage] = useState<string | null>(null);
-  const [voicePicker, setVoicePicker] = useState<{
-    query: string;
-    weightKg: number | null;
-    reps: number | null;
-  } | null>(null);
+  // Parsed utterance awaiting a manual block pick (no confident match) — kept
+  // unconverted because the effective unit depends on the picked block.
+  const [voicePicker, setVoicePicker] = useState<ParsedSetUtterance | null>(
+    null,
+  );
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const micMessageTimer = useRef<number | null>(null);
 
   useEffect(() => {
-    return () => recognitionRef.current?.abort();
+    return () => {
+      recognitionRef.current?.abort();
+      if (micMessageTimer.current != null)
+        window.clearTimeout(micMessageTimer.current);
+    };
   }, []);
 
   function showMicMessage(message: string) {
     setMicMessage(message);
-    window.setTimeout(() => setMicMessage(null), 2500);
+    if (micMessageTimer.current != null)
+      window.clearTimeout(micMessageTimer.current);
+    micMessageTimer.current = window.setTimeout(() => {
+      micMessageTimer.current = null;
+      setMicMessage(null);
+    }, 2500);
   }
 
-  function applyVoiceToBlock(
-    seId: string,
-    values: { weightKg: number | null; reps: number | null },
-  ) {
-    rowHandles.current.get(seId)?.applyVoice(values);
+  // Effective unit for a spoken weight: spoken unit word > the target block's
+  // per-exercise unit override (same lookup ExerciseBlock uses) > session unit.
+  function voiceWeightKg(
+    parsed: ParsedSetUtterance,
+    exerciseId: string | null,
+  ): number | null {
+    if (parsed.weightDisplay == null) return null;
+    const override = exercisePrefs.find(
+      (p) => p.exerciseId === exerciseId,
+    )?.weightUnit;
+    const blockUnit: Unit =
+      override === "kg" || override === "lb" ? override : unit;
+    const effectiveUnit = parsed.unitExplicit ? parsed.unit : blockUnit;
+    return effectiveUnit === "lb"
+      ? lbToKg(parsed.weightDisplay)
+      : parsed.weightDisplay;
+  }
+
+  function applyVoiceToBlock(seId: string, parsed: ParsedSetUtterance) {
+    const block = (blocks ?? []).find((b) => b.seId === seId);
+    rowHandles.current.get(seId)?.applyVoice({
+      weightKg: voiceWeightKg(parsed, block?.exerciseId ?? null),
+      reps: parsed.reps,
+    });
+    blockRefs.current
+      .get(seId)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   function handleVoiceResult(transcript: string) {
@@ -629,21 +663,15 @@ export default function SessionScreen() {
       );
       return;
     }
-    const weightKg =
-      parsed.weightDisplay == null
-        ? null
-        : parsed.unit === "lb"
-          ? lbToKg(parsed.weightDisplay)
-          : parsed.weightDisplay;
     const candidates = (blocks ?? []).map((b) => ({
       id: b.seId,
       name: b.name,
     }));
     const match = matchExerciseName(parsed.name, candidates);
     if (match && match.score >= MATCH_CONFIDENCE_THRESHOLD) {
-      applyVoiceToBlock(match.id, { weightKg, reps: parsed.reps });
+      applyVoiceToBlock(match.id, parsed);
     } else {
-      setVoicePicker({ query: parsed.name, weightKg, reps: parsed.reps });
+      setVoicePicker(parsed);
     }
   }
 
@@ -663,10 +691,12 @@ export default function SessionScreen() {
     recognition.onresult = (e) => {
       handleVoiceResult(e.results[0]?.[0]?.transcript ?? "");
     };
-    recognition.onerror = () => {
+    recognition.onerror = (e) => {
       reset();
       showMicMessage(
-        voice("Didn't catch that.", "Didn't catch that — try again?"),
+        e.error === "not-allowed"
+          ? "Microphone blocked — allow mic access in your browser settings."
+          : voice("Didn't catch that.", "Didn't catch that — try again?"),
       );
     };
     recognition.onnomatch = () => {
@@ -1312,16 +1342,13 @@ export default function SessionScreen() {
           />
           {voicePicker && (
             <VoiceMatchPicker
-              query={voicePicker.query}
+              query={voicePicker.name}
               blocks={blocks ?? []}
               onOpenChange={(open) => {
                 if (!open) setVoicePicker(null);
               }}
               onPick={(seId) => {
-                applyVoiceToBlock(seId, {
-                  weightKg: voicePicker.weightKg,
-                  reps: voicePicker.reps,
-                });
+                applyVoiceToBlock(seId, voicePicker);
                 setVoicePicker(null);
               }}
             />

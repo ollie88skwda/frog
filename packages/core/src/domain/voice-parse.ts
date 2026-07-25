@@ -8,6 +8,9 @@ export type ParsedSetUtterance = {
   name: string;
   weightDisplay: number | null;
   unit: "kg" | "lb";
+  // False when the unit fell back to defaultUnit because no unit word was
+  // spoken — lets the caller re-resolve against a per-exercise unit override.
+  unitExplicit: boolean;
   reps: number | null;
 };
 
@@ -22,9 +25,11 @@ const UNIT_WORDS: Record<string, "kg" | "lb"> = {
   kilos: "kg",
 };
 
-// name, weight, optional unit word, optional (connector + reps + optional "reps" word).
+// name, weight, optional unit word, optional (optional connector + reps +
+// optional "reps" word). The connector (for/x/by) is optional because speech
+// engines often drop it: "bench press 225 8" must read as weight 225, reps 8.
 const FULL_RE =
-  /^(.+?)\s+(\d+(?:\.\d+)?)\s*(lbs?|pounds?|kgs?|kilos?)?(?:\s*(?:for|x|by)\s*(\d+(?:\.\d+)?)\s*(reps?)?)?\s*$/i;
+  /^(.+?)\s+(\d+(?:\.\d+)?)\s*(lbs?|pounds?|kgs?|kilos?)?(?:(?:\s*(?:for|x|by)\s*|\s+)(\d+(?:\.\d+)?)\s*(reps?)?)?\s*$/i;
 
 // name + connector + reps only, no weight mentioned at all.
 const REPS_ONLY_RE = /^(.+?)\s+(?:for|x|by)\s*(\d+(?:\.\d+)?)\s*(reps?)?\s*$/i;
@@ -44,6 +49,7 @@ export function parseSetUtterance(
       name,
       weightDisplay: Number.parseFloat(full[2]),
       unit: full[3] ? UNIT_WORDS[full[3].toLowerCase()] : defaultUnit,
+      unitExplicit: full[3] != null,
       reps: full[4] != null ? Number.parseInt(full[4], 10) : null,
     };
   }
@@ -56,6 +62,7 @@ export function parseSetUtterance(
       name,
       weightDisplay: null,
       unit: defaultUnit,
+      unitExplicit: false,
       reps: Number.parseInt(repsOnly[2], 10),
     };
   }

@@ -49,5 +49,8 @@ export function matchExerciseName(
   return best;
 }
 
-// Below this, treat the match as unreliable and ask the user instead of guessing.
-export const MATCH_CONFIDENCE_THRESHOLD = 0.5;
+// Below this, treat the match as unreliable and ask the user instead of
+// guessing. 0.6 accepts a two-of-three wording variant ("rear delt flies" vs
+// "rear delt flyes" ≈ 0.67) but rejects a single shared token out of two
+// words ("incline press" vs "bench press" = 0.5).
+export const MATCH_CONFIDENCE_THRESHOLD = 0.6;
