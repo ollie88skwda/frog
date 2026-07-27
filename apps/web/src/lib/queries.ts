@@ -29,10 +29,15 @@ export function useExercises() {
   });
 }
 
+// Keyed so concurrent creates (bulk add fires one per name) can count their
+// own in-flight siblings.
+const CREATE_EXERCISE_KEY = ["exercises", "create"];
+
 export function useCreateExercise() {
   const repo = useRepo();
   const qc = useQueryClient();
   return useMutation({
+    mutationKey: CREATE_EXERCISE_KEY,
     mutationFn: ({ name, opts }: { name: string; opts?: NewExerciseOpts }) =>
       repo.createExercise(name, opts),
     // Synchronous onMutate: the optimistic write must land before React's
@@ -81,7 +86,15 @@ export function useCreateExercise() {
         old.filter((e) => e.id !== ctx.id),
       );
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
+    // Only the last in-flight create refetches. An earlier one would pull
+    // server truth that predates its siblings' inserts and overwrite their
+    // optimistic rows — and re-download the whole library once per name.
+    // `onSettled` runs before the mutation leaves the pending set, so this
+    // mutation counts itself.
+    onSettled: () => {
+      if (qc.isMutating({ mutationKey: CREATE_EXERCISE_KEY }) > 1) return;
+      return qc.invalidateQueries({ queryKey: ["exercises"] });
+    },
   });
 }
 

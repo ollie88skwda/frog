@@ -29,7 +29,13 @@ import {
   History,
   Info,
 } from "lucide-react";
-import { type CSSProperties, type FormEvent, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type FormEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link } from "react-router";
 import {
   ExerciseThumb,
@@ -88,6 +94,44 @@ function parseBulkExerciseNames(text: string): string[] {
   return names;
 }
 
+// Long name lists (duplicates, failures) are summarised — the full list would
+// push the dialog's own controls below the scroll fold.
+const NAME_PREVIEW = 5;
+
+function previewNames(names: string[]): string {
+  const rest = names.length - NAME_PREVIEW;
+  const head = names.slice(0, NAME_PREVIEW).join(", ");
+  return rest > 0 ? `${head} +${rest} more` : head;
+}
+
+// Bulk add has no `Repo` batch call by design, so bound the fan-out here:
+// at most this many inserts in flight regardless of how many names were pasted.
+const BULK_ADD_CONCURRENCY = 4;
+
+// Resolves to the names whose create failed, in input order.
+async function createBounded(
+  names: string[],
+  create: (name: string) => Promise<unknown>,
+): Promise<string[]> {
+  const failed = new Set<number>();
+  let next = 0;
+  async function worker() {
+    for (let i = next++; i < names.length; i = next++) {
+      try {
+        await create(names[i]);
+      } catch {
+        failed.add(i);
+      }
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(BULK_ADD_CONCURRENCY, names.length) }, () =>
+      worker(),
+    ),
+  );
+  return names.filter((_, i) => failed.has(i));
+}
+
 // Skip layout/paint for off-screen rows (~900 in the seeded library). The
 // `auto` keyword lets the browser cache each row's real height after first
 // render, so the estimate only matters before a row has ever been shown.
@@ -115,24 +159,12 @@ export default function LibraryScreen() {
   const [filterMuscle, setFilterMuscle] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [bulkOpen, setBulkOpen] = useState(false);
-  const [bulkText, setBulkText] = useState("");
-  const [skipDuplicates, setSkipDuplicates] = useState(true);
 
   const setMetrics = metrics.filter(
     (m) => m.scope === "set" && m.ownerId !== null,
   );
   const filtered = filterExercises(exercises, query, filterMuscle);
   const groups = groupByPrimaryMuscle(filtered);
-
-  const existingNames = new Set(exercises.map((e) => e.name.toLowerCase()));
-  const bulkNames = parseBulkExerciseNames(bulkText);
-  const bulkDuplicates = bulkNames.filter((n) =>
-    existingNames.has(n.toLowerCase()),
-  );
-  const bulkToCreate = skipDuplicates
-    ? bulkNames.filter((n) => !existingNames.has(n.toLowerCase()))
-    : bulkNames;
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -150,16 +182,6 @@ export default function LibraryScreen() {
     setMuscle("");
     setType("weight_reps");
     setEquipment("");
-  }
-
-  function onBulkSubmit(e: FormEvent) {
-    e.preventDefault();
-    for (const n of bulkToCreate) {
-      create.mutate({ name: n, opts: {} });
-    }
-    setBulkText("");
-    setSkipDuplicates(true);
-    setBulkOpen(false);
   }
 
   function toggleGroup(key: string) {
@@ -252,72 +274,7 @@ export default function LibraryScreen() {
         </div>
       </form>
 
-      <div className="mt-2">
-        <Dialog
-          open={bulkOpen}
-          onOpenChange={(open) => {
-            setBulkOpen(open);
-            if (!open) {
-              setBulkText("");
-              setSkipDuplicates(true);
-            }
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              data-testid="bulk-add-exercises-trigger"
-            >
-              Bulk add
-            </Button>
-          </DialogTrigger>
-          <DialogContent title="Bulk add exercises">
-            <form onSubmit={onBulkSubmit} className="flex flex-col gap-3">
-              <textarea
-                value={bulkText}
-                onChange={(e) => setBulkText(e.target.value)}
-                placeholder="One exercise name per line"
-                rows={8}
-                className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
-                data-testid="bulk-add-textarea"
-              />
-              {bulkDuplicates.length > 0 && (
-                <p
-                  className="text-2xs text-warn"
-                  data-testid="bulk-add-duplicate-warning"
-                >
-                  {bulkDuplicates.length} name
-                  {bulkDuplicates.length === 1 ? "" : "s"} already in your
-                  library: {bulkDuplicates.join(", ")}
-                </p>
-              )}
-              <label className="flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={skipDuplicates}
-                  onChange={(e) => setSkipDuplicates(e.target.checked)}
-                  className="size-4 accent-(--accent)"
-                  data-testid="bulk-add-skip-duplicates"
-                />
-                Skip duplicates
-              </label>
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={bulkToCreate.length === 0}
-                  data-testid="bulk-add-submit"
-                >
-                  {bulkToCreate.length > 0
-                    ? `Add ${bulkToCreate.length} exercise${bulkToCreate.length === 1 ? "" : "s"}`
-                    : "Add exercises"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+      <BulkAddDialog exercises={exercises} />
 
       <div className="mt-4">
         <ExerciseFilterBar
@@ -402,6 +359,118 @@ export default function LibraryScreen() {
 
       <MachinesSection machines={machines} />
       <MetricsSection metrics={metrics} />
+    </div>
+  );
+}
+
+// Owns its own draft state so typing a paste in here never re-renders the
+// ~900-row library list behind the dialog.
+function BulkAddDialog({ exercises }: { exercises: Exercise[] }) {
+  const create = useCreateExercise();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const [failed, setFailed] = useState<string[]>([]);
+
+  const existingNames = useMemo(
+    () => new Set(exercises.map((e) => e.name.toLowerCase())),
+    [exercises],
+  );
+  const names = parseBulkExerciseNames(text);
+  const duplicates = names.filter((n) => existingNames.has(n.toLowerCase()));
+  const toCreate = skipDuplicates
+    ? names.filter((n) => !existingNames.has(n.toLowerCase()))
+    : names;
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (toCreate.length === 0) return;
+    const queued = toCreate;
+    setText("");
+    setSkipDuplicates(true);
+    setOpen(false);
+    setFailed([]);
+    void createBounded(queued, (name) =>
+      create.mutateAsync({ name, opts: {} }),
+    ).then(setFailed);
+  }
+
+  return (
+    <div className="mt-2">
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (next) setFailed([]);
+          else {
+            setText("");
+            setSkipDuplicates(true);
+          }
+        }}
+      >
+        <DialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            data-testid="bulk-add-exercises-trigger"
+          >
+            Bulk add
+          </Button>
+        </DialogTrigger>
+        <DialogContent title="Bulk add exercises">
+          <form onSubmit={onSubmit} className="flex flex-col gap-3">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="One exercise name per line"
+              rows={8}
+              className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
+              data-testid="bulk-add-textarea"
+            />
+            {duplicates.length > 0 && (
+              <p
+                className="text-2xs text-warn"
+                data-testid="bulk-add-duplicate-warning"
+              >
+                {duplicates.length} name{duplicates.length === 1 ? "" : "s"}{" "}
+                already in your library: {previewNames(duplicates)}
+              </p>
+            )}
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={skipDuplicates}
+                onChange={(e) => setSkipDuplicates(e.target.checked)}
+                className="size-4 accent-(--accent)"
+                data-testid="bulk-add-skip-duplicates"
+              />
+              Skip duplicates
+            </label>
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={toCreate.length === 0}
+                data-testid="bulk-add-submit"
+              >
+                {toCreate.length > 0
+                  ? `Add ${toCreate.length} exercise${toCreate.length === 1 ? "" : "s"}`
+                  : "Add exercises"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {failed.length > 0 && (
+        <p
+          role="status"
+          className="mt-1 text-2xs text-neg"
+          data-testid="bulk-add-failures"
+        >
+          {failed.length} name{failed.length === 1 ? "" : "s"} didn't save:{" "}
+          {previewNames(failed)}. Open bulk add to try again.
+        </p>
+      )}
     </div>
   );
 }
