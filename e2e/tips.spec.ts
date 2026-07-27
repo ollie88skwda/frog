@@ -1,8 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
 import { signIn } from "./helpers";
 
-// /tips browse screen: reachable from the ⌘K palette, renders every LESSONS
-// entry, and browsing marks lessons seen (clears the InfoTip dot elsewhere).
+// /tips browse screen: reachable from the ⌘K palette and from Settings (the
+// keyboard-free path), renders every LESSONS entry, and browsing marks lessons
+// seen (clears the InfoTip dot elsewhere).
 
 test.beforeEach(async ({ page }) => {
   await signIn(page);
@@ -65,4 +66,13 @@ test("/tips lists lessons and browsing clears the InfoTip dot", async ({
     page.getByTestId("infotip-rir").locator("span.bg-accent"),
   ).toHaveCount(0);
   await shot(page, "4-session-infotip-dot-cleared");
+});
+
+test("/tips is reachable from Settings without a keyboard", async ({ page }) => {
+  await page.goto("/settings");
+  await page.getByTestId("tips-link").click();
+  await expect(page).toHaveURL(/\/tips$/);
+  await expect(
+    page.getByRole("heading", { name: "Training tips" }),
+  ).toBeVisible();
 });
