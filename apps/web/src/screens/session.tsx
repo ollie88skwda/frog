@@ -3090,7 +3090,11 @@ function ActiveRow({
             // Keep the weight/reps input focused so tapping doesn't blur it
             // — Safari doesn't focus buttons on tap.
             onMouseDown={(e) => e.preventDefault()}
-            title="Add RIR / RPE / note / metrics"
+            title={
+              barLoaded
+                ? "Add RIR / RPE / note / metrics · plate calculator"
+                : "Add RIR / RPE / note / metrics"
+            }
             className="rounded-md border border-border bg-surface-2 p-1.5 text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
             data-testid={`set-${index}-more`}
           >
@@ -3174,7 +3178,6 @@ function ActiveRow({
                       placeholder="—"
                       value={rir}
                       onChange={(e) => setRir(e.target.value)}
-                      onKeyDown={onKeyDown}
                       autoFocus={lastAdded === "rir"}
                       className="num"
                       data-testid={`set-${index}-rir`}
@@ -3244,7 +3247,6 @@ function ActiveRow({
                           [m.id]: e.target.value,
                         }))
                       }
-                      onKeyDown={onKeyDown}
                       autoFocus={lastAdded === m.id}
                       className="num"
                       data-testid={`set-${index}-metric-${m.id}`}
