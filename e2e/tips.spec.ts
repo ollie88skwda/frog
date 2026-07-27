@@ -70,9 +70,14 @@ test("/tips lists lessons and browsing clears the InfoTip dot", async ({
 
 test("/tips is reachable from Settings without a keyboard", async ({ page }) => {
   await page.goto("/settings");
-  await page.getByTestId("tips-link").click();
+  const link = page.getByTestId("tips-link");
+  await link.scrollIntoViewIfNeeded();
+  await expect(link).toBeVisible();
+  await shot(page, "5-settings-learn-section");
+  await link.click();
   await expect(page).toHaveURL(/\/tips$/);
   await expect(
     page.getByRole("heading", { name: "Training tips" }),
   ).toBeVisible();
+  await shot(page, "6-tips-from-settings");
 });
