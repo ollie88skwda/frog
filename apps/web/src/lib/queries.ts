@@ -90,10 +90,13 @@ export function useCreateExercise() {
     // server truth that predates its siblings' inserts and overwrite their
     // optimistic rows — and re-download the whole library once per name.
     // `onSettled` runs before the mutation leaves the pending set, so this
-    // mutation counts itself.
+    // mutation counts itself. The refetch is deliberately not awaited: doing
+    // so would hold that pending slot for the whole ~1 MB round-trip, so a
+    // create settling inside the window would see a phantom sibling and skip
+    // the invalidate its own row needs.
     onSettled: () => {
       if (qc.isMutating({ mutationKey: CREATE_EXERCISE_KEY }) > 1) return;
-      return qc.invalidateQueries({ queryKey: ["exercises"] });
+      void qc.invalidateQueries({ queryKey: ["exercises"] });
     },
   });
 }

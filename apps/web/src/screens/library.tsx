@@ -32,6 +32,8 @@ import {
 import {
   type CSSProperties,
   type FormEvent,
+  memo,
+  useCallback,
   useMemo,
   useRef,
   useState,
@@ -160,11 +162,25 @@ export default function LibraryScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  const setMetrics = metrics.filter(
-    (m) => m.scope === "set" && m.ownerId !== null,
+  const setMetrics = useMemo(
+    () => metrics.filter((m) => m.scope === "set" && m.ownerId !== null),
+    [metrics],
   );
   const filtered = filterExercises(exercises, query, filterMuscle);
   const groups = groupByPrimaryMuscle(filtered);
+
+  // Stable identities keep the memoized rows out of the re-render that every
+  // optimistic write triggers — a bulk run does one write per name.
+  const favoriteMutate = setFavorite.mutate;
+  const onToggleFavorite = useCallback(
+    (exerciseId: string, favorite: boolean) =>
+      favoriteMutate({ exerciseId, favorite }),
+    [favoriteMutate],
+  );
+  const onToggleExpanded = useCallback(
+    (id: string) => setExpandedId((prev) => (prev === id ? null : id)),
+    [],
+  );
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -338,16 +354,9 @@ export default function LibraryScreen() {
                       setMetrics={setMetrics}
                       machines={machines}
                       isFavorite={favoriteIds.has(ex.id)}
-                      onToggleFavorite={() =>
-                        setFavorite.mutate({
-                          exerciseId: ex.id,
-                          favorite: !favoriteIds.has(ex.id),
-                        })
-                      }
+                      onToggleFavorite={onToggleFavorite}
                       expanded={expandedId === ex.id}
-                      onToggle={() =>
-                        setExpandedId(expandedId === ex.id ? null : ex.id)
-                      }
+                      onToggle={onToggleExpanded}
                     />
                   ))}
                 </ul>
@@ -371,6 +380,7 @@ function BulkAddDialog({ exercises }: { exercises: Exercise[] }) {
   const [text, setText] = useState("");
   const [skipDuplicates, setSkipDuplicates] = useState(true);
   const [failed, setFailed] = useState<string[]>([]);
+  const runsInFlight = useRef(0);
 
   const existingNames = useMemo(
     () => new Set(exercises.map((e) => e.name.toLowerCase())),
@@ -389,10 +399,17 @@ function BulkAddDialog({ exercises }: { exercises: Exercise[] }) {
     setText("");
     setSkipDuplicates(true);
     setOpen(false);
-    setFailed([]);
+    // The queued names supersede the notice only if no earlier run is still
+    // dispatching — otherwise that run's failures would be dropped unseen.
+    if (runsInFlight.current === 0) setFailed([]);
+    runsInFlight.current += 1;
     void createBounded(queued, (name) =>
       create.mutateAsync({ name, opts: {} }),
-    ).then(setFailed);
+    ).then((names) => {
+      runsInFlight.current -= 1;
+      if (names.length === 0) return;
+      setFailed((prev) => [...prev, ...names.filter((n) => !prev.includes(n))]);
+    });
   }
 
   return (
@@ -401,7 +418,9 @@ function BulkAddDialog({ exercises }: { exercises: Exercise[] }) {
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
-          if (next) setFailed([]);
+          // Reopening is the retry path the notice points at, so hand the
+          // full failed list back as the draft — not the truncated preview.
+          if (next) setText(failed.join("\n"));
           else {
             setText("");
             setSkipDuplicates(true);
@@ -565,7 +584,9 @@ function BestForMuscle({
   );
 }
 
-function ExerciseRow({
+// Memoized: the seeded library renders ~900 of these, and every optimistic
+// create re-renders the screen around them.
+const ExerciseRow = memo(function ExerciseRow({
   exercise,
   groupMuscle,
   setMetrics,
@@ -580,9 +601,9 @@ function ExerciseRow({
   setMetrics: Metric[];
   machines: Machine[];
   isFavorite: boolean;
-  onToggleFavorite: () => void;
+  onToggleFavorite: (exerciseId: string, favorite: boolean) => void;
   expanded: boolean;
-  onToggle: () => void;
+  onToggle: (exerciseId: string) => void;
 }) {
   const { t } = useVoice();
   const toggleMetric = useSetMetricExercises();
@@ -618,7 +639,7 @@ function ExerciseRow({
           <div className="flex items-start justify-between gap-2">
             <button
               type="button"
-              onClick={onToggle}
+              onClick={() => onToggle(exercise.id)}
               className="flex min-w-0 items-center gap-1.5 text-left"
               data-testid={`exercise-row-toggle-${exercise.name}`}
             >
@@ -640,7 +661,7 @@ function ExerciseRow({
               )}
               <FavoriteButton
                 favorite={isFavorite}
-                onToggle={onToggleFavorite}
+                onToggle={() => onToggleFavorite(exercise.id, !isFavorite)}
                 name={exercise.name}
               />
               <Link
@@ -769,7 +790,7 @@ function ExerciseRow({
       )}
     </li>
   );
-}
+});
 
 // "Last set" line — reuses the ghost-prefill lookup (most recent prior
 // session's sets), no separate history query needed.
