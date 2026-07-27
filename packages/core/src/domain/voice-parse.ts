@@ -37,6 +37,12 @@ const FULL_RE =
 const REPS_ONLY_RE =
   /^(.+?)\s+(?:(for|x|by)\s*)?(\d+(?:\.\d+)?)\s*(reps?)?\s*$/i;
 
+// Both name groups are lazy, so on a single-number utterance they backtrack far
+// enough to eat the connector ("pull ups for 10" → name "pull ups for"). A
+// connector is never part of an exercise name, so it always belongs to the
+// number that follows it.
+const EATEN_CONNECTOR_RE = /\s+(?:for|x|by)$/i;
+
 export function parseSetUtterance(
   text: string,
   defaultUnit: "kg" | "lb",
@@ -46,8 +52,22 @@ export function parseSetUtterance(
 
   const full = cleaned.match(FULL_RE);
   if (full) {
-    const name = full[1].trim();
+    const rawName = full[1].trim();
+    const ateConnector = EATEN_CONNECTOR_RE.test(rawName);
+    const name = rawName.replace(EATEN_CONNECTOR_RE, "").trim();
     if (!name) return null;
+    // "<name> for 10" — the connector labels the only number as reps. A unit
+    // word ("for 100 kg") or a second number ("squat 5 x 5") still means the
+    // first number is the weight.
+    if (ateConnector && full[3] == null && full[4] == null) {
+      return {
+        name,
+        weightDisplay: null,
+        unit: defaultUnit,
+        unitExplicit: false,
+        reps: Number.parseInt(full[2], 10),
+      };
+    }
     return {
       name,
       weightDisplay: Number.parseFloat(full[2]),
@@ -59,7 +79,7 @@ export function parseSetUtterance(
 
   const repsOnly = cleaned.match(REPS_ONLY_RE);
   if (repsOnly && (repsOnly[2] != null || repsOnly[4] != null)) {
-    const name = repsOnly[1].trim();
+    const name = repsOnly[1].trim().replace(EATEN_CONNECTOR_RE, "").trim();
     if (!name) return null;
     return {
       name,

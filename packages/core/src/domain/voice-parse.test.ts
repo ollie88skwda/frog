@@ -84,6 +84,34 @@ describe("parseSetUtterance", () => {
     });
   });
 
+  it.each([
+    ["pull ups for 10", "pull ups", 10],
+    ["pull ups x 10", "pull ups", 10],
+    ["dips by 12", "dips", 12],
+    ["bench press for 8", "bench press", 8],
+  ])(
+    "reads a connector with no unit word as reps, not weight: %s",
+    (utterance, name, reps) => {
+      expect(parseSetUtterance(utterance as string, "lb")).toEqual({
+        name,
+        weightDisplay: null,
+        unit: "lb",
+        unitExplicit: false,
+        reps,
+      });
+    },
+  );
+
+  it("still reads a connector number as weight when a unit word follows", () => {
+    expect(parseSetUtterance("bench press for 225 lbs", "kg")).toEqual({
+      name: "bench press",
+      weightDisplay: 225,
+      unit: "lb",
+      unitExplicit: true,
+      reps: null,
+    });
+  });
+
   it("parses reps-only labelled by a trailing 'reps' word, no connector", () => {
     expect(parseSetUtterance("pull ups 10 reps", "kg")).toEqual({
       name: "pull ups",

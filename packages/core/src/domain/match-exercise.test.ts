@@ -53,6 +53,35 @@ describe("matchExerciseName", () => {
     expect(match?.score).toBeLessThan(MATCH_CONFIDENCE_THRESHOLD);
   });
 
+  it("accepts a one-word shorthand contained in exactly one candidate", () => {
+    const match = matchExerciseName("bench", CANDIDATES);
+    expect(match?.id).toBe("2");
+    expect(match?.score).toBeGreaterThanOrEqual(MATCH_CONFIDENCE_THRESHOLD);
+    expect(match?.tied).toHaveLength(1);
+  });
+
+  it("does not accept a one-word shorthand shared by two candidates", () => {
+    const match = matchExerciseName("press", [
+      { id: "2", name: "Bench Press" },
+      { id: "4", name: "Overhead Press" },
+    ]);
+    expect(match?.score).toBeLessThan(MATCH_CONFIDENCE_THRESHOLD);
+  });
+
+  it("reports every block tied at the top score as ambiguous", () => {
+    const match = matchExerciseName("bench press", [
+      { id: "2", name: "Bench Press" },
+      { id: "3", name: "Pull Ups" },
+      { id: "5", name: "Bench Press" },
+    ]);
+    expect(match?.score).toBe(1);
+    expect(match?.tied.map((c) => c.id)).toEqual(["2", "5"]);
+  });
+
+  it("leaves a single unambiguous match untied", () => {
+    expect(matchExerciseName("bench press", CANDIDATES)?.tied).toHaveLength(1);
+  });
+
   it("returns null with no candidates", () => {
     expect(matchExerciseName("bench press", [])).toBeNull();
   });

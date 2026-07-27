@@ -69,7 +69,7 @@ import {
   X,
 } from "lucide-react";
 import {
-  forwardRef,
+  type Ref,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -600,13 +600,23 @@ export default function SessionScreen() {
       window.webkitSpeechRecognition != null);
   const [listening, setListening] = useState(false);
   const [micMessage, setMicMessage] = useState<string | null>(null);
-  // Parsed utterance awaiting a manual block pick (no confident match) — kept
-  // unconverted because the effective unit depends on the picked block.
-  const [voicePicker, setVoicePicker] = useState<ParsedSetUtterance | null>(
-    null,
-  );
+  // Parsed utterance awaiting a manual block pick (no confident match, or a tie
+  // between blocks) — kept unconverted because the effective unit depends on
+  // the picked block. `candidates` narrows the list when the tie names it.
+  const [voicePicker, setVoicePicker] = useState<{
+    parsed: ParsedSetUtterance;
+    candidates: { seId: string; name: string }[];
+  } | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const micMessageTimer = useRef<number | null>(null);
+
+  // Live snapshot for the speech handlers: onresult fires seconds after
+  // startListening ran, by which time the blocks, the session unit, or the
+  // per-exercise unit overrides may all have moved on.
+  const voiceCtx = useRef({ blocks, unit, exercisePrefs });
+  useEffect(() => {
+    voiceCtx.current = { blocks, unit, exercisePrefs };
+  });
 
   useEffect(() => {
     return () => {
@@ -633,11 +643,10 @@ export default function SessionScreen() {
     exerciseId: string | null,
   ): number | null {
     if (parsed.weightDisplay == null) return null;
-    const override = exercisePrefs.find(
-      (p) => p.exerciseId === exerciseId,
-    )?.weightUnit;
+    const { unit: sessionUnit, exercisePrefs: prefs } = voiceCtx.current;
+    const override = prefs.find((p) => p.exerciseId === exerciseId)?.weightUnit;
     const blockUnit: Unit =
-      override === "kg" || override === "lb" ? override : unit;
+      override === "kg" || override === "lb" ? override : sessionUnit;
     const effectiveUnit = parsed.unitExplicit ? parsed.unit : blockUnit;
     return effectiveUnit === "lb"
       ? lbToKg(parsed.weightDisplay)
@@ -645,34 +654,59 @@ export default function SessionScreen() {
   }
 
   function applyVoiceToBlock(seId: string, parsed: ParsedSetUtterance) {
-    const block = (blocks ?? []).find((b) => b.seId === seId);
-    rowHandles.current.get(seId)?.applyVoice({
-      weightKg: voiceWeightKg(parsed, block?.exerciseId ?? null),
-      reps: parsed.reps,
-    });
+    const block = (voiceCtx.current.blocks ?? []).find((b) => b.seId === seId);
+    // False when the row's type has no field the utterance could fill (a weight
+    // against a bodyweight row, anything against a duration row) — say so
+    // rather than scrolling to a block that silently stayed empty.
+    const applied =
+      rowHandles.current.get(seId)?.applyVoice({
+        weightKg: voiceWeightKg(parsed, block?.exerciseId ?? null),
+        reps: parsed.reps,
+      }) ?? false;
     blockRefs.current
       .get(seId)
       ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!applied)
+      showMicMessage(
+        `${block?.name ?? "That exercise"}: ${voice(
+          "nothing there to fill.",
+          "nothing there to fill — wrong shape of set.",
+        )}`,
+      );
   }
 
   function handleVoiceResult(transcript: string) {
-    const parsed = parseSetUtterance(transcript, unit);
+    const { blocks: liveBlocks, unit: liveUnit } = voiceCtx.current;
+    const parsed = parseSetUtterance(transcript, liveUnit);
     if (!parsed) {
       showMicMessage(
         voice("Didn't catch that.", "Didn't catch that — try again?"),
       );
       return;
     }
-    const candidates = (blocks ?? []).map((b) => ({
-      id: b.seId,
+    const sessionBlocks = (liveBlocks ?? []).map((b) => ({
+      seId: b.seId,
       name: b.name,
     }));
-    const match = matchExerciseName(parsed.name, candidates);
-    if (match && match.score >= MATCH_CONFIDENCE_THRESHOLD) {
-      applyVoiceToBlock(match.id, parsed);
-    } else {
-      setVoicePicker(parsed);
+    const match = matchExerciseName(
+      parsed.name,
+      sessionBlocks.map((b) => ({ id: b.seId, name: b.name })),
+    );
+    if (!match || match.score < MATCH_CONFIDENCE_THRESHOLD) {
+      setVoicePicker({ parsed, candidates: sessionBlocks });
+      return;
     }
+    // Equally good blocks (the same exercise logged twice for back-off work,
+    // say) — filling the first one silently would fill the wrong one half the
+    // time, so ask, scoped to the blocks that actually tied.
+    if (match.tied.length > 1) {
+      setVoicePicker({
+        parsed,
+        candidates: match.tied.map((c) => ({ seId: c.id, name: c.name })),
+      });
+      return;
+    }
+    applyVoiceToBlock(match.id, parsed);
   }
 
   function startListening() {
@@ -709,7 +743,18 @@ export default function SessionScreen() {
     recognitionRef.current = recognition;
     setMicMessage(null);
     setListening(true);
-    recognition.start();
+    // start() throws synchronously when a recognition is already running, and
+    // on some WebKit builds for permission/policy failures. Without this the
+    // button would stay stuck in its active state with no live recognition
+    // behind it, and stop() on a never-started instance can't unstick it.
+    try {
+      recognition.start();
+    } catch {
+      reset();
+      showMicMessage(
+        voice("Couldn't start the mic.", "Couldn't start the mic — try again?"),
+      );
+    }
   }
 
   function stopListening() {
@@ -1342,13 +1387,13 @@ export default function SessionScreen() {
           />
           {voicePicker && (
             <VoiceMatchPicker
-              query={voicePicker.name}
-              blocks={blocks ?? []}
+              query={voicePicker.parsed.name}
+              blocks={voicePicker.candidates}
               onOpenChange={(open) => {
                 if (!open) setVoicePicker(null);
               }}
               onPick={(seId) => {
-                applyVoiceToBlock(seId, voicePicker);
+                applyVoiceToBlock(seId, voicePicker.parsed);
                 setVoicePicker(null);
               }}
             />
@@ -2917,63 +2962,61 @@ function RpeSelect({
 // converting kg to this row's own display unit. Never commits — same as a
 // manual edit, an explicit commit (Enter / Add set) still has to follow.
 type ActiveRowHandle = {
+  // Returns false when this row's type has no field the values could land in,
+  // so the caller can report the miss instead of leaving the row blank.
   applyVoice: (values: {
     weightKg: number | null;
     reps: number | null;
-  }) => void;
+  }) => boolean;
 };
 
-const ActiveRow = forwardRef<
-  ActiveRowHandle,
-  {
-    seId: string;
-    index: number;
-    unit: Unit;
-    distUnit: DistanceUnit;
-    type: ExerciseType;
-    columns: Column[];
-    template: string;
-    showPrevious: boolean;
-    previous: GhostSet | null;
-    seed: SeedSet | undefined;
-    nextSeedType: string | null;
-    ghost: GhostSet;
-    hasGhost: boolean;
-    enabledMetrics: Metric[];
-    autoFocusWeight: boolean;
-    barLoaded: boolean;
-    onOpenPlates: (target: number | null) => void;
-    timerRunning: boolean;
-    timerStartedAt: number | null;
-    onToggleTimer: () => void;
-    onCommit: (set: CommitInput, ctx: CommitCtx) => void;
-  }
->(function ActiveRow(
-  {
-    seId,
-    index,
-    unit,
-    distUnit,
-    type,
-    columns,
-    template,
-    showPrevious,
-    previous,
-    seed,
-    nextSeedType,
-    ghost,
-    hasGhost,
-    enabledMetrics,
-    autoFocusWeight,
-    barLoaded,
-    onOpenPlates,
-    timerRunning,
-    timerStartedAt,
-    onToggleTimer,
-    onCommit,
-  },
+function ActiveRow({
+  seId,
+  index,
+  unit,
+  distUnit,
+  type,
+  columns,
+  template,
+  showPrevious,
+  previous,
+  seed,
+  nextSeedType,
+  ghost,
+  hasGhost,
+  enabledMetrics,
+  autoFocusWeight,
+  barLoaded,
+  onOpenPlates,
+  timerRunning,
+  timerStartedAt,
+  onToggleTimer,
+  onCommit,
   ref,
-) {
+}: {
+  seId: string;
+  index: number;
+  unit: Unit;
+  distUnit: DistanceUnit;
+  type: ExerciseType;
+  columns: Column[];
+  template: string;
+  showPrevious: boolean;
+  previous: GhostSet | null;
+  seed: SeedSet | undefined;
+  nextSeedType: string | null;
+  ghost: GhostSet;
+  hasGhost: boolean;
+  enabledMetrics: Metric[];
+  autoFocusWeight: boolean;
+  barLoaded: boolean;
+  onOpenPlates: (target: number | null) => void;
+  timerRunning: boolean;
+  timerStartedAt: number | null;
+  onToggleTimer: () => void;
+  onCommit: (set: CommitInput, ctx: CommitCtx) => void;
+  ref: Ref<ActiveRowHandle>;
+}) {
   // Restore any uncommitted keystrokes persisted for this block (draft wins over
   // the routine/copy seed once the user has started typing).
   const [draft] = useState<Partial<DraftSnapshot> | null>(() =>
@@ -3073,9 +3116,16 @@ const ActiveRow = forwardRef<
     ref,
     () => ({
       applyVoice({ weightKg, reps: repsValue }) {
-        if (f.weight && weightKg != null)
+        let applied = false;
+        if (f.weight && weightKg != null) {
           setWeight(String(toDisplayWeight(weightKg, unit)));
-        if (f.reps && repsValue != null) setReps(String(repsValue));
+          applied = true;
+        }
+        if (f.reps && repsValue != null) {
+          setReps(String(repsValue));
+          applied = true;
+        }
+        return applied;
       },
     }),
     [f.weight, f.reps, unit],
@@ -3539,7 +3589,7 @@ const ActiveRow = forwardRef<
       </Button>
     </div>
   );
-});
+}
 
 // Top-bar duration readout that doubles as the pause / edit-start control
 // (Hevy: tapping the stopwatch opens Pause·Resume and start-date/time edits).

@@ -13,6 +13,10 @@ export type ExerciseMatch = {
   id: string;
   name: string;
   score: number;
+  // Every candidate sharing this winning score, in candidate order. More than
+  // one means the spoken name doesn't single out a candidate (two identically
+  // named blocks, say) — the caller must ask instead of taking the first.
+  tied: MatchCandidate[];
 };
 
 export function normalizeExerciseName(name: string): string {
@@ -39,18 +43,36 @@ export function matchExerciseName(
   const queryTokens = new Set(tokenize(query));
   if (queryTokens.size === 0 || candidates.length === 0) return null;
 
-  let best: ExerciseMatch | null = null;
+  const scored: { candidate: MatchCandidate; score: number; inside: boolean }[] =
+    [];
   for (const candidate of candidates) {
     const candidateTokens = new Set(tokenize(candidate.name));
     if (candidateTokens.size === 0) continue;
     let overlap = 0;
     for (const t of queryTokens) if (candidateTokens.has(t)) overlap += 1;
-    const score = overlap / Math.max(queryTokens.size, candidateTokens.size);
-    if (!best || score > best.score) {
-      best = { id: candidate.id, name: candidate.name, score };
-    }
+    scored.push({
+      candidate: { id: candidate.id, name: candidate.name },
+      score: overlap / Math.max(queryTokens.size, candidateTokens.size),
+      inside: overlap === queryTokens.size,
+    });
   }
-  return best;
+  if (scored.length === 0) return null;
+
+  // Asymmetric accept: the symmetric score punishes a short query for the words
+  // it left out, so a spoken shorthand ("bench") never clears the threshold
+  // against "Bench Press". When the query's tokens sit inside exactly one
+  // candidate there is nothing to be ambiguous about, so accept it outright.
+  // Two or more containers ("press" → "Bench Press" / "Overhead Press") is a
+  // genuinely ambiguous shorthand and falls through to plain scoring.
+  const inside = scored.filter((s) => s.inside);
+  if (inside.length === 1) {
+    const only = inside[0];
+    return { ...only.candidate, score: 1, tied: [only.candidate] };
+  }
+
+  const top = Math.max(...scored.map((s) => s.score));
+  const tied = scored.filter((s) => s.score === top).map((s) => s.candidate);
+  return { ...tied[0], score: top, tied };
 }
 
 // Below this, treat the match as unreliable and ask the user instead of
