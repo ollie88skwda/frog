@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isConfidentMatch,
   MATCH_CONFIDENCE_THRESHOLD,
   matchExerciseName,
   normalizeExerciseName,
@@ -56,8 +57,18 @@ describe("matchExerciseName", () => {
   it("accepts a one-word shorthand contained in exactly one candidate", () => {
     const match = matchExerciseName("bench", CANDIDATES);
     expect(match?.id).toBe("2");
-    expect(match?.score).toBeGreaterThanOrEqual(MATCH_CONFIDENCE_THRESHOLD);
+    expect(match?.matchType).toBe("subset");
     expect(match?.tied).toHaveLength(1);
+    expect(isConfidentMatch(match!)).toBe(true);
+  });
+
+  it("reports the honest overlap ratio for a containment match", () => {
+    const match = matchExerciseName("leg", [
+      { id: "7", name: "Leg Extension Machine" },
+    ]);
+    expect(match?.score).toBeCloseTo(1 / 3);
+    expect(match?.score).toBeLessThan(MATCH_CONFIDENCE_THRESHOLD);
+    expect(isConfidentMatch(match!)).toBe(true);
   });
 
   it("does not accept a one-word shorthand shared by two candidates", () => {
@@ -65,7 +76,9 @@ describe("matchExerciseName", () => {
       { id: "2", name: "Bench Press" },
       { id: "4", name: "Overhead Press" },
     ]);
+    expect(match?.matchType).toBe("overlap");
     expect(match?.score).toBeLessThan(MATCH_CONFIDENCE_THRESHOLD);
+    expect(isConfidentMatch(match!)).toBe(false);
   });
 
   it("reports every block tied at the top score as ambiguous", () => {
@@ -75,7 +88,9 @@ describe("matchExerciseName", () => {
       { id: "5", name: "Bench Press" },
     ]);
     expect(match?.score).toBe(1);
+    expect(match?.matchType).toBe("overlap");
     expect(match?.tied.map((c) => c.id)).toEqual(["2", "5"]);
+    expect(isConfidentMatch(match!)).toBe(true);
   });
 
   it("leaves a single unambiguous match untied", () => {

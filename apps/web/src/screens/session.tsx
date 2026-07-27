@@ -12,12 +12,13 @@ import {
   ghostFor,
   groupByPrimaryMuscle,
   isBarLoaded,
+  isConfidentMatch,
   kgToLb,
   kmToM,
   type LoggedSet,
   lbToKg,
-  MATCH_CONFIDENCE_THRESHOLD,
   type Machine,
+  type MatchCandidate,
   type Metric,
   matchExerciseName,
   miToM,
@@ -605,7 +606,7 @@ export default function SessionScreen() {
   // the picked block. `candidates` narrows the list when the tie names it.
   const [voicePicker, setVoicePicker] = useState<{
     parsed: ParsedSetUtterance;
-    candidates: { seId: string; name: string }[];
+    candidates: MatchCandidate[];
   } | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const micMessageTimer = useRef<number | null>(null);
@@ -684,33 +685,30 @@ export default function SessionScreen() {
       );
       return;
     }
-    const sessionBlocks = (liveBlocks ?? []).map((b) => ({
-      seId: b.seId,
+    const candidates = (liveBlocks ?? []).map((b) => ({
+      id: b.seId,
       name: b.name,
     }));
-    const match = matchExerciseName(
-      parsed.name,
-      sessionBlocks.map((b) => ({ id: b.seId, name: b.name })),
-    );
-    if (!match || match.score < MATCH_CONFIDENCE_THRESHOLD) {
-      setVoicePicker({ parsed, candidates: sessionBlocks });
+    const match = matchExerciseName(parsed.name, candidates);
+    if (!match || !isConfidentMatch(match)) {
+      setVoicePicker({ parsed, candidates });
       return;
     }
     // Equally good blocks (the same exercise logged twice for back-off work,
     // say) — filling the first one silently would fill the wrong one half the
     // time, so ask, scoped to the blocks that actually tied.
     if (match.tied.length > 1) {
-      setVoicePicker({
-        parsed,
-        candidates: match.tied.map((c) => ({ seId: c.id, name: c.name })),
-      });
+      setVoicePicker({ parsed, candidates: match.tied });
       return;
     }
     applyVoiceToBlock(match.id, parsed);
   }
 
   function startListening() {
-    if (listening) return;
+    // The ref, not `listening`: state only flips on the next render, so two
+    // clicks in one batch would otherwise both build a recognition and the
+    // second one's throw would orphan the first, still-recording instance.
+    if (recognitionRef.current) return;
     const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
     if (!Ctor) return;
     const recognition = new Ctor();
@@ -1388,12 +1386,12 @@ export default function SessionScreen() {
           {voicePicker && (
             <VoiceMatchPicker
               query={voicePicker.parsed.name}
-              blocks={voicePicker.candidates}
+              candidates={voicePicker.candidates}
               onOpenChange={(open) => {
                 if (!open) setVoicePicker(null);
               }}
-              onPick={(seId) => {
-                applyVoiceToBlock(seId, voicePicker.parsed);
+              onPick={(id) => {
+                applyVoiceToBlock(id, voicePicker.parsed);
                 setVoicePicker(null);
               }}
             />
@@ -1722,28 +1720,48 @@ function ExercisePicker({
   );
 }
 
+function ordinal(n: number): string {
+  const teen = n % 100;
+  if (teen >= 11 && teen <= 13) return `${n}th`;
+  return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
+}
+
 // Voice-log fallback: the parsed name didn't clearly match one block, so ask
 // rather than guess. Scoped to this session's own blocks only (never the full
 // exercise library) — same search-box pattern as ExercisePicker, above.
 function VoiceMatchPicker({
   query,
-  blocks,
+  candidates,
   onPick,
   onOpenChange,
 }: {
   query: string;
-  blocks: { seId: string; name: string }[];
-  onPick: (seId: string) => void;
+  candidates: MatchCandidate[];
+  onPick: (id: string) => void;
   onOpenChange: (open: boolean) => void;
 }) {
   const [search, setSearch] = useState(query);
-  const filtered = blocks.filter((b) =>
-    b.name.toLowerCase().includes(search.trim().toLowerCase()),
+  const filtered = candidates.filter((c) =>
+    c.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
   // The pre-filled spoken name usually isn't a substring of any block name
   // (that's why the picker opened) — fall back to the full list rather than
   // opening onto a dead-end empty state.
-  const shown = filtered.length > 0 ? filtered : blocks;
+  const shown = filtered.length > 0 ? filtered : candidates;
+  // The same exercise can hold two blocks (back-off work, a second wave), and
+  // that tie is exactly what sends the user here — two rows reading "Bench
+  // Press" would just move the coin flip into a dialog. Number the repeats by
+  // their order in the session; unique names stay plain.
+  const counted = new Map<string, number>();
+  const rows = shown.map((c) => {
+    const nth = (counted.get(c.name) ?? 0) + 1;
+    counted.set(c.name, nth);
+    return { ...c, nth };
+  });
+  const rowLabel = (row: (typeof rows)[number]) =>
+    (counted.get(row.name) ?? 0) > 1
+      ? `${row.name} (${ordinal(row.nth)})`
+      : row.name;
   return (
     <Dialog open onOpenChange={onOpenChange}>
       <DialogContent title="Which exercise?" className="md:max-w-sm">
@@ -1759,7 +1777,7 @@ function VoiceMatchPicker({
               data-testid="voice-picker-search"
             />
           </div>
-          {shown.length === 0 ? (
+          {rows.length === 0 ? (
             <p className="px-1 py-4 text-center text-xs text-faint">
               {voice(
                 "No match in this session.",
@@ -1768,15 +1786,15 @@ function VoiceMatchPicker({
             </p>
           ) : (
             <ul className="divide-y divide-border overflow-hidden border border-border bg-surface">
-              {shown.map((b) => (
-                <li key={b.seId}>
+              {rows.map((row) => (
+                <li key={row.id}>
                   <button
                     type="button"
-                    onClick={() => onPick(b.seId)}
+                    onClick={() => onPick(row.id)}
                     className="block w-full px-4 py-3 text-left text-sm transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
-                    data-testid={`voice-pick-${b.name}`}
+                    data-testid={`voice-pick-${rowLabel(row)}`}
                   >
-                    {b.name}
+                    {rowLabel(row)}
                   </button>
                 </li>
               ))}

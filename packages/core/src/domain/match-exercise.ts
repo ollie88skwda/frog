@@ -12,7 +12,14 @@ export type MatchCandidate = { id: string; name: string };
 export type ExerciseMatch = {
   id: string;
   name: string;
+  // Always the real symmetric overlap ratio, never a sentinel — how confident
+  // to be in it depends on matchType, so read that (or isConfidentMatch)
+  // rather than comparing this number on its own.
   score: number;
+  // "subset": the query's tokens sit inside this candidate and no other, which
+  // is trustworthy however low the ratio ("bench" inside "Bench Press" scores
+  // 0.5). "overlap": the ratio is all there is to go on.
+  matchType: "overlap" | "subset";
   // Every candidate sharing this winning score, in candidate order. More than
   // one means the spoken name doesn't single out a candidate (two identically
   // named blocks, say) — the caller must ask instead of taking the first.
@@ -43,8 +50,11 @@ export function matchExerciseName(
   const queryTokens = new Set(tokenize(query));
   if (queryTokens.size === 0 || candidates.length === 0) return null;
 
-  const scored: { candidate: MatchCandidate; score: number; inside: boolean }[] =
-    [];
+  const scored: {
+    candidate: MatchCandidate;
+    score: number;
+    inside: boolean;
+  }[] = [];
   for (const candidate of candidates) {
     const candidateTokens = new Set(tokenize(candidate.name));
     if (candidateTokens.size === 0) continue;
@@ -67,16 +77,30 @@ export function matchExerciseName(
   const inside = scored.filter((s) => s.inside);
   if (inside.length === 1) {
     const only = inside[0];
-    return { ...only.candidate, score: 1, tied: [only.candidate] };
+    return {
+      ...only.candidate,
+      score: only.score,
+      matchType: "subset",
+      tied: [only.candidate],
+    };
   }
 
   const top = Math.max(...scored.map((s) => s.score));
   const tied = scored.filter((s) => s.score === top).map((s) => s.candidate);
-  return { ...tied[0], score: top, tied };
+  return { ...tied[0], score: top, matchType: "overlap", tied };
 }
 
-// Below this, treat the match as unreliable and ask the user instead of
+// Below this an "overlap" match is unreliable, so ask the user instead of
 // guessing. 0.6 accepts a two-of-three wording variant ("rear delt flies" vs
 // "rear delt flyes" ≈ 0.67) but rejects a single shared token out of two
-// words ("incline press" vs "bench press" = 0.5).
+// words ("incline press" vs "bench press" = 0.5). A "subset" match is exempt:
+// containment in exactly one candidate is its own evidence.
 export const MATCH_CONFIDENCE_THRESHOLD = 0.6;
+
+// The one place that decides whether a match is good enough to act on, so
+// callers never have to know which of the two kinds they were handed.
+export function isConfidentMatch(match: ExerciseMatch): boolean {
+  return (
+    match.matchType === "subset" || match.score >= MATCH_CONFIDENCE_THRESHOLD
+  );
+}
