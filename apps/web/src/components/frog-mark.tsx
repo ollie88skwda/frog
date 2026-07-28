@@ -10,13 +10,7 @@ import { cn } from "@/lib/utils";
 // The app ships light and dark (set before first paint), and a hardcoded dark
 // outline would vanish against the dark sage surface. Never swap this for a
 // raster: it is ~500 bytes inline against 5-20 kB, and the bundle is CI-gated.
-export function FrogMark({
-  className,
-  strokeWidth = 1.75,
-}: {
-  className?: string;
-  strokeWidth?: number;
-}) {
+export function FrogMark({ className }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -27,7 +21,7 @@ export function FrogMark({
       <g
         fill="var(--accent)"
         stroke="currentColor"
-        strokeWidth={strokeWidth}
+        strokeWidth={1.75}
         strokeLinecap="round"
         strokeLinejoin="round"
       >

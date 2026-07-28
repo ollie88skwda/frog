@@ -9,7 +9,7 @@
     The wrapper centres that box in the square canvas; the 9% margin here is the
     same one icon-192/512 use. To re-pad, change the viewBox side S and set the
     wrapper translate to (S/2 - 288, S/2 - 179) — that is all
-    apps/web/scripts/build-icons.mts does. Keeping the viewBox origin at 0 0
+    scripts/gen-pwa-icons.ts does. Keeping the viewBox origin at 0 0
     matters: it is what makes the transform-origin below unambiguous.
 
     Ink #101211 (neutral sage dark) and grass #46A758 are the brand palette (the

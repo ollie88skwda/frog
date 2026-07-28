@@ -71,7 +71,7 @@ export function AppShell() {
         <div className="flex h-12 items-center justify-between px-3">
           <span className="flex min-w-0 items-center gap-2">
             {/* Frog mark — quiet chrome, never the expressive mascot. */}
-            <FrogMark className="size-5 text-ink" strokeWidth={STROKE} />
+            <FrogMark className="size-5 text-ink" />
             <span className="truncate text-sm font-medium">{APP_NAME}</span>
           </span>
           <button
