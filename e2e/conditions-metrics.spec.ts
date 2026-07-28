@@ -124,6 +124,28 @@ test("create a custom number condition with a unit; value round-trips", async ({
   await field.blur();
   await expect(page.getByTestId("conditions-chip")).toContainText("500ml");
 
+  // The chip updates optimistically; the write to sessions.condition_values is
+  // a background mutation, so reloading before it lands drops the value. Poll
+  // the session row until the value is server-side.
+  await expect
+    .poll(() =>
+      page.evaluate(async (metricId) => {
+        const sessionId = window.location.pathname.split("/").at(-1) ?? "";
+        const { data, error } = await window.__sbl.supabase
+          .from("sessions")
+          .select("condition_values")
+          .eq("id", sessionId)
+          .single();
+        if (error) throw new Error(error.message);
+        const values = data?.condition_values as Record<
+          string,
+          unknown
+        > | null;
+        return values?.[metricId] ?? null;
+      }, id),
+    )
+    .toBe(500);
+
   // Reload: custom condition + value restore from the server.
   await page.reload();
   await expect(page.getByTestId("conditions-chip")).toContainText("500ml");

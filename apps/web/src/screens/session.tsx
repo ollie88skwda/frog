@@ -423,7 +423,11 @@ export default function SessionScreen() {
   const location = useLocation();
   const qc = useQueryClient();
   const { unit } = useUnit();
-  const { data: session } = useSession(sessionId);
+  const sessionQuery = useSession(sessionId);
+  const session = sessionQuery.data;
+  // Until this resolves, routineId is unknown — the seed gate below can't tell
+  // a routine start from an ad-hoc workout.
+  const sessionLoading = sessionQuery.isLoading;
   const { data: restored } = useSessionExercises(sessionId);
   const { data: metrics = [] } = useMetrics();
   // Routine provenance: template targets + notes for prefill / write-back.
@@ -823,6 +827,11 @@ export default function SessionScreen() {
   // targets are available or the draft grid comes up blank.
   useEffect(() => {
     if (blocks !== null || !restored) return;
+    // The two queries race: when session_exercises lands first, session is
+    // still undefined and `session?.routineId` reads as "ad-hoc", skipping the
+    // routine wait below and mounting the grid unseeded — permanently, since
+    // blocks seed once. Wait for the session row before deciding.
+    if (sessionLoading) return;
     if (session?.routineId && routineLoading) return;
     setBlocks(
       restored.map((se) => ({
@@ -836,7 +845,7 @@ export default function SessionScreen() {
         committed: se.sets,
       })),
     );
-  }, [restored, blocks, session?.routineId, routineLoading]);
+  }, [restored, blocks, sessionLoading, session?.routineId, routineLoading]);
 
   // Auto-open the exercise picker once when a session loads with no blocks —
   // but let it be dismissed (Escape/X). Not `open={blocks.length === 0}`, which

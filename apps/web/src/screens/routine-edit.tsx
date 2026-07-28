@@ -6,6 +6,8 @@ import {
   groupByPrimaryMuscle,
   lbToKg,
   type NewRoutineInput,
+  type ParsedExercise,
+  parseRoutineText,
   type RoutineExerciseInput,
   SET_TYPE_LABELS,
   SET_TYPE_MARKERS,
@@ -16,8 +18,26 @@ import {
   unitLabel,
   weightLabel,
 } from "@sbl/core";
-import { ArrowDown, ArrowUp, Link2, Plus, Trash2, X } from "lucide-react";
-import { useMemo, useState } from "react";
+// Imported by exact subpath, not the "@sbl/core" barrel: a second, unrelated
+// matcher landed at packages/core/src/domain/match-exercise.ts (voice
+// logging) exporting the same names with a different shape, so the barrel
+// re-export is now ambiguous. This repo-wide dedupe is tracked separately
+// (see AGENTS.md's "Freeform-text → structured-data matching" note) — this
+// import just keeps this file unambiguously on its own matcher meanwhile.
+import {
+  matchExerciseName,
+  sameExerciseName,
+} from "@sbl/core/generator/match-exercise";
+import {
+  ArrowDown,
+  ArrowUp,
+  ClipboardPaste,
+  Link2,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import {
   ExerciseFilterBar,
@@ -28,7 +48,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { formatMMSS, parseDuration } from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
-import { useExercises } from "@/lib/queries";
+import { useCreateExercise, useExercises } from "@/lib/queries";
 import {
   useCreateRoutine,
   useRoutineDetail,
@@ -62,7 +82,34 @@ type DraftExercise = {
   sets: DraftSet[];
 };
 
+// A parsed "paste workout" line whose exercise name didn't fuzzy-match
+// anything in the library — surfaced for the user to resolve, never dropped
+// or guessed.
+type UnmatchedLine = ParsedExercise & { key: string };
+
+// A pasted line the parser couldn't read at all (no set×rep token, or no
+// name beside one). Surfaced so a partial import is never silent — pasted
+// text has no id and can repeat verbatim, hence the generated key.
+type UnparsedLine = { key: string; text: string };
+
 const REST_CHOICES = [null, 0, 30, 45, 60, 90, 120, 150, 180, 240, 300];
+
+// A pasted line parsing to more sets than this is almost certainly a
+// misread (e.g. weight×reps like "80x5" read as sets×reps, or a stray
+// digit run) rather than a real prescription — route it to the unmatched
+// list instead of materializing hundreds of DraftSet rows.
+const MAX_PARSED_SETS = 20;
+
+// What a line whose set count was rejected as implausible falls back to once
+// the user resolves it by hand: the reps were readable, the count wasn't.
+const FALLBACK_SETS = 3;
+
+// A multi-week program pasted at once (150-250 set×rep lines) would render
+// one full non-virtualized DraftExercise editor per line — cuts against the
+// "lightweight & fast" requirement the set-count cap already protects at the
+// set level. Cap exercises per parse too; overflow is reported, not dropped
+// silently.
+const MAX_PARSED_EXERCISES = 50;
 
 // Radix Select forbids empty-string values; these sentinels stand in for the
 // null cases (no folder / default rest) and map back to null at the boundary.
@@ -88,17 +135,60 @@ function exerciseTypeOf(e: Exercise | undefined): ExerciseType {
     : "weight_reps";
 }
 
+// Shared by the exercise picker and the paste-workout parser — same
+// DraftExercise shape either way, just a different starting set of `sets`.
+function draftFromExercise(e: Exercise, sets: DraftSet[]): DraftExercise {
+  return {
+    key: crypto.randomUUID(),
+    exerciseId: e.id,
+    name: e.name,
+    exerciseType: exerciseTypeOf(e),
+    supersetGroup: null,
+    restSec: null,
+    note: "",
+    sets,
+  };
+}
+
+function setsFromParsed(p: ParsedExercise): DraftSet[] {
+  // A count over MAX_PARSED_SETS is precisely why the line was routed to the
+  // unmatched list (a misread like weight×reps "80x5"), so materializing it —
+  // even clamped — hands the user 20 rows to delete. Keep the readable half
+  // (the reps) and fall back to a normal set count for the rest.
+  const count = p.sets > MAX_PARSED_SETS ? FALLBACK_SETS : Math.max(1, p.sets);
+  return Array.from({ length: count }, () => ({
+    ...emptySet(),
+    reps: p.reps != null ? String(p.reps) : "",
+    repsMax: p.repsMax != null ? String(p.repsMax) : "",
+  }));
+}
+
+// The picker's filter is a literal `includes`, strictly stricter than the
+// fuzzy matcher that just failed on this same raw name — seeding the whole
+// line would open the picker on zero results. The longest lettered word is
+// the most distinctive part and keeps real candidates on screen.
+function pickerSeed(rawName: string): string {
+  return rawName
+    .split(/[^a-zA-Z0-9]+/)
+    .filter((w) => /[a-zA-Z]/.test(w))
+    .reduce((best, w) => (w.length > best.length ? w : best), "");
+}
+
 export default function RoutineEditScreen() {
   const { id } = useParams(); // undefined on /routines/new
   const navigate = useNavigate();
   const { unit } = useUnit();
   const { t } = useVoice();
-  const { data: exercises = [] } = useExercises();
+  const {
+    data: exercises = [],
+    isSuccess: libraryLoaded,
+    isError: libraryFailed,
+  } = useExercises();
   // Saving the routine inserts routine_exercises against a real FK, so a row
   // whose own create is still queued can't be drafted in.
   const pendingExercises = usePendingExercises();
   const { data: folders = [] } = useRoutineFolders();
-  const { data: detail } = useRoutineDetail(id ?? null);
+  const { data: detail, isError: detailFailed } = useRoutineDetail(id ?? null);
   const createRoutine = useCreateRoutine();
   const updateRoutine = useUpdateRoutine();
 
@@ -113,10 +203,39 @@ export default function RoutineEditScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Paste-workout import: raw text -> matched drafts + a resolvable
+  // unmatched list. `pickFor` routes the (shared) exercise picker's
+  // selection back into a specific unmatched line instead of a fresh add.
+  const createExercise = useCreateExercise();
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [pasteError, setPasteError] = useState<string | null>(null);
+  const [unmatched, setUnmatched] = useState<UnmatchedLine[]>([]);
+  const [unparsed, setUnparsed] = useState<UnparsedLine[]>([]);
+  const [overflowCount, setOverflowCount] = useState(0);
+  const [pickFor, setPickFor] = useState<UnmatchedLine | null>(null);
+  // In-flight creates are tracked by raw name (compared via sameExerciseName),
+  // not line key: two lines naming the same lift share one library row, so
+  // both their buttons must disable together or a double click makes two
+  // identical exercises.
+  const [creatingNames, setCreatingNames] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [createError, setCreateError] = useState<{
+    key: string;
+    message: string;
+  } | null>(null);
+
   const byId = useMemo(
     () => new Map(exercises.map((e) => [e.id, e])),
     [exercises],
   );
+
+  // Read by createFromUnmatched after its await, where the render-time
+  // `unmatched` closure would be stale — a line dismissed or picked while the
+  // create was in flight must not come back as a draft row.
+  const unmatchedRef = useRef(unmatched);
+  unmatchedRef.current = unmatched;
 
   // Seed the draft once when editing an existing routine.
   const seeded = detail && drafts === null && id;
@@ -159,6 +278,16 @@ export default function RoutineEditScreen() {
 
   const list = drafts ?? [];
   const routineName = name ?? "";
+
+  // Shared gate for every action that mutates the draft on /routines/:id.
+  // Any of them makes `drafts` non-null, which permanently disables the
+  // seed-once block above — so an Add/Paste that lands before the saved
+  // routine arrives would leave its exercises unloaded and let Save
+  // overwrite them with only the new rows.
+  const draftReady = !id || drafts !== null;
+  // Resolved-but-absent counts as broken too: without a seed, saving would
+  // replace the routine's contents with whatever was added since.
+  const detailBroken = detailFailed || detail === null;
 
   function patchExercise(i: number, patch: Partial<DraftExercise>) {
     setDrafts((prev) =>
@@ -219,6 +348,148 @@ export default function RoutineEditScreen() {
     });
   }
 
+  // Parse the pasted text against the current library, split matches (go
+  // straight into the draft, same as picking one by hand) from misses (held
+  // in `unmatched` for the user to resolve — never saved, never guessed).
+  function parsePaste() {
+    if (!draftReady) {
+      setPasteError(
+        t(
+          "This routine is still loading — try again in a moment.",
+          "The frog hasn't finished reading this routine. One moment.",
+        ),
+      );
+      return;
+    }
+    // Matching against a library that hasn't loaded marks every line
+    // unmatched, and "Create exercise" would then duplicate rows that already
+    // exist — refuse to parse until the real list is in hand.
+    if (!libraryLoaded) {
+      setPasteError(
+        libraryFailed
+          ? t(
+              "Couldn't load your exercise library. Reload before pasting a workout.",
+              "The frog lost your library. Reload before you paste.",
+            )
+          : t(
+              "Your exercise library is still loading — try again in a moment.",
+              "The frog is still unpacking your library. One moment.",
+            ),
+      );
+      return;
+    }
+    const parsed = parseRoutineText(pasteText);
+    if (parsed.exercises.length === 0) {
+      setPasteError(
+        t(
+          "No exercises found in that text.",
+          "The frog found nothing to chew on there.",
+        ),
+      );
+      return;
+    }
+    const exercisesToProcess = parsed.exercises.slice(0, MAX_PARSED_EXERCISES);
+    const overflow = parsed.exercises.length - exercisesToProcess.length;
+    const matchedDrafts: DraftExercise[] = [];
+    const misses: UnmatchedLine[] = [];
+    for (const p of exercisesToProcess) {
+      // An implausible set count (likely a misread, not a real prescription)
+      // always goes to the unmatched list for manual review, even if the
+      // name matched cleanly — never auto-add a hundreds-of-sets draft row.
+      const match =
+        p.sets <= MAX_PARSED_SETS
+          ? matchExerciseName(p.rawName, exercises)
+          : null;
+      if (match)
+        matchedDrafts.push(draftFromExercise(match, setsFromParsed(p)));
+      else misses.push({ ...p, key: crypto.randomUUID() });
+    }
+    if (parsed.name && !name) setName(parsed.name);
+    setDrafts((prev) => [...(prev ?? []), ...matchedDrafts]);
+    setUnmatched((prev) => [...prev, ...misses]);
+    setUnparsed((prev) => [
+      ...prev,
+      ...parsed.unparsed.map((text) => ({ key: crypto.randomUUID(), text })),
+    ]);
+    if (overflow > 0) setOverflowCount((prev) => prev + overflow);
+    setPasteOpen(false);
+    setPasteText("");
+    setPasteError(null);
+  }
+
+  function pickManually(u: UnmatchedLine) {
+    setQuery(pickerSeed(u.rawName));
+    setPickFor(u);
+    setPicking(true);
+  }
+
+  async function createFromUnmatched(u: UnmatchedLine) {
+    if ([...creatingNames].some((n) => sameExerciseName(n, u.rawName))) return;
+    setCreatingNames((prev) => new Set(prev).add(u.rawName));
+    setCreateError(null);
+    try {
+      const created = await createExercise.mutateAsync({ name: u.rawName });
+      // A routine can name the same lift twice (main sets + a backoff line),
+      // possibly with a plural mismatch ("Tricep Pushdowns" / "Tricep
+      // Pushdown") — sameExerciseName is the matcher's own equality, so twin
+      // detection can't drift from what matchExerciseName itself considers
+      // one exercise. Resolve every unmatched line sharing this name against
+      // the row we just created rather than leaving a button that
+      // duplicates it.
+      const twins = unmatchedRef.current.filter((x) =>
+        sameExerciseName(x.rawName, u.rawName),
+      );
+      setDrafts((prev) => [
+        ...(prev ?? []),
+        ...twins.map((x) => draftFromExercise(created, setsFromParsed(x))),
+      ]);
+      setUnmatched((prev) =>
+        prev.filter((x) => !sameExerciseName(x.rawName, u.rawName)),
+      );
+    } catch (e) {
+      // Left in the unmatched list so the user can retry or pick manually.
+      setCreateError({
+        key: u.key,
+        message: e instanceof Error ? e.message : "Unknown error",
+      });
+    } finally {
+      setCreatingNames((prev) => {
+        const next = new Set(prev);
+        next.delete(u.rawName);
+        return next;
+      });
+    }
+  }
+
+  function selectFromPicker(e: Exercise) {
+    if (pickFor) {
+      // Same twin resolution as createFromUnmatched: a routine can name the
+      // same lift twice (main sets + a backoff line), so picking one exercise
+      // for this line also resolves every sibling unmatched line sharing its
+      // name, instead of leaving a Create-exercise button that would mint a
+      // different row for the same lift.
+      const twins = unmatchedRef.current.filter((x) =>
+        sameExerciseName(x.rawName, pickFor.rawName),
+      );
+      setDrafts((prev) => [
+        ...(prev ?? []),
+        ...twins.map((x) => draftFromExercise(e, setsFromParsed(x))),
+      ]);
+      setUnmatched((prev) =>
+        prev.filter((x) => !sameExerciseName(x.rawName, pickFor.rawName)),
+      );
+      setPickFor(null);
+    } else {
+      setDrafts((prev) => [
+        ...(prev ?? []),
+        draftFromExercise(e, [emptySet(), emptySet(), emptySet()]),
+      ]);
+    }
+    setPicking(false);
+    setQuery("");
+    setMuscle("");
+  }
+
   function toInput(): NewRoutineInput {
     const exercisesInput: RoutineExerciseInput[] = list.map((d, i) => ({
       exerciseId: d.exerciseId,
@@ -261,7 +532,14 @@ export default function RoutineEditScreen() {
   }
 
   async function save() {
-    if (saving) return;
+    if (saving || !draftReady) return;
+    if (
+      unmatched.length > 0 &&
+      !window.confirm(
+        `${unmatched.length} pasted line${unmatched.length === 1 ? "" : "s"} from "Paste workout" ${unmatched.length === 1 ? "is" : "are"} still unresolved and will be left out of this save. Continue?`,
+      )
+    )
+      return;
     setSaving(true);
     setError(null);
     try {
@@ -298,7 +576,7 @@ export default function RoutineEditScreen() {
           <Button
             variant="primary"
             onClick={() => void save()}
-            disabled={saving || list.length === 0}
+            disabled={saving || list.length === 0 || !draftReady}
             data-testid="routine-save-btn"
           >
             {saving ? "Saving…" : "Save routine"}
@@ -341,6 +619,23 @@ export default function RoutineEditScreen() {
         <p className="mt-3 text-xs text-neg">
           {t("Save failed.", "The frog is annoyed (your draft is safe).")}{" "}
           {error}
+        </p>
+      )}
+
+      {!draftReady && (
+        <p
+          className={cn(
+            "mt-3 text-xs",
+            detailBroken ? "text-neg" : "text-soft",
+          )}
+          data-testid="routine-detail-status"
+        >
+          {detailBroken
+            ? t(
+                "Couldn't load this routine. Reload before editing it — saving now would overwrite it.",
+                "The frog lost this routine. Reload before you edit it.",
+              )
+            : t("Loading this routine…", "The frog is reading your routine…")}
         </p>
       )}
 
@@ -584,20 +879,178 @@ export default function RoutineEditScreen() {
         })}
       </div>
 
-      <Button
-        variant="outline"
-        className="mt-4 w-full"
-        onClick={() => setPicking(true)}
-        data-testid="routine-add-exercise-btn"
-      >
-        <Plus className="size-4" /> Add exercise
-      </Button>
+      {unmatched.length > 0 && (
+        <div className="mt-4 flex flex-col gap-2">
+          <p className="text-xs text-warn">
+            {t(
+              `${unmatched.length} pasted line${unmatched.length === 1 ? "" : "s"} didn't match a library exercise.`,
+              `The frog couldn't place ${unmatched.length} line${unmatched.length === 1 ? "" : "s"}. Pick one or teach it a name.`,
+            )}
+          </p>
+          {unmatched.map((u) => {
+            const creating = [...creatingNames].some((n) =>
+              sameExerciseName(n, u.rawName),
+            );
+            return (
+              <div
+                key={u.key}
+                className="rounded-lg border border-border border-l-2 border-l-warn bg-surface p-3"
+                data-testid={`routine-unmatched-${u.key}`}
+              >
+                {/* Stacked on phones: the name is what the user is resolving,
+                  and three actions on one row leave it unreadable at 375px. */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    {u.rawName}{" "}
+                    <span className="num text-2xs text-faint">
+                      {u.sets}×{u.reps ?? "?"}
+                      {u.repsMax ? `–${u.repsMax}` : ""}
+                    </span>
+                  </span>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => pickManually(u)}
+                      data-testid={`routine-unmatched-${u.key}-pick`}
+                    >
+                      Pick manually
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => void createFromUnmatched(u)}
+                      disabled={creating}
+                      data-testid={`routine-unmatched-${u.key}-create`}
+                    >
+                      {creating ? "Creating…" : "Create exercise"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Dismiss"
+                      onClick={() =>
+                        setUnmatched((prev) =>
+                          prev.filter((x) => x.key !== u.key),
+                        )
+                      }
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+                {createError?.key === u.key && (
+                  <p
+                    className="mt-2 text-xs text-neg"
+                    data-testid={`routine-unmatched-${u.key}-error`}
+                  >
+                    {t(
+                      "Couldn't create the exercise.",
+                      "The frog dropped it (the line is still here).",
+                    )}{" "}
+                    {createError.message}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
-      <Dialog open={picking} onOpenChange={setPicking}>
+      {unparsed.length > 0 && (
+        <div
+          className="mt-4 rounded-lg border border-border bg-surface p-3"
+          data-testid="routine-unparsed"
+        >
+          <div className="flex items-start gap-2">
+            <p className="flex-1 text-xs text-soft">
+              {t(
+                `${unparsed.length} pasted line${unparsed.length === 1 ? "" : "s"} had no set×rep to read and ${unparsed.length === 1 ? "was" : "were"} left out.`,
+                `The frog couldn't read ${unparsed.length} line${unparsed.length === 1 ? "" : "s"} — no set×rep in ${unparsed.length === 1 ? "it" : "them"}.`,
+              )}
+            </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Dismiss unreadable lines"
+              onClick={() => setUnparsed([])}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+          <ul className="mt-1 flex flex-col gap-0.5">
+            {unparsed.map((line) => (
+              <li key={line.key} className="truncate text-xs text-faint">
+                {line.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {overflowCount > 0 && (
+        <div
+          className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-surface p-3"
+          data-testid="routine-paste-overflow"
+        >
+          <p className="flex-1 text-xs text-soft">
+            {t(
+              `Stopped after ${MAX_PARSED_EXERCISES} exercises per paste — ${overflowCount} more line${overflowCount === 1 ? "" : "s"} ${overflowCount === 1 ? "was" : "were"} left out. Paste the rest separately.`,
+              `The frog stopped at ${MAX_PARSED_EXERCISES} exercises — ${overflowCount} more line${overflowCount === 1 ? "" : "s"} for another paste.`,
+            )}
+          </p>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Dismiss overflow notice"
+            onClick={() => setOverflowCount(0)}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      )}
+
+      <div className="mt-4 flex gap-2">
+        <Button
+          variant="outline"
+          className="flex-1"
+          onClick={() => setPicking(true)}
+          disabled={!draftReady}
+          data-testid="routine-add-exercise-btn"
+        >
+          <Plus className="size-4" /> Add exercise
+        </Button>
+        <Button
+          variant="outline"
+          className="flex-1"
+          onClick={() => setPasteOpen(true)}
+          disabled={!draftReady}
+          data-testid="routine-paste-btn"
+        >
+          <ClipboardPaste className="size-4" /> Paste workout
+        </Button>
+      </div>
+
+      <Dialog
+        open={picking}
+        onOpenChange={(o) => {
+          setPicking(o);
+          if (!o) {
+            setPickFor(null);
+            setQuery("");
+            setMuscle("");
+          }
+        }}
+      >
         <DialogContent
-          title="Add exercise"
+          title={pickFor ? "Match exercise" : "Add exercise"}
           className="max-h-[80vh] overflow-y-auto"
         >
+          {pickFor && (
+            <p className="mb-2 text-2xs text-faint">
+              Matching "{pickFor.rawName}"
+            </p>
+          )}
           <ExerciseFilterBar
             query={query}
             onQuery={setQuery}
@@ -631,22 +1084,7 @@ export default function RoutineEditScreen() {
                           : undefined
                       }
                       className="flex h-10 items-center rounded-md px-2 text-left text-sm hover:bg-surface-2 disabled:opacity-50 disabled:hover:bg-transparent"
-                      onClick={() => {
-                        setDrafts((prev) => [
-                          ...(prev ?? []),
-                          {
-                            key: crypto.randomUUID(),
-                            exerciseId: e.id,
-                            name: e.name,
-                            exerciseType: exerciseTypeOf(e),
-                            supersetGroup: null,
-                            restSec: null,
-                            note: "",
-                            sets: [emptySet(), emptySet(), emptySet()],
-                          },
-                        ]);
-                        setPicking(false);
-                      }}
+                      onClick={() => selectFromPicker(e)}
                       data-testid={`routine-pick-${e.name}`}
                     >
                       {e.name}
@@ -656,6 +1094,64 @@ export default function RoutineEditScreen() {
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={pasteOpen}
+        onOpenChange={(o) => {
+          setPasteOpen(o);
+          if (!o) {
+            setPasteText("");
+            setPasteError(null);
+          }
+        }}
+      >
+        <DialogContent
+          title="Paste workout"
+          className="max-h-[80vh] overflow-y-auto"
+        >
+          <p className="text-xs text-faint">
+            {t(
+              'Paste or type a routine, one exercise per line — e.g. "Bench press 4x8". Unmatched exercises can be picked or created afterward.',
+              'Feed the frog your scrawl, one exercise per line — e.g. "Bench press 4x8". Anything it can\'t place gets sorted out after.',
+            )}
+          </p>
+          <textarea
+            rows={8}
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            placeholder={
+              "Push day\nBench press 4x8\nIncline dumbbell press 3x10\nTricep pushdown 3x12"
+            }
+            className="mt-2 w-full resize-y rounded-md border border-border-strong bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+            data-testid="routine-paste-textarea"
+          />
+          {pasteError && <p className="mt-2 text-xs text-neg">{pasteError}</p>}
+          {libraryFailed && (
+            <p
+              className="mt-2 text-xs text-neg"
+              data-testid="routine-library-status"
+            >
+              {t(
+                "Couldn't load your exercise library. Reload before pasting a workout.",
+                "The frog lost your library. Reload before you paste.",
+              )}
+            </p>
+          )}
+          <Button
+            variant="primary"
+            className="mt-2 w-full"
+            onClick={parsePaste}
+            disabled={!pasteText.trim() || !libraryLoaded || !draftReady}
+            data-testid="routine-paste-parse-btn"
+          >
+            {libraryLoaded && draftReady
+              ? "Parse"
+              : libraryFailed
+                ? "Library unavailable"
+                : "Loading…"}
+          </Button>
         </DialogContent>
       </Dialog>
     </div>
