@@ -58,9 +58,12 @@ test("/tips lists lessons and browsing clears the InfoTip dot", async ({
     .poll(() => page.evaluate(() => localStorage.getItem("lessons-seen")))
     .toContain("rir");
 
-  // Back in the session (SPA back), the InfoTip dot is gone.
+  // Back in the session (SPA back), the InfoTip dot is gone. The row remounts
+  // with the details sheet closed (RIR stays on — extras persist in the draft),
+  // so reopen it to reach the InfoTip.
   await page.goBack();
   await expect(page).toHaveURL(/\/session\//);
+  await page.getByTestId("set-0-details").click();
   await expect(page.getByTestId("infotip-rir")).toBeVisible();
   await expect(
     page.getByTestId("infotip-rir").locator("span.bg-accent"),

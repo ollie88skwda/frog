@@ -5,6 +5,7 @@ import {
   signIn,
   waitForConditionUntracked,
   waitForExercise,
+  waitForSessionNotes,
 } from "./helpers";
 
 // P4 round-trips: session conditions (tracked defaults, auto-save, notes,
@@ -92,6 +93,7 @@ test("session notes auto-save and round-trip", async ({ page }) => {
   const notes = page.getByTestId("condition-notes");
   await notes.fill(NOTE);
   await notes.blur();
+  await waitForSessionNotes(page, NOTE);
 
   // Reopen after reload: the note restored from the server.
   await page.reload();
@@ -182,16 +184,18 @@ test("custom set metric: create, enable on an exercise, log a value", async ({
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
-  // Reveal the custom-metric field via the ⋯ "add field" menu (named by metric).
+  // Reveal the custom-metric field via the ⋯ "add field" menu (named by
+  // metric) — enabling it opens the big details sheet where it lives.
   await page.getByTestId("set-0-more").click();
   await page.getByRole("button", { name: METRIC, exact: true }).click();
 
   const metricInput = page.locator(`[data-testid^="set-0-metric-"]`);
   await expect(metricInput).toBeVisible();
   await metricInput.fill("4");
+  await page.keyboard.press("Escape");
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("10");
-  await page.getByTestId("set-0-reps").blur();
+  await page.getByTestId("set-0-reps").press("Enter");
 
   // The metric value landed in set_logs.metric_values.
   await expect

@@ -35,7 +35,7 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   const before = await rowCount(page, "set_logs");
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-reps").blur();
+  await page.getByTestId("set-0-reps").press("Enter");
   await expect(page.getByTestId("set-1-weight")).toBeVisible();
   // Ensure the background write landed before navigating away (goto is a full
   // page load and would abort the in-flight insert).

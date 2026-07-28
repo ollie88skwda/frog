@@ -239,7 +239,9 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     const bMachines = await repoB.listMachines();
     expect(bMachines.map((m) => m.id)).not.toContain(machine.id);
 
-    // Seed exercises carry classifications from the migration…
+    // The curated seeds carry classifications from the migration… (the bulk
+    // free-exercise-db rows are unclassified — a few of them target muscles
+    // outside the SBL taxonomy, e.g. neck, so they have no muscle targets.)
     const seeds = (await repoB.listExercises()).filter((e) => !e.isCustom);
     expect(seeds.length).toBeGreaterThan(0);
     // …except the neck-only rows: free-exercise-db's "neck" muscle has no SBL

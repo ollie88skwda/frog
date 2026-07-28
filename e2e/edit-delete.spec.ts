@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import {
+  EMAIL,
+  liveRowCount,
+  PASSWORD,
+  rowCount,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // G2 + G3: edit/delete logged data + exercise tags.
 
@@ -27,11 +34,11 @@ test("edit a committed set; delete a set; both survive reload", async ({ page })
   // Log two sets.
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-reps").blur();
+  await page.getByTestId("set-0-reps").press("Enter");
   await expect(page.getByTestId("set-1-weight")).toBeVisible();
   await page.getByTestId("set-1-weight").fill("110");
   await page.getByTestId("set-1-reps").fill("3");
-  await page.getByTestId("set-1-reps").blur();
+  await page.getByTestId("set-1-reps").press("Enter");
   await expect(page.getByTestId("set-2-weight")).toBeVisible();
   // Both rows persisted → the optimistic temp ids have been swapped for real
   // ones, so edit/delete below target actual rows.
@@ -44,10 +51,15 @@ test("edit a committed set; delete a set; both survive reload", async ({ page })
   await expect(page.getByTestId("committed-0-weight")).toHaveText("105");
 
   // Delete set 2 via the set-options (⋯) menu.
+  const liveBefore = await liveRowCount(page, "set_logs");
   await page.getByTestId("committed-1").hover();
   await page.getByTestId("set-menu-1").click();
   await page.getByTestId("set-menu-1-delete").click();
   await expect(page.getByTestId("committed-1")).not.toBeVisible();
+  // The removal above is optimistic — wait for the soft delete to land
+  // server-side, otherwise the reload can abort the in-flight request and the
+  // set comes back.
+  await expect.poll(() => liveRowCount(page, "set_logs")).toBe(liveBefore - 1);
 
   // Reload: edit persisted, deleted set stays gone.
   await page.reload();
