@@ -43,6 +43,23 @@ export async function waitForExercise(page: Page, name: string) {
     .toBe(1);
 }
 
+/** Poll until the session notes have landed server-side (the notes mutation is
+ * debounced + optimistic; a reload before it lands would abort the PATCH). */
+export async function waitForSessionNotes(page: Page, notes: string) {
+  await expect
+    .poll(() =>
+      page.evaluate(async (n) => {
+        const { count, error } = await window.__sbl.supabase
+          .from("sessions")
+          .select("id", { count: "exact", head: true })
+          .eq("notes", n);
+        if (error) throw new Error(error.message);
+        return count ?? 0;
+      }, notes),
+    )
+    .toBe(1);
+}
+
 /** Poll until a condition is untracked server-side (the untrack mutation is
  * optimistic; a full-page goto before it lands would abort it). */
 export async function waitForConditionUntracked(page: Page, metricId: string) {
@@ -59,6 +76,19 @@ export async function waitForConditionUntracked(page: Page, metricId: string) {
       }, metricId),
     )
     .toBe(1);
+}
+
+/** Rows the app still considers live — deletes are soft (`deleted_at`), so a
+ * plain `rowCount` never drops after one. */
+export async function liveRowCount(page: Page, table: string): Promise<number> {
+  return page.evaluate(async (t) => {
+    const { count, error } = await window.__sbl.supabase
+      .from(t)
+      .select("id", { count: "exact", head: true })
+      .is("deleted_at", null);
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  }, table);
 }
 
 export async function rowCount(page: Page, table: string): Promise<number> {

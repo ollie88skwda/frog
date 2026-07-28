@@ -5,6 +5,7 @@ import {
   signIn,
   waitForConditionUntracked,
   waitForExercise,
+  waitForSessionNotes,
 } from "./helpers";
 
 // P4 round-trips: session conditions (tracked defaults, auto-save, notes,
@@ -92,6 +93,7 @@ test("session notes auto-save and round-trip", async ({ page }) => {
   const notes = page.getByTestId("condition-notes");
   await notes.fill(NOTE);
   await notes.blur();
+  await waitForSessionNotes(page, NOTE);
 
   // Reopen after reload: the note restored from the server.
   await page.reload();

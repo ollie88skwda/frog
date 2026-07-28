@@ -2936,6 +2936,9 @@ function ActiveRow({
     );
   }
 
+  // Wired to the row's data inputs only — deliberately not to the details-sheet
+  // fields, where Enter must stay a newline in the note textarea rather than
+  // commit the set out from under a sheet the user still has open.
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
       e.preventDefault();
