@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { formatMMSS, parseDuration } from "@/lib/format";
+import { usePendingExercises } from "@/lib/pending-exercises";
 import { useExercises } from "@/lib/queries";
 import {
   useCreateRoutine,
@@ -93,6 +94,9 @@ export default function RoutineEditScreen() {
   const { unit } = useUnit();
   const { t } = useVoice();
   const { data: exercises = [] } = useExercises();
+  // Saving the routine inserts routine_exercises against a real FK, so a row
+  // whose own create is still queued can't be drafted in.
+  const pendingExercises = usePendingExercises();
   const { data: folders = [] } = useRoutineFolders();
   const { data: detail } = useRoutineDetail(id ?? null);
   const createRoutine = useCreateRoutine();
@@ -620,7 +624,13 @@ export default function RoutineEditScreen() {
                     <button
                       key={e.id}
                       type="button"
-                      className="flex h-10 items-center rounded-md px-2 text-left text-sm hover:bg-surface-2"
+                      disabled={pendingExercises.has(e.id)}
+                      title={
+                        pendingExercises.has(e.id)
+                          ? `${e.name} is still saving`
+                          : undefined
+                      }
+                      className="flex h-10 items-center rounded-md px-2 text-left text-sm hover:bg-surface-2 disabled:opacity-50 disabled:hover:bg-transparent"
                       onClick={() => {
                         setDrafts((prev) => [
                           ...(prev ?? []),

@@ -14,19 +14,125 @@ import {
   type TrackedCondition,
 } from "@sbl/core";
 import {
+  type QueryClient,
   useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useCallback } from "react";
+import {
+  markExercisesPending,
+  resolveExercisePending,
+  usePendingExercises,
+} from "./pending-exercises";
 import { useRepo } from "./repo";
+
+// Seeded rows live in the cache before their INSERT is dispatched, so any
+// refetch that lands mid-run (window refocus, a sibling exercise mutation's
+// invalidate) replaces them with server truth that predates them. Re-applying
+// them here keeps the list whole no matter what replaces the cache, instead of
+// leaning on each create's `onMutate` happening to cancel that refetch first.
+function withPendingExercises(
+  rows: Exercise[],
+  pending: ReadonlyMap<string, Exercise>,
+): Exercise[] {
+  if (pending.size === 0) return rows;
+  const have = new Set(rows.map((e) => e.id));
+  const missing = [...pending.values()].filter((r) => !have.has(r.id));
+  if (missing.length === 0) return rows;
+  return [...rows, ...missing].sort((a, b) => a.name.localeCompare(b.name));
+}
 
 export function useExercises() {
   const repo = useRepo();
+  const pending = usePendingExercises();
+  const select = useCallback(
+    (rows: Exercise[]) => withPendingExercises(rows, pending),
+    [pending],
+  );
   return useQuery({
     queryKey: ["exercises"],
     queryFn: () => repo.listExercises(),
+    select,
   });
+}
+
+// Bulk add fires one create per name, so creates run concurrently. Counted
+// here rather than read back off the mutation cache: a mutation is still
+// `pending` while its own `onSettled` runs, so two creates settling in the
+// same microtask drain would each mistake the other for a live sibling.
+const createExercisesInFlight = new WeakMap<QueryClient, number>();
+
+function trackCreateExercise(qc: QueryClient, delta: number): number {
+  const next = Math.max(0, (createExercisesInFlight.get(qc) ?? 0) + delta);
+  createExercisesInFlight.set(qc, next);
+  return next;
+}
+
+function optimisticExercise(
+  id: string,
+  name: string,
+  opts?: NewExerciseOpts,
+): Exercise {
+  const now = Date.now();
+  return {
+    id,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+    ownerId: null,
+    name,
+    tags: null,
+    isCustom: true,
+    machineId: opts?.machineId ?? null,
+    jointActions: opts?.jointActions ?? null,
+    muscleTargets: opts?.muscleTargets ?? null,
+    imageUrl: null,
+    imageAttribution: null,
+    exerciseType: opts?.exerciseType ?? "weight_reps",
+    equipment: opts?.equipment ?? null,
+    instructions: null,
+    imageUrls: null,
+  };
+}
+
+// An optimistic write updates the library; it never *creates* it. A `(old = [])`
+// updater would build the cache entry out of one optimistic row during the cold
+// ~1 MB load — which reads downstream as a loaded library (bulk add gates its
+// duplicate detection on exactly that) — and would resurrect an entry that
+// `queryClient.clear()` just dropped on sign-out. Returning `undefined` makes
+// `setQueryData` a no-op; the row arrives with the pending fetch instead, kept
+// by the pending-row merge in `useExercises`.
+function updateExerciseRows(
+  qc: QueryClient,
+  update: (rows: Exercise[]) => Exercise[],
+) {
+  qc.setQueryData<Exercise[]>(["exercises"], (old) => old && update(old));
+}
+
+// Idempotent by id: a row seeded before its create was dispatched must not be
+// added a second time when that create's own `onMutate` runs.
+function addExerciseRows(qc: QueryClient, rows: Exercise[]) {
+  updateExerciseRows(qc, (old) => {
+    const have = new Set(old.map((e) => e.id));
+    const fresh = rows.filter((r) => !have.has(r.id));
+    if (fresh.length === 0) return old;
+    return [...old, ...fresh].sort((a, b) => a.name.localeCompare(b.name));
+  });
+}
+
+// Puts every name on screen in one write, before any insert is dispatched —
+// bulk add bounds its network fan-out, and the user must not watch their paste
+// trickle in one worker slot at a time. Returns the ids to create under.
+export function useSeedExercises() {
+  const qc = useQueryClient();
+  return (names: string[]) => {
+    const rows = names.map((name) => optimisticExercise(newId(), name));
+    addExerciseRows(qc, rows);
+    markExercisesPending(rows);
+    return rows.map(({ id, name }) => ({ id, name }));
+  };
 }
 
 export function useCreateExercise() {
@@ -38,6 +144,7 @@ export function useCreateExercise() {
     // Synchronous onMutate: the optimistic write must land before React's
     // next render, or controlled inputs flash back to the stale value.
     onMutate: (vars) => {
+      trackCreateExercise(qc, 1);
       const { name } = vars;
       // Share one client id between the optimistic row and the server insert
       // (see useCreateMachine) so a classification edit made before the create
@@ -46,37 +153,48 @@ export function useCreateExercise() {
       const id = vars.opts.id ?? newId();
       vars.opts.id = id;
       const opts = vars.opts;
+      // Only once there is a list to protect: the single-add form is live
+      // during the cold load, and cancelling that first fetch reverts it
+      // without restarting — leaving an empty library until this create's own
+      // `onSettled` invalidate re-downloads it.
+      if (qc.getQueryData(["exercises"]) !== undefined) {
+        void qc.cancelQueries({ queryKey: ["exercises"] });
+      }
+      const row = optimisticExercise(id, name, opts);
+      addExerciseRows(qc, [row]);
+      markExercisesPending([row]);
+      return { id };
+    },
+    // Roll back by removing only this mutation's optimistic row — a snapshot
+    // restore would clobber sibling optimistic rows when creates run
+    // concurrently (bulk add fires one mutation per name). Drop it from the
+    // pending registry first, or the re-apply in `useExercises` would put the
+    // row straight back until `onSettled` runs.
+    onError: (_err, _vars, ctx) => {
+      if (!ctx) return;
+      resolveExercisePending(ctx.id);
+      updateExerciseRows(qc, (old) => old.filter((e) => e.id !== ctx.id));
+    },
+    // Only the last create of a batch refetches. An earlier one would pull
+    // server truth that predates its siblings' inserts and overwrite their
+    // optimistic rows — and re-download the whole library once per name. The
+    // count drops before the check, so the last one out always invalidates.
+    // The refetch is deliberately not awaited: holding this callback open for
+    // the whole ~1 MB round-trip would keep a create dispatched inside that
+    // window from ever seeing the count reach zero.
+    onSettled: (_data, _err, vars, ctx) => {
+      const id = ctx?.id ?? vars.opts?.id;
+      if (id) resolveExercisePending(id);
+      if (trackCreateExercise(qc, -1) > 0) return;
+      // Any fetch already running predates this insert, so its response can't
+      // contain the row. Retire it first: `invalidateQueries` only cancels an
+      // in-flight fetch once the query has data, so during the cold load it
+      // would instead be handed that fetch's promise — and its pre-insert
+      // payload clears the invalidation, leaving the new exercise off the list
+      // until something else refetches.
       void qc.cancelQueries({ queryKey: ["exercises"] });
-      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      const now = Date.now();
-      const optimistic: Exercise = {
-        id,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-        ownerId: null,
-        name,
-        tags: null,
-        isCustom: true,
-        machineId: opts?.machineId ?? null,
-        jointActions: opts?.jointActions ?? null,
-        muscleTargets: opts?.muscleTargets ?? null,
-        imageUrl: null,
-        imageAttribution: null,
-        exerciseType: opts?.exerciseType ?? "weight_reps",
-        equipment: opts?.equipment ?? null,
-        instructions: null,
-        imageUrls: null,
-      };
-      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
-        [...old, optimistic].sort((a, b) => a.name.localeCompare(b.name)),
-      );
-      return { prev };
+      void qc.invalidateQueries({ queryKey: ["exercises"] });
     },
-    onError: (_err, _name, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
   });
 }
 
@@ -88,9 +206,7 @@ export function useDeleteExercise() {
     onMutate: (id) => {
       void qc.cancelQueries({ queryKey: ["exercises"] });
       const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
-        old.filter((e) => e.id !== id),
-      );
+      updateExerciseRows(qc, (old) => old.filter((e) => e.id !== id));
       return { prev };
     },
     onError: (_e, _id, ctx) => {
@@ -129,7 +245,7 @@ export function useSetExerciseTags() {
     onMutate: ({ exerciseId, tags }) => {
       void qc.cancelQueries({ queryKey: ["exercises"] });
       const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
+      updateExerciseRows(qc, (old) =>
         old.map((e) =>
           e.id === exerciseId ? { ...e, tags: tags.length ? tags : null } : e,
         ),
@@ -155,7 +271,7 @@ export function useSetExerciseClassification() {
     onMutate: ({ exerciseId, classification }) => {
       void qc.cancelQueries({ queryKey: ["exercises"] });
       const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
+      updateExerciseRows(qc, (old) =>
         old.map((e) =>
           e.id === exerciseId
             ? {
@@ -198,7 +314,7 @@ export function useSetExerciseTypeEquipment() {
     onMutate: ({ exerciseId, exerciseType, equipment }) => {
       void qc.cancelQueries({ queryKey: ["exercises"] });
       const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
+      updateExerciseRows(qc, (old) =>
         old.map((e) =>
           e.id === exerciseId ? { ...e, exerciseType, equipment } : e,
         ),
@@ -221,7 +337,7 @@ export function useSetExerciseMachine() {
     onMutate: ({ exerciseId, machineId }) => {
       void qc.cancelQueries({ queryKey: ["exercises"] });
       const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
+      updateExerciseRows(qc, (old) =>
         old.map((e) => (e.id === exerciseId ? { ...e, machineId } : e)),
       );
       return { prev };

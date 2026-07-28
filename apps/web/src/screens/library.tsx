@@ -29,7 +29,15 @@ import {
   History,
   Info,
 } from "lucide-react";
-import { type CSSProperties, type FormEvent, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type FormEvent,
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Link } from "react-router";
 import {
   ExerciseThumb,
@@ -49,6 +57,14 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
+  dismissBulkAddFailures,
+  finishBulkAddRun,
+  isBulkAddRunActive,
+  startBulkAddRun,
+  useBulkAddFailures,
+} from "@/lib/bulk-add-failures";
+import { usePendingExercises } from "@/lib/pending-exercises";
+import {
   useCreateExercise,
   useCreateMetric,
   useDeleteExercise,
@@ -58,6 +74,7 @@ import {
   useLastSets,
   useMachines,
   useMetrics,
+  useSeedExercises,
   useSetExerciseClassification,
   useSetExerciseFavorite,
   useSetExerciseMachine,
@@ -72,6 +89,60 @@ import { useVoice } from "@/lib/voice";
 
 const TIERS: Tier[] = ["S", "A", "B", "C"];
 
+// One name per line, trimmed, blanks dropped, case-insensitive dedupe within
+// the paste (keeps the first occurrence's casing).
+function parseBulkExerciseNames(text: string): string[] {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    names.push(trimmed);
+  }
+  return names;
+}
+
+// Long name lists (duplicates, failures) are summarised — the full list would
+// push the dialog's own controls below the scroll fold.
+const NAME_PREVIEW = 5;
+
+function previewNames(names: readonly string[]): string {
+  const rest = names.length - NAME_PREVIEW;
+  const head = names.slice(0, NAME_PREVIEW).join(", ");
+  return rest > 0 ? `${head} +${rest} more` : head;
+}
+
+// Bulk add has no `Repo` batch call by design, so bound the fan-out here:
+// at most this many inserts in flight regardless of how many names were pasted.
+const BULK_ADD_CONCURRENCY = 4;
+
+// Resolves to the items whose run failed, in input order.
+async function runBounded<T>(
+  items: T[],
+  run: (item: T) => Promise<unknown>,
+): Promise<T[]> {
+  const failed = new Set<number>();
+  let next = 0;
+  async function worker() {
+    for (let i = next++; i < items.length; i = next++) {
+      try {
+        await run(items[i]);
+      } catch {
+        failed.add(i);
+      }
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(BULK_ADD_CONCURRENCY, items.length) }, () =>
+      worker(),
+    ),
+  );
+  return items.filter((_, i) => failed.has(i));
+}
+
 // Skip layout/paint for off-screen rows (~900 in the seeded library). The
 // `auto` keyword lets the browser cache each row's real height after first
 // render, so the estimate only matters before a row has ever been shown.
@@ -80,15 +151,26 @@ const CV_ROW: CSSProperties = {
   containIntrinsicSize: "auto 88px",
 };
 
+const NO_EXERCISES: Exercise[] = [];
+
 export default function LibraryScreen() {
   const { t } = useVoice();
-  const { data: exercises = [], isLoading } = useExercises();
+  const { data, isLoading, isError, refetch } = useExercises();
+  // Presence, not query status: a failed background refetch (every bulk run
+  // ends in one) flips `status` to error while the fetched list is still in
+  // `data` and on screen — bulk add only needs the list, not a fresh fetch.
+  const exercises = data ?? NO_EXERCISES;
+  const libraryLoaded = data !== undefined;
   const { data: metrics = [] } = useMetrics();
   const { data: machines = [] } = useMachines();
   const { data: favorites = [] } = useExerciseFavorites();
+  // Rows whose INSERT hasn't landed: favorites, tags, metrics and archive all
+  // key off exercise id server-side, so they must wait for the real row.
+  const pendingExercises = usePendingExercises();
   const setFavorite = useSetExerciseFavorite();
-  const favoriteIds = new Set(
-    favorites.filter((f) => f.favorite).map((f) => f.exerciseId),
+  const favoriteIds = useMemo(
+    () => new Set(favorites.filter((f) => f.favorite).map((f) => f.exerciseId)),
+    [favorites],
   );
   const create = useCreateExercise();
   const [name, setName] = useState("");
@@ -100,11 +182,30 @@ export default function LibraryScreen() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
-  const setMetrics = metrics.filter(
-    (m) => m.scope === "set" && m.ownerId !== null,
+  const setMetrics = useMemo(
+    () => metrics.filter((m) => m.scope === "set" && m.ownerId !== null),
+    [metrics],
   );
-  const filtered = filterExercises(exercises, query, filterMuscle);
-  const groups = groupByPrimaryMuscle(filtered);
+  // Derived off the whole ~900-row library: every optimistic write re-renders
+  // this screen, and a bulk run does one write per pasted name.
+  const filtered = useMemo(
+    () => filterExercises(exercises, query, filterMuscle),
+    [exercises, query, filterMuscle],
+  );
+  const groups = useMemo(() => groupByPrimaryMuscle(filtered), [filtered]);
+
+  // Stable identities keep the memoized rows out of the re-render that every
+  // optimistic write triggers — a bulk run does one write per name.
+  const favoriteMutate = setFavorite.mutate;
+  const onToggleFavorite = useCallback(
+    (exerciseId: string, favorite: boolean) =>
+      favoriteMutate({ exerciseId, favorite }),
+    [favoriteMutate],
+  );
+  const onToggleExpanded = useCallback(
+    (id: string) => setExpandedId((prev) => (prev === id ? null : id)),
+    [],
+  );
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -214,6 +315,13 @@ export default function LibraryScreen() {
         </div>
       </form>
 
+      <BulkAddDialog
+        exercises={exercises}
+        libraryLoaded={libraryLoaded}
+        libraryFailed={isError && !libraryLoaded}
+        onRetryLibrary={() => void refetch()}
+      />
+
       <div className="mt-4">
         <ExerciseFilterBar
           query={query}
@@ -276,16 +384,10 @@ export default function LibraryScreen() {
                       setMetrics={setMetrics}
                       machines={machines}
                       isFavorite={favoriteIds.has(ex.id)}
-                      onToggleFavorite={() =>
-                        setFavorite.mutate({
-                          exerciseId: ex.id,
-                          favorite: !favoriteIds.has(ex.id),
-                        })
-                      }
+                      onToggleFavorite={onToggleFavorite}
+                      pending={pendingExercises.has(ex.id)}
                       expanded={expandedId === ex.id}
-                      onToggle={() =>
-                        setExpandedId(expandedId === ex.id ? null : ex.id)
-                      }
+                      onToggle={onToggleExpanded}
                     />
                   ))}
                 </ul>
@@ -297,6 +399,178 @@ export default function LibraryScreen() {
 
       <MachinesSection machines={machines} />
       <MetricsSection metrics={metrics} />
+    </div>
+  );
+}
+
+// Owns its own draft state so typing a paste in here never re-renders the
+// ~900-row library list behind the dialog.
+function BulkAddDialog({
+  exercises,
+  libraryLoaded,
+  libraryFailed,
+  onRetryLibrary,
+}: {
+  exercises: Exercise[];
+  libraryLoaded: boolean;
+  libraryFailed: boolean;
+  onRetryLibrary: () => void;
+}) {
+  const create = useCreateExercise();
+  const seedExercises = useSeedExercises();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const failed = useBulkAddFailures();
+
+  const existingNames = useMemo(
+    () => new Set(exercises.map((e) => e.name.toLowerCase())),
+    [exercises],
+  );
+  const names = parseBulkExerciseNames(text);
+  const duplicates = names.filter((n) => existingNames.has(n.toLowerCase()));
+  const toCreate = skipDuplicates
+    ? names.filter((n) => !existingNames.has(n.toLowerCase()))
+    : names;
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    // `existingNames` is only trustworthy once the list query has resolved —
+    // submitting against an empty library would silently create duplicates.
+    if (!libraryLoaded || toCreate.length === 0) return;
+    setText("");
+    setSkipDuplicates(true);
+    setOpen(false);
+    const runId = startBulkAddRun();
+    // Every row lands now; only the inserts behind them are bounded.
+    const queued = seedExercises(toCreate);
+    void runBounded(queued, ({ id, name }) =>
+      // A user change mid-run retires the run: the names belong to the account
+      // that pasted them, and the pool would otherwise insert the rest into
+      // whoever signed in next.
+      isBulkAddRunActive(runId)
+        ? create.mutateAsync({ name, opts: { id } })
+        : Promise.resolve(),
+    ).then((rows) =>
+      finishBulkAddRun(
+        runId,
+        rows.map((r) => r.name),
+      ),
+    );
+  }
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-2">
+        <Dialog
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            // Reopening is the retry path the notice points at, so hand the
+            // full failed list back as the draft — not the truncated preview.
+            if (next) setText(failed.join("\n"));
+            else {
+              setText("");
+              setSkipDuplicates(true);
+            }
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              // Duplicate detection reads the loaded library, so the dialog
+              // stays shut until there is one — otherwise "Skip duplicates"
+              // silently protects nothing.
+              disabled={!libraryLoaded}
+              title={
+                libraryLoaded
+                  ? undefined
+                  : libraryFailed
+                    ? "Couldn't load your library — retry first"
+                    : "Loading your library…"
+              }
+              data-testid="bulk-add-exercises-trigger"
+            >
+              Bulk add
+            </Button>
+          </DialogTrigger>
+          <DialogContent title="Bulk add exercises">
+            <form onSubmit={onSubmit} className="flex flex-col gap-3">
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="One exercise name per line"
+                rows={8}
+                className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
+                data-testid="bulk-add-textarea"
+              />
+              {duplicates.length > 0 && (
+                <p
+                  className="text-2xs text-warn"
+                  data-testid="bulk-add-duplicate-warning"
+                >
+                  {duplicates.length} name{duplicates.length === 1 ? "" : "s"}{" "}
+                  already in your library: {previewNames(duplicates)}
+                </p>
+              )}
+              <label className="flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={skipDuplicates}
+                  onChange={(e) => setSkipDuplicates(e.target.checked)}
+                  className="size-4 accent-(--accent)"
+                  data-testid="bulk-add-skip-duplicates"
+                />
+                Skip duplicates
+              </label>
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={!libraryLoaded || toCreate.length === 0}
+                  data-testid="bulk-add-submit"
+                >
+                  {toCreate.length > 0
+                    ? `Add ${toCreate.length} exercise${toCreate.length === 1 ? "" : "s"}`
+                    : "Add exercises"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+        {libraryFailed && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRetryLibrary}
+            data-testid="bulk-add-retry-library"
+          >
+            Retry loading library
+          </Button>
+        )}
+      </div>
+      {failed.length > 0 && (
+        <p
+          role="status"
+          className="mt-1 flex items-start gap-1 text-2xs text-neg"
+          data-testid="bulk-add-failures"
+        >
+          <span className="min-w-0 flex-1">
+            {failed.length} name{failed.length === 1 ? "" : "s"} didn't save:{" "}
+            {previewNames(failed)}. Open bulk add to try again.
+          </span>
+          <button
+            type="button"
+            title="Dismiss"
+            onClick={dismissBulkAddFailures}
+            className="shrink-0 px-1 text-faint transition-colors duration-100 hover:text-neg"
+            data-testid="bulk-add-failures-dismiss"
+          >
+            ×
+          </button>
+        </p>
+      )}
     </div>
   );
 }
@@ -391,13 +665,16 @@ function BestForMuscle({
   );
 }
 
-function ExerciseRow({
+// Memoized: the seeded library renders ~900 of these, and every optimistic
+// create re-renders the screen around them.
+const ExerciseRow = memo(function ExerciseRow({
   exercise,
   groupMuscle,
   setMetrics,
   machines,
   isFavorite,
   onToggleFavorite,
+  pending,
   expanded,
   onToggle,
 }: {
@@ -406,9 +683,10 @@ function ExerciseRow({
   setMetrics: Metric[];
   machines: Machine[];
   isFavorite: boolean;
-  onToggleFavorite: () => void;
+  onToggleFavorite: (exerciseId: string, favorite: boolean) => void;
+  pending: boolean;
   expanded: boolean;
-  onToggle: () => void;
+  onToggle: (exerciseId: string) => void;
 }) {
   const { t } = useVoice();
   const toggleMetric = useSetMetricExercises();
@@ -444,7 +722,11 @@ function ExerciseRow({
           <div className="flex items-start justify-between gap-2">
             <button
               type="button"
-              onClick={onToggle}
+              onClick={() => onToggle(exercise.id)}
+              // The panel behind this toggle edits tags, metrics, machine and
+              // archive state — every one of them keyed by an id Postgres
+              // doesn't have yet while the create is queued.
+              disabled={pending}
               className="flex min-w-0 items-center gap-1.5 text-left"
               data-testid={`exercise-row-toggle-${exercise.name}`}
             >
@@ -456,7 +738,11 @@ function ExerciseRow({
               >
                 {exercise.name}
               </span>
-              <Chevron className="size-4 shrink-0 text-faint" />
+              {pending ? (
+                <span className="shrink-0 text-2xs text-faint">saving…</span>
+              ) : (
+                <Chevron className="size-4 shrink-0 text-faint" />
+              )}
             </button>
             <span className="flex shrink-0 items-center gap-1">
               {!exercise.isCustom && (
@@ -466,8 +752,9 @@ function ExerciseRow({
               )}
               <FavoriteButton
                 favorite={isFavorite}
-                onToggle={onToggleFavorite}
+                onToggle={() => onToggleFavorite(exercise.id, !isFavorite)}
                 name={exercise.name}
+                disabled={pending}
               />
               <Link
                 to={`/exercises/${exercise.id}`}
@@ -595,7 +882,7 @@ function ExerciseRow({
       )}
     </li>
   );
-}
+});
 
 // "Last set" line — reuses the ghost-prefill lookup (most recent prior
 // session's sets), no separate history query needed.
