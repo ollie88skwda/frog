@@ -39,12 +39,13 @@ test("session picker over the full library opens interactive under 2s", async ({
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
 
-  // Empty sessions auto-open the picker; close it to time a clean open.
+  // Empty sessions auto-open the picker once blocks load — an isVisible()
+  // check here races that open (the dialog can appear right after and swallow
+  // the timed click below). Wait for it, then close it to time a clean open.
   const search = page.getByTestId("exercise-search-input");
-  if (await search.isVisible().catch(() => false)) {
-    await page.keyboard.press("Escape");
-    await expect(search).toBeHidden();
-  }
+  await search.waitFor();
+  await page.keyboard.press("Escape");
+  await expect(search).toBeHidden();
 
   // Wall-clock timing on a shared runner is load-sensitive (measured ~180ms
   // in isolation): take the best of two opens against a tolerant budget —

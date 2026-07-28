@@ -48,6 +48,17 @@ async function makeUser(url: string, anonKey: string, serviceKey: string) {
   return client;
 }
 
+// The only seed exercises that end up with no muscle targets (sorted by name).
+const NECK_ONLY_SEEDS = [
+  "Isometric Neck Exercise - Front And Back",
+  "Isometric Neck Exercise - Sides",
+  "Lying Face Down Plate Neck Resistance",
+  "Lying Face Up Plate Neck Resistance",
+  "Neck-SMR",
+  "Seated Head Harness Neck Resistance",
+  "Side Neck Stretch",
+];
+
 describe("SupabaseRepo (integration, local supabase)", () => {
   let clientA: SupabaseClient;
   let clientB: SupabaseClient;
@@ -110,8 +121,8 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     // excluding the just-created (empty) session-exercise returns s1's sets in order
     const ghost = await repoA.lastSetsForExercise(ex.id, se2);
     expect(ghost).toEqual([
-      { weightKg: 140, reps: 5 },
-      { weightKg: 150, reps: 3 },
+      { weightKg: 140, reps: 5, durationSec: null, distanceM: null },
+      { weightKg: 150, reps: 3, durationSec: null, distanceM: null },
     ]);
   });
 
@@ -231,7 +242,15 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     // Seed exercises carry classifications from the migration…
     const seeds = (await repoB.listExercises()).filter((e) => !e.isCustom);
     expect(seeds.length).toBeGreaterThan(0);
-    expect(seeds.every((e) => e.muscleTargets?.length)).toBe(true);
+    // …except the neck-only rows: free-exercise-db's "neck" muscle has no SBL
+    // key (scripts/import-free-exercise-db.ts drops it). Pinned by name so a
+    // seed that silently loses its targets still fails here.
+    expect(
+      seeds
+        .filter((e) => !e.muscleTargets?.length)
+        .map((e) => e.name)
+        .sort(),
+    ).toEqual(NECK_ONLY_SEEDS);
     // …and stay read-only for clients.
     const squat = seeds.find((e) => e.name === "Squat");
     const { data: updatedRows } = await clientB

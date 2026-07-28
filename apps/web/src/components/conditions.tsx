@@ -274,6 +274,7 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
           <section className="flex flex-col">
             <div className="mb-1 flex items-center justify-between">
               <span className={eyebrow}>Tracked</span>
+              {/* TODO(lessons): <InfoTip lessonId="tracked-conditions" /> once copy exists */}
               <span className="text-2xs text-faint">your variables</span>
             </div>
             {trackedMetrics.length === 0 ? (

@@ -10,6 +10,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Download, Plus, X } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
+import { Link } from "react-router";
 import { ImportCard } from "@/components/import-card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -195,6 +196,7 @@ export default function SettingsScreen() {
       <ExportSection />
       <ImportCard />
       <ApiTokensSection />
+      <LearnSection />
 
       <Section title="Account">
         <Button
@@ -348,6 +350,7 @@ function WorkoutsSection() {
   return (
     <Section title="Workouts">
       <div className="mt-1 divide-y divide-border">
+        {/* TODO(lessons): <InfoTip lessonId="rest-between-sets" /> once copy exists */}
         <Row
           label="Default rest timer"
           hint="Applied to sets with no per-exercise rest set."
@@ -985,5 +988,32 @@ function TokenRow({
         )}
       </span>
     </li>
+  );
+}
+
+// ── Learn ───────────────────────────────────────────────────────────────────
+
+function LearnSection() {
+  const { t } = useVoice();
+  return (
+    <Section title="Learn">
+      <div className="mt-1 divide-y divide-border">
+        <Row
+          label="Training tips"
+          hint={t(
+            "The short lessons behind the ⓘ icons, all in one place.",
+            "Every short lesson the frog knows, all in one place.",
+          )}
+        >
+          <Link
+            to="/tips"
+            className="flex h-8 items-center border border-border bg-surface px-3 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+            data-testid="tips-link"
+          >
+            Browse
+          </Link>
+        </Row>
+      </div>
+    </Section>
   );
 }
