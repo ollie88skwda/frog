@@ -57,7 +57,9 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
+  dismissBulkAddFailures,
   finishBulkAddRun,
+  isBulkAddRunActive,
   startBulkAddRun,
   useBulkAddFailures,
 } from "@/lib/bulk-add-failures";
@@ -439,12 +441,22 @@ function BulkAddDialog({
     setText("");
     setSkipDuplicates(true);
     setOpen(false);
-    startBulkAddRun();
+    const runId = startBulkAddRun();
     // Every row lands now; only the inserts behind them are bounded.
     const queued = seedExercises(toCreate);
     void runBounded(queued, ({ id, name }) =>
-      create.mutateAsync({ name, opts: { id } }),
-    ).then((rows) => finishBulkAddRun(rows.map((r) => r.name)));
+      // A user change mid-run retires the run: the names belong to the account
+      // that pasted them, and the pool would otherwise insert the rest into
+      // whoever signed in next.
+      isBulkAddRunActive(runId)
+        ? create.mutateAsync({ name, opts: { id } })
+        : Promise.resolve(),
+    ).then((rows) =>
+      finishBulkAddRun(
+        runId,
+        rows.map((r) => r.name),
+      ),
+    );
   }
 
   return (
@@ -541,11 +553,22 @@ function BulkAddDialog({
       {failed.length > 0 && (
         <p
           role="status"
-          className="mt-1 text-2xs text-neg"
+          className="mt-1 flex items-start gap-1 text-2xs text-neg"
           data-testid="bulk-add-failures"
         >
-          {failed.length} name{failed.length === 1 ? "" : "s"} didn't save:{" "}
-          {previewNames(failed)}. Open bulk add to try again.
+          <span className="min-w-0 flex-1">
+            {failed.length} name{failed.length === 1 ? "" : "s"} didn't save:{" "}
+            {previewNames(failed)}. Open bulk add to try again.
+          </span>
+          <button
+            type="button"
+            title="Dismiss"
+            onClick={dismissBulkAddFailures}
+            className="shrink-0 px-1 text-faint transition-colors duration-100 hover:text-neg"
+            data-testid="bulk-add-failures-dismiss"
+          >
+            ×
+          </button>
         </p>
       )}
     </div>

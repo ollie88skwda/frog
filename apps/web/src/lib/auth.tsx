@@ -15,6 +15,7 @@ import {
 import { Navigate, Outlet, useLocation } from "react-router";
 import { bindClerkSession } from "./auth-token";
 import { e2eBridge } from "./e2e-bridge";
+import { resetUserScopedState } from "./user-scoped-state";
 
 // Clerk is the identity provider (Google + email, prebuilt UI). In E2E builds
 // (VITE_E2E=1) Clerk is never mounted; auth state comes from the Playwright
@@ -43,16 +44,18 @@ function clearLocalAuthArtifacts() {
 
 // --- Clerk implementations --------------------------------------------------
 
-/** Clears the query cache whenever the signed-in user changes — including
- * sign-outs we didn't initiate (other tab, dashboard revocation, expiry).
- * Query keys aren't user-scoped, so without this the next user on the device
- * would see the previous user's cached rows flash in. */
+/** Clears the query cache — and the module stores holding per-user state
+ * beside it — whenever the signed-in user changes, including sign-outs we
+ * didn't initiate (other tab, dashboard revocation, expiry). Query keys aren't
+ * user-scoped, so without this the next user on the device would see the
+ * previous user's cached rows flash in. */
 function useClearCacheOnUserChange(userId: string | null) {
   const queryClient = useQueryClient();
   const prev = useRef<string | null | undefined>(undefined);
   useEffect(() => {
     if (prev.current !== undefined && prev.current !== userId) {
       queryClient.clear();
+      resetUserScopedState();
     }
     prev.current = userId;
   }, [userId, queryClient]);
@@ -132,6 +135,7 @@ function useClerkSignOut(): () => Promise<void> {
     await clerk.signOut();
     clearLocalAuthArtifacts();
     queryClient.clear();
+    resetUserScopedState();
   }, [clerk, queryClient]);
 }
 
@@ -196,6 +200,7 @@ function useE2eSignOut(): () => Promise<void> {
   return useCallback(async () => {
     await e2eBridge?.signOut();
     queryClient.clear();
+    resetUserScopedState();
   }, [queryClient]);
 }
 

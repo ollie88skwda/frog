@@ -1,5 +1,6 @@
 import type { Exercise } from "@sbl/core";
 import { useSyncExternalStore } from "react";
+import { registerUserScopedReset } from "./user-scoped-state";
 
 // Exercises that exist only as an optimistic row: bulk add seeds every pasted
 // name into the `["exercises"]` cache up front while the inserts run four at a
@@ -40,3 +41,12 @@ export function resolveExercisePending(id: string) {
 export function usePendingExercises(): ReadonlyMap<string, Exercise> {
   return useSyncExternalStore(subscribe, () => snapshot);
 }
+
+// These rows are merged back over whatever the server returns, so they must go
+// when the account does — `queryClient.clear()` alone would leave the previous
+// user's optimistic rows in the next user's list.
+registerUserScopedReset(() => {
+  if (pending.size === 0) return;
+  pending.clear();
+  emit();
+});
