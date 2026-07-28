@@ -86,10 +86,45 @@ test("bulk add warns on duplicates against the library without blocking", async 
   await waitForExercise(page, fresh);
 });
 
+// The names carried by one PostgREST insert body (an object or an array of
+// them). Unparseable bodies contribute nothing rather than failing the test.
+function insertedNames(body: string | null): string[] {
+  if (!body) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return [];
+  }
+  const rows = Array.isArray(parsed) ? parsed : [parsed];
+  return rows
+    .map((row) => (row as { name?: unknown })?.name)
+    .filter((name): name is string => typeof name === "string");
+}
+
+// Polls until `read()` has reached `min` and stopped moving between two
+// samples a second apart. A fixed sleep either races the coalesced refetch
+// under CI load (under-counting, so the assertion passes vacuously) or pads
+// every run to its worst case.
+async function pollUntilSettled(read: () => number, min: number) {
+  let prev = -1;
+  await expect
+    .poll(
+      () => {
+        const now = read();
+        const stable = now >= min && now === prev;
+        prev = now;
+        return stable;
+      },
+      { timeout: 30_000, intervals: [250, 500, 1000] },
+    )
+    .toBe(true);
+}
+
 test("bulk add bounds the insert fan-out and refetches the library once", async ({
   page,
 }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   const ts = Date.now();
   const names = Array.from(
     { length: 12 },
@@ -97,17 +132,19 @@ test("bulk add bounds the insert fan-out and refetches the library once", async 
   );
 
   await page.goto("/library");
-  await expect(page.getByTestId("bulk-add-exercises-trigger")).toBeVisible();
+  // Enabled, not just visible: the trigger unlocks once the library list has
+  // loaded, so waiting here keeps that first fetch out of the counts below.
+  await expect(page.getByTestId("bulk-add-exercises-trigger")).toBeEnabled();
 
   let inFlight = 0;
   let peakInFlight = 0;
-  let inserts = 0;
   let listFetches = 0;
+  const inserted = new Set<string>();
   const isInsert = (r: { method(): string; url(): string }) =>
     r.method() === "POST" && r.url().includes("/rest/v1/exercises");
   page.on("request", (r) => {
     if (isInsert(r)) {
-      inserts += 1;
+      for (const name of insertedNames(r.postData())) inserted.add(name);
       inFlight += 1;
       peakInFlight = Math.max(peakInFlight, inFlight);
       return;
@@ -128,11 +165,20 @@ test("bulk add bounds the insert fan-out and refetches the library once", async 
   await page.getByTestId("bulk-add-textarea").fill(names.join("\n"));
   await page.getByTestId("bulk-add-submit").click();
 
-  for (const name of names) await waitForExercise(page, name);
-  // Let the (single) coalesced invalidation refetch land before counting.
-  await page.waitForTimeout(1500);
+  // Optimistic: the whole paste lands on screen at once, not one worker
+  // slot's worth at a time.
+  for (const name of names) {
+    await expect(page.getByTestId(`exercise-row-${name}`)).toBeVisible();
+  }
 
-  expect(inserts).toBe(names.length);
+  for (const name of names) await waitForExercise(page, name);
+  // Wait for the coalesced invalidation's refetch to land and the request
+  // stream to go quiet, rather than guessing at a duration.
+  await pollUntilSettled(() => listFetches, 1);
+
+  // Every pasted name was inserted — counted by name, so a retried insert
+  // (transient 5xx + the global mutation retry) doesn't read as a fan-out bug.
+  expect([...inserted].sort()).toEqual([...names].sort());
   // Bounded worker pool: never the whole paste at once.
   expect(peakInFlight).toBeLessThanOrEqual(4);
   // Coalesced invalidation: the ~1 MB library is not re-downloaded per name.

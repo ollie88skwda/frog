@@ -42,6 +42,56 @@ function trackCreateExercise(qc: QueryClient, delta: number): number {
   return next;
 }
 
+function optimisticExercise(
+  id: string,
+  name: string,
+  opts?: NewExerciseOpts,
+): Exercise {
+  const now = Date.now();
+  return {
+    id,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+    ownerId: null,
+    name,
+    tags: null,
+    isCustom: true,
+    machineId: opts?.machineId ?? null,
+    jointActions: opts?.jointActions ?? null,
+    muscleTargets: opts?.muscleTargets ?? null,
+    imageUrl: null,
+    imageAttribution: null,
+    exerciseType: opts?.exerciseType ?? "weight_reps",
+    equipment: opts?.equipment ?? null,
+    instructions: null,
+    imageUrls: null,
+  };
+}
+
+// Idempotent by id: a row seeded before its create was dispatched must not be
+// added a second time when that create's own `onMutate` runs.
+function addExerciseRows(qc: QueryClient, rows: Exercise[]) {
+  qc.setQueryData<Exercise[]>(["exercises"], (old = []) => {
+    const have = new Set(old.map((e) => e.id));
+    const fresh = rows.filter((r) => !have.has(r.id));
+    if (fresh.length === 0) return old;
+    return [...old, ...fresh].sort((a, b) => a.name.localeCompare(b.name));
+  });
+}
+
+// Puts every name on screen in one write, before any insert is dispatched —
+// bulk add bounds its network fan-out, and the user must not watch their paste
+// trickle in one worker slot at a time. Returns the ids to create under.
+export function useSeedExercises() {
+  const qc = useQueryClient();
+  return (names: string[]) => {
+    const rows = names.map((name) => optimisticExercise(newId(), name));
+    addExerciseRows(qc, rows);
+    return rows.map(({ id, name }) => ({ id, name }));
+  };
+}
+
 export function useCreateExercise() {
   const repo = useRepo();
   const qc = useQueryClient();
@@ -61,29 +111,7 @@ export function useCreateExercise() {
       vars.opts.id = id;
       const opts = vars.opts;
       void qc.cancelQueries({ queryKey: ["exercises"] });
-      const now = Date.now();
-      const optimistic: Exercise = {
-        id,
-        createdAt: now,
-        updatedAt: now,
-        deletedAt: null,
-        ownerId: null,
-        name,
-        tags: null,
-        isCustom: true,
-        machineId: opts?.machineId ?? null,
-        jointActions: opts?.jointActions ?? null,
-        muscleTargets: opts?.muscleTargets ?? null,
-        imageUrl: null,
-        imageAttribution: null,
-        exerciseType: opts?.exerciseType ?? "weight_reps",
-        equipment: opts?.equipment ?? null,
-        instructions: null,
-        imageUrls: null,
-      };
-      qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
-        [...old, optimistic].sort((a, b) => a.name.localeCompare(b.name)),
-      );
+      addExerciseRows(qc, [optimisticExercise(id, name, opts)]);
       return { id };
     },
     // Roll back by removing only this mutation's optimistic row — a snapshot

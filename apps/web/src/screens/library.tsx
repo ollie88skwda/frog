@@ -66,6 +66,7 @@ import {
   useLastSets,
   useMachines,
   useMetrics,
+  useSeedExercises,
   useSetExerciseClassification,
   useSetExerciseFavorite,
   useSetExerciseMachine,
@@ -110,28 +111,28 @@ function previewNames(names: string[]): string {
 // at most this many inserts in flight regardless of how many names were pasted.
 const BULK_ADD_CONCURRENCY = 4;
 
-// Resolves to the names whose create failed, in input order.
-async function createBounded(
-  names: string[],
-  create: (name: string) => Promise<unknown>,
-): Promise<string[]> {
+// Resolves to the items whose run failed, in input order.
+async function runBounded<T>(
+  items: T[],
+  run: (item: T) => Promise<unknown>,
+): Promise<T[]> {
   const failed = new Set<number>();
   let next = 0;
   async function worker() {
-    for (let i = next++; i < names.length; i = next++) {
+    for (let i = next++; i < items.length; i = next++) {
       try {
-        await create(names[i]);
+        await run(items[i]);
       } catch {
         failed.add(i);
       }
     }
   }
   await Promise.all(
-    Array.from({ length: Math.min(BULK_ADD_CONCURRENCY, names.length) }, () =>
+    Array.from({ length: Math.min(BULK_ADD_CONCURRENCY, items.length) }, () =>
       worker(),
     ),
   );
-  return names.filter((_, i) => failed.has(i));
+  return items.filter((_, i) => failed.has(i));
 }
 
 // Skip layout/paint for off-screen rows (~900 in the seeded library). The
@@ -144,7 +145,7 @@ const CV_ROW: CSSProperties = {
 
 export default function LibraryScreen() {
   const { t } = useVoice();
-  const { data: exercises = [], isLoading } = useExercises();
+  const { data: exercises = [], isLoading, isSuccess } = useExercises();
   const { data: metrics = [] } = useMetrics();
   const { data: machines = [] } = useMachines();
   const { data: favorites = [] } = useExerciseFavorites();
@@ -290,7 +291,7 @@ export default function LibraryScreen() {
         </div>
       </form>
 
-      <BulkAddDialog exercises={exercises} />
+      <BulkAddDialog exercises={exercises} libraryLoaded={isSuccess} />
 
       <div className="mt-4">
         <ExerciseFilterBar
@@ -374,8 +375,15 @@ export default function LibraryScreen() {
 
 // Owns its own draft state so typing a paste in here never re-renders the
 // ~900-row library list behind the dialog.
-function BulkAddDialog({ exercises }: { exercises: Exercise[] }) {
+function BulkAddDialog({
+  exercises,
+  libraryLoaded,
+}: {
+  exercises: Exercise[];
+  libraryLoaded: boolean;
+}) {
   const create = useCreateExercise();
+  const seedExercises = useSeedExercises();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [skipDuplicates, setSkipDuplicates] = useState(true);
@@ -394,8 +402,9 @@ function BulkAddDialog({ exercises }: { exercises: Exercise[] }) {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    if (toCreate.length === 0) return;
-    const queued = toCreate;
+    // `existingNames` is only trustworthy once the list query has resolved —
+    // submitting against an empty library would silently create duplicates.
+    if (!libraryLoaded || toCreate.length === 0) return;
     setText("");
     setSkipDuplicates(true);
     setOpen(false);
@@ -403,11 +412,14 @@ function BulkAddDialog({ exercises }: { exercises: Exercise[] }) {
     // dispatching — otherwise that run's failures would be dropped unseen.
     if (runsInFlight.current === 0) setFailed([]);
     runsInFlight.current += 1;
-    void createBounded(queued, (name) =>
-      create.mutateAsync({ name, opts: {} }),
-    ).then((names) => {
+    // Every row lands now; only the inserts behind them are bounded.
+    const queued = seedExercises(toCreate);
+    void runBounded(queued, ({ id, name }) =>
+      create.mutateAsync({ name, opts: { id } }),
+    ).then((rows) => {
       runsInFlight.current -= 1;
-      if (names.length === 0) return;
+      if (rows.length === 0) return;
+      const names = rows.map((r) => r.name);
       setFailed((prev) => [...prev, ...names.filter((n) => !prev.includes(n))]);
     });
   }
@@ -431,6 +443,11 @@ function BulkAddDialog({ exercises }: { exercises: Exercise[] }) {
           <Button
             variant="ghost"
             size="sm"
+            // Duplicate detection reads the loaded library, so the dialog stays
+            // shut until there is one — otherwise "Skip duplicates" silently
+            // protects nothing during the cold load.
+            disabled={!libraryLoaded}
+            title={libraryLoaded ? undefined : "Loading your library…"}
             data-testid="bulk-add-exercises-trigger"
           >
             Bulk add
@@ -469,7 +486,7 @@ function BulkAddDialog({ exercises }: { exercises: Exercise[] }) {
               <Button
                 type="submit"
                 variant="primary"
-                disabled={toCreate.length === 0}
+                disabled={!libraryLoaded || toCreate.length === 0}
                 data-testid="bulk-add-submit"
               >
                 {toCreate.length > 0
