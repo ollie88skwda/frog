@@ -20,6 +20,10 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import {
+  markExercisesPending,
+  resolveExercisePending,
+} from "./pending-exercises";
 import { useRepo } from "./repo";
 
 export function useExercises() {
@@ -88,6 +92,7 @@ export function useSeedExercises() {
   return (names: string[]) => {
     const rows = names.map((name) => optimisticExercise(newId(), name));
     addExerciseRows(qc, rows);
+    markExercisesPending(rows.map((r) => r.id));
     return rows.map(({ id, name }) => ({ id, name }));
   };
 }
@@ -112,6 +117,7 @@ export function useCreateExercise() {
       const opts = vars.opts;
       void qc.cancelQueries({ queryKey: ["exercises"] });
       addExerciseRows(qc, [optimisticExercise(id, name, opts)]);
+      markExercisesPending([id]);
       return { id };
     },
     // Roll back by removing only this mutation's optimistic row — a snapshot
@@ -130,7 +136,9 @@ export function useCreateExercise() {
     // The refetch is deliberately not awaited: holding this callback open for
     // the whole ~1 MB round-trip would keep a create dispatched inside that
     // window from ever seeing the count reach zero.
-    onSettled: () => {
+    onSettled: (_data, _err, vars, ctx) => {
+      const id = ctx?.id ?? vars.opts?.id;
+      if (id) resolveExercisePending(id);
       if (trackCreateExercise(qc, -1) > 0) return;
       void qc.invalidateQueries({ queryKey: ["exercises"] });
     },

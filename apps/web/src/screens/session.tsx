@@ -102,6 +102,7 @@ import { Input } from "@/components/ui/input";
 import { StatusRing } from "@/components/ui/status-ring";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
 import { useHotkeys } from "@/lib/hotkeys";
+import { usePendingExercises } from "@/lib/pending-exercises";
 import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
 import {
   useExercisePrefs,
@@ -465,6 +466,7 @@ export default function SessionScreen() {
   }, [lastCommitByBlock]);
 
   const { data: exercises = [] } = useExercises();
+  const pendingExercises = usePendingExercises();
 
   // Device prefs (localStorage) + server prefs (default rest, plate config).
   const [smartScroll] = useSmartSupersetScroll();
@@ -871,6 +873,8 @@ export default function SessionScreen() {
   );
 
   async function pickExercise(exerciseId: string, name: string) {
+    // Its row exists locally but not yet in Postgres — the FK would reject it.
+    if (pendingExercises.has(exerciseId)) return;
     setPicking(false);
     const seId = await repo.addExerciseToSession(sessionId, exerciseId);
     setBlocks((prev) => [
@@ -1704,6 +1708,9 @@ function ExercisePicker({
 }) {
   const { data: exercises = [], isLoading } = useExercises();
   const { data: machines = [] } = useMachines();
+  // A just-created exercise is in the list before its INSERT lands; adding it
+  // to the session would violate the session_exercises FK.
+  const pendingExercises = usePendingExercises();
   const [query, setQuery] = useState("");
   const [filterMuscle, setFilterMuscle] = useState("");
   // Muscle-grouped, tier-sorted — same reading order as the Library ribbon.
@@ -1748,6 +1755,7 @@ function ExercisePicker({
                             ?.tier
                         }
                         machine={machines.find((m) => m.id === ex.machineId)}
+                        pending={pendingExercises.has(ex.id)}
                         onPick={onPick}
                       />
                     ))}
@@ -1857,11 +1865,13 @@ function PickerRow({
   exercise,
   tier,
   machine,
+  pending,
   onPick,
 }: {
   exercise: Exercise;
   tier?: Tier | null;
   machine?: Machine;
+  pending?: boolean;
   onPick: (id: string, name: string) => void;
 }) {
   const [showHistory, setShowHistory] = useState(false);
@@ -1872,9 +1882,14 @@ function PickerRow({
           type="button"
           data-testid={`pick-exercise-${exercise.name}`}
           onClick={() => onPick(exercise.id, exercise.name)}
-          className="flex-1 px-4 py-3 text-left transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+          disabled={pending}
+          title={pending ? "Still saving — available in a moment" : undefined}
+          className="flex-1 px-4 py-3 text-left transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover disabled:opacity-50 disabled:hover:bg-transparent"
         >
           <ExerciseRibbon exercise={exercise} tier={tier} machine={machine} />
+          {pending && (
+            <span className="mt-0.5 block text-2xs text-faint">Saving…</span>
+          )}
         </button>
         <button
           type="button"

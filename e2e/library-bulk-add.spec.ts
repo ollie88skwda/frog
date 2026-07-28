@@ -86,6 +86,11 @@ test("bulk add warns on duplicates against the library without blocking", async 
   await waitForExercise(page, fresh);
 });
 
+// Per-insert delay used by the fan-out spec: long enough that a trickling
+// implementation could not have painted the whole paste yet, short enough that
+// 12 names at 4 in flight still finish in ~3 s.
+const INSERT_DELAY_MS = 1_000;
+
 // The names carried by one PostgREST insert body (an object or an array of
 // them). Unparseable bodies contribute nothing rather than failing the test.
 function insertedNames(body: string | null): string[] {
@@ -161,15 +166,28 @@ test("bulk add bounds the insert fan-out and refetches the library once", async 
   page.on("requestfinished", settled);
   page.on("requestfailed", settled);
 
+  // Hold every insert open for a beat. Seeded rows don't wait on the network,
+  // so they all paint anyway; a regression to one optimistic write per
+  // dispatched create would need three worker waves (≥3 s) to finish painting.
+  await page.route("**/rest/v1/exercises*", async (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    await new Promise((r) => setTimeout(r, INSERT_DELAY_MS));
+    await route.continue();
+  });
+
   await page.getByTestId("bulk-add-exercises-trigger").click();
   await page.getByTestId("bulk-add-textarea").fill(names.join("\n"));
   await page.getByTestId("bulk-add-submit").click();
 
   // Optimistic: the whole paste lands on screen at once, not one worker
   // slot's worth at a time.
-  for (const name of names) {
-    await expect(page.getByTestId(`exercise-row-${name}`)).toBeVisible();
-  }
+  const pastedRows = page.locator(
+    `[data-testid^="exercise-row-Bulk Wave "][data-testid$="${ts}"]`,
+  );
+  await expect(pastedRows).toHaveCount(names.length, { timeout: 2_000 });
+  // ...and it got there before the inserts did: with the pool bounded to 4 and
+  // none of them yet answered, at most 4 names can have been sent.
+  expect(inserted.size).toBeLessThanOrEqual(4);
 
   for (const name of names) await waitForExercise(page, name);
   // Wait for the coalesced invalidation's refetch to land and the request

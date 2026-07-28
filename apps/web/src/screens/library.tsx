@@ -145,7 +145,13 @@ const CV_ROW: CSSProperties = {
 
 export default function LibraryScreen() {
   const { t } = useVoice();
-  const { data: exercises = [], isLoading, isSuccess } = useExercises();
+  const {
+    data: exercises = [],
+    isLoading,
+    isSuccess,
+    isError,
+    refetch,
+  } = useExercises();
   const { data: metrics = [] } = useMetrics();
   const { data: machines = [] } = useMachines();
   const { data: favorites = [] } = useExerciseFavorites();
@@ -291,7 +297,12 @@ export default function LibraryScreen() {
         </div>
       </form>
 
-      <BulkAddDialog exercises={exercises} libraryLoaded={isSuccess} />
+      <BulkAddDialog
+        exercises={exercises}
+        libraryLoaded={isSuccess}
+        libraryFailed={isError}
+        onRetryLibrary={() => void refetch()}
+      />
 
       <div className="mt-4">
         <ExerciseFilterBar
@@ -378,9 +389,13 @@ export default function LibraryScreen() {
 function BulkAddDialog({
   exercises,
   libraryLoaded,
+  libraryFailed,
+  onRetryLibrary,
 }: {
   exercises: Exercise[];
   libraryLoaded: boolean;
+  libraryFailed: boolean;
+  onRetryLibrary: () => void;
 }) {
   const create = useCreateExercise();
   const seedExercises = useSeedExercises();
@@ -426,77 +441,95 @@ function BulkAddDialog({
 
   return (
     <div className="mt-2">
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          // Reopening is the retry path the notice points at, so hand the
-          // full failed list back as the draft — not the truncated preview.
-          if (next) setText(failed.join("\n"));
-          else {
-            setText("");
-            setSkipDuplicates(true);
-          }
-        }}
-      >
-        <DialogTrigger asChild>
+      <div className="flex items-center gap-2">
+        <Dialog
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            // Reopening is the retry path the notice points at, so hand the
+            // full failed list back as the draft — not the truncated preview.
+            if (next) setText(failed.join("\n"));
+            else {
+              setText("");
+              setSkipDuplicates(true);
+            }
+          }}
+        >
+          <DialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              // Duplicate detection reads the loaded library, so the dialog
+              // stays shut until there is one — otherwise "Skip duplicates"
+              // silently protects nothing.
+              disabled={!libraryLoaded}
+              title={
+                libraryLoaded
+                  ? undefined
+                  : libraryFailed
+                    ? "Couldn't load your library — retry first"
+                    : "Loading your library…"
+              }
+              data-testid="bulk-add-exercises-trigger"
+            >
+              Bulk add
+            </Button>
+          </DialogTrigger>
+          <DialogContent title="Bulk add exercises">
+            <form onSubmit={onSubmit} className="flex flex-col gap-3">
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="One exercise name per line"
+                rows={8}
+                className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
+                data-testid="bulk-add-textarea"
+              />
+              {duplicates.length > 0 && (
+                <p
+                  className="text-2xs text-warn"
+                  data-testid="bulk-add-duplicate-warning"
+                >
+                  {duplicates.length} name{duplicates.length === 1 ? "" : "s"}{" "}
+                  already in your library: {previewNames(duplicates)}
+                </p>
+              )}
+              <label className="flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  checked={skipDuplicates}
+                  onChange={(e) => setSkipDuplicates(e.target.checked)}
+                  className="size-4 accent-(--accent)"
+                  data-testid="bulk-add-skip-duplicates"
+                />
+                Skip duplicates
+              </label>
+              <div className="flex justify-end">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={!libraryLoaded || toCreate.length === 0}
+                  data-testid="bulk-add-submit"
+                >
+                  {toCreate.length > 0
+                    ? `Add ${toCreate.length} exercise${toCreate.length === 1 ? "" : "s"}`
+                    : "Add exercises"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+        {libraryFailed && (
           <Button
             variant="ghost"
             size="sm"
-            // Duplicate detection reads the loaded library, so the dialog stays
-            // shut until there is one — otherwise "Skip duplicates" silently
-            // protects nothing during the cold load.
-            disabled={!libraryLoaded}
-            title={libraryLoaded ? undefined : "Loading your library…"}
-            data-testid="bulk-add-exercises-trigger"
+            onClick={onRetryLibrary}
+            data-testid="bulk-add-retry-library"
           >
-            Bulk add
+            Retry loading library
           </Button>
-        </DialogTrigger>
-        <DialogContent title="Bulk add exercises">
-          <form onSubmit={onSubmit} className="flex flex-col gap-3">
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="One exercise name per line"
-              rows={8}
-              className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
-              data-testid="bulk-add-textarea"
-            />
-            {duplicates.length > 0 && (
-              <p
-                className="text-2xs text-warn"
-                data-testid="bulk-add-duplicate-warning"
-              >
-                {duplicates.length} name{duplicates.length === 1 ? "" : "s"}{" "}
-                already in your library: {previewNames(duplicates)}
-              </p>
-            )}
-            <label className="flex items-center gap-2 text-xs">
-              <input
-                type="checkbox"
-                checked={skipDuplicates}
-                onChange={(e) => setSkipDuplicates(e.target.checked)}
-                className="size-4 accent-(--accent)"
-                data-testid="bulk-add-skip-duplicates"
-              />
-              Skip duplicates
-            </label>
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={!libraryLoaded || toCreate.length === 0}
-                data-testid="bulk-add-submit"
-              >
-                {toCreate.length > 0
-                  ? `Add ${toCreate.length} exercise${toCreate.length === 1 ? "" : "s"}`
-                  : "Add exercises"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+        )}
+      </div>
       {failed.length > 0 && (
         <p
           role="status"
