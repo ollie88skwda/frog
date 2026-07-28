@@ -14,6 +14,7 @@ import {
   type TrackedCondition,
 } from "@sbl/core";
 import {
+  type QueryClient,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -29,20 +30,28 @@ export function useExercises() {
   });
 }
 
-// Keyed so concurrent creates (bulk add fires one per name) can count their
-// own in-flight siblings.
-const CREATE_EXERCISE_KEY = ["exercises", "create"];
+// Bulk add fires one create per name, so creates run concurrently. Counted
+// here rather than read back off the mutation cache: a mutation is still
+// `pending` while its own `onSettled` runs, so two creates settling in the
+// same microtask drain would each mistake the other for a live sibling.
+const createExercisesInFlight = new WeakMap<QueryClient, number>();
+
+function trackCreateExercise(qc: QueryClient, delta: number): number {
+  const next = Math.max(0, (createExercisesInFlight.get(qc) ?? 0) + delta);
+  createExercisesInFlight.set(qc, next);
+  return next;
+}
 
 export function useCreateExercise() {
   const repo = useRepo();
   const qc = useQueryClient();
   return useMutation({
-    mutationKey: CREATE_EXERCISE_KEY,
     mutationFn: ({ name, opts }: { name: string; opts?: NewExerciseOpts }) =>
       repo.createExercise(name, opts),
     // Synchronous onMutate: the optimistic write must land before React's
     // next render, or controlled inputs flash back to the stale value.
     onMutate: (vars) => {
+      trackCreateExercise(qc, 1);
       const { name } = vars;
       // Share one client id between the optimistic row and the server insert
       // (see useCreateMachine) so a classification edit made before the create
@@ -86,16 +95,15 @@ export function useCreateExercise() {
         old.filter((e) => e.id !== ctx.id),
       );
     },
-    // Only the last in-flight create refetches. An earlier one would pull
+    // Only the last create of a batch refetches. An earlier one would pull
     // server truth that predates its siblings' inserts and overwrite their
-    // optimistic rows — and re-download the whole library once per name.
-    // `onSettled` runs before the mutation leaves the pending set, so this
-    // mutation counts itself. The refetch is deliberately not awaited: doing
-    // so would hold that pending slot for the whole ~1 MB round-trip, so a
-    // create settling inside the window would see a phantom sibling and skip
-    // the invalidate its own row needs.
+    // optimistic rows — and re-download the whole library once per name. The
+    // count drops before the check, so the last one out always invalidates.
+    // The refetch is deliberately not awaited: holding this callback open for
+    // the whole ~1 MB round-trip would keep a create dispatched inside that
+    // window from ever seeing the count reach zero.
     onSettled: () => {
-      if (qc.isMutating({ mutationKey: CREATE_EXERCISE_KEY }) > 1) return;
+      if (trackCreateExercise(qc, -1) > 0) return;
       void qc.invalidateQueries({ queryKey: ["exercises"] });
     },
   });
