@@ -51,6 +51,8 @@ Web-first rewrite (the original Expo/React Native app is archived on branch `leg
 - **Ownership + RLS:** every table has `owner_id` **text** (default `auth.jwt()->>'sub'` — a Clerk user ID, or a uuid string for Supabase-native E2E sessions) and row-level security; global seed rows have `owner_id null`. No service-role keys in app code. Supabase-native signups stay disabled (Clerk owns sign-up — enforced on BOTH local config.toml and the hosted project; verify with a `POST /auth/v1/signup` → 422). `anon` holds zero table privileges, enforced by `20260716051430_revoke_anon_grants.sql` — never grant anon SELECT to "fix" a boot-time auth race. Note hosted Supabase grants anon full DML by default while local images ship hardened defaults, so **privilege posture must be asserted in a migration, not assumed** — and security checks must be re-run against hosted, not just local.
 - **Migrations:** Drizzle `pg-core` schema in `packages/core/src/db/schema.ts` is the DDL source of truth; `bun run db:generate` (drizzle-kit) emits SQL into `supabase/migrations/`; RLS/seeds are hand-written migrations via `supabase migration new`. Generate first, then hand-write — timestamps must interleave correctly.
 - Tables: `exercises`, `metrics`, `sessions`, `session_exercises`, `set_logs` (+ `api_tokens`). Custom metric/condition values live in jsonb (`condition_values`, `metric_values`).
+- **Ambient browser-API types:** non-standard vendor APIs not in TS's DOM lib (e.g. the Web Speech API) get a minimal ambient `.d.ts` under `apps/web/src/types/` rather than an `any` cast — see `speech-recognition.d.ts`.
+- **Fuzzy exercise-name matching:** `packages/core/src/domain/match-exercise.ts` (`matchExerciseName`, normalize + token-overlap, no NLP dep) is the one matcher — reuse it rather than adding a second implementation (e.g. for routine-paste/import name resolution).
 
 ## Commands
 
@@ -71,3 +73,10 @@ Local Supabase is the default for all dev and tests; the hosted project exists o
 ## Design language
 
 **Frog** (see `docs/brand/frog-brand-identity.html` — the brand spec — and `docs/DECISIONS.md` 2026-07-16): a Radix Themes 3 re-skin. `<Theme accentColor="grass" grayColor="sage" radius="none">` in `app.tsx` is the single source of look-and-feel; `apps/web/src/styles/theme.css` bridges legacy Tailwind tokens onto the Radix scales. Green-cool lab-ink neutrals (sage), one frog-green accent (grass) that **doubles as semantic success**; red/amber survive as small text/icons only (never large fills). **0 px border radius** (square/brutalist; circles only for avatars + the frog-eye mark). Crisp 1 px low-contrast borders, flat surfaces (shadows only on floating layers). **The split rule:** the closer to the data the more serious — logging hot path, charts, findings statistics are sacred and never goofy; the frog voice lives only at the edges (empty states, loading, toasts, errors, PR banners, 404, settings corners). Copy in playground zones routes through the language registers (`apps/web/src/lib/voice.ts`: Human / Frog / Ultrafrog — a render-time text transform that never changes what is reported). Keyboard-first: ⌘K command palette, single-key shortcuts on the logging path. All numeric data (weights, reps, e1RM, timers) uses tabular numerals (`.num` utility) and is never inside a joke. Micro-interactions are 100–150 ms CSS transitions; nothing animates on the data path.
+
+## Maintaining this file
+
+Keep this file for knowledge useful to almost every future agent session in this project.
+Do not repeat what the codebase already shows; point to the authoritative file or command instead.
+Prefer rewriting or pruning existing entries over appending new ones.
+When updating this file, preserve this bar for all agents and keep entries concise.

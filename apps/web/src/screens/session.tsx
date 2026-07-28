@@ -3,6 +3,7 @@ import {
   checkSetForPR,
   computeRecords,
   type Exercise,
+  type ExercisePref,
   type ExerciseRecords,
   type ExerciseType,
   e1rmFromEffort,
@@ -12,16 +13,21 @@ import {
   ghostFor,
   groupByPrimaryMuscle,
   isBarLoaded,
+  isConfidentMatch,
   kgToLb,
   kmToM,
   type LoggedSet,
   lbToKg,
   type Machine,
+  type MatchCandidate,
   type Metric,
+  matchExerciseName,
   miToM,
   type NewRoutineInput,
   newId,
+  type ParsedSetUtterance,
   type PlateConfig,
+  parseSetUtterance,
   previousCells,
   type RestTimerState,
   type RoutineDetail,
@@ -50,11 +56,13 @@ import {
   History,
   Link2,
   Medal,
+  Mic,
   MoreHorizontal,
   MoreVertical,
   Pause,
   Play,
   Plus,
+  Search,
   Settings2,
   Square,
   Timer,
@@ -63,8 +71,10 @@ import {
   X,
 } from "lucide-react";
 import {
+  type Ref,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useReducer,
   useRef,
@@ -242,6 +252,53 @@ function previousText(g: GhostSet, unit: Unit): string | null {
   return formatPrevious(g, (kg) => String(toDisplayWeight(kg, unit)));
 }
 
+// Nothing usable came back from the mic — either no speech at all or a
+// transcript the parser couldn't read as a set.
+function micUnheard(): string {
+  return voice("Didn't catch that.", "Didn't catch that — try again?");
+}
+
+// SpeechRecognition error codes → honest copy. Recognition is server-backed in
+// Chrome, so a dropped connection or a blocked service is an outage, not a
+// mishearing: telling the user they weren't heard would invite an endless retry.
+function micErrorMessage(error: string): string {
+  if (error === "not-allowed")
+    return voice(
+      "Microphone blocked — allow mic access in your browser settings.",
+      "Microphone blocked — the frog needs mic access in your browser settings.",
+    );
+  if (
+    error === "network" ||
+    error === "audio-capture" ||
+    error === "service-not-allowed"
+  )
+    return voice(
+      "Voice recognition unavailable — try again in a moment.",
+      "Voice recognition unavailable — the frog's line dropped. Try again in a moment.",
+    );
+  return micUnheard();
+}
+
+// The stored per-exercise weight-unit override, null when unset or unreadable.
+function weightUnitOverrideFor(
+  prefs: ExercisePref[],
+  exerciseId: string | null,
+): Unit | null {
+  const override = prefs.find((p) => p.exerciseId === exerciseId)?.weightUnit;
+  return override === "kg" || override === "lb" ? override : null;
+}
+
+// A block's display weight unit: that override, else the session unit. One
+// copy — the block's grid and the voice round-trip both read it, and a
+// display↔kg conversion that disagreed would silently shift weights.
+function blockUnitFor(
+  prefs: ExercisePref[],
+  exerciseId: string | null,
+  sessionUnit: Unit,
+): Unit {
+  return weightUnitOverrideFor(prefs, exerciseId) ?? sessionUnit;
+}
+
 // Marker letter color for a set type (drop = accent per spec; warm-up/failure
 // keep quiet semantic tints; normal is just the faint set number).
 function markerColorClass(setType: SetType): string {
@@ -415,6 +472,7 @@ export default function SessionScreen() {
   const [livePrEnabled] = useLivePrBanner();
   const [keepAwake] = useKeepAwake();
   const { data: userPrefs } = useUserPrefs();
+  const { data: exercisePrefs = [] } = useExercisePrefs();
   const updatePrefs = useUpdateUserPrefs();
   const defaultRestSec = userPrefs?.defaultRestSec ?? null;
   const plateConfig = userPrefs?.plateConfig ?? null;
@@ -566,6 +624,179 @@ export default function SessionScreen() {
     },
     [],
   );
+
+  // ActiveRow handles, keyed by block — the voice mic's target for applying a
+  // parsed weight/reps without going through onCommit.
+  const rowHandles = useRef<Map<string, ActiveRowHandle>>(new Map());
+  const registerRowHandle = useCallback(
+    (seId: string, handle: ActiveRowHandle | null) => {
+      if (handle) rowHandles.current.set(seId, handle);
+      else rowHandles.current.delete(seId);
+    },
+    [],
+  );
+
+  // Voice logging: speak a full utterance ("bench press 135 lbs for 8 reps")
+  // to fill the matching block's active row — parse → fuzzy-match against
+  // this session's own blocks → apply to that row's local state. Never
+  // auto-commits; Enter / Add set stays the explicit trigger. Feature-detect,
+  // don't render a dead control: iOS Safari support is inconsistent, Firefox
+  // has none, and the API requires a secure context.
+  const speechSupported =
+    typeof window !== "undefined" &&
+    window.isSecureContext &&
+    (window.SpeechRecognition != null ||
+      window.webkitSpeechRecognition != null);
+  const [listening, setListening] = useState(false);
+  const [micMessage, setMicMessage] = useState<string | null>(null);
+  // Parsed utterance awaiting a manual block pick (no confident match, or a tie
+  // between blocks) — kept unconverted because the effective unit depends on
+  // the picked block. `candidates` narrows the list when the tie names it.
+  const [voicePicker, setVoicePicker] = useState<{
+    parsed: ParsedSetUtterance;
+    candidates: MatchCandidate[];
+  } | null>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const micMessageTimer = useRef<number | null>(null);
+
+  // Live snapshot for the speech handlers: onresult fires seconds after
+  // startListening ran, by which time the blocks, the session unit, or the
+  // per-exercise unit overrides may all have moved on.
+  const voiceCtx = useRef({ blocks, unit, exercisePrefs });
+  useEffect(() => {
+    voiceCtx.current = { blocks, unit, exercisePrefs };
+  });
+
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.abort();
+      if (micMessageTimer.current != null)
+        window.clearTimeout(micMessageTimer.current);
+    };
+  }, []);
+
+  function showMicMessage(message: string) {
+    setMicMessage(message);
+    if (micMessageTimer.current != null)
+      window.clearTimeout(micMessageTimer.current);
+    micMessageTimer.current = window.setTimeout(() => {
+      micMessageTimer.current = null;
+      setMicMessage(null);
+    }, 2500);
+  }
+
+  // Effective unit for a spoken weight: spoken unit word > the target block's
+  // per-exercise unit override (same lookup ExerciseBlock uses) > session unit.
+  function voiceWeightKg(
+    parsed: ParsedSetUtterance,
+    exerciseId: string | null,
+  ): number | null {
+    if (parsed.weightDisplay == null) return null;
+    const { unit: sessionUnit, exercisePrefs: prefs } = voiceCtx.current;
+    const effectiveUnit = parsed.unitExplicit
+      ? parsed.unit
+      : blockUnitFor(prefs, exerciseId, sessionUnit);
+    return effectiveUnit === "lb"
+      ? lbToKg(parsed.weightDisplay)
+      : parsed.weightDisplay;
+  }
+
+  function applyVoiceToBlock(seId: string, parsed: ParsedSetUtterance) {
+    const block = (voiceCtx.current.blocks ?? []).find((b) => b.seId === seId);
+    // False when the row's type has no field the utterance could fill (a weight
+    // against a bodyweight row, anything against a duration row) — say so
+    // rather than scrolling to a block that silently stayed empty.
+    const applied =
+      rowHandles.current.get(seId)?.applyVoice({
+        weightKg: voiceWeightKg(parsed, block?.exerciseId ?? null),
+        reps: parsed.reps,
+      }) ?? false;
+    blockRefs.current
+      .get(seId)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!applied)
+      showMicMessage(
+        `${block?.name ?? "That exercise"}: ${voice(
+          "nothing there to fill.",
+          "nothing there to fill — wrong shape of set.",
+        )}`,
+      );
+  }
+
+  function handleVoiceResult(transcript: string) {
+    const { blocks: liveBlocks, unit: liveUnit } = voiceCtx.current;
+    const parsed = parseSetUtterance(transcript, liveUnit);
+    if (!parsed) {
+      showMicMessage(micUnheard());
+      return;
+    }
+    const candidates = (liveBlocks ?? []).map((b) => ({
+      id: b.seId,
+      name: b.name,
+    }));
+    const match = matchExerciseName(parsed.name, candidates);
+    if (!match || !isConfidentMatch(match)) {
+      setVoicePicker({ parsed, candidates });
+      return;
+    }
+    // Equally good blocks (the same exercise logged twice for back-off work,
+    // say) — filling the first one silently would fill the wrong one half the
+    // time, so ask, scoped to the blocks that actually tied.
+    if (match.tied.length > 1) {
+      setVoicePicker({ parsed, candidates: match.tied });
+      return;
+    }
+    applyVoiceToBlock(match.id, parsed);
+  }
+
+  function startListening() {
+    // The ref, not `listening`: state only flips on the next render, so two
+    // clicks in one batch would otherwise both build a recognition and the
+    // second one's throw would orphan the first, still-recording instance.
+    if (recognitionRef.current) return;
+    const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!Ctor) return;
+    const recognition = new Ctor();
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    const reset = () => {
+      setListening(false);
+      recognitionRef.current = null;
+    };
+    recognition.onresult = (e) => {
+      handleVoiceResult(e.results[0]?.[0]?.transcript ?? "");
+    };
+    recognition.onerror = (e) => {
+      reset();
+      showMicMessage(micErrorMessage(e.error));
+    };
+    recognition.onnomatch = () => {
+      reset();
+      showMicMessage(micUnheard());
+    };
+    recognition.onend = reset;
+    recognitionRef.current = recognition;
+    setMicMessage(null);
+    setListening(true);
+    // start() throws synchronously when a recognition is already running, and
+    // on some WebKit builds for permission/policy failures. Without this the
+    // button would stay stuck in its active state with no live recognition
+    // behind it, and stop() on a never-started instance can't unstick it.
+    try {
+      recognition.start();
+    } catch {
+      reset();
+      showMicMessage(
+        voice("Couldn't start the mic.", "Couldn't start the mic — try again?"),
+      );
+    }
+  }
+
+  function stopListening() {
+    recognitionRef.current?.stop();
+  }
 
   // Distinct superset groups in block order → color slot (index % 4).
   const supersetSlot = useMemo(() => {
@@ -1073,6 +1304,36 @@ export default function SessionScreen() {
               />
             )}
             <RestTimer since={lastCommitAt} />
+            {speechSupported && (
+              <span className="relative flex items-center">
+                <button
+                  type="button"
+                  onClick={listening ? stopListening : startListening}
+                  title={listening ? "Stop listening" : "Log a set by voice"}
+                  aria-pressed={listening}
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-md border border-border transition-colors duration-100 md:size-8",
+                    listening
+                      ? "bg-accent text-accent-fg"
+                      : "bg-surface-2 text-soft hover:bg-surface-hover hover:text-ink",
+                  )}
+                  data-testid="voice-log-mic"
+                >
+                  <Mic className="size-4" />
+                </button>
+                {/* Always mounted: a live region that enters the DOM with its
+                    text already in it is routinely missed by screen readers. */}
+                <span
+                  role="status"
+                  className={cn(
+                    "absolute top-full right-0 z-20 mt-1 whitespace-nowrap text-2xs text-faint",
+                    micMessage && "floating px-2 py-1",
+                  )}
+                >
+                  {micMessage}
+                </span>
+              </span>
+            )}
             <Button
               size="sm"
               onClick={() => setFinishOpen(true)}
@@ -1137,6 +1398,7 @@ export default function SessionScreen() {
               onAddWarmup={(w) => addWarmup(block.seId, w)}
               prSetIds={prSetIds}
               registerRef={(el) => registerBlockRef(block.seId, el)}
+              registerRowRef={(handle) => registerRowHandle(block.seId, handle)}
               timerRunning={timer?.seId === block.seId}
               timerStartedAt={
                 timer?.seId === block.seId ? timer.startedAt : null
@@ -1163,6 +1425,19 @@ export default function SessionScreen() {
             onOpenChange={setPicking}
             onPick={pickExercise}
           />
+          {voicePicker && (
+            <VoiceMatchPicker
+              query={voicePicker.parsed.name}
+              candidates={voicePicker.candidates}
+              onOpenChange={(open) => {
+                if (!open) setVoicePicker(null);
+              }}
+              onPick={(id) => {
+                applyVoiceToBlock(id, voicePicker.parsed);
+                setVoicePicker(null);
+              }}
+            />
+          )}
         </div>
       </div>
 
@@ -1487,6 +1762,94 @@ function ExercisePicker({
   );
 }
 
+function ordinal(n: number): string {
+  const teen = n % 100;
+  if (teen >= 11 && teen <= 13) return `${n}th`;
+  return `${n}${["th", "st", "nd", "rd"][n % 10] ?? "th"}`;
+}
+
+// Voice-log fallback: the parsed name didn't clearly match one block, so ask
+// rather than guess. Scoped to this session's own blocks only (never the full
+// exercise library) — same search-box pattern as ExercisePicker, above.
+function VoiceMatchPicker({
+  query,
+  candidates,
+  onPick,
+  onOpenChange,
+}: {
+  query: string;
+  candidates: MatchCandidate[];
+  onPick: (id: string) => void;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [search, setSearch] = useState(query);
+  const filtered = candidates.filter((c) =>
+    c.name.toLowerCase().includes(search.trim().toLowerCase()),
+  );
+  // The pre-filled spoken name usually isn't a substring of any block name
+  // (that's why the picker opened) — fall back to the full list rather than
+  // opening onto a dead-end empty state. Only while the box still holds that
+  // untouched prefill: once the user types, their query wins, and a zero-result
+  // search must read as empty rather than silently ignoring the filter.
+  const shown = filtered.length > 0 || search !== query ? filtered : candidates;
+  // The same exercise can hold two blocks (back-off work, a second wave), and
+  // that tie is exactly what sends the user here — two rows reading "Bench
+  // Press" would just move the coin flip into a dialog. Number the repeats by
+  // their order in the session; unique names stay plain.
+  const counted = new Map<string, number>();
+  const rows = shown.map((c) => {
+    const nth = (counted.get(c.name) ?? 0) + 1;
+    counted.set(c.name, nth);
+    return { ...c, nth };
+  });
+  const rowLabel = (row: (typeof rows)[number]) =>
+    (counted.get(row.name) ?? 0) > 1
+      ? `${row.name} (${ordinal(row.nth)})`
+      : row.name;
+  return (
+    <Dialog open onOpenChange={onOpenChange}>
+      <DialogContent title="Which exercise?" className="md:max-w-sm">
+        <div className="flex flex-col gap-3">
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-faint" />
+            <Input
+              placeholder="Search this session…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8"
+              autoFocus
+              data-testid="voice-picker-search"
+            />
+          </div>
+          {rows.length === 0 ? (
+            <p className="px-1 py-4 text-center text-xs text-faint">
+              {voice(
+                "No match in this session.",
+                "No match in this session — the frog looked, promise.",
+              )}
+            </p>
+          ) : (
+            <ul className="divide-y divide-border overflow-hidden border border-border bg-surface">
+              {rows.map((row) => (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(row.id)}
+                    className="block w-full px-4 py-3 text-left text-sm transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+                    data-testid={`voice-pick-${rowLabel(row)}`}
+                  >
+                    {rowLabel(row)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // One picker row: the ribbon picks the exercise; a separate toggle reveals the
 // last-session history. The history query only mounts once expanded, so opening
 // the picker doesn't fire a lookup for every exercise at once.
@@ -1600,6 +1963,7 @@ function ExerciseBlock({
   onAddWarmup,
   prSetIds,
   registerRef,
+  registerRowRef,
   timerRunning,
   timerStartedAt,
   onToggleTimer,
@@ -1632,6 +1996,7 @@ function ExerciseBlock({
   onAddWarmup: (workingWeightKg: number) => void;
   prSetIds: Set<string>;
   registerRef: (el: HTMLElement | null) => void;
+  registerRowRef: (handle: ActiveRowHandle | null) => void;
   timerRunning: boolean;
   timerStartedAt: number | null;
   onToggleTimer: () => void;
@@ -1662,11 +2027,8 @@ function ExerciseBlock({
 
   const type = (exercise?.exerciseType as ExerciseType) ?? "weight_reps";
   // Per-exercise weight-unit override falls back to the global display unit.
-  const override = prefs.find(
-    (p) => p.exerciseId === block.exerciseId,
-  )?.weightUnit;
-  const blockUnit: Unit =
-    override === "kg" || override === "lb" ? override : unit;
+  const override = weightUnitOverrideFor(prefs, block.exerciseId);
+  const blockUnit = blockUnitFor(prefs, block.exerciseId, unit);
   const distUnit = distanceUnitFor(blockUnit);
   const columns = columnsFor(type, blockUnit, distUnit);
   const barLoaded =
@@ -1788,9 +2150,7 @@ function ExerciseBlock({
               key={c.key}
               header={c.header}
               blockName={block.name}
-              override={
-                override === "kg" || override === "lb" ? override : null
-              }
+              override={override}
               globalUnit={unit}
               onSet={(u) =>
                 setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
@@ -1823,6 +2183,7 @@ function ExerciseBlock({
 
       <ActiveRow
         key={`${activeIndex}-${seedNonce}`}
+        ref={registerRowRef}
         seId={block.seId}
         index={activeIndex}
         unit={blockUnit}
@@ -2654,6 +3015,18 @@ function RpeSelect({
   );
 }
 
+// Imperative escape hatch for voice logging: fills weight/reps as if typed,
+// converting kg to this row's own display unit. Never commits — same as a
+// manual edit, an explicit commit (Enter / Add set) still has to follow.
+type ActiveRowHandle = {
+  // Returns false when this row's type has no field the values could land in,
+  // so the caller can report the miss instead of leaving the row blank.
+  applyVoice: (values: {
+    weightKg: number | null;
+    reps: number | null;
+  }) => boolean;
+};
+
 function ActiveRow({
   seId,
   index,
@@ -2676,6 +3049,7 @@ function ActiveRow({
   timerStartedAt,
   onToggleTimer,
   onCommit,
+  ref,
 }: {
   seId: string;
   index: number;
@@ -2698,6 +3072,7 @@ function ActiveRow({
   timerStartedAt: number | null;
   onToggleTimer: () => void;
   onCommit: (set: CommitInput, ctx: CommitCtx) => void;
+  ref: Ref<ActiveRowHandle>;
 }) {
   // Restore any uncommitted keystrokes persisted for this block (draft wins over
   // the routine/copy seed once the user has started typing).
@@ -2793,6 +3168,25 @@ function ActiveRow({
 
   const f = TYPE_FIELDS[type];
   const effort = supportsEffort(type);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      applyVoice({ weightKg, reps: repsValue }) {
+        let applied = false;
+        if (f.weight && weightKg != null) {
+          setWeight(String(toDisplayWeight(weightKg, unit)));
+          applied = true;
+        }
+        if (f.reps && repsValue != null) {
+          setReps(String(repsValue));
+          applied = true;
+        }
+        return applied;
+      },
+    }),
+    [f.weight, f.reps, unit],
+  );
 
   // Live stopwatch readout while this row's timer runs (ticks each second).
   useEffect(() => {
