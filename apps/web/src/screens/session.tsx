@@ -3,6 +3,7 @@ import {
   checkSetForPR,
   computeRecords,
   type Exercise,
+  type ExercisePref,
   type ExerciseRecords,
   type ExerciseType,
   e1rmFromEffort,
@@ -249,6 +250,53 @@ function gridTemplate(cols: Column[], showPrevious: boolean): string {
 // (the weight column header already carries it) — "100 × 8", "1:30" for time.
 function previousText(g: GhostSet, unit: Unit): string | null {
   return formatPrevious(g, (kg) => String(toDisplayWeight(kg, unit)));
+}
+
+// Nothing usable came back from the mic — either no speech at all or a
+// transcript the parser couldn't read as a set.
+function micUnheard(): string {
+  return voice("Didn't catch that.", "Didn't catch that — try again?");
+}
+
+// SpeechRecognition error codes → honest copy. Recognition is server-backed in
+// Chrome, so a dropped connection or a blocked service is an outage, not a
+// mishearing: telling the user they weren't heard would invite an endless retry.
+function micErrorMessage(error: string): string {
+  if (error === "not-allowed")
+    return voice(
+      "Microphone blocked — allow mic access in your browser settings.",
+      "Microphone blocked — the frog needs mic access in your browser settings.",
+    );
+  if (
+    error === "network" ||
+    error === "audio-capture" ||
+    error === "service-not-allowed"
+  )
+    return voice(
+      "Voice recognition unavailable — try again in a moment.",
+      "Voice recognition unavailable — the frog's line dropped. Try again in a moment.",
+    );
+  return micUnheard();
+}
+
+// The stored per-exercise weight-unit override, null when unset or unreadable.
+function weightUnitOverrideFor(
+  prefs: ExercisePref[],
+  exerciseId: string | null,
+): Unit | null {
+  const override = prefs.find((p) => p.exerciseId === exerciseId)?.weightUnit;
+  return override === "kg" || override === "lb" ? override : null;
+}
+
+// A block's display weight unit: that override, else the session unit. One
+// copy — the block's grid and the voice round-trip both read it, and a
+// display↔kg conversion that disagreed would silently shift weights.
+function blockUnitFor(
+  prefs: ExercisePref[],
+  exerciseId: string | null,
+  sessionUnit: Unit,
+): Unit {
+  return weightUnitOverrideFor(prefs, exerciseId) ?? sessionUnit;
 }
 
 // Marker letter color for a set type (drop = accent per spec; warm-up/failure
@@ -645,10 +693,9 @@ export default function SessionScreen() {
   ): number | null {
     if (parsed.weightDisplay == null) return null;
     const { unit: sessionUnit, exercisePrefs: prefs } = voiceCtx.current;
-    const override = prefs.find((p) => p.exerciseId === exerciseId)?.weightUnit;
-    const blockUnit: Unit =
-      override === "kg" || override === "lb" ? override : sessionUnit;
-    const effectiveUnit = parsed.unitExplicit ? parsed.unit : blockUnit;
+    const effectiveUnit = parsed.unitExplicit
+      ? parsed.unit
+      : blockUnitFor(prefs, exerciseId, sessionUnit);
     return effectiveUnit === "lb"
       ? lbToKg(parsed.weightDisplay)
       : parsed.weightDisplay;
@@ -680,9 +727,7 @@ export default function SessionScreen() {
     const { blocks: liveBlocks, unit: liveUnit } = voiceCtx.current;
     const parsed = parseSetUtterance(transcript, liveUnit);
     if (!parsed) {
-      showMicMessage(
-        voice("Didn't catch that.", "Didn't catch that — try again?"),
-      );
+      showMicMessage(micUnheard());
       return;
     }
     const candidates = (liveBlocks ?? []).map((b) => ({
@@ -725,17 +770,11 @@ export default function SessionScreen() {
     };
     recognition.onerror = (e) => {
       reset();
-      showMicMessage(
-        e.error === "not-allowed"
-          ? "Microphone blocked — allow mic access in your browser settings."
-          : voice("Didn't catch that.", "Didn't catch that — try again?"),
-      );
+      showMicMessage(micErrorMessage(e.error));
     };
     recognition.onnomatch = () => {
       reset();
-      showMicMessage(
-        voice("Didn't catch that.", "Didn't catch that — try again?"),
-      );
+      showMicMessage(micUnheard());
     };
     recognition.onend = reset;
     recognitionRef.current = recognition;
@@ -1282,14 +1321,17 @@ export default function SessionScreen() {
                 >
                   <Mic className="size-4" />
                 </button>
-                {micMessage && (
-                  <span
-                    role="status"
-                    className="floating absolute top-full right-0 z-20 mt-1 whitespace-nowrap px-2 py-1 text-2xs text-faint"
-                  >
-                    {micMessage}
-                  </span>
-                )}
+                {/* Always mounted: a live region that enters the DOM with its
+                    text already in it is routinely missed by screen readers. */}
+                <span
+                  role="status"
+                  className={cn(
+                    "absolute top-full right-0 z-20 mt-1 whitespace-nowrap text-2xs text-faint",
+                    micMessage && "floating px-2 py-1",
+                  )}
+                >
+                  {micMessage}
+                </span>
               </span>
             )}
             <Button
@@ -1746,8 +1788,10 @@ function VoiceMatchPicker({
   );
   // The pre-filled spoken name usually isn't a substring of any block name
   // (that's why the picker opened) — fall back to the full list rather than
-  // opening onto a dead-end empty state.
-  const shown = filtered.length > 0 ? filtered : candidates;
+  // opening onto a dead-end empty state. Only while the box still holds that
+  // untouched prefill: once the user types, their query wins, and a zero-result
+  // search must read as empty rather than silently ignoring the filter.
+  const shown = filtered.length > 0 || search !== query ? filtered : candidates;
   // The same exercise can hold two blocks (back-off work, a second wave), and
   // that tie is exactly what sends the user here — two rows reading "Bench
   // Press" would just move the coin flip into a dialog. Number the repeats by
@@ -1983,11 +2027,8 @@ function ExerciseBlock({
 
   const type = (exercise?.exerciseType as ExerciseType) ?? "weight_reps";
   // Per-exercise weight-unit override falls back to the global display unit.
-  const override = prefs.find(
-    (p) => p.exerciseId === block.exerciseId,
-  )?.weightUnit;
-  const blockUnit: Unit =
-    override === "kg" || override === "lb" ? override : unit;
+  const override = weightUnitOverrideFor(prefs, block.exerciseId);
+  const blockUnit = blockUnitFor(prefs, block.exerciseId, unit);
   const distUnit = distanceUnitFor(blockUnit);
   const columns = columnsFor(type, blockUnit, distUnit);
   const barLoaded =
@@ -2109,9 +2150,7 @@ function ExerciseBlock({
               key={c.key}
               header={c.header}
               blockName={block.name}
-              override={
-                override === "kg" || override === "lb" ? override : null
-              }
+              override={override}
               globalUnit={unit}
               onSet={(u) =>
                 setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
