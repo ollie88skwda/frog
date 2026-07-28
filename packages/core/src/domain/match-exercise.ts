@@ -2,10 +2,8 @@
 // scoring. No real stemming, no edit distance — good enough to resolve a
 // spoken exercise name against a short candidate list (a session's own
 // blocks), not a full exercise library.
-// NOTE: no existing matcher was found elsewhere in the repo at the time this
-// was written (checked packages/core/src and other active branches) — if a
-// parallel routine-import task lands packages/core/src/generator/match-exercise.ts
-// or similar, the two should be consolidated.
+// This is the repo's one name matcher (AGENTS.md) — extend it rather than
+// adding a second implementation.
 
 export type MatchCandidate = { id: string; name: string };
 
