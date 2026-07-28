@@ -20,17 +20,41 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useCallback } from "react";
 import {
   markExercisesPending,
   resolveExercisePending,
+  usePendingExercises,
 } from "./pending-exercises";
 import { useRepo } from "./repo";
 
+// Seeded rows live in the cache before their INSERT is dispatched, so any
+// refetch that lands mid-run (window refocus, a sibling exercise mutation's
+// invalidate) replaces them with server truth that predates them. Re-applying
+// them here keeps the list whole no matter what replaces the cache, instead of
+// leaning on each create's `onMutate` happening to cancel that refetch first.
+function withPendingExercises(
+  rows: Exercise[],
+  pending: ReadonlyMap<string, Exercise>,
+): Exercise[] {
+  if (pending.size === 0) return rows;
+  const have = new Set(rows.map((e) => e.id));
+  const missing = [...pending.values()].filter((r) => !have.has(r.id));
+  if (missing.length === 0) return rows;
+  return [...rows, ...missing].sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export function useExercises() {
   const repo = useRepo();
+  const pending = usePendingExercises();
+  const select = useCallback(
+    (rows: Exercise[]) => withPendingExercises(rows, pending),
+    [pending],
+  );
   return useQuery({
     queryKey: ["exercises"],
     queryFn: () => repo.listExercises(),
+    select,
   });
 }
 
@@ -92,7 +116,7 @@ export function useSeedExercises() {
   return (names: string[]) => {
     const rows = names.map((name) => optimisticExercise(newId(), name));
     addExerciseRows(qc, rows);
-    markExercisesPending(rows.map((r) => r.id));
+    markExercisesPending(rows);
     return rows.map(({ id, name }) => ({ id, name }));
   };
 }
@@ -116,15 +140,19 @@ export function useCreateExercise() {
       vars.opts.id = id;
       const opts = vars.opts;
       void qc.cancelQueries({ queryKey: ["exercises"] });
-      addExerciseRows(qc, [optimisticExercise(id, name, opts)]);
-      markExercisesPending([id]);
+      const row = optimisticExercise(id, name, opts);
+      addExerciseRows(qc, [row]);
+      markExercisesPending([row]);
       return { id };
     },
     // Roll back by removing only this mutation's optimistic row — a snapshot
     // restore would clobber sibling optimistic rows when creates run
-    // concurrently (bulk add fires one mutation per name).
+    // concurrently (bulk add fires one mutation per name). Drop it from the
+    // pending registry first, or the re-apply in `useExercises` would put the
+    // row straight back until `onSettled` runs.
     onError: (_err, _vars, ctx) => {
       if (!ctx) return;
+      resolveExercisePending(ctx.id);
       qc.setQueryData<Exercise[]>(["exercises"], (old = []) =>
         old.filter((e) => e.id !== ctx.id),
       );

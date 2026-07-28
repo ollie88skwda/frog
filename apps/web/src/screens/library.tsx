@@ -56,6 +56,11 @@ import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  finishBulkAddRun,
+  startBulkAddRun,
+  useBulkAddFailures,
+} from "@/lib/bulk-add-failures";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import {
   useCreateExercise,
@@ -102,7 +107,7 @@ function parseBulkExerciseNames(text: string): string[] {
 // push the dialog's own controls below the scroll fold.
 const NAME_PREVIEW = 5;
 
-function previewNames(names: string[]): string {
+function previewNames(names: readonly string[]): string {
   const rest = names.length - NAME_PREVIEW;
   const head = names.slice(0, NAME_PREVIEW).join(", ");
   return rest > 0 ? `${head} +${rest} more` : head;
@@ -144,15 +149,16 @@ const CV_ROW: CSSProperties = {
   containIntrinsicSize: "auto 88px",
 };
 
+const NO_EXERCISES: Exercise[] = [];
+
 export default function LibraryScreen() {
   const { t } = useVoice();
-  const {
-    data: exercises = [],
-    isLoading,
-    isSuccess,
-    isError,
-    refetch,
-  } = useExercises();
+  const { data, isLoading, isError, refetch } = useExercises();
+  // Presence, not query status: a failed background refetch (every bulk run
+  // ends in one) flips `status` to error while the fetched list is still in
+  // `data` and on screen — bulk add only needs the list, not a fresh fetch.
+  const exercises = data ?? NO_EXERCISES;
+  const libraryLoaded = data !== undefined;
   const { data: metrics = [] } = useMetrics();
   const { data: machines = [] } = useMachines();
   const { data: favorites = [] } = useExerciseFavorites();
@@ -160,8 +166,9 @@ export default function LibraryScreen() {
   // key off exercise id server-side, so they must wait for the real row.
   const pendingExercises = usePendingExercises();
   const setFavorite = useSetExerciseFavorite();
-  const favoriteIds = new Set(
-    favorites.filter((f) => f.favorite).map((f) => f.exerciseId),
+  const favoriteIds = useMemo(
+    () => new Set(favorites.filter((f) => f.favorite).map((f) => f.exerciseId)),
+    [favorites],
   );
   const create = useCreateExercise();
   const [name, setName] = useState("");
@@ -177,8 +184,13 @@ export default function LibraryScreen() {
     () => metrics.filter((m) => m.scope === "set" && m.ownerId !== null),
     [metrics],
   );
-  const filtered = filterExercises(exercises, query, filterMuscle);
-  const groups = groupByPrimaryMuscle(filtered);
+  // Derived off the whole ~900-row library: every optimistic write re-renders
+  // this screen, and a bulk run does one write per pasted name.
+  const filtered = useMemo(
+    () => filterExercises(exercises, query, filterMuscle),
+    [exercises, query, filterMuscle],
+  );
+  const groups = useMemo(() => groupByPrimaryMuscle(filtered), [filtered]);
 
   // Stable identities keep the memoized rows out of the re-render that every
   // optimistic write triggers — a bulk run does one write per name.
@@ -303,8 +315,8 @@ export default function LibraryScreen() {
 
       <BulkAddDialog
         exercises={exercises}
-        libraryLoaded={isSuccess}
-        libraryFailed={isError}
+        libraryLoaded={libraryLoaded}
+        libraryFailed={isError && !libraryLoaded}
         onRetryLibrary={() => void refetch()}
       />
 
@@ -407,8 +419,7 @@ function BulkAddDialog({
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [skipDuplicates, setSkipDuplicates] = useState(true);
-  const [failed, setFailed] = useState<string[]>([]);
-  const runsInFlight = useRef(0);
+  const failed = useBulkAddFailures();
 
   const existingNames = useMemo(
     () => new Set(exercises.map((e) => e.name.toLowerCase())),
@@ -428,20 +439,12 @@ function BulkAddDialog({
     setText("");
     setSkipDuplicates(true);
     setOpen(false);
-    // The queued names supersede the notice only if no earlier run is still
-    // dispatching — otherwise that run's failures would be dropped unseen.
-    if (runsInFlight.current === 0) setFailed([]);
-    runsInFlight.current += 1;
+    startBulkAddRun();
     // Every row lands now; only the inserts behind them are bounded.
     const queued = seedExercises(toCreate);
     void runBounded(queued, ({ id, name }) =>
       create.mutateAsync({ name, opts: { id } }),
-    ).then((rows) => {
-      runsInFlight.current -= 1;
-      if (rows.length === 0) return;
-      const names = rows.map((r) => r.name);
-      setFailed((prev) => [...prev, ...names.filter((n) => !prev.includes(n))]);
-    });
+    ).then((rows) => finishBulkAddRun(rows.map((r) => r.name)));
   }
 
   return (

@@ -1,15 +1,18 @@
+import type { Exercise } from "@sbl/core";
 import { useSyncExternalStore } from "react";
 
-// Ids of exercises that exist only as an optimistic row: bulk add seeds every
-// pasted name into the `["exercises"]` cache up front while the inserts run
-// four at a time, so a row can be on screen for the whole run before its INSERT
-// is even dispatched. `session_exercises.exercise_id` is a real FK, so anything
-// that writes a reference to an exercise must wait for the row to land — the
-// list itself can show it immediately. Module state, not the query cache: it is
-// about a write in flight, not about server data.
-const pending = new Set<string>();
+// Exercises that exist only as an optimistic row: bulk add seeds every pasted
+// name into the `["exercises"]` cache up front while the inserts run four at a
+// time, so a row can be on screen for the whole run before its INSERT is even
+// dispatched. `session_exercises.exercise_id` is a real FK, so anything that
+// writes a reference to an exercise must wait for the row to land — the list
+// itself can show it immediately. The row itself is held here (not just its
+// id) so `useExercises` can re-apply it over any server payload that lands
+// mid-run. Module state, not the query cache: it is about a write in flight,
+// not about server data.
+const pending = new Map<string, Exercise>();
 const listeners = new Set<() => void>();
-let snapshot: ReadonlySet<string> = new Set();
+let snapshot: ReadonlyMap<string, Exercise> = new Map();
 
 function subscribe(cb: () => void) {
   listeners.add(cb);
@@ -17,14 +20,14 @@ function subscribe(cb: () => void) {
 }
 
 function emit() {
-  snapshot = new Set(pending);
+  snapshot = new Map(pending);
   for (const l of listeners) l();
 }
 
-export function markExercisesPending(ids: string[]) {
-  const added = ids.filter((id) => !pending.has(id));
+export function markExercisesPending(rows: Exercise[]) {
+  const added = rows.filter((r) => !pending.has(r.id));
   if (added.length === 0) return;
-  for (const id of added) pending.add(id);
+  for (const row of added) pending.set(row.id, row);
   emit();
 }
 
@@ -34,6 +37,6 @@ export function resolveExercisePending(id: string) {
   if (pending.delete(id)) emit();
 }
 
-export function usePendingExercises(): ReadonlySet<string> {
+export function usePendingExercises(): ReadonlyMap<string, Exercise> {
   return useSyncExternalStore(subscribe, () => snapshot);
 }
