@@ -1,9 +1,87 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 699 699">
   <title>Frog</title>
-  <!-- Frog-eye mark (docs/brand/frog-brand-identity.html): a heavy-lidded eye
-       on the lab-ink ground, grass pupil. The only circle in a 0px-radius brand. -->
-  <rect width="512" height="512" rx="96" fill="#101211"/>
-  <circle cx="256" cy="256" r="150" stroke="#ECEEED" stroke-width="22" fill="none"/>
-  <path d="M128 213 Q256 149 384 213" stroke="#ECEEED" stroke-width="22" fill="none"/>
-  <circle cx="256" cy="267" r="43" fill="#46A758"/>
+  <!--
+    Frog mark (docs/brand/frog-brand-identity.html). Hand-authored vector — the
+    supplied raster is redrawn, never traced, so edges stay crisp at every size.
+
+    Art space: the silhouette occupies x 1.5..574.5, y 0.5..357.5 (573 x 357, a
+    1.6:1 mark), so every number below is stated in the mark's own coordinates.
+    The wrapper centres that box in the square canvas; the 9% margin here is the
+    same one icon-192/512 use. To re-pad, change the viewBox side S and set the
+    wrapper translate to (S/2 - 288, S/2 - 179) — that is all
+    apps/web/scripts/build-icons.mts does. Keeping the viewBox origin at 0 0
+    matters: it is what makes the transform-origin below unambiguous.
+
+    Ink #101211 (neutral sage dark) and grass #46A758 are the brand palette (the
+    accent token in theme.css), not the supplied art's navy/green.
+  -->
+  <style>
+    /*
+      16px treatment. At favicon size the 27-unit outline lands on ~0.6px and
+      greys out, and the nostrils and eye glints turn to haze — the mark reads as
+      a green blob with no face. Under 25px we therefore drop those two finest
+      details, thicken every remaining stroke, and spend the margin on the frog.
+      Browsers rasterise a favicon by rendering the SVG at the requested size, so
+      this matches on the 16px and 20px requests only; 32px and up get the full
+      mark. A renderer that ignores it falls back to the full mark, which is a
+      soft favicon, not a broken one.
+    */
+    @media (max-width: 24px) {
+      .art {
+        transform-box: view-box;
+        transform-origin: 50% 50%;
+        transform: scale(1.17);
+      }
+      .frog { stroke-width: 40 }
+      .feet { stroke-width: 36 }
+      .mouth { stroke-width: 26 }
+      .eye { r: 32px }
+      .fine { display: none }
+    }
+  </style>
+  <rect id="ground" width="699" height="699" fill="#ffffff" />
+  <g class="art">
+    <g id="pad" transform="translate(61.5 170.5)">
+      <g
+        class="frog"
+        fill="#46A758"
+        stroke="#101211"
+        stroke-width="27"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <!-- Haunches, behind the body: the lobes that make it a sitting frog. -->
+        <ellipse cx="62" cy="282" rx="33.5" ry="55" />
+        <ellipse cx="514" cy="282" rx="33.5" ry="55" />
+        <!--
+          Body: one closed path of five tangent arcs — left flank (r 258.5), left
+          eye hump (r 61), the valley between the humps (r 112), then the mirror.
+          The bottom edge is a straight line at y 344 that the ground bar covers.
+        -->
+        <path
+          d="M104.8 344
+             A258.5 258.5 0 0 1 135.4 82.3
+             A61 61 0 0 1 228.5 23.4
+             A112 112 0 0 0 347.5 23.4
+             A61 61 0 0 1 440.6 82.3
+             A258.5 258.5 0 0 1 471.2 344
+             Z"
+        />
+        <!-- Front feet, then mouth, then the ground bar the frog sits on. -->
+        <path class="feet" fill="none" stroke-width="25" d="M178 294v50M398 294v50" />
+        <path class="mouth" fill="none" stroke-width="18" d="M183 164h210" />
+        <path fill="none" d="M15 344h546" />
+      </g>
+      <g fill="#101211">
+        <circle class="eye" cx="196" cy="77" r="27" />
+        <circle class="eye" cx="380" cy="77" r="27" />
+        <circle class="fine" cx="264" cy="95.5" r="8" />
+        <circle class="fine" cx="312" cy="95.5" r="8" />
+      </g>
+      <g class="fine" fill="#ffffff">
+        <circle cx="185" cy="61.5" r="6" />
+        <circle cx="369" cy="61.5" r="6" />
+      </g>
+    </g>
+  </g>
 </svg>
