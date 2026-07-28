@@ -93,3 +93,40 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await expect(page.getByTestId("routine-ex-0-set-1-reps")).toHaveValue("8");
   await expect(page.getByTestId("routine-ex-0-set-1-repsmax")).toHaveValue("12");
 });
+
+// The session row and its exercises are fetched in parallel; when the
+// exercises win, routineId isn't known yet. Mounting the grid then would seed
+// it blank for good (blocks seed once). Delaying the session GET makes that
+// ordering deterministic instead of a coin flip under CI load.
+test("start routine still prefills when the session row resolves after its exercises", async ({
+  page,
+}) => {
+  const EX = `RaceEx ${Date.now()}`;
+  const ROUTINE = `Race routine ${Date.now()}`;
+
+  await page.goto("/library");
+  await page.getByTestId("exercise-name-input").fill(EX);
+  await page.getByTestId("add-exercise-btn").click();
+  await waitForExercise(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("new-routine-btn").click();
+  await page.getByTestId("routine-name-input").fill(ROUTINE);
+  await page.getByTestId("routine-add-exercise-btn").click();
+  await page.getByTestId(`routine-pick-${EX}`).click();
+  await page.getByTestId("routine-ex-0-set-0-weight").fill("60");
+  await page.getByTestId("routine-ex-0-set-0-reps").fill("5");
+  await page.getByTestId("routine-save-btn").click();
+  await expect(page).toHaveURL(/\/train$/);
+
+  await page.route(/\/rest\/v1\/sessions\?/, async (route) => {
+    if (route.request().method() !== "GET") return route.continue();
+    await new Promise((r) => setTimeout(r, 1500));
+    await route.continue();
+  });
+
+  await page.getByTestId(`routine-start-${ROUTINE}`).click();
+  await expect(page).toHaveURL(/\/session\//);
+  await expect(page.getByTestId("set-0-weight")).toHaveValue("60");
+  await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
+});

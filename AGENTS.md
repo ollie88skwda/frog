@@ -33,6 +33,8 @@ Web-first rewrite (the original Expo/React Native app is archived on branch `leg
 
 `packages/core` must stay framework-free — no React, no DOM, no supabase-js imports outside `repo/`. Domain modules (`units`, `e1rm`, `progression`, `session-reducer`, `ids`) are pure and unit-tested; the findings engine builds on them.
 
+**Freeform-text → structured-data matching — TWO matchers exist, unreconciled.** `packages/core/src/generator/match-exercise.ts` (routine builder's "Paste workout" import, `parse-routine.ts` same dir) and `packages/core/src/domain/match-exercise.ts` (voice logging) were built independently and export the same names (`MatchCandidate`, `matchExerciseName`, `normalizeExerciseName`) with different shapes — `generator/`'s `matchExerciseName` returns a plain candidate or `null`; `domain/`'s returns an `ExerciseMatch` with `matchType`/`tied` disambiguation. Because of the name clash, **only `domain/match-exercise` is barrel-exported** from `@sbl/core`; `generator/match-exercise` must be imported by its exact subpath (`@sbl/core/generator/match-exercise`) — `packages/core/src/index.ts` documents why inline. Before adding a *third* matcher for some new freeform-text feature, or before touching either file: this pair should be consolidated into one, not extended in parallel again — check both, don't just extend one.
+
 ## Constraints (product requirements, not preferences)
 
 - **Mobile-first, always.** SBL is a **mobile web app**. Design and build every screen for a phone / touch viewport *first*; desktop is only a secondary widening of the same layout, never the starting point. Tap targets on the logging path are ≥40 px; never gate an action behind hover-only affordances (a mobile user can't hover). Popups/menus must open fully visible on a phone — never clipped by an `overflow-hidden` ancestor or hidden behind sibling controls.
@@ -53,7 +55,6 @@ Web-first rewrite (the original Expo/React Native app is archived on branch `leg
 - Tables: `exercises`, `metrics`, `sessions`, `session_exercises`, `set_logs` (+ `api_tokens`). Custom metric/condition values live in jsonb (`condition_values`, `metric_values`).
 - **Ambient browser-API types:** non-standard vendor APIs not in TS's DOM lib (e.g. the Web Speech API) get a minimal ambient `.d.ts` under `apps/web/src/types/` rather than an `any` cast — see `speech-recognition.d.ts`.
 - **Per-user module state:** module stores in `apps/web/src/lib/` that hold *user* data (not device prefs) must register their own reset via `registerUserScopedReset` in `lib/user-scoped-state.ts` — `queryClient.clear()` on sign-out / user change doesn't reach module state, so the next account on the device would inherit it. Registration lives in the store, not in `auth.tsx`, which keeps lazy-route-only stores out of the eager bundle.
-- **Fuzzy exercise-name matching:** `packages/core/src/domain/match-exercise.ts` (`matchExerciseName`, normalize + token-overlap, no NLP dep) is the one matcher — reuse it rather than adding a second implementation (e.g. for routine-paste/import name resolution).
 
 ## Commands
 
