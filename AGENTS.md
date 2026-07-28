@@ -52,6 +52,7 @@ Web-first rewrite (the original Expo/React Native app is archived on branch `leg
 - **Migrations:** Drizzle `pg-core` schema in `packages/core/src/db/schema.ts` is the DDL source of truth; `bun run db:generate` (drizzle-kit) emits SQL into `supabase/migrations/`; RLS/seeds are hand-written migrations via `supabase migration new`. Generate first, then hand-write — timestamps must interleave correctly.
 - Tables: `exercises`, `metrics`, `sessions`, `session_exercises`, `set_logs` (+ `api_tokens`). Custom metric/condition values live in jsonb (`condition_values`, `metric_values`).
 - **Ambient browser-API types:** non-standard vendor APIs not in TS's DOM lib (e.g. the Web Speech API) get a minimal ambient `.d.ts` under `apps/web/src/types/` rather than an `any` cast — see `speech-recognition.d.ts`.
+- **Per-user module state:** module stores in `apps/web/src/lib/` that hold *user* data (not device prefs) must register their own reset via `registerUserScopedReset` in `lib/user-scoped-state.ts` — `queryClient.clear()` on sign-out / user change doesn't reach module state, so the next account on the device would inherit it. Registration lives in the store, not in `auth.tsx`, which keeps lazy-route-only stores out of the eager bundle.
 - **Fuzzy exercise-name matching:** `packages/core/src/domain/match-exercise.ts` (`matchExerciseName`, normalize + token-overlap, no NLP dep) is the one matcher — reuse it rather than adding a second implementation (e.g. for routine-paste/import name resolution).
 
 ## Commands
