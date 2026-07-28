@@ -56,6 +56,7 @@ import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { usePendingExercises } from "@/lib/pending-exercises";
 import {
   useCreateExercise,
   useCreateMetric,
@@ -155,6 +156,9 @@ export default function LibraryScreen() {
   const { data: metrics = [] } = useMetrics();
   const { data: machines = [] } = useMachines();
   const { data: favorites = [] } = useExerciseFavorites();
+  // Rows whose INSERT hasn't landed: favorites, tags, metrics and archive all
+  // key off exercise id server-side, so they must wait for the real row.
+  const pendingExercises = usePendingExercises();
   const setFavorite = useSetExerciseFavorite();
   const favoriteIds = new Set(
     favorites.filter((f) => f.favorite).map((f) => f.exerciseId),
@@ -367,6 +371,7 @@ export default function LibraryScreen() {
                       machines={machines}
                       isFavorite={favoriteIds.has(ex.id)}
                       onToggleFavorite={onToggleFavorite}
+                      pending={pendingExercises.has(ex.id)}
                       expanded={expandedId === ex.id}
                       onToggle={onToggleExpanded}
                     />
@@ -643,6 +648,7 @@ const ExerciseRow = memo(function ExerciseRow({
   machines,
   isFavorite,
   onToggleFavorite,
+  pending,
   expanded,
   onToggle,
 }: {
@@ -652,6 +658,7 @@ const ExerciseRow = memo(function ExerciseRow({
   machines: Machine[];
   isFavorite: boolean;
   onToggleFavorite: (exerciseId: string, favorite: boolean) => void;
+  pending: boolean;
   expanded: boolean;
   onToggle: (exerciseId: string) => void;
 }) {
@@ -690,6 +697,10 @@ const ExerciseRow = memo(function ExerciseRow({
             <button
               type="button"
               onClick={() => onToggle(exercise.id)}
+              // The panel behind this toggle edits tags, metrics, machine and
+              // archive state — every one of them keyed by an id Postgres
+              // doesn't have yet while the create is queued.
+              disabled={pending}
               className="flex min-w-0 items-center gap-1.5 text-left"
               data-testid={`exercise-row-toggle-${exercise.name}`}
             >
@@ -701,7 +712,11 @@ const ExerciseRow = memo(function ExerciseRow({
               >
                 {exercise.name}
               </span>
-              <Chevron className="size-4 shrink-0 text-faint" />
+              {pending ? (
+                <span className="shrink-0 text-2xs text-faint">saving…</span>
+              ) : (
+                <Chevron className="size-4 shrink-0 text-faint" />
+              )}
             </button>
             <span className="flex shrink-0 items-center gap-1">
               {!exercise.isCustom && (
@@ -713,6 +728,7 @@ const ExerciseRow = memo(function ExerciseRow({
                 favorite={isFavorite}
                 onToggle={() => onToggleFavorite(exercise.id, !isFavorite)}
                 name={exercise.name}
+                disabled={pending}
               />
               <Link
                 to={`/exercises/${exercise.id}`}

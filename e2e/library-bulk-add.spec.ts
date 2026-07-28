@@ -86,10 +86,11 @@ test("bulk add warns on duplicates against the library without blocking", async 
   await waitForExercise(page, fresh);
 });
 
-// Per-insert delay used by the fan-out spec: long enough that a trickling
-// implementation could not have painted the whole paste yet, short enough that
-// 12 names at 4 in flight still finish in ~3 s.
-const INSERT_DELAY_MS = 1_000;
+// Per-insert delay used by the fan-out spec. The paint check below gets 2 s, so
+// this has to be comfortably longer than that for the second worker wave to be
+// unambiguously late — a loaded runner painting slowly must not read as a
+// trickle. 12 names at 4 in flight still finish in ~9 s.
+const INSERT_DELAY_MS = 3_000;
 
 // The names carried by one PostgREST insert body (an object or an array of
 // them). Unparseable bodies contribute nothing rather than failing the test.
@@ -168,7 +169,7 @@ test("bulk add bounds the insert fan-out and refetches the library once", async 
 
   // Hold every insert open for a beat. Seeded rows don't wait on the network,
   // so they all paint anyway; a regression to one optimistic write per
-  // dispatched create would need three worker waves (≥3 s) to finish painting.
+  // dispatched create would need three worker waves (≥9 s) to finish painting.
   await page.route("**/rest/v1/exercises*", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     await new Promise((r) => setTimeout(r, INSERT_DELAY_MS));

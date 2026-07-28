@@ -140,11 +140,13 @@ export function FavoriteButton({
   favorite,
   onToggle,
   name,
+  disabled,
   className,
 }: {
   favorite: boolean;
   onToggle: () => void;
   name: string;
+  disabled?: boolean;
   className?: string;
 }) {
   return (
@@ -154,11 +156,19 @@ export function FavoriteButton({
         e.stopPropagation();
         onToggle();
       }}
-      title={favorite ? `Unfavorite ${name}` : `Favorite ${name}`}
+      disabled={disabled}
+      title={
+        disabled
+          ? `${name} is still saving`
+          : favorite
+            ? `Unfavorite ${name}`
+            : `Favorite ${name}`
+      }
       aria-pressed={favorite}
       className={cn(
         "flex shrink-0 items-center justify-center p-1 transition-colors duration-150 ease-(--ease-out-quad)",
         favorite ? "text-accent" : "text-faint hover:text-soft",
+        disabled && "opacity-50",
         className,
       )}
     >
