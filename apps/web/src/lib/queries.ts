@@ -186,6 +186,13 @@ export function useCreateExercise() {
       const id = ctx?.id ?? vars.opts?.id;
       if (id) resolveExercisePending(id);
       if (trackCreateExercise(qc, -1) > 0) return;
+      // Any fetch already running predates this insert, so its response can't
+      // contain the row. Retire it first: `invalidateQueries` only cancels an
+      // in-flight fetch once the query has data, so during the cold load it
+      // would instead be handed that fetch's promise — and its pre-insert
+      // payload clears the invalidation, leaving the new exercise off the list
+      // until something else refetches.
+      void qc.cancelQueries({ queryKey: ["exercises"] });
       void qc.invalidateQueries({ queryKey: ["exercises"] });
     },
   });
