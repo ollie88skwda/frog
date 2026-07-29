@@ -55,8 +55,6 @@ for (const t of targets) {
       const rect = document.getElementById(
         "ground",
       ) as unknown as SVGRectElement;
-      rect.setAttribute("width", String(side));
-      rect.setAttribute("height", String(side));
       rect.setAttribute("fill", ground);
       const pad = document.getElementById("pad") as unknown as SVGGElement;
       pad.setAttribute(
@@ -74,7 +72,8 @@ for (const t of targets) {
     },
   );
   const el = await page.$("svg");
-  await el?.screenshot({ path: new URL(t.file, outDir).pathname });
+  if (!el) throw new Error(`icon.svg produced no <svg> element for ${t.file}`);
+  await el.screenshot({ path: new URL(t.file, outDir).pathname });
   console.log(`wrote apps/web/public/${t.file} (${t.size}px)`);
 }
 

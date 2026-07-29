@@ -44,7 +44,7 @@
       .fine { display: none }
     }
   </style>
-  <rect id="ground" width="699" height="699" fill="#101211" />
+  <rect id="ground" width="100%" height="100%" fill="#101211" />
   <g class="art">
     <g id="pad" transform="translate(61.5 170.5)">
       <g
