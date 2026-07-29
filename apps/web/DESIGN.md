@@ -90,9 +90,8 @@ classes:
   tint `bg-accent-soft` (grass-a3), on-accent text `text-accent-fg`.
 - Radii come from Radix `radius="none"` (`--radius-factor` 0) — the brand's 0px
   mandate: every `rounded-sm…xl` resolves to 0, so don't add them to new code;
-  `rounded-full` is reserved for avatars. The radius vars
-  **only resolve inside `.radix-themes`** — overlays must portal into the theme
-  root (see below).
+  `rounded-full` is reserved for avatars. The radius vars **only resolve inside
+  `.radix-themes`** — overlays must portal into the theme root (see below).
 - Type: base 15px (`text-sm`); **Bricolage Grotesque** head to toe, wired through
   Radix's `--default-font-family`/`--heading-font-family`. ALL numeric data gets
   `num` — Bricolage has no tabular figures, so `.num` routes digits through the
