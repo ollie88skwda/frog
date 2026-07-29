@@ -1,4 +1,4 @@
-import type { Exercise } from "@sbl/core";
+import type { Exercise } from "@frog/core";
 import { useSyncExternalStore } from "react";
 import { registerUserScopedReset } from "./user-scoped-state";
 

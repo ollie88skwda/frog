@@ -1,4 +1,4 @@
-import { MUSCLE_REGION_LABELS, type MuscleRegion, regionOf } from "@sbl/core";
+import { MUSCLE_REGION_LABELS, type MuscleRegion, regionOf } from "@frog/core";
 import { useState } from "react";
 
 // Body heat map (Hevy-parity M8, plan §D) — a hand-authored front/back

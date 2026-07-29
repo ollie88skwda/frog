@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
-// SBL MCP server (stdio): lets an AI client query your training data through
-// the personal-access-token API. Config via env: SBL_TOKEN, SBL_API_URL.
+// Frog MCP server (stdio): lets an AI client query your training data through
+// the personal-access-token API. Config via env: FROG_TOKEN, FROG_API_URL.
+
+import { APP_NAME, conditionFindings, progressionFindings } from "@frog/core";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { APP_NAME, conditionFindings, progressionFindings } from "@sbl/core";
 import { z } from "zod";
 import { api, fetchExport, toFindingsInputs } from "./api";
 

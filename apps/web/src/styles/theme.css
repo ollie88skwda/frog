@@ -116,7 +116,7 @@
     0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
-/* Point Radix's own typography hooks at the SBL faces (Bricolage head to toe;
+/* Point Radix's own typography hooks at the Frog faces (Bricolage head to toe;
    numeric data stays mono via the `num` utility — Bricolage has no tnum). */
 .radix-themes {
   --default-font-family: var(--font-sans);

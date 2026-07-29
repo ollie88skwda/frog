@@ -3,7 +3,7 @@ import {
   type SetType,
   toDisplayWeight,
   unitLabel,
-} from "@sbl/core";
+} from "@frog/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Copy, ListPlus, Trash2 } from "lucide-react";
 import { useState } from "react";

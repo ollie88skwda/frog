@@ -1,4 +1,4 @@
-import type { MuscleByExercise } from "@sbl/core";
+import type { MuscleByExercise } from "@frog/core";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useExercises } from "./queries";

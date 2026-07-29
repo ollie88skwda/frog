@@ -1,4 +1,4 @@
-import type { Repo } from "@sbl/core";
+import type { Repo } from "@frog/core";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { voice } from "./voice";
 

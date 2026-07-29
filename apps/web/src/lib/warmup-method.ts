@@ -1,4 +1,4 @@
-import { DEFAULT_WARMUP_METHOD, type WarmupStep } from "@sbl/core";
+import { DEFAULT_WARMUP_METHOD, type WarmupStep } from "@frog/core";
 import { useCallback, useSyncExternalStore } from "react";
 
 // The user's warm-up ramp (percentage + reps per step) — a device-local pref

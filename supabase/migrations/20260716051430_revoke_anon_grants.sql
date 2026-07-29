@@ -9,7 +9,7 @@
 -- environment (verified 2026-07-15: anon could read seed rows on hosted while
 -- being denied locally).
 --
--- Nothing in SBL uses the anon role: the web client sends a Clerk token
+-- Nothing in Frog uses the anon role: the web client sends a Clerk token
 -- (role=authenticated) on every request, and the PAT API runs service-role.
 -- An unauthenticated request should fail closed on privileges rather than
 -- lean on every policy evaluating `owner_id = null` to false — that keeps a

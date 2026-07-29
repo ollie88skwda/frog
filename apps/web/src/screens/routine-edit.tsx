@@ -1,4 +1,3 @@
-import { Select } from "@radix-ui/themes";
 import {
   EXERCISE_TYPES,
   type Exercise,
@@ -17,8 +16,8 @@ import {
   toDisplayWeight,
   unitLabel,
   weightLabel,
-} from "@sbl/core";
-// Imported by exact subpath, not the "@sbl/core" barrel: a second, unrelated
+} from "@frog/core";
+// Imported by exact subpath, not the "@frog/core" barrel: a second, unrelated
 // matcher landed at packages/core/src/domain/match-exercise.ts (voice
 // logging) exporting the same names with a different shape, so the barrel
 // re-export is now ambiguous. This repo-wide dedupe is tracked separately
@@ -27,7 +26,8 @@ import {
 import {
   matchExerciseName,
   sameExerciseName,
-} from "@sbl/core/generator/match-exercise";
+} from "@frog/core/generator/match-exercise";
+import { Select } from "@radix-ui/themes";
 import {
   ArrowDown,
   ArrowUp,

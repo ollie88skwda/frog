@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 
 async function seedExercise(page: Page, name: string): Promise<string> {
   return page.evaluate(async (n) => {
-    const sb = window.__sbl.supabase;
+    const sb = window.__frog.supabase;
     const id = crypto.randomUUID();
     const t = Date.now();
     const { error } = await sb.from("exercises").insert({
@@ -41,7 +41,7 @@ async function seedSession(
 ) {
   await page.evaluate(
     async ({ exId, t, rows }) => {
-      const sb = window.__sbl.supabase;
+      const sb = window.__frog.supabase;
       const sessionId = crypto.randomUUID();
       const seId = crypto.randomUUID();
       const fail = (m: string | undefined) => {
@@ -119,7 +119,7 @@ test("monthly report: archive picker, totals, and the month's PRs", async ({
 
   await page.goto("/stats/monthly");
 
-  // The archive lists both seeded months (SBL keeps every completed month).
+  // The archive lists both seeded months (Frog keeps every completed month).
   await expect(page.getByTestId("monthly-picker")).toBeVisible();
   await expect(
     page.getByTestId(`monthly-month-${b.year}-${b.month}`),

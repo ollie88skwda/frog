@@ -12,7 +12,7 @@ import {
   newId,
   type Session,
   type TrackedCondition,
-} from "@sbl/core";
+} from "@frog/core";
 import {
   type QueryClient,
   useInfiniteQuery,

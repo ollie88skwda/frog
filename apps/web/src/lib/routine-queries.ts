@@ -3,7 +3,7 @@ import type {
   Routine,
   RoutineDetail,
   RoutineFolder,
-} from "@sbl/core";
+} from "@frog/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRepo } from "./repo";
 

@@ -19,7 +19,7 @@ if (!url || !anonKey || !serviceKey) {
 const admin = createClient(url, serviceKey, {
   auth: { persistSession: false },
 });
-const email = `e2e-${Date.now()}@sbl.test`;
+const email = `e2e-${Date.now()}@frog.test`;
 const password = "e2e-password-123";
 
 const { error } = await admin.auth.admin.createUser({

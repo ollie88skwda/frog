@@ -12,9 +12,15 @@ import { useVoice } from "@/lib/voice";
 
 const monthNameFmt = new Intl.DateTimeFormat(undefined, { month: "long" });
 
+// Dismissals written before the frog rebrand used a "sbl:" prefix; read those
+// too so a rename doesn't re-show a banner the user already waved off. Safe to
+// drop one release after 2026-07-28.
 function dismissed(key: string): boolean {
   try {
-    return localStorage.getItem(key) === "1";
+    return (
+      localStorage.getItem(key) === "1" ||
+      localStorage.getItem(key.replace(/^frog:/, "sbl:")) === "1"
+    );
   } catch {
     return false;
   }
@@ -30,8 +36,8 @@ export function ReportPromo() {
   const prevYear = prev.getFullYear();
   const prevMonth = prev.getMonth();
 
-  const monthlyKey = `sbl:promo:monthly:${prevYear}-${prevMonth}`;
-  const yearKey = `sbl:promo:year:${now.getFullYear()}`;
+  const monthlyKey = `frog:promo:monthly:${prevYear}-${prevMonth}`;
+  const yearKey = `frog:promo:year:${now.getFullYear()}`;
 
   const prevFrom = new Date(prevYear, prevMonth, 1).getTime();
   const prevTo = new Date(prevYear, prevMonth + 1, 1).getTime();

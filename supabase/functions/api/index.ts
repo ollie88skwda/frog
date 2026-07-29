@@ -1,5 +1,5 @@
 // Personal-access-token read API: GET /api/v1/{exercises|sessions|sets|export}
-// Auth: `Authorization: Bearer sbl_...` — sha256-matched against api_tokens.
+// Auth: `Authorization: Bearer frog_...` — sha256-matched against api_tokens.
 //
 // Isolation model: service-role client + explicit owner_id filter on every
 // query, all contained in this one file. (The JWT-minting variant — sign a
@@ -34,8 +34,8 @@ Deno.serve(async (req) => {
   if (req.method !== "GET") return json({ error: "this API is read-only" }, 405);
 
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (!token.startsWith("sbl_")) {
-    return json({ error: "missing bearer token (sbl_...)" }, 401);
+  if (!token.startsWith("frog_")) {
+    return json({ error: "missing bearer token (frog_...)" }, 401);
   }
   const hash = await sha256hex(token);
   const { data: tokenRow, error: tokenError } = await admin

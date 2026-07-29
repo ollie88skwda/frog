@@ -1,4 +1,4 @@
-import { type Measurement, type MeasurementPatch, newId } from "@sbl/core";
+import { type Measurement, type MeasurementPatch, newId } from "@frog/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRepo } from "./repo";
 

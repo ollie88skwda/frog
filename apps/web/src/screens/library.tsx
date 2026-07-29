@@ -1,4 +1,3 @@
-import { Select } from "@radix-ui/themes";
 import {
   EQUIPMENT_KINDS,
   EQUIPMENT_LABELS,
@@ -19,7 +18,8 @@ import {
   ratingsForMuscle,
   type Tier,
   tierRank,
-} from "@sbl/core";
+} from "@frog/core";
+import { Select } from "@radix-ui/themes";
 import {
   Archive,
   ArrowRight,

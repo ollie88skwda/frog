@@ -11,7 +11,7 @@ import {
   type RoutineExerciseInput,
   type SelectableExercise,
   tierRank,
-} from "@sbl/core";
+} from "@frog/core";
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useAllSessions } from "./profile-queries";

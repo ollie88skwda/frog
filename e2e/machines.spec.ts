@@ -63,7 +63,7 @@ test("machine from catalog: settings remembered into the session setup strip", a
   await expect
     .poll(async () =>
       page.evaluate(async (name) => {
-        const { data } = await window.__sbl.supabase
+        const { data } = await window.__frog.supabase
           .from("exercises")
           .select("machine_id")
           .eq("name", name)

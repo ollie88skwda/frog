@@ -31,7 +31,7 @@ invalid var. Add the scale import if you need another.
 
 ## MOBILE-FIRST — the primary target
 
-**SBL is used on phones, in gyms. Desktop is secondary.** Every screen, control,
+**Frog is used on phones, in gyms. Desktop is secondary.** Every screen, control,
 and layout is designed for a ~390px viewport FIRST, then adapted up.
 
 - Touch targets on interaction paths are ≥44px on mobile: Radix `size="3"` (or

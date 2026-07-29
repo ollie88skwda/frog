@@ -3,7 +3,7 @@
 // loads are instant and survive flaky networks, and it relays web-push +
 // local rest-timer notifications. Data always comes from the network.
 
-const CACHE = "sbl-shell-v1";
+const CACHE = "frog-shell-v1";
 
 self.addEventListener("install", (event) => {
   // Precache the entry document; hashed /assets/* are cached on first fetch.
@@ -72,7 +72,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      tag: data.tag || "sbl-push",
+      tag: data.tag || "frog-push",
     }),
   );
 });

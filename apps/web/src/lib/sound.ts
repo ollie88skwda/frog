@@ -60,7 +60,7 @@ export function alertRestDone(message: string): void {
     try {
       const reg = await swRegistration();
       if (reg) {
-        await reg.showNotification(message, { tag: "sbl-rest" });
+        await reg.showNotification(message, { tag: "frog-rest" });
       } else {
         new Notification(message);
       }

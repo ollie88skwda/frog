@@ -1,4 +1,3 @@
-import { Select } from "@radix-ui/themes";
 import {
   kgToLb,
   lbToKg,
@@ -6,7 +5,8 @@ import {
   type MeasurementPatch,
   toDisplayLength,
   unitLabel,
-} from "@sbl/core";
+} from "@frog/core";
+import { Select } from "@radix-ui/themes";
 import { Camera, Trash2 } from "lucide-react";
 
 // Radix Select forbids an empty-string value; the "None" comparison option

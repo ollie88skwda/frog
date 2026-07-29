@@ -2,7 +2,7 @@
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
 # working directory name when running `supabase init`.
-project_id = "sbl"
+project_id = "frog"
 
 [api]
 enabled = true
@@ -364,7 +364,7 @@ enabled = false
 # user_pool_region = "us-east-1"
 
 # Use Clerk as a third-party provider alongside Supabase Auth.
-# Clerk is SBL's identity provider. To finish setup: create the Clerk app,
+# Clerk is Frog's identity provider. To finish setup: create the Clerk app,
 # activate its Supabase integration (https://clerk.com/setup/supabase — adds
 # the `role: authenticated` claim), then set `enabled = true` + your Clerk
 # domain below and restart supabase. Until then, Clerk tokens are rejected

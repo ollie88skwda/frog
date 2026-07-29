@@ -5,7 +5,7 @@ import {
   type PrType,
   toDisplayDistance,
   unitLabel,
-} from "@sbl/core";
+} from "@frog/core";
 import { formatMMSS } from "./format";
 import type { DistanceUnit, Unit } from "./settings";
 

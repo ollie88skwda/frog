@@ -1,4 +1,4 @@
-import { PR_TYPE_LABELS, type PrType } from "@sbl/core";
+import { PR_TYPE_LABELS, type PrType } from "@frog/core";
 import { Medal, X } from "lucide-react";
 import { useEffect } from "react";
 import { useVoice } from "@/lib/voice";

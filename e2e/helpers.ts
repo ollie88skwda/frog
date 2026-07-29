@@ -5,16 +5,16 @@ export const PASSWORD = process.env.E2E_PASSWORD ?? "";
 
 declare global {
   interface Window {
-    __sbl: { supabase: import("@supabase/supabase-js").SupabaseClient };
+    __frog: { supabase: import("@supabase/supabase-js").SupabaseClient };
   }
 }
 
 export async function signIn(page: Page) {
   await page.goto("/auth");
-  await page.waitForFunction(() => window.__sbl !== undefined);
+  await page.waitForFunction(() => window.__frog !== undefined);
   await page.evaluate(
     async ({ email, password }) => {
-      const { error } = await window.__sbl.supabase.auth.signInWithPassword({
+      const { error } = await window.__frog.supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -32,7 +32,7 @@ export async function waitForExercise(page: Page, name: string) {
   await expect
     .poll(() =>
       page.evaluate(async (n) => {
-        const { count, error } = await window.__sbl.supabase
+        const { count, error } = await window.__frog.supabase
           .from("exercises")
           .select("id", { count: "exact", head: true })
           .eq("name", n);
@@ -49,7 +49,7 @@ export async function waitForSessionNotes(page: Page, notes: string) {
   await expect
     .poll(() =>
       page.evaluate(async (n) => {
-        const { count, error } = await window.__sbl.supabase
+        const { count, error } = await window.__frog.supabase
           .from("sessions")
           .select("id", { count: "exact", head: true })
           .eq("notes", n);
@@ -66,7 +66,7 @@ export async function waitForConditionUntracked(page: Page, metricId: string) {
   await expect
     .poll(() =>
       page.evaluate(async (id) => {
-        const { count, error } = await window.__sbl.supabase
+        const { count, error } = await window.__frog.supabase
           .from("tracked_conditions")
           .select("id", { count: "exact", head: true })
           .eq("metric_id", id)
@@ -82,7 +82,7 @@ export async function waitForConditionUntracked(page: Page, metricId: string) {
  * plain `rowCount` never drops after one. */
 export async function liveRowCount(page: Page, table: string): Promise<number> {
   return page.evaluate(async (t) => {
-    const { count, error } = await window.__sbl.supabase
+    const { count, error } = await window.__frog.supabase
       .from(t)
       .select("id", { count: "exact", head: true })
       .is("deleted_at", null);
@@ -93,7 +93,7 @@ export async function liveRowCount(page: Page, table: string): Promise<number> {
 
 export async function rowCount(page: Page, table: string): Promise<number> {
   return page.evaluate(async (t) => {
-    const { count, error } = await window.__sbl.supabase
+    const { count, error } = await window.__frog.supabase
       .from(t)
       .select("id", { count: "exact", head: true });
     if (error) throw new Error(error.message);

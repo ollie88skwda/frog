@@ -1,29 +1,29 @@
-# SBL ← Hevy feature parity — implementation plan
+# Frog ← Hevy feature parity — implementation plan
 
 ## Context
 
-SBL currently nails its niche (logging + conditions + findings) but is missing most of what a full workout tracker offers. Oliver asked to clone the **Hevy mobile app** feature-for-feature into SBL so he can start from a feature-rich baseline and prune later.
+Frog currently nails its niche (logging + conditions + findings) but is missing most of what a full workout tracker offers. Oliver asked to clone the **Hevy mobile app** feature-for-feature into Frog so he can start from a feature-rich baseline and prune later.
 
 Research performed (this session): 48 Hevy feature articles + 86 help-center docs + 15 legacy help pages + App Store/Play/pricing pages read by a 22-agent workflow → synthesized into a build-ready master spec (14 screen groups, 24 global behavior rules, Pro matrix, integrations), completeness-audited at ~90–95 % of Hevy's own taxonomy. A logged-in web-app walk was prepared but deferred (plan-mode); it runs at implementation start for pixel-level reference.
 
-**We clone functionality, never assets/copy** — everything is built in SBL's own design language (blue monochrome #034078, 0px radius, 8px grid, Bricolage Grotesque, dense mobile-first). No Hevy images, icons, prose, or exercise media.
+**We clone functionality, never assets/copy** — everything is built in Frog's own design language (blue monochrome #034078, 0px radius, 8px grid, Bricolage Grotesque, dense mobile-first). No Hevy images, icons, prose, or exercise media.
 
 ### Source documents (implementation step 0 copies these into `docs/hevy-parity/`)
 - Master Hevy spec (JSON): `/private/tmp/claude-502/-Users-Ollie-Documents-Code-sbl/5074eb6e-0488-4551-976f-65fcaa4042c3/tasks/wxf6t3g6d.output` (`result.master`)
-- SBL inventory: `.../scratchpad/hevy/sbl-inventory.md` · Scope context: `.../scratchpad/hevy/plan-context.md`
+- Frog inventory: `.../scratchpad/hevy/sbl-inventory.md` · Scope context: `.../scratchpad/hevy/plan-context.md`
 - Logged-in Hevy session for the reference walk: `.../scratchpad/hevy/state.json` (⚠ single-use rotating refresh token — ONE browser context at a time, sequential only)
 
 ### Locked scope decisions (Oliver, this session)
 1. **No social.** No follows/feed/likes/comments/discover/leaderboards/strength-level cohorts/user search/Coach/HevyGPT. Keep single-user reinterpretations: own profile/stats, share-as-image (client-rendered PNG, no links/hosting).
-2. **Trainer = rule-based generator** (deterministic, built on SBL's muscle-tier science). No LLM.
+2. **Trainer = rule-based generator** (deterministic, built on Frog's muscle-tier science). No LLM.
 3. **Platform extras → web equivalents**: PWA install, web-push/SW notifications (rest timer, PR), screen wake-lock. Watch/widgets/Live Activity/Apple Health/Strava → `docs/backlog-mobile.md` only.
 4. **No paywall** — every Hevy Pro gate ships ungated (unlimited routines/customs, full history ranges, all measurements).
-5. **SBL uniques untouched**: conditions + findings engine, tier science, machines, PAT API/MCP, export/importers.
+5. **Frog uniques untouched**: conditions + findings engine, tier science, machines, PAT API/MCP, export/importers.
 6. Nav: keep today's **3-tab decision** (Home / Training / Profile — DECISIONS.md 2026-07-14); everything maps onto it.
 
 ---
 
-## A. Gap matrix (Hevy → SBL)
+## A. Gap matrix (Hevy → Frog)
 
 ✅ exists · 🟡 partial · ❌ missing
 
@@ -33,7 +33,7 @@ Research performed (this session): 48 Hevy feature articles + 86 help-center doc
 | Routine folders (+share-as-image) | ❌ | `routine_folders`; PNG share |
 | Routine builder (targets, rep ranges, set types, rest, notes, supersets) | ❌ | `/routines/:id/edit`, reuses `exercise-filter.tsx` |
 | Start Empty Workout | ✅ | `useStartSession` |
-| Explore program library | ❌ | SBL-authored static catalog (12 programs v1), import → user routines |
+| Explore program library | ❌ | Frog-authored static catalog (12 programs v1), import → user routines |
 | Trainer (questionnaire→program, overload rule, exclusions, progress report) | ❌ | `packages/core/src/generator/` + `programs` table |
 | Live logging, optimistic, ghost prefill | ✅ | `session.tsx` |
 | Set types (Normal/Warmup/Failure/Drop) | ❌ | `set_type` on `set_logs` + `routine_sets` |
@@ -62,7 +62,7 @@ Research performed (this session): 48 Hevy feature articles + 86 help-center doc
 | Calendar (month/year/all-time, retro-log, first-weekday) | ❌ | `/calendar` |
 | Weekly streak + rest-day counter + backdate repair | ❌ | `domain/streak.ts` (computed) |
 | Statistics hub (7-day body map, sets/muscle, distribution vs prior period, main exercises) | ❌ | `/stats` + `stats/aggregate.ts` + body heat-map SVG |
-| Monthly report / Year in Review | ❌ | report builders + screens (SBL keeps archive — improvement) |
+| Monthly report / Year in Review | ❌ | report builders + screens (Frog keeps archive — improvement) |
 | Measures (weight/bodyfat/14 girths, 1/day) + progress photos (private, compare) | ❌ | `measurements` table + `/measures` + private bucket |
 | Settings: units(3 kinds), workouts hub(12), first weekday, sounds, notifications | 🟡 | expand settings + `user_prefs` |
 | Warm-ups-in-stats toggle w/ retroactive recompute | ❌ | pref + cache invalidation (recompute free — client-computed) |
@@ -97,7 +97,7 @@ House convention throughout: uuid client id, bigint-ms timestamps, soft delete, 
 
 **Records: computed, not stored.** `records/` engine computes PR taxonomy + timeline + set-records client-side from a `recordsData()` repo fetch (mirrors `findingsData()` pattern), TanStack-cached. Retroactive edits/imports/warm-up-toggle become cache invalidations — no server recompute subsystem. Live PR banner reads a cached bests snapshot at session mount (no network on logging path). Repo seam keeps a stored fallback open if profiling demands.
 
-**Volume math deviation (record in DECISIONS.md)**: volume follows `exerciseType` uniformly for ALL exercises including customs (Hevy excludes customs from bodyweight math — artifact of their flags; SBL is consistent). No bodyweight logged ⇒ bodyweight volume skipped.
+**Volume math deviation (record in DECISIONS.md)**: volume follows `exerciseType` uniformly for ALL exercises including customs (Hevy excludes customs from bodyweight math — artifact of their flags; Frog is consistent). No bodyweight logged ⇒ bodyweight volume skipped.
 
 ---
 
@@ -129,13 +129,13 @@ Extended: `session-reducer.ts` (set types, duration/distance drafts, superset or
 | `/` Home | + streak/rest-day card, week mini heat map, monthly-report promo (dismissible), Dec year-review banner |
 | `/train` | rebuild → routines home: empty-workout, resume, folders (drag reorder), routine cards (Start + edit/duplicate/move/share-PNG/delete-confirm), Programs + Trainer links |
 | `/routines/new`, `/routines/:id/edit` | builder: multi-select picker, per-set targets (weight, reps ⇄ rep-range, time/distance), set types, per-exercise rest + note, supersets, reorder/replace/remove, folder |
-| `/programs`, `/programs/:key` | 12 SBL-authored programs (static lazy catalog `packages/core/src/data/program-catalog.ts`, 4 per level across gym/dumbbell/bodyweight); Save → folder of routines |
+| `/programs`, `/programs/:key` | 12 Frog-authored programs (static lazy catalog `packages/core/src/data/program-catalog.ts`, 4 per level across gym/dumbbell/bodyweight); Save → folder of routines |
 | `/trainer` | questionnaire → generated program; next-workout card; modify (4 tier-ranked alternatives, exclude, reorder); settings; progress report (consistency, volume/sets, per-exercise flags, distribution + recommended band, bodyweight trend) |
 | `/session/:id` | set-type cell menu; PREVIOUS column + tap-fill; per-type columns + inline duration stopwatch; superset color bars + smart scroll; rest countdown chip (±15s/sound/notification); plate-calc sheet (barbell-class); warm-up insert; per-exercise note + carry-forward; live PR banner; pause; name-tap → exercise detail; draft keystrokes → localStorage |
 | `/session/:id/finish` | new overlay: totals; title/notes/date/duration; photos ≤3 (reorder/remove); Update-Routine-Values toggle (rep-range sets never auto-updated) + structural-diff prompt; Discard; Save → summary |
 | post-save summary | overlay on `/history/:id?summary=1`: ordinal, streak (first-of-week), slides (PRs, consistency, overview, exercises + mini heat map), share per slide |
 | `components/share-card.tsx` | canvas → PNG (light/dark/transparent), `navigator.share` + download fallback; used everywhere share appears |
-| `/exercises/:id` | Summary (metric-chip line chart per type, 3m/1y/all; records w/ deep links; set-records table) · History (per-session breakdowns) · How-to (frames + steps + SBL tier/science block) |
+| `/exercises/:id` | Summary (metric-chip line chart per type, 3m/1y/all; records w/ deep links; set-records table) · History (per-session breakdowns) · How-to (frames + steps + Frog tier/science block) |
 | `/profile` | fill stub: name, counts, streak, media strip, 3-month activity bars, dashboard buttons (Exercises/Stats/Measures/Calendar), recent history, gear |
 | `/history/:id` | full retroactive edit (session components in edit mode), Copy Workout, Save as Routine, share, media |
 | `/calendar` | month grid (0px squares), tap-through, retro-log + multi-workout "+", year/all-time zooms, streak header, share |

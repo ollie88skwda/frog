@@ -1,4 +1,4 @@
-# SBL schema reference
+# Frog schema reference
 
 Stable, documented data model — the contract behind the export, the read
 API, and the MCP server. DDL source of truth: `packages/core/src/db/schema.ts`

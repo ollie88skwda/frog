@@ -41,7 +41,7 @@ test("first day of week persists to user_prefs", async ({ page }) => {
   await expect
     .poll(() =>
       page.evaluate(async () => {
-        const { data } = await window.__sbl.supabase
+        const { data } = await window.__frog.supabase
           .from("user_prefs")
           .select("first_weekday")
           .maybeSingle();

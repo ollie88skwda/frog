@@ -1,4 +1,4 @@
-import { type GeneratedProgram, generateProgram } from "@sbl/core";
+import { type GeneratedProgram, generateProgram } from "@frog/core";
 import { ArrowLeft, Dumbbell } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";

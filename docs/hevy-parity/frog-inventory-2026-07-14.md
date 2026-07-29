@@ -1,6 +1,6 @@
-# SBL — Current Feature Inventory (as of 2026-07-14, main + uncommitted working tree)
+# Frog — Current Feature Inventory (as of 2026-07-14, main + uncommitted working tree)
 
-SBL = training lab notebook: log work + surrounding conditions (sleep, carbs, stress), surface correlations ("Findings"). Web-first Vite React SPA + Supabase-direct, online-first.
+Frog = training lab notebook: log work + surrounding conditions (sleep, carbs, stress), surface correlations ("Findings"). Web-first Vite React SPA + Supabase-direct, online-first.
 
 ## Routes / Screens
 Router: `apps/web/src/app.tsx` (react-router v7; lazy routes except Train; `RequireAuth` → `AppShell`). Shell: `apps/web/src/components/app-shell.tsx` (desktop sidebar + mobile bottom tabs, theme toggle, ⌘K).
@@ -63,7 +63,7 @@ kg/lb (device-local, default lb; storage kg), dark/light theme, JSON/CSV export,
 - TanStack Query: one hook per op in `apps/web/src/lib/queries.ts`; optimistic = onMutate snapshot/setQueryData + onError rollback + onSettled invalidate. Existing keys: exercises, machines, session, session-exercises, active-session, sessions(infinite), findings-data, ghost, metrics, tracked-conditions, exercise-favorites, api-tokens.
 - ≤220kB gzip initial JS (CI-gated); mobile-first ≥40px targets; lazy non-critical routes; `packages/core` framework-free.
 - `docs/DECISIONS.md` append same-commit; `docs/schema.md`; e2e Playwright suites in `e2e/` against vite preview + local Supabase.
-- "SBL" name via `packages/core/src/config.ts` only.
+- "Frog" name via `packages/core/src/config.ts` only.
 
-## SBL uniques to preserve
+## Frog uniques to preserve
 Conditions + findings correlation engine, muscle-tier science + citations, machines system, PAT API + MCP + open export, effort-aware e1RM, importers.

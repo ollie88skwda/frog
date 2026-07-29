@@ -6,7 +6,7 @@ import {
   toDisplayWeight,
   unitLabel,
   weekStart,
-} from "@sbl/core";
+} from "@frog/core";
 import { Flame, Medal, Trophy, X } from "lucide-react";
 import {
   type ReactElement,

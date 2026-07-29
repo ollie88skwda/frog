@@ -1,4 +1,4 @@
-import type { SessionMediaRow } from "@sbl/core";
+import type { SessionMediaRow } from "@frog/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRepo } from "./repo";
 

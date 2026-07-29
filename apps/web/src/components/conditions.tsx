@@ -1,11 +1,11 @@
-import { Switch } from "@radix-ui/themes";
 import {
   DEFAULT_TRACKED_CONDITIONS,
   isConditionTracked,
   type Metric,
   type MetricType,
   SEED_CONDITIONS,
-} from "@sbl/core";
+} from "@frog/core";
+import { Switch } from "@radix-ui/themes";
 import { ClipboardList, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";

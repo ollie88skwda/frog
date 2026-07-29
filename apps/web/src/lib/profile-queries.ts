@@ -1,4 +1,4 @@
-import type { Session, UserPrefs, UserPrefsPatch } from "@sbl/core";
+import type { Session, UserPrefs, UserPrefsPatch } from "@frog/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRepo } from "./repo";
 

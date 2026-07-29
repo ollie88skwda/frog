@@ -5,7 +5,7 @@ import { EMAIL, PASSWORD, signIn } from "./helpers";
 // lights the streak; an empty past day retro-logs a backdated session and opens
 // the live editor; changing the first-day-of-week shifts the grid's start.
 
-// Local YYYY-MM-DD (mirrors @sbl/core localDateKey; Node + the browser share
+// Local YYYY-MM-DD (mirrors @frog/core localDateKey; Node + the browser share
 // this machine's timezone, so keys line up on both sides).
 function localKey(d: Date): string {
   const y = d.getFullYear();
@@ -19,7 +19,7 @@ function localKey(d: Date): string {
 // known calendar state without walking the logging UI.
 async function seedSession(page: Page, atMs: number) {
   await page.evaluate(async (t) => {
-    const sb = window.__sbl.supabase;
+    const sb = window.__frog.supabase;
     const { error } = await sb.from("sessions").insert({
       id: crypto.randomUUID(),
       created_at: t,
@@ -34,7 +34,7 @@ async function seedSession(page: Page, atMs: number) {
 function sessionsOnDay(page: Page, startMs: number, endMs: number) {
   return page.evaluate(
     async ({ s, e }) => {
-      const { count, error } = await window.__sbl.supabase
+      const { count, error } = await window.__frog.supabase
         .from("sessions")
         .select("id", { count: "exact", head: true })
         .gte("started_at", s)

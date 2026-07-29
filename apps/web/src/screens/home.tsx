@@ -1,4 +1,4 @@
-import { sevenDayMuscleSets } from "@sbl/core";
+import { sevenDayMuscleSets } from "@frog/core";
 import { BarChart3, LibraryBig, Play, Users } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router";

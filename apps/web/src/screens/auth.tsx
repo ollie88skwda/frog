@@ -1,5 +1,5 @@
 import { SignIn } from "@clerk/react";
-import { APP_NAME } from "@sbl/core";
+import { APP_NAME } from "@frog/core";
 import { Navigate } from "react-router";
 import { FrogMark } from "@/components/frog-mark";
 import { useSignedIn } from "@/lib/auth";

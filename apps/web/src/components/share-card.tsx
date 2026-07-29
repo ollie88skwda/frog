@@ -1,4 +1,4 @@
-import { APP_NAME } from "@sbl/core";
+import { APP_NAME } from "@frog/core";
 import { Download, Share2 } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";

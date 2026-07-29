@@ -1,4 +1,4 @@
-import type { MuscleByExercise, RecordsSessionInput } from "@sbl/core";
+import type { MuscleByExercise, RecordsSessionInput } from "@frog/core";
 import { useMemo } from "react";
 import { useMeasurements } from "./measure-queries";
 import { useUserPrefs } from "./profile-queries";
@@ -6,7 +6,7 @@ import { useExercises } from "./queries";
 import { useRecordsData } from "./records-queries";
 
 // Shared data seam for the Monthly report + Year in Review screens (M10). The
-// report builders in @sbl/core take (history, muscles, …); everything they need
+// report builders in @frog/core take (history, muscles, …); everything they need
 // is already cached elsewhere — the records-data history (recordsData), the
 // exercise list (for the muscle map + exercise names), user prefs (first
 // weekday + warm-up inclusion), and the latest bodyweight (for bodyweight-

@@ -1,6 +1,6 @@
 # Mobile-phase backlog (deferred from Hevy parity, 2026-07-14)
 
-Items from the Hevy-parity plan that cannot or should not exist in the v1 web SPA. They activate when SBL's mobile phase starts (the `Repo` seam in `packages/core` is the intended slot for a local store + native shell). Source spec: `docs/hevy-parity/hevy-master-spec.json` → "Platform extras" + integrations.
+Items from the Hevy-parity plan that cannot or should not exist in the v1 web SPA. They activate when Frog's mobile phase starts (the `Repo` seam in `packages/core` is the intended slot for a local store + native shell). Source spec: `docs/hevy-parity/hevy-master-spec.json` → "Platform extras" + integrations.
 
 ## Native companions
 - **Watch apps** (watchOS / Wear OS): run routines from the wrist, log sets, set types, duration timers, HR capture (avg HR + HR graph + calories enrichment on saved sessions), complications/tile, two-way live sync with phone.

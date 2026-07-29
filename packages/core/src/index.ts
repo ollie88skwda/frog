@@ -27,7 +27,7 @@ export * from "./generator/generate";
 // separately) already exports the same names (MatchCandidate,
 // matchExerciseName, normalizeExerciseName) with a different shape, and the
 // barrel can't disambiguate two same-named exports. Import this module by
-// its exact subpath ("@sbl/core/generator/match-exercise") instead — see the
+// its exact subpath ("@frog/core/generator/match-exercise") instead — see the
 // AGENTS.md "Freeform-text → structured-data matching" note for the pending
 // dedupe between the two.
 export * from "./generator/overload";

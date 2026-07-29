@@ -6,7 +6,7 @@ import {
   monthlyReport,
   PR_TYPE_LABELS,
   reportableMonths,
-} from "@sbl/core";
+} from "@frog/core";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -95,7 +95,7 @@ export default function MonthlyReportScreen() {
         </p>
       ) : (
         <>
-          {/* Month archive picker — SBL keeps every completed month (Hevy shows
+          {/* Month archive picker — Frog keeps every completed month (Hevy shows
               only the latest). Newest first. */}
           <div
             className="mt-4 flex gap-1 overflow-x-auto pb-1"

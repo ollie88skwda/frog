@@ -1,5 +1,5 @@
-import type { Repo } from "@sbl/core";
-import { SupabaseRepo } from "@sbl/core/repo/supabase";
+import type { Repo } from "@frog/core";
+import { SupabaseRepo } from "@frog/core/repo/supabase";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
 import { getClerkUserId } from "./auth-token";
 import { e2eBridge } from "./e2e-bridge";

@@ -7,7 +7,7 @@ import type { ButtonHTMLAttributes } from "react";
 type Variant = "primary" | "outline" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg" | "icon";
 
-// SBL variant -> Radix Themes (variant, color).
+// Frog variant -> Radix Themes (variant, color).
 //
 // `ghost` deliberately maps to Radix `soft`, NOT Radix `ghost`: soft keeps a
 // resting background, which is exactly what the no-bare-text-buttons rule

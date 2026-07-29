@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
   // Independent of other program specs: clear any active program so the
   // Trainer shows the questionnaire.
   await page.evaluate(async () => {
-    await window.__sbl.supabase
+    await window.__frog.supabase
       .from("programs")
       .update({ active: false })
       .eq("active", true);
@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 
 async function activeGeneratedPrograms(page: Page): Promise<number> {
   return page.evaluate(async () => {
-    const { count } = await window.__sbl.supabase
+    const { count } = await window.__frog.supabase
       .from("programs")
       .select("id", { count: "exact", head: true })
       .eq("source", "generated")
@@ -64,7 +64,7 @@ test("questionnaire generates a program and starts the next workout prefilled", 
 
   // The session carries routine provenance and at least one exercise block.
   const blocks = await page.evaluate(async () => {
-    const s = window.__sbl.supabase;
+    const s = window.__frog.supabase;
     const sess = await s
       .from("sessions")
       .select("id, routine_id")
