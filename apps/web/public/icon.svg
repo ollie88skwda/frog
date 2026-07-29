@@ -12,8 +12,13 @@
     scripts/gen-pwa-icons.ts does. Keeping the viewBox origin at 0 0
     matters: it is what makes the transform-origin below unambiguous.
 
-    Ink #101211 (neutral sage dark) and grass #46A758 are the brand palette (the
-    accent token in theme.css), not the supplied art's navy/green.
+    Palette is the brand's, not the supplied art's navy/green: grass #46A758 (the
+    accent token in theme.css) on the lab-ink ground #101211, the same value the
+    manifest already uses for background_color/theme_color. On that dark ground
+    the line work has to invert too — it is sage #ECEEED, and the eye glints go
+    dark — otherwise the outline, feet and ground bar vanish and the frog reads
+    as a floating blob. Ground and line work move together; changing one alone
+    breaks the mark. The matching constant is GROUND in scripts/gen-pwa-icons.ts.
   -->
   <style>
     /*
@@ -39,13 +44,13 @@
       .fine { display: none }
     }
   </style>
-  <rect id="ground" width="699" height="699" fill="#ffffff" />
+  <rect id="ground" width="699" height="699" fill="#101211" />
   <g class="art">
     <g id="pad" transform="translate(61.5 170.5)">
       <g
         class="frog"
         fill="#46A758"
-        stroke="#101211"
+        stroke="#ECEEED"
         stroke-width="27"
         stroke-linecap="round"
         stroke-linejoin="round"
@@ -72,13 +77,13 @@
         <path class="mouth" fill="none" stroke-width="18" d="M183 164h210" />
         <path fill="none" d="M15 344h546" />
       </g>
-      <g fill="#101211">
+      <g fill="#ECEEED">
         <circle class="eye" cx="196" cy="77" r="27" />
         <circle class="eye" cx="380" cy="77" r="27" />
         <circle class="fine" cx="264" cy="95.5" r="8" />
         <circle class="fine" cx="312" cy="95.5" r="8" />
       </g>
-      <g class="fine" fill="#ffffff">
+      <g class="fine" fill="#101211">
         <circle cx="185" cy="61.5" r="6" />
         <circle cx="369" cy="61.5" r="6" />
       </g>

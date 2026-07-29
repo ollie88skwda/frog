@@ -8,7 +8,11 @@
 import { readFileSync } from "node:fs";
 import { chromium } from "playwright";
 
-const GROUND = "#ffffff"; // the mark ships on white; see the brand doc
+// Must match the #ground fill in icon.svg. The tile ships on lab ink, the same
+// value the manifest uses for background_color/theme_color, so it does not
+// clash inside the dark app shell. Flipping this alone is not enough — on a
+// dark ground the line work in icon.svg has to invert too. See the brand doc.
+const GROUND = "#101211";
 
 // icon.svg states the mark in its own coordinates: a 573 x 357 silhouette
 // centred on (288, 179). Padding is therefore one number — the square viewBox
