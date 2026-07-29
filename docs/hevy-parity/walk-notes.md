@@ -1,6 +1,6 @@
 # Hevy web-app walk notes (feature-parity reference)
 
-Read-only walk of the signed-in Hevy **web** app (`hevy.com`), account `ollie88skwda`, 2026-07-14. Captured with headless Chromium at 1440×900. Purpose: inventory the web UI for an Frog parity build and flag where the **web** app differs from the mobile taxonomy in `docs/hevy-parity/hevy-master-spec.json` (which describes the iOS/Android app).
+Read-only walk of the signed-in Hevy **web** app (`hevy.com`), account `ollie88skwda`, 2026-07-14. Captured with headless Chromium at 1440×900. Purpose: inventory the web UI for a Frog parity build and flag where the **web** app differs from the mobile taxonomy in `docs/hevy-parity/hevy-master-spec.json` (which describes the iOS/Android app).
 
 Screenshots referenced below live under
 `/private/tmp/claude-502/-Users-Ollie-Documents-Code-sbl/5074eb6e-0488-4551-976f-65fcaa4042c3/scratchpad/hevy/shots/`

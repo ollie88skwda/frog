@@ -1,6 +1,6 @@
 // Generates a Supabase seed migration from the public-domain free-exercise-db
 // (github.com/yuhonas/free-exercise-db, Unlicense — see
-// docs/hevy-parity/free-exercise-db-license.md). Maps each exercise to an Frog
+// docs/hevy-parity/free-exercise-db-license.md). Maps each exercise to a Frog
 // seed row (owner_id null, is_custom false) and prints the SQL to stdout:
 //
 //   bun scripts/import-free-exercise-db.ts > supabase/migrations/<ts>_seed_free_exercise_db.sql
