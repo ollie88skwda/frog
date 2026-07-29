@@ -117,21 +117,25 @@ const windows = await page.evaluate(
       document.getElementById("body") as unknown as SVGPathElement,
     );
 
-    // Farthest painted point from a candidate centre: walk every outline and
-    // add that element's own stroke outset. Drives the maskable safe circle.
-    const radius = (cx: number, cy: number) => {
-      let max = 0;
-      for (const el of shapes) {
-        const len = el.getTotalLength();
-        const o = outset(el);
-        const n = Math.max(64, Math.ceil(len / 2));
-        for (let i = 0; i <= n; i++) {
-          const p = el.getPointAtLength((len * i) / n);
-          max = Math.max(max, Math.hypot(p.x - cx, p.y - cy) + o);
-        }
-      }
-      return max;
-    };
+    // Every outline walked once, each point carrying its own element's stroke
+    // outset — the points don't depend on the candidate centre, only the
+    // distance to it does, and the ternary search below asks for ~100 centres.
+    const samples = shapes.flatMap((el) => {
+      const len = el.getTotalLength();
+      const o = outset(el);
+      const n = Math.max(64, Math.ceil(len / 2));
+      return Array.from({ length: n + 1 }, (_, i) => {
+        const p = el.getPointAtLength((len * i) / n);
+        return { x: p.x, y: p.y, o };
+      });
+    });
+    // Farthest painted point from a candidate centre. Drives the maskable safe
+    // circle, so the sampling above is load-bearing on the shipped raster.
+    const radius = (cx: number, cy: number) =>
+      samples.reduce(
+        (max, s) => Math.max(max, Math.hypot(s.x - cx, s.y - cy) + s.o),
+        0,
+      );
 
     const tileSide = body.w / cut.bodyFill;
     const tile = {
@@ -159,10 +163,41 @@ const windows = await page.evaluate(
       tx: maskSide / 2 - cx,
       ty: maskSide / 2 - cy,
     };
-    return { tile, maskable, markH: bottom - top };
+    return {
+      tile,
+      maskable,
+      markH: bottom - top,
+      // The body's own edges inside the tile window, for the crop assert.
+      bodyTop: body.y + tile.ty,
+      bodyBottom: body.y + body.h + tile.ty,
+    };
   },
   { cut: CUT, maskBias: MASK_BIAS, safeR: SAFE_R },
 );
+
+// The cut is allowed to crop the haunches, feet and ground bar — that bleed is
+// the point — but never the head + body. Horizontally that holds by
+// construction (the window's side *is* body.w / bodyFill); vertically nothing
+// enforces it, so check it: a redraw that makes the silhouette taller relative
+// to the body's width would otherwise slice the head off every tile, and the
+// drift assert below would still pass, since it only compares the authored
+// framing to the derived one.
+const cropped = (
+  [
+    ["top", -windows.bodyTop],
+    ["bottom", windows.bodyBottom - windows.tile.side],
+  ] as const
+).filter(([, over]) => over > 0);
+if (cropped.length) {
+  throw new Error(
+    "the icon cut would crop the body, the one part it may never crop:\n" +
+      cropped
+        .map(([edge, over]) => `  ${over.toFixed(1)} units off the ${edge}`)
+        .join("\n") +
+      `\n  (body spans ${windows.bodyTop.toFixed(1)}..${windows.bodyBottom.toFixed(1)}` +
+      ` in a ${windows.tile.side.toFixed(1)}-unit window)`,
+  );
+}
 
 // icon.svg frames itself on the same cut, so the favicon and the manifest's SVG
 // icon read like the PNG tiles rather than like the old floating mark. Those
