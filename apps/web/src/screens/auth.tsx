@@ -1,6 +1,7 @@
 import { SignIn } from "@clerk/react";
 import { APP_NAME } from "@sbl/core";
 import { Navigate } from "react-router";
+import { FrogMark } from "@/components/frog-mark";
 import { useSignedIn } from "@/lib/auth";
 import { e2eBridge } from "@/lib/e2e-bridge";
 import { useVoice } from "@/lib/voice";
@@ -18,28 +19,8 @@ function ClerkAuthScreen() {
     <div className="flex min-h-dvh items-center justify-center bg-bg px-4 py-8">
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-3">
-          {/* Frog-eye brand mark — the abstract mark (quiet chrome), never
-              the expressive mascot; a circle is the brand's one radius. */}
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            aria-hidden="true"
-            className="size-8 shrink-0 text-ink"
-          >
-            <circle
-              cx="12"
-              cy="12"
-              r="8.5"
-              stroke="currentColor"
-              strokeWidth={1.75}
-            />
-            <path
-              d="M5 9.5q7-4 14 0"
-              stroke="currentColor"
-              strokeWidth={1.75}
-            />
-            <circle cx="12" cy="12.5" r="2.4" fill="var(--accent)" />
-          </svg>
+          {/* Frog mark — quiet chrome, never the expressive mascot. */}
+          <FrogMark className="size-8 text-ink" />
           <div className="flex flex-col items-center gap-1">
             <h1 className="text-lg font-semibold tracking-tight">
               Sign in to {APP_NAME}

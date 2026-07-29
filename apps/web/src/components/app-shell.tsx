@@ -2,6 +2,7 @@ import { APP_NAME } from "@sbl/core";
 import { Dumbbell, Home, Moon, Sun, User } from "lucide-react";
 import { lazy, Suspense, useMemo } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { FrogMark } from "@/components/frog-mark";
 import { useHotkeys } from "@/lib/hotkeys";
 import { useActiveSession } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
@@ -69,28 +70,8 @@ export function AppShell() {
       <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-surface max-md:hidden">
         <div className="flex h-12 items-center justify-between px-3">
           <span className="flex min-w-0 items-center gap-2">
-            {/* Frog-eye brand mark — the abstract mark (quiet chrome), never
-                the expressive mascot; a circle is the brand's one radius. */}
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              aria-hidden="true"
-              className="size-5 shrink-0 text-ink"
-            >
-              <circle
-                cx="12"
-                cy="12"
-                r="8.5"
-                stroke="currentColor"
-                strokeWidth={STROKE}
-              />
-              <path
-                d="M5 9.5q7-4 14 0"
-                stroke="currentColor"
-                strokeWidth={STROKE}
-              />
-              <circle cx="12" cy="12.5" r="2.4" fill="var(--accent)" />
-            </svg>
+            {/* Frog mark — quiet chrome, never the expressive mascot. */}
+            <FrogMark className="size-5 text-ink" />
             <span className="truncate text-sm font-medium">{APP_NAME}</span>
           </span>
           <button

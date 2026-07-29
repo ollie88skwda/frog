@@ -432,6 +432,75 @@
         <p class="note">The <em>statistic</em> is sober. The <em>sentence around it</em> is the frog. Never the other way round.</p>
       </div>
     </div>
+
+    <h3 class="sec-title" style="font-size:19px;margin:34px 0 6px">The mark</h3>
+    <p class="note" style="margin:0 0 16px">A literal frog, seen head-on, sitting on a ground line: rounded body, two eye humps, two dot eyes, two nostrils, a flat mouth, two front feet, two haunches. Hand-authored vector — <code>apps/web/public/icon.svg</code> is the single source, and every PNG is a render of it (<code>bun scripts/gen-pwa-icons.ts</code>). Never trace or embed a raster.</p>
+
+    <div class="logos">
+      <div class="logo-card rec">
+        <div class="logo-stage">
+          <svg class="big-mark" width="120" height="120" viewBox="0 0 699 699" aria-label="Frog app tile">
+            <rect width="699" height="699" fill="#101211"/>
+            <g transform="translate(61.5 170.5)">
+              <g fill="#46A758" stroke="#ECEEED" stroke-width="27" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="62" cy="282" rx="33.5" ry="55"/><ellipse cx="514" cy="282" rx="33.5" ry="55"/>
+                <path d="M104.8 344A258.5 258.5 0 0 1 135.4 82.3A61 61 0 0 1 228.5 23.4A112 112 0 0 0 347.5 23.4A61 61 0 0 1 440.6 82.3A258.5 258.5 0 0 1 471.2 344Z"/>
+                <path fill="none" stroke-width="25" d="M178 294v50M398 294v50"/>
+                <path fill="none" stroke-width="18" d="M183 164h210"/>
+                <path fill="none" d="M15 344h546"/>
+              </g>
+              <g fill="#ECEEED"><circle cx="196" cy="77" r="27"/><circle cx="380" cy="77" r="27"/><circle cx="264" cy="95.5" r="8"/><circle cx="312" cy="95.5" r="8"/></g>
+              <g fill="#101211"><circle cx="185" cy="61.5" r="6"/><circle cx="369" cy="61.5" r="6"/></g>
+            </g>
+          </svg>
+          <div class="tiny">
+            <svg class="logo-16" viewBox="0 0 597.44 597.44" aria-label="Frog favicon at 16px">
+              <rect width="597.44" height="597.44" fill="#101211"/>
+              <g transform="translate(10.72 119.72)">
+                <g fill="#46A758" stroke="#ECEEED" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+                  <ellipse cx="62" cy="282" rx="33.5" ry="55"/><ellipse cx="514" cy="282" rx="33.5" ry="55"/>
+                  <path d="M104.8 344A258.5 258.5 0 0 1 135.4 82.3A61 61 0 0 1 228.5 23.4A112 112 0 0 0 347.5 23.4A61 61 0 0 1 440.6 82.3A258.5 258.5 0 0 1 471.2 344Z"/>
+                  <path fill="none" stroke-width="36" d="M178 294v50M398 294v50"/>
+                  <path fill="none" stroke-width="26" d="M183 164h210"/>
+                  <path fill="none" d="M15 344h546"/>
+                </g>
+                <g fill="#ECEEED"><circle cx="196" cy="77" r="32"/><circle cx="380" cy="77" r="32"/></g>
+              </g>
+            </svg>
+            <small>16px</small>
+          </div>
+        </div>
+        <div class="logo-meta">
+          <h4>Standalone tile</h4>
+          <p>Browser favicon, PWA icon, iOS home screen. Ships on the lab-ink ground <code>#101211</code> — the value the manifest already uses for <code>background_color</code>/<code>theme_color</code>, so the tile does not clash inside the dark shell. Grass <code>#46A758</code> body; on that ground the line work inverts to sage <code>#ECEEED</code> and the eye glints go dark, otherwise the outline, feet and ground bar disappear and the frog reads as a floating blob. <b>Ground and line work move together</b> — flipping one alone breaks the mark. Three stroke weights in the mark’s 573&nbsp;×&nbsp;357 art space — 27 for the haunches, body and ground bar, 25 for the feet, 18 for the mouth; the small-size treatment scales them to 40/36/26. 0px radius: iOS rounds its own corners, so never bake one in.</p>
+        </div>
+      </div>
+
+      <div class="logo-card">
+        <div class="logo-stage">
+          <svg class="big-mark" width="120" height="120" viewBox="0 0 24 24" fill="none" aria-label="Frog in-app mark">
+            <g fill="var(--accent)" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5.21 18.12A9.59 9.59 0 0 1 6.34 8.41A2.26 2.26 0 0 1 9.79 6.23A4.15 4.15 0 0 0 14.21 6.23A2.26 2.26 0 0 1 17.66 8.41A9.59 9.59 0 0 1 18.79 18.12Z"/>
+              <path fill="none" stroke-width="1.6" d="M7.92 16.4v1.72M16.08 16.4v1.72"/>
+              <path fill="none" stroke-width="1.15" d="M8.11 11.44h7.79"/>
+              <path fill="none" d="M1.88 18.12h20.25"/>
+            </g>
+            <g fill="currentColor"><circle cx="8.59" cy="8.22" r="1.1"/><circle cx="15.41" cy="8.22" r="1.1"/></g>
+          </svg>
+        </div>
+        <div class="logo-meta">
+          <h4>In-app mark</h4>
+          <p>Sidebar and sign-in, at 20–32px. Same silhouette, simplified: no haunches, nostrils or eye glints — they turn to mud at that size. Outline is <code>currentColor</code> and the body <code>var(--accent)</code>, never a fixed hex, so it survives both themes; a fixed dark outline vanishes on the dark sage surface. Component: <code>components/frog-mark.tsx</code>.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:16px">
+      <b>Padding is per target, and it is the whole job.</b> The mark is 1.6:1, so it never fills a square — centre it and pad by target:
+      standalone tiles and the favicon ~9% margin; <code>apple-touch-icon</code> 10%, exactly 180&nbsp;×&nbsp;180 and fully opaque (iOS discards alpha and composites on black);
+      <code>maskable</code> sits inside the inner-80% safe circle, so the mark is 65.6% of the tile and a circular mask never clips it.
+    </div>
+    <p class="note">Below 25px the outline falls under a pixel and the fine detail hazes over, so <code>icon.svg</code> carries a size media query: at 16–24px it drops the nostrils and glints, thickens every stroke and spends the margin on the frog. That is the small sample above — not a muddy downscale.</p>
   </section>
 
   <!-- 03 LANGUAGE REGISTERS -->
@@ -710,7 +779,7 @@
             <figure><div class="box"></div><figcaption>everything · 0px</figcaption></figure>
             <figure><div class="box" style="border-radius:9999px"></div><figcaption>avatars only · full</figcaption></figure>
           </div>
-          <p class="note">Sharp corners = precise instrument. The <em>only</em> exception is a circular avatar / the eye mark. Reverses the shipped <span class="mono">radius="small"</span> — see §14.</p>
+          <p class="note">Sharp corners = precise instrument. The <em>only</em> exception is a circular avatar. Reverses the shipped <span class="mono">radius="small"</span> — see §14.</p>
         </div>
         <div class="card">
           <span class="label">Borders &amp; elevation</span>
@@ -760,9 +829,9 @@
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="timer"><circle cx="12" cy="13" r="8"/><path d="M12 13V8M9 2h6"/></svg>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="chart"><path d="M4 20V4M4 20h16M8 16l4-5 3 3 4-6"/></svg>
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="notebook"><rect x="5" y="3" width="14" height="18"/><path d="M9 3v18M12 8h4M12 12h4"/></svg>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="frog eye"><circle cx="12" cy="12" r="8"/><path d="M6 9q6-4 12 0"/><circle cx="12" cy="12.5" r="2" fill="var(--accent)" stroke="none"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="frog"><path fill="var(--accent)" d="M5.21 18.12A9.59 9.59 0 0 1 6.34 8.41A2.26 2.26 0 0 1 9.79 6.23A4.15 4.15 0 0 0 14.21 6.23A2.26 2.26 0 0 1 17.66 8.41A9.59 9.59 0 0 1 18.79 18.12Z"/><path fill="none" stroke-width="1.6" d="M7.92 16.4v1.72M16.08 16.4v1.72"/><path fill="none" stroke-width="1.15" d="M8.11 11.44h7.79"/><path fill="none" d="M1.88 18.12h20.25"/><circle cx="8.59" cy="8.22" r="1.1" fill="currentColor" stroke="none"/><circle cx="15.41" cy="8.22" r="1.1" fill="currentColor" stroke="none"/></svg>
       </div>
-      <p class="note">Stroke line icons, uniform 1.75px, no fills except the accent frog-eye pupil. Match the engineered, drawn-in-a-notebook feel.</p>
+      <p class="note">Stroke line icons, uniform 1.75px, no fills except the accent frog body. Match the engineered, drawn-in-a-notebook feel.</p>
     </div>
   </section>
 
@@ -962,7 +1031,7 @@
   <section id="mascot">
     <div class="sec-head"><span class="sec-num">13</span><div>
       <h2 class="sec-title">Mascot usage — where the frog may &amp; may not appear</h2>
-      <p class="sec-kicker">The single most important guardrail. The expressive mascot lives only in the playground. In sacred zones, at most the abstract mark (B) appears as quiet chrome — never the character.</p>
+      <p class="sec-kicker">The single most important guardrail. The expressive mascot lives only in the playground. In sacred zones, at most <a href="#persona">the mark</a> appears as quiet chrome — never the character.</p>
     </div></div>
     <div class="rules">
       <div class="may">

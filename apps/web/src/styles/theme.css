@@ -153,10 +153,10 @@
 
   /* Radii come from Radix (radius="none" → --radius-factor 0, restoring the
      0px/square brand mandate — every rounded-* utility resolves to 0; only
-     rounded-full survives, for avatars and the frog's eye). `inline` emits
-     these as var() passthrough rather than resolving them at :root, which
-     matters: Radix scopes --radius-1..6 to .radix-themes, so they only resolve
-     at the element. */
+     rounded-full survives, for avatars). `inline` emits these as var()
+     passthrough rather than resolving them at :root, which matters: Radix
+     scopes --radius-1..6 to .radix-themes, so they only resolve at the
+     element. */
   --radius-xs: var(--radius-1);
   --radius-sm: var(--radius-2);
   --radius-md: var(--radius-3);
