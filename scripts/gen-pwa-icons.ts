@@ -8,11 +8,12 @@
 import { readFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
 
-// Must match the #ground fill in icon.svg. The tile ships on lab ink, the same
-// value the manifest uses for background_color/theme_color, so it does not
-// clash inside the dark app shell. Flipping this alone is not enough — on a
-// dark ground the line work in icon.svg has to invert too. See the brand doc.
-const GROUND = "#101211";
+// Must match the #ground fill in icon.svg. The tile ships on the source art's
+// own grass green, with the frog as black line art over it. Flipping this alone
+// is not enough — the line work in icon.svg is picked against this ground, and
+// the body carries the same green so only the outline separates them. See the
+// brand doc.
+const GROUND = "#6AB347";
 
 // --- the cut ---------------------------------------------------------------
 // The mark is 1.6:1, so a straight render of the *whole* mark can never fill a

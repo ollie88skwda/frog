@@ -1,16 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 471 471">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 469.1 469.1">
   <title>Frog</title>
   <!--
-    Frog mark (docs/brand/frog-brand-identity.html). Hand-authored vector — the
-    supplied raster is redrawn, never traced, so edges stay crisp at every size.
+    Frog mark (docs/brand/frog-brand-identity.html). This is a *traced* copy of
+    the art we were given, not a redraw. docs/brand/frog-source-1024.png is that
+    art, flattened to its three colours (the original is a JPEG-noisy PNG; the
+    flatten leaves the geometry untouched — 99.9% of pixels keep their class),
+    and every number below was fitted to it by sampling the bitmap: stroke
+    centrelines recovered by eroding the silhouette half a stroke width, then
+    least-squares cubic fitting. Rendered back over that reference at its own
+    scale the silhouettes agree to 0.99 IoU. Earlier versions were hand-authored
+    approximations and drifted; if you change the mark, re-fit against the
+    reference rather than nudging control points by eye.
 
-    Art space: the silhouette occupies x 1.5..574.5, y 0.5..357.5 (573 x 357, a
-    1.6:1 mark), so every number below is stated in the mark's own coordinates.
+    Art space: the silhouette occupies x 1.5..573.5, y 0.5..356 (572 x 355.5, a
+    1.6:1 mark), so every number below is stated in the mark's own coordinates,
+    1:1 with the reference bitmap's pixels.
 
     The canvas is NOT the whole mark — it is the icon cut. A 1.6:1 mark cannot
     fill a square, and centring it leaves top/bottom margins ~2.5x the sides, so
     the frog reads as floating in a mostly-empty tile. This viewBox is instead a
-    471-unit square window on the head + body, bottom-anchored: the haunches,
+    469-unit square window on the head + body, bottom-anchored: the haunches,
     feet and ground bar are wider than it and bleed off the left and right edges,
     and the ground bar sits just above the bottom edge. scripts/gen-pwa-icons.ts
     derives that window from the mark's measured boxes and asserts this viewBox
@@ -19,79 +28,86 @@
     may bleed outside the inner-80% safe circle.) Keeping the viewBox origin at
     0 0 is what lets #ground stay a plain 100% x 100% rect.
 
-    Palette is the brand's, not the supplied art's navy/green: grass #46A758 (the
-    accent token in theme.css) on the lab-ink ground #101211, the same value the
-    manifest already uses for background_color/theme_color. On that dark ground
-    the line work has to invert too — it is sage #ECEEED, and the eye glints go
-    dark — otherwise the outline, feet and ground bar vanish and the frog reads
-    as a floating blob. Ground and line work move together; changing one alone
-    breaks the mark. The matching constant is GROUND in scripts/gen-pwa-icons.ts.
+    Palette is the source art's own: grass #6AB347 ground with black #131426
+    line work — the two values sampled straight out of the reference. The tile
+    is line art, so the body carries the same green as the ground and only the
+    outline separates them; the eye glints stay light (sage #ECEEED) against the
+    dark eyes. Ground and line work move together; changing one alone breaks the
+    mark. The matching constant is GROUND in scripts/gen-pwa-icons.ts.
   -->
   <style>
     /*
-      16px treatment. At favicon size the 27-unit outline lands on ~0.6px and
-      greys out, and the nostrils and eye glints turn to haze — the mark reads as
-      a green blob with no face. Under 25px we therefore drop those two finest
-      details and thicken every remaining stroke. (It used to scale up 1.17 as
-      well, to spend the margin on the frog; the icon cut has already spent it,
-      and the thicker strokes grow the silhouette on their own.)
+      16px treatment. At favicon size the 26-unit outline lands on ~0.9px and
+      greys out, and the nostrils and eye glints turn to haze — so under 25px we
+      drop those two finest details and thicken every remaining stroke.
+      The eyes need more than that. They are dark, and they sit 22 units under a
+      brow that is also dark; thickened, the brow closes over them and the frog
+      loses its face entirely. So at this size the eye collapses to its glint —
+      light, smaller, and dropped clear of the brow. Verified at 16/20/24px: a
+      dark eye is invisible at every weight, a light one reads at all three.
       Browsers rasterise a favicon by rendering the SVG at the requested size, so
       this matches on the 16px and 20px requests only; 32px and up get the full
       mark. A renderer that ignores it falls back to the full mark, which is a
       soft favicon, not a broken one.
     */
     @media (max-width: 24px) {
-      .frog { stroke-width: 40 }
-      .feet { stroke-width: 36 }
+      .frog { stroke-width: 36 }
       .mouth { stroke-width: 26 }
-      .eye { r: 32px }
+      .eye { r: 26px; cy: 84px; fill: #ECEEED }
       .fine { display: none }
     }
   </style>
-  <rect id="ground" width="100%" height="100%" fill="#101211" />
-  <g id="pad" transform="translate(-52.5 97)">
+  <rect id="ground" width="100%" height="100%" fill="#6AB347" />
+  <g id="pad" transform="translate(-58.4 96.7)">
     <g
       class="frog"
-      fill="#46A758"
-      stroke="#ECEEED"
-      stroke-width="27"
+      fill="#6AB347"
+      stroke="#131426"
+      stroke-width="26"
       stroke-linecap="round"
       stroke-linejoin="round"
     >
-      <!-- Haunches, behind the body: the lobes that make it a sitting frog. -->
-      <ellipse cx="62" cy="282" rx="33.5" ry="55" />
-      <ellipse cx="514" cy="282" rx="33.5" ry="55" />
       <!--
-        Body: one closed path of five tangent arcs — left flank (r 258.5), left
-        eye hump (r 61), the valley between the humps (r 112), then the mirror.
-        The bottom edge is a straight line at y 344 that the ground bar covers.
+        Haunches, behind the body: the lobes that make it a sitting frog. Only
+        the outer arc is ever seen — each path tucks up behind the body and
+        closes along the ground line, so the closing edges never surface.
+      -->
+      <path d="M132.5 176.5 C129.3 179.1 92.4 206.4 87.8 215.5 C84.1 222.9 55.8 224.3 41.5 241.5 C28.9 256.7 24.2 284.6 33.2 302.5 C35.7 307.6 43.7 320.9 44.5 325.5 C45.3 330.3 45.3 341.1 45.4 343 L144.5 343 Z" />
+      <path d="M455.5 176.5 C458.7 179.1 495.6 206.4 500.2 215.5 C504.7 224.6 527 226.2 540.5 242.5 C556.1 261.2 554.1 290 543.8 310.5 C541.7 314.7 537.3 319.8 536.5 324.5 C535.7 329.5 536.5 340.9 536.5 343 L443.5 343 Z" />
+      <!--
+        Body: the head + body silhouette, one closed path — up the left flank,
+        over the left eye hump, the dip, the low crown between the eyes, the dip,
+        the right eye hump, down the right flank. The humps are the mark's
+        signature: the head bulges over each eye rather than enclosing it.
+        The bottom edge is a straight line at y 343 that the ground bar covers.
         It is #body because the icon cut is measured off it: the head + body is
         the silhouette and is the one part the cut may never crop.
       -->
       <path
         id="body"
-        d="M104.8 344
-           A258.5 258.5 0 0 1 135.4 82.3
-           A61 61 0 0 1 228.5 23.4
-           A112 112 0 0 0 347.5 23.4
-           A61 61 0 0 1 440.6 82.3
-           A258.5 258.5 0 0 1 471.2 344
-           Z"
+        d="M107.5 343 C107.5 324.4 93.7 294.5 90.1 272.5 C82.3 225.8 95.3 178.6 122.8 140.5
+           C144 111.2 178.1 94.4 183.8 87.1 C188.2 81.5 185.7 67.7 187.7 60.5
+           C193.4 40.1 209.9 22.5 230.5 16.7 C247.9 11.9 267 13.8 282.5 23.3
+           C288.4 26.9 301.9 42.2 307.5 41.3 C321.8 38.9 330.2 31.5 347.5 32.5
+           C355.2 32.9 380.1 41.6 383.5 40.8 C388.5 39.7 399.4 25.8 405.5 22.1
+           C431.2 6.3 466 14.4 483.4 38.5 C506.2 70.1 484.9 90.8 485.7 105.5
+           C486.3 116.4 491.1 127.7 492.9 138.5 C497.6 166.5 499.1 194.1 497.5 222.5
+           C496.2 245.9 491.5 269.9 485.3 292.5 C480.6 309.2 471.5 325.5 471.5 343 Z"
       />
       <!-- Front feet, then mouth, then the ground bar the frog sits on. -->
-      <path class="feet" fill="none" stroke-width="25" d="M178 294v50M398 294v50" />
-      <path class="mouth" fill="none" stroke-width="18" d="M183 164h210" />
-      <path fill="none" d="M15 344h546" />
+      <path fill="none" d="M176 292.5V343M395.5 292.5V343" />
+      <path class="mouth" fill="none" stroke-width="19" d="M233 163H443" />
+      <path fill="none" d="M14.5 343H560.5" />
     </g>
-    <g fill="#ECEEED">
-      <circle class="eye" cx="196" cy="77" r="27" />
-      <circle class="eye" cx="380" cy="77" r="27" />
-      <circle class="fine" cx="264" cy="95.5" r="8" />
-      <circle class="fine" cx="312" cy="95.5" r="8" />
+    <g fill="#131426">
+      <circle class="eye" cx="248" cy="76" r="27.5" />
+      <circle class="eye" cx="433" cy="76" r="27.5" />
+      <circle class="fine" cx="318.5" cy="94.5" r="8" />
+      <circle class="fine" cx="365.5" cy="94.5" r="8" />
     </g>
-    <g class="fine" fill="#101211">
-      <circle cx="185" cy="61.5" r="6" />
-      <circle cx="369" cy="61.5" r="6" />
+    <g class="fine" fill="#ECEEED">
+      <circle cx="235.5" cy="58" r="7.5" />
+      <circle cx="421" cy="58" r="7.5" />
     </g>
   </g>
 </svg>
