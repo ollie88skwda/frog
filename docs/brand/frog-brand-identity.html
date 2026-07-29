@@ -439,9 +439,9 @@
     <div class="logos">
       <div class="logo-card rec">
         <div class="logo-stage">
-          <svg class="big-mark" width="120" height="120" viewBox="0 0 699 699" aria-label="Frog app tile">
-            <rect width="699" height="699" fill="#101211"/>
-            <g transform="translate(61.5 170.5)">
+          <svg class="big-mark" width="120" height="120" viewBox="0 0 471 471" aria-label="Frog app tile">
+            <rect width="471" height="471" fill="#101211"/>
+            <g transform="translate(-52.5 97)">
               <g fill="#46A758" stroke="#ECEEED" stroke-width="27" stroke-linecap="round" stroke-linejoin="round">
                 <ellipse cx="62" cy="282" rx="33.5" ry="55"/><ellipse cx="514" cy="282" rx="33.5" ry="55"/>
                 <path d="M104.8 344A258.5 258.5 0 0 1 135.4 82.3A61 61 0 0 1 228.5 23.4A112 112 0 0 0 347.5 23.4A61 61 0 0 1 440.6 82.3A258.5 258.5 0 0 1 471.2 344Z"/>
@@ -454,9 +454,9 @@
             </g>
           </svg>
           <div class="tiny">
-            <svg class="logo-16" viewBox="0 0 597.44 597.44" aria-label="Frog favicon at 16px">
-              <rect width="597.44" height="597.44" fill="#101211"/>
-              <g transform="translate(10.72 119.72)">
+            <svg class="logo-16" viewBox="0 0 471 471" aria-label="Frog favicon at 16px">
+              <rect width="471" height="471" fill="#101211"/>
+              <g transform="translate(-52.5 97)">
                 <g fill="#46A758" stroke="#ECEEED" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
                   <ellipse cx="62" cy="282" rx="33.5" ry="55"/><ellipse cx="514" cy="282" rx="33.5" ry="55"/>
                   <path d="M104.8 344A258.5 258.5 0 0 1 135.4 82.3A61 61 0 0 1 228.5 23.4A112 112 0 0 0 347.5 23.4A61 61 0 0 1 440.6 82.3A258.5 258.5 0 0 1 471.2 344Z"/>
@@ -472,7 +472,7 @@
         </div>
         <div class="logo-meta">
           <h4>Standalone tile</h4>
-          <p>Browser favicon, PWA icon, iOS home screen. Ships on the lab-ink ground <code>#101211</code> — the value the manifest already uses for <code>background_color</code>/<code>theme_color</code>, so the tile does not clash inside the dark shell. Grass <code>#46A758</code> body; on that ground the line work inverts to sage <code>#ECEEED</code> and the eye glints go dark, otherwise the outline, feet and ground bar disappear and the frog reads as a floating blob. <b>Ground and line work move together</b> — flipping one alone breaks the mark. Three stroke weights in the mark’s 573&nbsp;×&nbsp;357 art space — 27 for the haunches, body and ground bar, 25 for the feet, 18 for the mouth; the small-size treatment scales them to 40/36/26. 0px radius: iOS rounds its own corners, so never bake one in.</p>
+          <p>Browser favicon, PWA icon, iOS home screen. Ships on the lab-ink ground <code>#101211</code> — the value the manifest already uses for <code>background_color</code>/<code>theme_color</code>, so the tile does not clash inside the dark shell. Grass <code>#46A758</code> body; on that ground the line work inverts to sage <code>#ECEEED</code> and the eye glints go dark, otherwise the outline, feet and ground bar disappear and the frog reads as a floating blob. <b>Ground and line work move together</b> — flipping one alone breaks the mark. Three stroke weights in the mark’s 573&nbsp;×&nbsp;357 art space — 27 for the haunches, body and ground bar, 25 for the feet, 18 for the mouth; the small-size treatment scales them to 40/36/26. 0px radius: iOS rounds its own corners, so never bake one in. What the tile shows is the <b>icon cut</b>, not the whole mark — see below.</p>
         </div>
       </div>
 
@@ -496,11 +496,18 @@
     </div>
 
     <div class="callout" style="margin-top:16px">
-      <b>Padding is per target, and it is the whole job.</b> The mark is 1.6:1, so it never fills a square — centre it and pad by target:
-      standalone tiles and the favicon ~9% margin; <code>apple-touch-icon</code> 10%, exactly 180&nbsp;×&nbsp;180 and fully opaque (iOS discards alpha and composites on black);
-      <code>maskable</code> sits inside the inner-80% safe circle, so the mark is 65.6% of the tile and a circular mask never clips it.
+      <b>The tiles ship an icon cut, not the whole mark.</b> The mark is 1.6:1, so it cannot fill a square: centred and sized to the width it leaves
+      top/bottom margins ~2.5&times; the sides and reads as a frog floating in a mostly-empty tile — which is exactly how it shipped, and how it looked on a real home screen.
+      An app-icon crop is routinely tighter than the full brand mark, so the tiles use a <b>471-unit square window on the head&nbsp;+&nbsp;body</b>, bottom-anchored:
+      the body fills 93% of the width, the haunches, feet and <b>ground bar run off the left and right edges</b> (a bleeding ground line reads deliberate; a floating one reads like a mistake),
+      and the bar sits 3.5% above the bottom edge so the frog sits on the tile floor with the headroom above it. That is the window <code>icon.svg</code> itself carries, so the favicon
+      and the manifest’s SVG icon match the PNG tiles. Nothing is distorted — the cut preserves the mark’s aspect ratio, it just shows less of it.
+      <code>apple-touch-icon</code> is exactly 180&nbsp;×&nbsp;180 and fully opaque (iOS discards alpha and composites on black) with no baked corner radius.
+      <b><code>maskable</code> is the exception</b> and gets the <em>whole</em> mark: platforms crop it to an arbitrary shape and only the inner-80% circle is guaranteed, so nothing may bleed.
+      It is scaled until its farthest painted point lands on that circle — 71% of the tile, up from 65.6%, with the mark lifted 3% so the ground bar’s end caps stop wasting the circle.
+      <code>scripts/gen-pwa-icons.ts</code> derives both windows from the mark’s measured geometry, so the cut follows the frog rather than being maintained beside it.
     </div>
-    <p class="note">Below 25px the outline falls under a pixel and the fine detail hazes over, so <code>icon.svg</code> carries a size media query: at 16–24px it drops the nostrils and glints, thickens every stroke and spends the margin on the frog. That is the small sample above — not a muddy downscale.</p>
+    <p class="note">Below 25px the outline falls under a pixel and the fine detail hazes over, so <code>icon.svg</code> carries a size media query: at 16–24px it drops the nostrils and glints and thickens every stroke. That is the small sample above — not a muddy downscale. (It used to scale up 1.17 as well, to spend the margin on the frog; the icon cut has already spent it.)</p>
   </section>
 
   <!-- 03 LANGUAGE REGISTERS -->
