@@ -1,4 +1,4 @@
-import { type PlateConfig, platesFor } from "@sbl/core";
+import { type PlateConfig, platesFor } from "@frog/core";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";

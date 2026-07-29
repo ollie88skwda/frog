@@ -1,4 +1,4 @@
-import { localDateKey } from "@sbl/core";
+import { localDateKey } from "@frog/core";
 
 // Read-only month grids for the reports (M10). The monthly report shows one
 // numbered month with workout days filled; the year review shows a 12-month

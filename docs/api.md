@@ -1,4 +1,4 @@
-# SBL read API
+# Frog read API
 
 Read-only REST API over your own training data, authenticated with a
 personal access token (PAT). Create tokens in the app: **Settings → API
@@ -6,7 +6,7 @@ tokens**. The plaintext is shown once; only its sha256 hash is stored, and a
 token can be revoked at any time.
 
 - Base URL: `<SUPABASE_PROJECT_URL>/functions/v1/api` (local dev: `http://127.0.0.1:54321/functions/v1/api`)
-- Auth header: `Authorization: Bearer sbl_...`
+- Auth header: `Authorization: Bearer frog_...`
 - All endpoints are `GET`; anything else returns `405`.
 - Pagination: `?limit=` (default 100, max 1000) and `?offset=`.
 - Soft-deleted rows are never returned.
@@ -18,7 +18,7 @@ token can be revoked at any time.
 Global seed exercises (`owner_id: null`, `is_custom: false`) plus your custom ones.
 
 ```sh
-curl -H "Authorization: Bearer $SBL_TOKEN" "$SBL_API_URL/v1/exercises?limit=100"
+curl -H "Authorization: Bearer $FROG_TOKEN" "$FROG_API_URL/v1/exercises?limit=100"
 ```
 
 ```json
@@ -31,7 +31,7 @@ Newest first. `condition_values` maps metric id → logged value (sleep hours,
 bodyweight, stress, …).
 
 ```sh
-curl -H "Authorization: Bearer $SBL_TOKEN" "$SBL_API_URL/v1/sessions?limit=10"
+curl -H "Authorization: Bearer $FROG_TOKEN" "$FROG_API_URL/v1/sessions?limit=10"
 ```
 
 ### `GET /v1/sets`
@@ -40,7 +40,7 @@ Flat set logs, newest first: `weight_kg` (canonical kg), `reps`, `rir`,
 `note`, `metric_values` (custom set metrics keyed by metric id).
 
 ```sh
-curl -H "Authorization: Bearer $SBL_TOKEN" "$SBL_API_URL/v1/sets?limit=50"
+curl -H "Authorization: Bearer $FROG_TOKEN" "$FROG_API_URL/v1/sets?limit=50"
 ```
 
 ### `GET /v1/export`

@@ -17,7 +17,7 @@ const PNG = Buffer.from(
 // filters deleted_at, mirroring listMeasurements).
 function measurement(page: Page, date: string) {
   return page.evaluate(async (d) => {
-    const { data, error } = await window.__sbl.supabase
+    const { data, error } = await window.__frog.supabase
       .from("measurements")
       .select("bodyweight_kg, photo_path")
       .eq("measured_on", d)

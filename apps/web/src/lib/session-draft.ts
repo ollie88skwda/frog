@@ -1,4 +1,4 @@
-import type { SetType } from "@sbl/core";
+import type { SetType } from "@frog/core";
 
 // Per-block uncommitted draft persistence. The active (unlogged) row's
 // keystrokes are mirrored to localStorage keyed by session_exercise id, so a
@@ -20,7 +20,11 @@ export type DraftSnapshot = {
   metricDraft: Record<string, string>;
 };
 
-const PREFIX = "sbl.sdraft.";
+const PREFIX = "frog.sdraft.";
+// Pre-rebrand prefix, read-only. A user mid-set when the rename shipped would
+// otherwise lose the keystrokes this module exists to protect. Safe to delete
+// one release after 2026-07-28.
+const LEGACY_PREFIX = "sbl.sdraft.";
 
 function keyFor(seId: string): string {
   return PREFIX + seId;
@@ -28,7 +32,9 @@ function keyFor(seId: string): string {
 
 export function loadDraft(seId: string): Partial<DraftSnapshot> | null {
   try {
-    const raw = localStorage.getItem(keyFor(seId));
+    const raw =
+      localStorage.getItem(keyFor(seId)) ??
+      localStorage.getItem(LEGACY_PREFIX + seId);
     return raw ? (JSON.parse(raw) as Partial<DraftSnapshot>) : null;
   } catch {
     return null;
@@ -50,10 +56,11 @@ export function saveDraft(seId: string, snapshot: DraftSnapshot): void {
       snapshot.extras.length === 0 &&
       Object.keys(snapshot.metricDraft).length === 0;
     if (empty) {
-      localStorage.removeItem(keyFor(seId));
+      clearDraft(seId);
       return;
     }
     localStorage.setItem(keyFor(seId), JSON.stringify(snapshot));
+    localStorage.removeItem(LEGACY_PREFIX + seId);
   } catch {
     // Quota / private-mode — draft persistence is best-effort.
   }
@@ -62,6 +69,9 @@ export function saveDraft(seId: string, snapshot: DraftSnapshot): void {
 export function clearDraft(seId: string): void {
   try {
     localStorage.removeItem(keyFor(seId));
+    // Drop the legacy key too, or a draft restored from it would survive the
+    // commit that cleared its replacement and reappear on the next load.
+    localStorage.removeItem(LEGACY_PREFIX + seId);
   } catch {
     // ignore
   }

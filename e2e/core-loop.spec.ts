@@ -5,7 +5,7 @@ import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
 // e2e/web.spec.ts): add exercise → session → log sets → ghost prefill →
 // persistence. Storage is now Supabase-direct, so "relaunch" persistence is a
 // reload against the server, and row counts are asserted through the app's own
-// signed-in client (window.__sbl, VITE_E2E builds only) under RLS.
+// signed-in client (window.__frog, VITE_E2E builds only) under RLS.
 
 
 

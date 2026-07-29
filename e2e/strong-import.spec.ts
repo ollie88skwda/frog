@@ -54,7 +54,7 @@ ${fmt(d2)},${pull},45m,Deadlift (Barbell),1,315,lbs,3,,,,,,
   // Server truth: warm-up set type preserved + deadlift 315 lb → ~142.9 kg.
   const result = await page.evaluate(
     async ({ push, pull }) => {
-      const sb = window.__sbl.supabase;
+      const sb = window.__frog.supabase;
       const { data: sessions } = await sb
         .from("sessions")
         .select("id,title")

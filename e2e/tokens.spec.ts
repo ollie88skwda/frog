@@ -31,7 +31,7 @@ test("create token, read own data via PAT API, revoke → 401", async ({ page, r
   await page.getByTestId("token-name-input").fill(NAME);
   await page.getByTestId("create-token-btn").click();
   const token = (await page.getByTestId("token-plaintext").textContent())?.trim() ?? "";
-  expect(token).toMatch(/^sbl_/);
+  expect(token).toMatch(/^frog_/);
 
   // Valid PAT → 200 with own data (seeds + the new exercise).
   const ok = await request.get(`${API_BASE}/v1/exercises?limit=1000`, {
@@ -43,7 +43,7 @@ test("create token, read own data via PAT API, revoke → 401", async ({ page, r
 
   // Bad token → 401.
   const bad = await request.get(`${API_BASE}/v1/exercises`, {
-    headers: { authorization: "Bearer sbl_definitely-not-a-token" },
+    headers: { authorization: "Bearer frog_definitely-not-a-token" },
   });
   expect(bad.status()).toBe(401);
 

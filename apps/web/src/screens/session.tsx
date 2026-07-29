@@ -46,7 +46,7 @@ import {
   unitLabel,
   warmupSets,
   weightLabel,
-} from "@sbl/core";
+} from "@frog/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Calculator,
@@ -219,7 +219,7 @@ function toLocalInput(ms: number): string {
 
 // Which logging columns an exercise type shows, left→right. Weight first, then
 // distance, time, reps — the natural order for every type (e.g. WEIGHT | REPS,
-// DISTANCE | TIME, WEIGHT | DISTANCE). See TYPE_FIELDS in @sbl/core.
+// DISTANCE | TIME, WEIGHT | DISTANCE). See TYPE_FIELDS in @frog/core.
 type ColKey = "weight" | "reps" | "duration" | "distance";
 type Column = { key: ColKey; header: string };
 

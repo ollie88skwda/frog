@@ -26,7 +26,7 @@ async function metricIdByName(
   await expect
     .poll(async () => {
       id = await page.evaluate(async (n) => {
-        const { data } = await window.__sbl.supabase
+        const { data } = await window.__frog.supabase
           .from("metrics")
           .select("id")
           .eq("name", n)
@@ -131,7 +131,7 @@ test("create a custom number condition with a unit; value round-trips", async ({
     .poll(() =>
       page.evaluate(async (metricId) => {
         const sessionId = window.location.pathname.split("/").at(-1) ?? "";
-        const { data, error } = await window.__sbl.supabase
+        const { data, error } = await window.__frog.supabase
           .from("sessions")
           .select("condition_values")
           .eq("id", sessionId)
@@ -223,7 +223,7 @@ test("custom set metric: create, enable on an exercise, log a value", async ({
   await expect
     .poll(async () =>
       page.evaluate(async () => {
-        const { data, error } = await window.__sbl.supabase
+        const { data, error } = await window.__frog.supabase
           .from("set_logs")
           .select("metric_values")
           .order("created_at", { ascending: false })

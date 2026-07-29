@@ -1,4 +1,4 @@
-import { type RestTimerState, restRemainingSec } from "@sbl/core";
+import { type RestTimerState, restRemainingSec } from "@frog/core";
 import { Minus, Plus, Timer, X } from "lucide-react";
 import { useEffect, useReducer, useRef } from "react";
 import { cn } from "@/lib/utils";

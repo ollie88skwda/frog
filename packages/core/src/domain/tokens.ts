@@ -1,5 +1,5 @@
 // Personal-access-token helpers (browser + node webcrypto).
-const PREFIX = "sbl_";
+const PREFIX = "frog_";
 
 export function generateToken(): string {
   const bytes = new Uint8Array(32);

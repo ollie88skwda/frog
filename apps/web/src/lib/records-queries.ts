@@ -2,7 +2,7 @@ import {
   computeRecords,
   type RecordsResult,
   type RecordsSessionInput,
-} from "@sbl/core";
+} from "@frog/core";
 import { useQuery } from "@tanstack/react-query";
 import { useRepo } from "./repo";
 

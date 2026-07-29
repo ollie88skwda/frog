@@ -1,4 +1,4 @@
-import { computeStreak } from "@sbl/core";
+import { computeStreak } from "@frog/core";
 import { Flame } from "lucide-react";
 import { useVoice } from "@/lib/voice";
 

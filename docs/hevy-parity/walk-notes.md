@@ -1,6 +1,6 @@
 # Hevy web-app walk notes (feature-parity reference)
 
-Read-only walk of the signed-in Hevy **web** app (`hevy.com`), account `ollie88skwda`, 2026-07-14. Captured with headless Chromium at 1440×900. Purpose: inventory the web UI for an SBL parity build and flag where the **web** app differs from the mobile taxonomy in `docs/hevy-parity/hevy-master-spec.json` (which describes the iOS/Android app).
+Read-only walk of the signed-in Hevy **web** app (`hevy.com`), account `ollie88skwda`, 2026-07-14. Captured with headless Chromium at 1440×900. Purpose: inventory the web UI for an Frog parity build and flag where the **web** app differs from the mobile taxonomy in `docs/hevy-parity/hevy-master-spec.json` (which describes the iOS/Android app).
 
 Screenshots referenced below live under
 `/private/tmp/claude-502/-Users-Ollie-Documents-Code-sbl/5074eb6e-0488-4551-976f-65fcaa4042c3/scratchpad/hevy/shots/`
@@ -17,7 +17,7 @@ The web app is a **read / analyze / manage-templates** surface, not a logging su
 - **No Measures / progress photos, no body heat map, no muscle-distribution stats** anywhere on web.
 - Web **adds** two things the mobile spec under-weights: a **Developer / API-key** settings pane, and an explicit **Theme (Light/Dark)** setting.
 
-So SBL parity should treat the web spec as: browse exercises + their history/charts, view/edit routine templates, view saved workouts + a social feed, a slim profile with one chart + a calendar, slim settings, and billing.
+So Frog parity should treat the web spec as: browse exercises + their history/charts, view/edit routine templates, view saved workouts + a social feed, a slim profile with one chart + a calendar, slim settings, and billing.
 
 ---
 
@@ -96,7 +96,7 @@ Read-only template view (opened `fbeod 💔🥀`, `/routine/ftsbKcOAWfQ`).
 - `Estimated Duration 47m`
 - **Muscle → Sets** breakdown table with fractional attribution (an exercise's sets split across primary/secondary muscles): `Shoulders 4.5`, `Biceps 3.5`, `Upper Back 3.5`, `Triceps 3`, `Lats 2.5`, `Hamstrings 2`, `Chest 2`, `Forearms 1.5`, `Abdominals 1`.
 
-**Refines the spec:** the routine template encodes **sets + rep target (single or range) + per-exercise rest time**, and Hevy computes a **per-muscle set volume with fractional weighting** — useful for SBL's own routine-summary + weekly-set-per-muscle features. Note "Estimated Duration" is derived (sets × rest + work estimate).
+**Refines the spec:** the routine template encodes **sets + rep target (single or range) + per-exercise rest time**, and Hevy computes a **per-muscle set volume with fractional weighting** — useful for Frog's own routine-summary + weekly-set-per-muscle features. Note "Estimated Duration" is derived (sets × rest + work estimate).
 
 ---
 
@@ -195,7 +195,7 @@ Left-nav list grouped into **Account**, **Preferences**, **Developer**. Panes sw
 **Developer group:**
 - **Developer** (`?developer`): "Generate an API key to create your own ways of accessing your workout data. Use it at your own risk as we may change the project's structure or discontinue it entirely." + "Visit the official documentation for our API here." → **Generate API Key** button.
 
-**Differences vs mobile spec:** web settings is a **small subset**. Missing entirely: workout-behavior settings, privacy (beyond Private Profile), notifications, integrations (Apple Health / Health Connect / Strava), sounds, default workout visibility, Sex/Birthday. Web **adds** the Developer **personal API key** pane (directly relevant to SBL's own token/API/MCP layer) and the Theme toggle. Delete-account on web shows only a plain button — the mobile "type your username to confirm" destructive guard was not exercised (read-only walk).
+**Differences vs mobile spec:** web settings is a **small subset**. Missing entirely: workout-behavior settings, privacy (beyond Private Profile), notifications, integrations (Apple Health / Health Connect / Strava), sounds, default workout visibility, Sex/Birthday. Web **adds** the Developer **personal API key** pane (directly relevant to Frog's own token/API/MCP layer) and the Theme toggle. Delete-account on web shows only a plain button — the mobile "type your username to confirm" destructive guard was not exercised (read-only walk).
 
 ---
 
@@ -226,7 +226,7 @@ Stub page: `Trainer — Follow a guided program with progression. Available for 
 
 ## Top 5 observations that contradict / refine the master spec
 
-1. **Web is analyze-and-manage only — no logging.** The entire live-logging pipeline (Active workout, Save Workout, Post-save summary, Start Routine, Start Empty Workout) and the whole **Trainer** feature are **absent from web**. Any SBL "web parity" scope must decide this deliberately; Hevy chose to make logging mobile-only.
+1. **Web is analyze-and-manage only — no logging.** The entire live-logging pipeline (Active workout, Save Workout, Post-save summary, Start Routine, Start Empty Workout) and the whole **Trainer** feature are **absent from web**. Any Frog "web parity" scope must decide this deliberately; Hevy chose to make logging mobile-only.
 
 2. **Exercise detail is drastically reduced on web.** Only 3 fixed charts (Weight / One Rep Max / Set Volume) + History + How-to. **No Records panel, no Set-Records table, no Strength Level, no Leaderboard, no metric chips, no Session-Volume/Total-Reps/cardio metrics, no share.** The mobile-spec's rich Summary tab does not exist on web.
 

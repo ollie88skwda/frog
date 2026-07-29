@@ -1,15 +1,16 @@
-import type { FindingsSessionInput } from "@sbl/core";
+import type { FindingsSessionInput } from "@frog/core";
 
 // Thin client over the personal-access-token REST API — the MCP server
 // deliberately dogfoods the public API instead of talking to the database.
 const API_URL =
-  process.env.SBL_API_URL ?? "http://127.0.0.1:54321/functions/v1/api";
-const TOKEN = process.env.SBL_TOKEN ?? "";
+  process.env.FROG_API_URL ?? "http://127.0.0.1:54321/functions/v1/api";
+const TOKEN = process.env.FROG_TOKEN ?? "";
 
 export async function api<T>(path: string): Promise<T> {
   if (!TOKEN)
     throw new Error(
-      "SBL_TOKEN env var is required (create one in Settings → API tokens)",
+      "FROG_TOKEN env var is required (create one in Settings → API tokens). " +
+        "The env prefix was renamed in the 2026-07-28 rebrand — update any older client config.",
     );
   const res = await fetch(`${API_URL}${path}`, {
     headers: { authorization: `Bearer ${TOKEN}` },

@@ -1,4 +1,4 @@
-# SBL v1 — Plan 1: Foundation, Data Layer & Core Logging Loop
+# Frog v1 — Plan 1: Foundation, Data Layer & Core Logging Loop
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -68,7 +68,7 @@ Boundaries: `app/**` is presentation only; `src/domain/**` is pure logic (no I/O
 - Modify: `app/index.tsx` (replace boilerplate with a smoke screen)
 
 **Interfaces:**
-- Produces: a running Expo app with expo-router and a boot screen reading "SBL".
+- Produces: a running Expo app with expo-router and a boot screen reading "Frog".
 
 - [ ] **Step 1: Scaffold**
 
@@ -93,7 +93,7 @@ import { Text, View } from "react-native";
 export default function Index() {
   return (
     <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#0B1A2B" }}>
-      <Text style={{ color: "#E3F0FB", fontSize: 24, fontWeight: "700" }}>SBL</Text>
+      <Text style={{ color: "#E3F0FB", fontSize: 24, fontWeight: "700" }}>Frog</Text>
     </View>
   );
 }
@@ -102,12 +102,12 @@ export default function Index() {
 - [ ] **Step 4: Run it**
 
 Run: `npx expo start` then press `i` (iOS sim) or scan with Expo Go.
-Expected: a near-black screen showing "SBL".
+Expected: a near-black screen showing "Frog".
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git init && git add -A && git commit -m "chore: scaffold Expo app (SBL v1)"
+git init && git add -A && git commit -m "chore: scaffold Expo app (Frog v1)"
 ```
 
 ---

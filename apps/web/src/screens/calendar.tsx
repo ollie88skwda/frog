@@ -1,5 +1,5 @@
+import { localDateKey, type Session } from "@frog/core";
 import { Select } from "@radix-ui/themes";
-import { localDateKey, type Session } from "@sbl/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Grid3x3, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";

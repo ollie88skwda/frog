@@ -5,7 +5,7 @@ import { e2eBridge } from "./e2e-bridge";
 // existing. Dead-code-eliminated from production builds (enforced by the
 // bundle guard in scripts/check-bundle.ts).
 if (e2eBridge) {
-  (window as unknown as Record<string, unknown>).__sbl = {
+  (window as unknown as Record<string, unknown>).__frog = {
     supabase: e2eBridge.client,
   };
 }

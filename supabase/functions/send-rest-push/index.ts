@@ -4,7 +4,7 @@
 // from alertRestDone). Delivery is best-effort: this is NOT required for the
 // rest timer to work.
 //
-// Auth mirrors the read API (supabase/functions/api): Bearer `sbl_...` PAT,
+// Auth mirrors the read API (supabase/functions/api): Bearer `frog_...` PAT,
 // sha256-matched against api_tokens, service-role client + explicit owner_id
 // filter. Never exposes the service role to the browser.
 //
@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
   }
 
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
-  if (!token.startsWith("sbl_")) return json({ error: "missing bearer token" }, 401);
+  if (!token.startsWith("frog_")) return json({ error: "missing bearer token" }, 401);
   const { data: tokenRow, error: tokenError } = await admin
     .from("api_tokens")
     .select("owner_id, revoked_at")
@@ -71,9 +71,12 @@ Deno.serve(async (req) => {
 
   const payload = await req.json().catch(() => ({}));
   const message = JSON.stringify({
-    title: typeof payload.title === "string" ? payload.title : "SBL",
+    // Edge Functions are Deno and can't import @frog/core, so APP_NAME is
+    // inlined here — the one sanctioned exception to the single-source rule.
+    // Keep in sync with packages/core/src/config.ts.
+    title: typeof payload.title === "string" ? payload.title : "Frog",
     body: typeof payload.body === "string" ? payload.body : "Rest timer done",
-    tag: "sbl-rest",
+    tag: "frog-rest",
   });
 
   const { data: subs, error } = await admin

@@ -1,4 +1,4 @@
-// Deterministic questionnaire → program generation, built on SBL's own
+// Deterministic questionnaire → program generation, built on Frog's own
 // muscle-tier science: slots per split day are filled by the best-tier
 // available exercise (curated tiers first, untiered library after), filtered
 // by the user's equipment and exclusions.

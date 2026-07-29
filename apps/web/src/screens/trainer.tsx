@@ -1,4 +1,3 @@
-import { Select } from "@radix-ui/themes";
 import {
   APP_NAME,
   distributionBetween,
@@ -22,7 +21,8 @@ import {
   toDisplayWeight,
   unitLabel,
   weeklyConsistency,
-} from "@sbl/core";
+} from "@frog/core";
+import { Select } from "@radix-ui/themes";
 import {
   ArrowLeft,
   Check,

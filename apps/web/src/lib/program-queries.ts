@@ -1,4 +1,4 @@
-import type { GeneratedProgram, GeneratorConfig, Program } from "@sbl/core";
+import type { GeneratedProgram, GeneratorConfig, Program } from "@frog/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRepo } from "./repo";
 

@@ -1,4 +1,4 @@
-import { MUSCLE_REGION_LABELS, PR_TYPE_LABELS, yearReview } from "@sbl/core";
+import { MUSCLE_REGION_LABELS, PR_TYPE_LABELS, yearReview } from "@frog/core";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";

@@ -1,10 +1,10 @@
-# CLAUDE.md — SBL
+# CLAUDE.md — Frog
 
-SBL is a **training lab notebook** (web app first; mobile later): log the work *and* the conditions around it (sleep, carbs, stress, etc.), then surface correlations between inputs and outputs. Full spec: `docs/superpowers/specs/2026-06-20-sbl-prd.html`. Architecture + conventions: `AGENTS.md` (read it before coding). Project facts live in Claude's project memory (`MEMORY.md`).
+Frog is a **training lab notebook** (web app first; mobile later): log the work *and* the conditions around it (sleep, carbs, stress, etc.), then surface correlations between inputs and outputs. Full spec: `docs/superpowers/specs/2026-06-20-frog-prd.html`. Architecture + conventions: `AGENTS.md` (read it before coding). Project facts live in Claude's project memory (`MEMORY.md`).
 
 ## Top priority: lightweight & fast
 
-**SBL must be super lightweight and fast.** First-class product requirement — weigh every dependency and screen against it:
+**Frog must be super lightweight and fast.** First-class product requirement — weigh every dependency and screen against it:
 
 - **Optimistic UI.** Reflect the user's action immediately; logging a set never waits on the network (client-generated IDs, background mutations with retry).
 - **Interactions feel instant** — visual feedback within ~100ms; 100–150ms CSS transitions; nothing animates on the data path.
@@ -26,5 +26,5 @@ Note: v1 web is **online-first** (Supabase-direct; account required). The PRD's 
 ## Working style
 
 - Design decisions are captured in the PRD, AGENTS.md, and memory — read those before changing direction.
-- "SBL" is a placeholder name — single source `packages/core/src/config.ts`; never hardcode.
+- The app name is **Frog** — single source `APP_NAME` in `packages/core/src/config.ts`; never hardcode the literal.
 - Prefer `.html` over `.md` for docs the user will read (per global CLAUDE.md).

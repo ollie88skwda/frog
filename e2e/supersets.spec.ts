@@ -129,7 +129,7 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
   await expect
     .poll(() =>
       page.evaluate(async () => {
-        const { count } = await window.__sbl.supabase
+        const { count } = await window.__frog.supabase
           .from("set_logs")
           .select("id", { count: "exact", head: true });
         return count ?? 0;

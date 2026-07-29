@@ -17,7 +17,7 @@ async function seedSessions(
 ) {
   await page.evaluate(
     async ({ exerciseName, count }) => {
-      const sb = window.__sbl.supabase;
+      const sb = window.__frog.supabase;
       const uid = () => crypto.randomUUID();
       const now = Date.now();
       const DAY = 86_400_000;

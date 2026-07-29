@@ -21,7 +21,7 @@ import {
   toDisplayDistance,
   toDisplayWeight,
   unitLabel,
-} from "@sbl/core";
+} from "@frog/core";
 import { ArrowLeft, ChevronDown, ChevronRight, Copy } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";

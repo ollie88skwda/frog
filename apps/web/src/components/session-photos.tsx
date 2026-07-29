@@ -1,4 +1,4 @@
-import { newId } from "@sbl/core";
+import { newId } from "@frog/core";
 import { ChevronLeft, ChevronRight, ImagePlus, Trash2, X } from "lucide-react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";

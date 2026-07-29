@@ -1,4 +1,4 @@
-import type { GeneratorConfig } from "@sbl/core";
+import type { GeneratorConfig } from "@frog/core";
 
 // Curated program catalog (Hevy-parity M11 "/programs"). Each entry is just a
 // GeneratorConfig plus display copy — the actual routines are materialized

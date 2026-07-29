@@ -1,4 +1,4 @@
-import { APP_NAME } from "@sbl/core";
+import { APP_NAME } from "@frog/core";
 import { Dumbbell, Home, Moon, Sun, User } from "lucide-react";
 import { lazy, Suspense, useMemo } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";

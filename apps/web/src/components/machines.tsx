@@ -1,4 +1,4 @@
-import type { Machine, MachineSetting } from "@sbl/core";
+import type { Machine, MachineSetting } from "@frog/core";
 import { Camera, ChevronDown, ChevronRight, Search } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -12,13 +12,13 @@ import {
 } from "@/lib/queries";
 import { useVoice } from "@/lib/voice";
 
-type CatalogModule = typeof import("@sbl/core/data/machine-catalog");
+type CatalogModule = typeof import("@frog/core/data/machine-catalog");
 
 // The catalog is a lazy chunk — loaded on first search keystroke, never part
 // of the initial bundle (AGENTS.md budget).
 let catalogPromise: Promise<CatalogModule> | null = null;
 function loadCatalog(): Promise<CatalogModule> {
-  catalogPromise ??= import("@sbl/core/data/machine-catalog");
+  catalogPromise ??= import("@frog/core/data/machine-catalog");
   return catalogPromise;
 }
 

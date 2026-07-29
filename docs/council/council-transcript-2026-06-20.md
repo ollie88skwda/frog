@@ -1,8 +1,8 @@
-# Council Transcript — SBL v1 build plan
+# Council Transcript — Frog v1 build plan
 Date: 2026-06-20 · Skill: llm-council ("the gang")
 
 ## Original question
-Run the gang to pressure-test the build plan for SBL (science "lab notebook" gym app), then proceed with the recommended path.
+Run the gang to pressure-test the build plan for Frog (science "lab notebook" gym app), then proceed with the recommended path.
 
 ## Framed question
 Is the v1 MVP scoped/sequenced correctly for a solo dev; is the differentiator at risk of being buried; what to build/validate first; biggest risks/false assumptions; and is deferring the Findings correlation engine to v1.x a mistake? (Full context: lab-notebook positioning, conditions logging, Findings engine, target user, v1/v1.x/v2 scope, Expo/RN + SQLite + Supabase stack, proposed build order.)

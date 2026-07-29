@@ -28,7 +28,7 @@ function createBridge(): E2eBridge {
   const client = createClient(
     import.meta.env.VITE_SUPABASE_URL as string,
     import.meta.env.VITE_SUPABASE_ANON_KEY as string,
-    { auth: { storageKey: "sbl-e2e-auth" } },
+    { auth: { storageKey: "frog-e2e-auth" } },
   );
   const session = async () => (await client.auth.getSession()).data.session;
   return {

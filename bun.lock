@@ -14,13 +14,13 @@
       },
     },
     "apps/web": {
-      "name": "@sbl/web",
+      "name": "@frog/web",
       "version": "0.1.0",
       "dependencies": {
         "@clerk/react": "^6.12.4",
+        "@frog/core": "workspace:*",
         "@radix-ui/react-dialog": "^1.1.15",
         "@radix-ui/themes": "^3.3.0",
-        "@sbl/core": "workspace:*",
         "@supabase/supabase-js": "^2.110.2",
         "@tanstack/react-query": "^5.90.5",
         "clsx": "^2.1.1",
@@ -42,7 +42,7 @@
       },
     },
     "packages/core": {
-      "name": "@sbl/core",
+      "name": "@frog/core",
       "version": "0.1.0",
       "dependencies": {
         "@supabase/supabase-js": "^2.110.2",
@@ -54,14 +54,14 @@
       },
     },
     "packages/mcp": {
-      "name": "@sbl/mcp",
+      "name": "@frog/mcp",
       "version": "0.1.0",
       "bin": {
-        "sbl-mcp": "./src/index.ts",
+        "frog-mcp": "./src/index.ts",
       },
       "dependencies": {
+        "@frog/core": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.21.1",
-        "@sbl/core": "workspace:*",
         "zod": "^3.25.76",
       },
     },
@@ -198,6 +198,12 @@
     "@floating-ui/react-dom": ["@floating-ui/react-dom@2.1.9", "", { "dependencies": { "@floating-ui/dom": "^1.8.0" }, "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0" } }, "sha512-JDjEFGCpImxDCA7JJKviA0M9+RtmJdj0m/NVU5IMgBK+AmZouAQQ7/+2GLH0GXXY0YMw9oXPB8hKdbPYg5QLYg=="],
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.12", "", {}, "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww=="],
+
+    "@frog/core": ["@frog/core@workspace:packages/core"],
+
+    "@frog/mcp": ["@frog/mcp@workspace:packages/mcp"],
+
+    "@frog/web": ["@frog/web@workspace:apps/web"],
 
     "@hono/node-server": ["@hono/node-server@1.19.14", "", { "peerDependencies": { "hono": "^4" } }, "sha512-GwtvgtXxnWsucXvbQXkRgqksiH2Qed37H9xHZocE5sA3N8O8O8/8FA3uclQXxXVzc9XBZuEOMK7+r02FmSpHtw=="],
 
@@ -424,12 +430,6 @@
     "@rollup/rollup-win32-x64-gnu": ["@rollup/rollup-win32-x64-gnu@4.62.2", "", { "os": "win32", "cpu": "x64" }, "sha512-T6xr6ucWSFto+VGajA8YH26LdpHRuP4YLHEKAtCWvJDOlnmWcDZVCI2Jmjr+IFHDlt2zRaTAKE4tfjTaWLgJBg=="],
 
     "@rollup/rollup-win32-x64-msvc": ["@rollup/rollup-win32-x64-msvc@4.62.2", "", { "os": "win32", "cpu": "x64" }, "sha512-BfzEnDJOt9T8M989/lA37EcJgat01wLRnoi5dQf3QzOH7jzpqTAzdDbVfRljVr5r+jzKqpbHeyOfAaXxAd0PAA=="],
-
-    "@sbl/core": ["@sbl/core@workspace:packages/core"],
-
-    "@sbl/mcp": ["@sbl/mcp@workspace:packages/mcp"],
-
-    "@sbl/web": ["@sbl/web@workspace:apps/web"],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 

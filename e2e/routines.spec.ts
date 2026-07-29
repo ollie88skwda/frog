@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 
 async function routineIdByName(page: Page, name: string): Promise<string> {
   return page.evaluate(async (n) => {
-    const { data, error } = await window.__sbl.supabase
+    const { data, error } = await window.__frog.supabase
       .from("routines")
       .select("id")
       .eq("name", n)

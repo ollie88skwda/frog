@@ -1,4 +1,4 @@
-import { weekStart } from "@sbl/core";
+import { weekStart } from "@frog/core";
 import {
   BarChart3,
   CalendarDays,

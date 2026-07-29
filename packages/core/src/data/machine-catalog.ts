@@ -1,6 +1,6 @@
 // Static catalog of commercial strength machines (major brands' current
 // lines; extensible by appending). NOT exported from the core barrel — the
-// web app imports it lazily (`import("@sbl/core/data/machine-catalog")`) so
+// web app imports it lazily (`import("@frog/core/data/machine-catalog")`) so
 // it ships as its own chunk and never touches the initial-JS budget.
 // Imagery is category line-art in the app; real photos are user-taken
 // (docs/DECISIONS.md).

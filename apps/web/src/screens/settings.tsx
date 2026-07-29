@@ -1,4 +1,3 @@
-import { Select } from "@radix-ui/themes";
 import {
   APP_NAME,
   type ApiToken,
@@ -6,7 +5,8 @@ import {
   setsCsv,
   unitLabel,
   type WarmupStep,
-} from "@sbl/core";
+} from "@frog/core";
+import { Select } from "@radix-ui/themes";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Download, Plus, X } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
@@ -791,15 +791,19 @@ function ExportSection() {
       const stamp = new Date().toISOString().slice(0, 10);
       if (kind === "json") {
         download(
-          `sbl-export-${stamp}.json`,
+          `${APP_NAME.toLowerCase()}-export-${stamp}.json`,
           "application/json",
           JSON.stringify(bundle, null, 2),
         );
       } else if (kind === "csv") {
-        download(`sbl-sets-${stamp}.csv`, "text/csv", setsCsv(bundle));
+        download(
+          `${APP_NAME.toLowerCase()}-sets-${stamp}.csv`,
+          "text/csv",
+          setsCsv(bundle),
+        );
       } else {
         download(
-          `sbl-measurements-${stamp}.csv`,
+          `${APP_NAME.toLowerCase()}-measurements-${stamp}.csv`,
           "text/csv",
           measurementsCsv(bundle.measurements ?? []),
         );

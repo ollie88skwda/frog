@@ -1,8 +1,6 @@
-# SBL
+# frog
 
 A **training lab notebook**: log the work *and* the conditions around it (sleep, carbs, caffeine, stress), then surface correlations between inputs and outputs — with your data fully open via export, a personal-token API, and an MCP server.
-
-> "SBL" is a working title.
 
 ## Layout
 

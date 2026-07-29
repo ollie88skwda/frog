@@ -4,7 +4,7 @@ import {
   parseFitbitSleep,
   parseHevyCsv,
   parseStrongCsv,
-} from "@sbl/core";
+} from "@frog/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { Upload } from "lucide-react";
 import { useRef, useState } from "react";

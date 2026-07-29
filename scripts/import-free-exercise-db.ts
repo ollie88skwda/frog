@@ -1,6 +1,6 @@
 // Generates a Supabase seed migration from the public-domain free-exercise-db
 // (github.com/yuhonas/free-exercise-db, Unlicense — see
-// docs/hevy-parity/free-exercise-db-license.md). Maps each exercise to an SBL
+// docs/hevy-parity/free-exercise-db-license.md). Maps each exercise to an Frog
 // seed row (owner_id null, is_custom false) and prints the SQL to stdout:
 //
 //   bun scripts/import-free-exercise-db.ts > supabase/migrations/<ts>_seed_free_exercise_db.sql
@@ -51,8 +51,8 @@ const CURATED_NAMES = new Set(
   ].map((n) => n.toLowerCase()),
 );
 
-// free-exercise-db muscle string -> SBL muscle key (packages/core anatomy.ts).
-// "neck" has no SBL key and is intentionally absent (dropped, not mapped).
+// free-exercise-db muscle string -> Frog muscle key (packages/core anatomy.ts).
+// "neck" has no Frog key and is intentionally absent (dropped, not mapped).
 // "shoulders" is a generic deltoid tag; front-delts is the single best
 // representative (pressing dominates the tagged set) — see the report.
 const MUSCLE_MAP: Record<string, string> = {
@@ -74,7 +74,7 @@ const MUSCLE_MAP: Record<string, string> = {
   triceps: "triceps",
 };
 
-// free-exercise-db equipment string -> SBL EQUIPMENT_KINDS. null equipment
+// free-exercise-db equipment string -> Frog EQUIPMENT_KINDS. null equipment
 // stays null (unknown); unlisted kinds (medicine ball, foam roll, …) -> "other".
 const EQUIPMENT_MAP: Record<string, string> = {
   barbell: "barbell",
@@ -103,7 +103,7 @@ function idFor(slug: string): string {
   return ID_PREFIX + hex;
 }
 
-// Primary muscles first, then secondaries; deduped by SBL key; tier is null
+// Primary muscles first, then secondaries; deduped by Frog key; tier is null
 // (these seeds carry no evidence-tier — untiered sorts below the curated 20).
 function muscleTargetsFor(
   e: SourceExercise,
@@ -216,9 +216,9 @@ async function main() {
   process.stdout.write(out.join("\n"));
 
   // Coverage stats -> stderr so stdout stays pure SQL.
-  const sblKeys = new Set(MUSCLES.map((m) => m.key));
+  const frogKeys = new Set(MUSCLES.map((m) => m.key));
   for (const v of Object.values(MUSCLE_MAP)) {
-    if (!sblKeys.has(v))
+    if (!frogKeys.has(v))
       throw new Error(`MUSCLE_MAP target "${v}" not in MUSCLES`);
   }
   for (const v of Object.values(EQUIPMENT_MAP)) {

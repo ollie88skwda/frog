@@ -17,7 +17,7 @@ import {
   unitLabel,
   weeklyConsistency,
   weekStart,
-} from "@sbl/core";
+} from "@frog/core";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";

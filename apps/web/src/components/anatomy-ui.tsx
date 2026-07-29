@@ -4,7 +4,7 @@ import {
   type Machine,
   ratingsForExercise,
   type Tier,
-} from "@sbl/core";
+} from "@frog/core";
 import { Dumbbell, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 

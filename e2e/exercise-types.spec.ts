@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
 
-// Radix Select shows option labels, not values (and @sbl/core isn't resolvable
+// Radix Select shows option labels, not values (and @frog/core isn't resolvable
 // from e2e/), so map the exercise-type values this spec uses to their labels.
 const TYPE_LABEL: Record<string, string> = {
   duration: "Duration",

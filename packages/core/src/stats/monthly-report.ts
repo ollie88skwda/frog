@@ -1,4 +1,4 @@
-// Monthly report builder (Hevy-parity plan §C). SBL improvement over Hevy:
+// Monthly report builder (Hevy-parity plan §C). Frog improvement over Hevy:
 // any completed month is viewable (archive), not just the most recent.
 
 import { localDateKey } from "../domain/streak";

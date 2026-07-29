@@ -8,7 +8,7 @@ import {
   type Metric,
   progressionFindings,
   type TrendFinding,
-} from "@sbl/core";
+} from "@frog/core";
 
 export type ComputedFindings = {
   trends: TrendFinding[];

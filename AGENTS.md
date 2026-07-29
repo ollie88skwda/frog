@@ -1,20 +1,22 @@
-# AGENTS.md — SBL
+# AGENTS.md — Frog
 
 Read this before writing any code in this repo.
 
 **Decisions: see `docs/DECISIONS.md` — the running log of product/design/architecture calls. Read it before changing direction; append to it (same commit) when you make a new call.**
 
-## What SBL is
+## What Frog is
 
-SBL is a **training lab notebook**, not a workout tracker. Every session is treated as a controlled experiment: you log the work (exercises, sets, reps × weight, RIR) *and* the conditions around it (sleep hours, bodyweight, pre-workout carbs, caffeine, stress, meal timing), and the app surfaces correlations between inputs and outputs — **"Findings"** ("your top sets average heavier on 7h+ sleep"). Findings are transparent statistics (robust trend fitting, median-split heuristics) with honest guardrails: minimum sample sizes, visible confidence, and an explicit "correlation, not causation" caveat. No AI/ML black boxes.
+Frog is a **training lab notebook**, not a workout tracker. Every session is treated as a controlled experiment: you log the work (exercises, sets, reps × weight, RIR) *and* the conditions around it (sleep hours, bodyweight, pre-workout carbs, caffeine, stress, meal timing), and the app surfaces correlations between inputs and outputs — **"Findings"** ("your top sets average heavier on 7h+ sleep"). Findings are transparent statistics (robust trend fitting, median-split heuristics) with honest guardrails: minimum sample sizes, visible confidence, and an explicit "correlation, not causation" caveat. No AI/ML black boxes.
 
-The second moat is **open, code-accessible data**: JSON/CSV export, a personal-access-token read API, an MCP server, and AI-buildable docs (`llms.txt`), so users can point their own tools and AI at their training data. Full product spec: `docs/superpowers/specs/2026-06-20-sbl-prd.html`.
+The second moat is **open, code-accessible data**: JSON/CSV export, a personal-access-token read API, an MCP server, and AI-buildable docs (`llms.txt`), so users can point their own tools and AI at their training data. Full product spec: `docs/superpowers/specs/2026-06-20-frog-prd.html`.
 
 Target user: intermediate/advanced lifters who autoregulate and control variables — especially the quantified-self slice. But a minimalist logging only reps × weight still gets a clean, fast tracker.
 
 ## The name
 
-"SBL" is a **placeholder**, not the real name. The single source of truth is `APP_NAME` in `packages/core/src/config.ts`. Never hardcode the literal anywhere else — a rebrand must stay a one-line change.
+The app is **Frog**. The single source of truth for the display name is `APP_NAME` in `packages/core/src/config.ts` — never hardcode the literal anywhere else, so a future rebrand stays a one-line change. (The single sanctioned exception is `supabase/functions/send-rest-push`: Edge Functions are Deno and cannot import `@frog/core`.)
+
+Technical identifiers agree with the display name as of 2026-07-28 — package scope `@frog/*`, `FROG_*` env vars, the `frog_` PAT prefix, the `__frog` E2E bridge global. See `docs/DECISIONS.md` for what was deliberately *not* renamed (`sbl.pastUsers`, the Vercel project).
 
 ## Architecture
 
@@ -33,20 +35,20 @@ Web-first rewrite (the original Expo/React Native app is archived on branch `leg
 
 `packages/core` must stay framework-free — no React, no DOM, no supabase-js imports outside `repo/`. Domain modules (`units`, `e1rm`, `progression`, `session-reducer`, `ids`) are pure and unit-tested; the findings engine builds on them.
 
-**Freeform-text → structured-data matching — TWO matchers exist, unreconciled.** `packages/core/src/generator/match-exercise.ts` (routine builder's "Paste workout" import, `parse-routine.ts` same dir) and `packages/core/src/domain/match-exercise.ts` (voice logging) were built independently and export the same names (`MatchCandidate`, `matchExerciseName`, `normalizeExerciseName`) with different shapes — `generator/`'s `matchExerciseName` returns a plain candidate or `null`; `domain/`'s returns an `ExerciseMatch` with `matchType`/`tied` disambiguation. Because of the name clash, **only `domain/match-exercise` is barrel-exported** from `@sbl/core`; `generator/match-exercise` must be imported by its exact subpath (`@sbl/core/generator/match-exercise`) — `packages/core/src/index.ts` documents why inline. Before adding a *third* matcher for some new freeform-text feature, or before touching either file: this pair should be consolidated into one, not extended in parallel again — check both, don't just extend one.
+**Freeform-text → structured-data matching — TWO matchers exist, unreconciled.** `packages/core/src/generator/match-exercise.ts` (routine builder's "Paste workout" import, `parse-routine.ts` same dir) and `packages/core/src/domain/match-exercise.ts` (voice logging) were built independently and export the same names (`MatchCandidate`, `matchExerciseName`, `normalizeExerciseName`) with different shapes — `generator/`'s `matchExerciseName` returns a plain candidate or `null`; `domain/`'s returns an `ExerciseMatch` with `matchType`/`tied` disambiguation. Because of the name clash, **only `domain/match-exercise` is barrel-exported** from `@frog/core`; `generator/match-exercise` must be imported by its exact subpath (`@frog/core/generator/match-exercise`) — `packages/core/src/index.ts` documents why inline. Before adding a *third* matcher for some new freeform-text feature, or before touching either file: this pair should be consolidated into one, not extended in parallel again — check both, don't just extend one.
 
 ## Constraints (product requirements, not preferences)
 
-- **Mobile-first, always.** SBL is a **mobile web app**. Design and build every screen for a phone / touch viewport *first*; desktop is only a secondary widening of the same layout, never the starting point. Tap targets on the logging path are ≥40 px; never gate an action behind hover-only affordances (a mobile user can't hover). Popups/menus must open fully visible on a phone — never clipped by an `overflow-hidden` ancestor or hidden behind sibling controls.
+- **Mobile-first, always.** Frog is a **mobile web app**. Design and build every screen for a phone / touch viewport *first*; desktop is only a secondary widening of the same layout, never the starting point. Tap targets on the logging path are ≥40 px; never gate an action behind hover-only affordances (a mobile user can't hover). Popups/menus must open fully visible on a phone — never clipped by an `overflow-hidden` ancestor or hidden behind sibling controls.
 - **Buttons are never bare text.** Every button and actionable control carries a *visible* background — filled, translucent, or an outline surface — so it reads as pressable at rest, without relying on a hover state. A hover-only background does not count. (`ghost` in `ui/button.tsx` keeps a translucent fill for exactly this reason.)
-- **Lightweight & fast.** Audit every dependency before adding it; prefer a few lines over a package. Initial JS budget: **≤220 kB gzipped**, gated in CI.
+- **Lightweight & fast.** Audit every dependency before adding it; prefer a few lines over a package. Initial JS budget: **≤220 kB gzipped**, gated in CI by `scripts/check-bundle.ts`. That script carries a *second*, unrelated gate: it greps every emitted chunk for the `__frog` E2E auth-bridge marker (`apps/web/src/lib/test-hooks.ts`) and fails the build if it ships. The marker name is written out in both files — **rename it in both or the gate silently passes while protecting nothing.** Prove it still bites by inverting it: a `VITE_E2E=1` build must fail the script, a clean build must pass.
 - **Optimistic UI.** Logging a set never waits on the network: client-generated UUIDs (`newId()`), fire-and-forget mutations with retry, UI state already correct. Visual feedback within ~100 ms.
 - **Lazy-load** non-critical routes (findings/history/settings/library); virtualize long lists only when profiling demands it.
 - Measure, don't guess: profile before and after anything that risks bundle size or interaction latency.
 
 ## Conventions
 
-- **IDs:** uuid v4, generated client-side via `newId()` from `@sbl/core`.
+- **IDs:** uuid v4, generated client-side via `newId()` from `@frog/core`.
 - **Timestamps:** `created_at` / `updated_at` / `deleted_at` are bigint millisecond epochs, app-managed (`Date.now()`).
 - **Soft delete only:** set `deleted_at`; never hard-delete; IDs are never reused.
 - **Weight:** stored canonically in **kg** (`weight_kg`); kg/lb is a display setting (`domain/units.ts`).

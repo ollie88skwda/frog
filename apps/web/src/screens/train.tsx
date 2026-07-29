@@ -1,4 +1,4 @@
-import type { Routine, RoutineFolder } from "@sbl/core";
+import type { Routine, RoutineFolder } from "@frog/core";
 import {
   ChevronDown,
   ChevronRight,

@@ -55,14 +55,14 @@ if (kb > BUDGET_KB) {
   process.exit(1);
 }
 
-// Security gate: the Playwright auth bridge (window.__sbl, VITE_E2E=1 builds)
+// Security gate: the Playwright auth bridge (window.__frog, VITE_E2E=1 builds)
 // must never ship — in production it would expose a Supabase-native sign-in
 // path that bypasses Clerk. A stray VITE_E2E=1 in an env file is enough to
 // leak it, so check every emitted chunk for the marker.
 for (const f of readdirSync(assetsDir).filter((n) => n.endsWith(".js"))) {
-  if (readFileSync(join(assetsDir, f), "utf8").includes("__sbl")) {
+  if (readFileSync(join(assetsDir, f), "utf8").includes("__frog")) {
     console.error(
-      `E2E test-hook marker "__sbl" found in ${f} — was the build run with VITE_E2E=1?`,
+      `E2E test-hook marker "__frog" found in ${f} — was the build run with VITE_E2E=1?`,
     );
     process.exit(1);
   }

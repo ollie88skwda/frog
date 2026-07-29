@@ -4,7 +4,9 @@
  * This is the SINGLE source of truth for the user-facing display name. To rebrand,
  * change APP_NAME here (plus the <title> in apps/web/index.html and the PWA manifest).
  * Reference APP_NAME from UI (headers, branding) instead of hardcoding the literal anywhere.
- * Technical identifiers (package scope @sbl/*, SBL_TOKEN env vars) deliberately keep
- * the old placeholder — renaming them is an API break with zero user-facing value.
+ * Technical identifiers now agree with the display name (package scope @frog/*,
+ * FROG_* env vars, frog_ token prefix) — the identifier layer was renamed on
+ * 2026-07-28, see docs/DECISIONS.md. The one sanctioned literal outside this file
+ * is supabase/functions/send-rest-push (Deno; cannot import @frog/core).
  */
 export const APP_NAME = "Frog";

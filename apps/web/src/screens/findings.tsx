@@ -1,5 +1,5 @@
+import type { ConditionFinding, TrendFinding } from "@frog/core";
 import { Badge } from "@radix-ui/themes";
-import type { ConditionFinding, TrendFinding } from "@sbl/core";
 import { useMemo } from "react";
 import { computeFindings } from "@/lib/findings";
 import { useFindingsData, useMetrics } from "@/lib/queries";

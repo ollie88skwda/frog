@@ -30,7 +30,11 @@ export type UserInfo = { name: string; email: string };
 
 /** Clears per-user residue on sign-out so the next user on a shared device
  * can't see the previous user's data. Legacy `sb-*-auth-token` entries are
- * refresh tokens from the pre-Clerk placeholder auth. */
+ * refresh tokens from the pre-Clerk placeholder auth.
+ *
+ * `sbl.pastUsers` keeps its pre-rebrand name on purpose: nothing writes it any
+ * more, so this is the only code that will ever see it. Renaming it to `frog.`
+ * would mean the stale entry on a real device is never cleaned up. */
 function clearLocalAuthArtifacts() {
   const stale: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
