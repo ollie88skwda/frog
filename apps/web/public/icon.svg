@@ -13,9 +13,9 @@
     471-unit square window on the head + body, bottom-anchored: the haunches,
     feet and ground bar are wider than it and bleed off the left and right edges,
     and the ground bar sits just above the bottom edge. scripts/gen-pwa-icons.ts
-    derives that window from the mark's measured boxes and asserts these two
-    numbers still match it — run it after any edit and it will hand you the new
-    ones. (Its maskable target uses a second, un-cropped window instead: nothing
+    derives that window from the mark's measured boxes and asserts this viewBox
+    and the #pad translate still match it — run it after any edit and it will
+    hand you the new ones. (Its maskable target uses a second, un-cropped window instead: nothing
     may bleed outside the inner-80% safe circle.) Keeping the viewBox origin at
     0 0 is what lets #ground stay a plain 100% x 100% rect.
 
