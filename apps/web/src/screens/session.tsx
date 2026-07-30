@@ -2125,16 +2125,18 @@ function ExerciseBlock({
       data-superset={inSuperset ? "1" : undefined}
     >
       <header className="group flex min-h-8 items-center justify-between gap-2 border-b border-border px-4 py-1">
-        <span className="flex min-w-0 items-center gap-2">
+        <span className="flex min-w-0 flex-1 items-center gap-2">
           <ExerciseThumb imageUrl={exercise?.imageUrl} name={block.name} />
           <span className="flex min-w-0 flex-col">
             {/* Tap the name → exercise detail; Hevy opens it mid-workout
-                without pausing (the session stays server-persisted). */}
+                without pausing (the session stays server-persisted). Wraps to
+                a second line rather than truncating — the left span now
+                claims the width left over after the header controls. */}
             <button
               type="button"
               onClick={() => navigate(`/exercises/${block.exerciseId}`)}
               title="Exercise details"
-              className="truncate text-left text-sm font-medium transition-colors duration-100 hover:text-accent"
+              className="text-left text-sm font-medium transition-colors duration-100 hover:text-accent"
               data-testid={`block-${block.name}-open`}
             >
               {block.name}
@@ -2150,10 +2152,6 @@ function ExerciseBlock({
           </span>
         </span>
         <span className="flex items-center gap-2">
-          <span className="num text-2xs text-faint">
-            {block.committed.length}{" "}
-            {block.committed.length === 1 ? "set" : "sets"}
-          </span>
           <RestControl
             blockName={block.name}
             restSec={effectiveRestSec}
@@ -3677,28 +3675,27 @@ function ActiveRow({
           </div>
         </DialogContent>
       </Dialog>
-      <div className="mt-2 flex items-center gap-2">
+      <div className="mt-2 grid grid-cols-[1fr_auto] items-stretch gap-2">
         <Button
           variant="outline"
           size="sm"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => commit(true)}
-          className="h-8 flex-1"
           data-testid={`set-${index}-add`}
         >
           <Plus className="size-3" />
           Add set
         </Button>
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="icon"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => commit(true)}
           title="Mark set done"
-          className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-surface-2 text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink md:size-8"
           data-testid={`set-${index}-done`}
         >
           <Check className="size-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
