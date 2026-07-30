@@ -25,7 +25,6 @@ test("/tips lists lessons and browsing clears the InfoTip dot", async ({
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId("pick-exercise-Squat").click();
   await page.getByTestId("set-0-more").click();
-  await page.getByTestId("set-0-add-rir").click();
   const tip = page.getByTestId("infotip-rir");
   await expect(tip).toBeVisible();
   await expect(tip.locator("span.bg-accent")).toBeVisible(); // unseen dot
@@ -59,11 +58,11 @@ test("/tips lists lessons and browsing clears the InfoTip dot", async ({
     .toContain("rir");
 
   // Back in the session (SPA back), the InfoTip dot is gone. The row remounts
-  // with the details sheet closed (RIR stays on — extras persist in the draft),
-  // so reopen it to reach the InfoTip.
+  // with the details sheet closed, so reopen it (RIR is always shown there)
+  // to reach the InfoTip.
   await page.goBack();
   await expect(page).toHaveURL(/\/session\//);
-  await page.getByTestId("set-0-details").click();
+  await page.getByTestId("set-0-more").click();
   await expect(page.getByTestId("infotip-rir")).toBeVisible();
   await expect(
     page.getByTestId("infotip-rir").locator("span.bg-accent"),

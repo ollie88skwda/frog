@@ -234,6 +234,16 @@
   box-shadow: var(--shadow-high);
 }
 
+/* Comfortable bottom clearance for anything flush to the viewport's bottom
+   edge on mobile (bottom sheets, the tab bar) — env() alone isn't enough
+   since it's 0 on most Android devices, so a fixed minimum stacks on top of
+   whatever inset the device reports (0 on Android, the home-indicator height
+   on iOS). Shared by DialogContent's mobile sheet footer; reuse this instead
+   of a one-off pb-* value anywhere else content sits at the bottom edge. */
+@utility pb-safe-footer {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+}
+
 @layer base {
   * {
     border-color: var(--border);

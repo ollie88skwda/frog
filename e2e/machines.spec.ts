@@ -98,7 +98,6 @@ test("RIR InfoTip opens the lesson", async ({ page }) => {
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId("pick-exercise-Squat").click();
   await page.getByTestId("set-0-more").click();
-  await page.getByTestId("set-0-add-rir").click();
   await page.getByTestId("infotip-rir").click();
   await expect(page.getByText("RIR — reps in reserve")).toBeVisible();
   await expect(page.getByText(/reps you could still do/i)).toBeVisible();
