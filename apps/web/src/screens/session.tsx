@@ -31,6 +31,7 @@ import {
   previousCells,
   type RestTimerState,
   type RoutineDetail,
+  restRemainingSec,
   SET_TYPE_LABELS,
   SET_TYPE_MARKERS,
   SET_TYPES,
@@ -91,7 +92,7 @@ import { InfoTip } from "@/components/lesson";
 import { MachineEditor } from "@/components/machines";
 import { PlateSheet } from "@/components/session/plate-sheet";
 import { PrBanner, type PrBannerData } from "@/components/session/pr-banner";
-import { RestCountdown } from "@/components/session/rest-countdown";
+import { RestControl, RestDock } from "@/components/session/rest-countdown";
 import {
   FinishPhotoStrip,
   type PendingPhoto,
@@ -544,11 +545,44 @@ export default function SessionScreen() {
           "Rest complete. Adenosine triphosphate: replenished (approximately). The frog suggests you pick up the bar.",
         )}`,
       );
-      // Keep the "rest!" chip up briefly, then clear it.
+      // Keep the "rest!" bar up briefly, then clear it.
       window.setTimeout(() => dismissRest(seId), 3000);
     },
     [restVolume, dismissRest],
   );
+
+  // Done-detection runs here, for every running countdown — the dock below
+  // renders one timer at a time, so a superset's second countdown would
+  // otherwise never fire its alert while off screen. Once per (block, start).
+  const firedRest = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (Object.keys(restByBlock).length === 0) return;
+    const id = window.setInterval(() => {
+      const now = Date.now();
+      for (const [seId, state] of Object.entries(restByBlock)) {
+        const key = `${seId}:${state.startedAt}`;
+        if (firedRest.current.has(key)) continue;
+        if (restRemainingSec(state, now) > 0) continue;
+        firedRest.current.add(key);
+        restDoneFor(seId, blocks?.find((b) => b.seId === seId)?.name ?? "");
+      }
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [restByBlock, restDoneFor, blocks]);
+
+  // The dock shows the most recently started countdown — the set you just
+  // finished. Any older one keeps ticking and takes the dock as it frees up.
+  const activeRest = useMemo(() => {
+    let latest: { seId: string; state: RestTimerState } | null = null;
+    for (const [seId, state] of Object.entries(restByBlock)) {
+      if (!latest || state.startedAt > latest.state.startedAt) {
+        latest = { seId, state };
+      }
+    }
+    if (!latest) return null;
+    const name = blocks?.find((b) => b.seId === latest.seId)?.name;
+    return name ? { ...latest, name } : null;
+  }, [restByBlock, blocks]);
 
   // Live PR banner + medal set. Bests snapshot captured once at mount, so the
   // logging path never triggers a records refetch (logSet invalidates
@@ -1293,6 +1327,15 @@ export default function SessionScreen() {
   return (
     <>
       <PrBanner data={prBanner} onDismiss={() => setPrBanner(null)} />
+      {activeRest && (
+        <RestDock
+          state={activeRest.state}
+          exerciseName={activeRest.name}
+          onAdjust={(d) => adjustRestFor(activeRest.seId, d)}
+          onDismiss={() => dismissRest(activeRest.seId)}
+          testId={`rest-${activeRest.name}`}
+        />
+      )}
       <header className="sticky top-0 z-10 border-b border-border bg-bg">
         <div className="mx-auto flex h-12 max-w-2xl items-center justify-between gap-3 px-4">
           <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">
@@ -1360,7 +1403,14 @@ export default function SessionScreen() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-4 pt-4 pb-20 md:pb-6">
+      {/* Mobile keeps the shell's tab-bar padding (already clears the dock);
+          desktop has none, so it makes room only while the dock is up. */}
+      <div
+        className={cn(
+          "mx-auto max-w-2xl px-4 pt-4 pb-20",
+          activeRest ? "md:pb-28" : "md:pb-6",
+        )}
+      >
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <ConditionsChip sessionId={sessionId} />
@@ -1401,9 +1451,6 @@ export default function SessionScreen() {
                 updatePrefs.mutate({ plateConfig: cfg })
               }
               rest={restByBlock[block.seId]}
-              onRestAdjust={(d) => adjustRestFor(block.seId, d)}
-              onRestDismiss={() => dismissRest(block.seId)}
-              onRestDone={() => restDoneFor(block.seId, block.name)}
               onSetRest={(sec) => setBlockRest(block.seId, sec)}
               onSetNote={(note) => setBlockNote(block.seId, note)}
               onLinkSuperset={(target) => linkSuperset(block.seId, target)}
@@ -1977,9 +2024,6 @@ function ExerciseBlock({
   plateConfig,
   onSavePlateConfig,
   rest,
-  onRestAdjust,
-  onRestDismiss,
-  onRestDone,
   onSetRest,
   onSetNote,
   onLinkSuperset,
@@ -2010,9 +2054,6 @@ function ExerciseBlock({
   plateConfig: PlateConfig | null;
   onSavePlateConfig: (cfg: PlateConfig) => void;
   rest: RestTimerState | undefined;
-  onRestAdjust: (deltaSec: number) => void;
-  onRestDismiss: () => void;
-  onRestDone: () => void;
   onSetRest: (restSec: number | null) => void;
   onSetNote: (note: string) => void;
   onLinkSuperset: (targetSeId: string) => void;
@@ -2083,7 +2124,7 @@ function ExerciseBlock({
       data-testid={`block-${block.name}`}
       data-superset={inSuperset ? "1" : undefined}
     >
-      <header className="group flex min-h-8 items-center justify-between border-b border-border px-4 py-1">
+      <header className="group flex min-h-8 items-center justify-between gap-2 border-b border-border px-4 py-1">
         <span className="flex min-w-0 items-center gap-2">
           <ExerciseThumb imageUrl={exercise?.imageUrl} name={block.name} />
           <span className="flex min-w-0 flex-col">
@@ -2109,19 +2150,16 @@ function ExerciseBlock({
           </span>
         </span>
         <span className="flex items-center gap-2">
-          {rest && (
-            <RestCountdown
-              state={rest}
-              onAdjust={onRestAdjust}
-              onDismiss={onRestDismiss}
-              onDone={onRestDone}
-              testId={`rest-${block.name}`}
-            />
-          )}
           <span className="num text-2xs text-faint">
             {block.committed.length}{" "}
             {block.committed.length === 1 ? "set" : "sets"}
           </span>
+          <RestControl
+            blockName={block.name}
+            restSec={effectiveRestSec}
+            running={rest != null}
+            onSetRest={onSetRest}
+          />
           <BlockMenu
             blockName={block.name}
             unit={blockUnit}
@@ -2131,10 +2169,8 @@ function ExerciseBlock({
             heaviestDisplay={
               heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
             }
-            restSec={effectiveRestSec}
             onLinkSuperset={onLinkSuperset}
             onUnlinkSuperset={onUnlinkSuperset}
-            onSetRest={onSetRest}
             onAddWarmup={(displayWeight) =>
               onAddWarmup(
                 blockUnit === "lb" ? lbToKg(displayWeight) : displayWeight,
@@ -2279,18 +2315,9 @@ function SessionNoteField({
   );
 }
 
-const REST_PRESETS: { label: string; sec: number | null }[] = [
-  { label: "Off", sec: null },
-  { label: "0:30", sec: 30 },
-  { label: "1:00", sec: 60 },
-  { label: "1:30", sec: 90 },
-  { label: "2:00", sec: 120 },
-  { label: "3:00", sec: 180 },
-];
-
-// Per-exercise overflow menu (Hevy three-dots): superset link/unlink, rest-timer
-// target, and warm-up insert. Remove-exercise stays as the header ✕ (its test id
-// is unchanged).
+// Per-exercise overflow menu (Hevy three-dots): superset link/unlink and
+// warm-up insert. Remove-exercise stays as the header ✕ (its test id is
+// unchanged); the rest-timer target moved out to its own header control.
 function BlockMenu({
   blockName,
   unit,
@@ -2298,10 +2325,8 @@ function BlockMenu({
   inSuperset,
   warmupEligible,
   heaviestDisplay,
-  restSec,
   onLinkSuperset,
   onUnlinkSuperset,
-  onSetRest,
   onAddWarmup,
 }: {
   blockName: string;
@@ -2310,10 +2335,8 @@ function BlockMenu({
   inSuperset: boolean;
   warmupEligible: boolean;
   heaviestDisplay: number | null;
-  restSec: number | null;
   onLinkSuperset: (targetSeId: string) => void;
   onUnlinkSuperset: () => void;
-  onSetRest: (restSec: number | null) => void;
   onAddWarmup: (displayWeight: number) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -2342,30 +2365,6 @@ function BlockMenu({
             className="fixed inset-0 z-10 cursor-default"
           />
           <div className="floating absolute top-full right-0 z-20 mt-1 max-h-80 min-w-48 overflow-y-auto py-1">
-            <p className={labelCls}>Rest timer</p>
-            <div className="flex flex-wrap gap-1 px-3 pb-2">
-              {REST_PRESETS.map((p) => (
-                <button
-                  key={p.label}
-                  type="button"
-                  onClick={() => {
-                    onSetRest(p.sec);
-                    setOpen(false);
-                  }}
-                  className={cn(
-                    "num h-7 border px-2 text-2xs transition-colors duration-100",
-                    (p.sec ?? null) === (restSec ?? null)
-                      ? "border-accent bg-accent-soft text-accent"
-                      : "border-border bg-surface-2 text-soft hover:bg-surface-hover hover:text-ink",
-                  )}
-                  data-testid={`block-${blockName}-rest-${p.sec ?? "off"}`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="border-t border-border" />
             <p className={labelCls}>Superset</p>
             {otherBlocks.length === 0 ? (
               <p className="px-3 pb-2 text-2xs text-faint">

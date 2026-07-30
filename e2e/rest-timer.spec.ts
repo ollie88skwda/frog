@@ -1,9 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
-// M3 rest countdown: a per-exercise target (set from the ⋯ menu) starts a
-// countdown chip when a set is completed; ±15s adjusts it; it dismisses; and it
-// is suppressed when the completed set is a drop set (drops chain with no rest).
+// M3 rest countdown: a per-exercise target (set from the block header's own
+// rest-timer control, left of the ⋯ menu) starts the docked countdown when a
+// set is completed; ±15s adjusts it; it dismisses; and it is suppressed when the
+// completed set is a drop set (drops chain with no rest).
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
@@ -31,11 +32,11 @@ test("target → countdown on commit, ±15s adjust, dismiss", async ({ page }) =
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
-  // Set a 1:00 rest target from the exercise ⋯ menu.
-  await page.getByTestId(`block-${EX}-menu`).click();
+  // Set a 1:00 rest target from the block's own rest-timer control.
+  await page.getByTestId(`block-${EX}-rest-timer`).click();
   await page.getByTestId(`block-${EX}-rest-60`).click();
 
-  // Complete a normal set → the countdown chip appears near 1:00.
+  // Complete a normal set → the docked countdown appears near 1:00.
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-add").click();
@@ -55,7 +56,7 @@ test("target → countdown on commit, ±15s adjust, dismiss", async ({ page }) =
   const dropped = await remainingSec(page, EX);
   expect(dropped).toBeLessThan(bumped - 8);
 
-  // Dismiss removes the chip.
+  // Dismiss removes the dock.
   await page.getByTestId(`rest-${EX}-dismiss`).click();
   await expect(page.getByTestId(`rest-${EX}`)).toBeHidden();
 });
@@ -70,7 +71,7 @@ test("rest timer is suppressed when the completed set is a drop set", async ({
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
-  await page.getByTestId(`block-${EX}-menu`).click();
+  await page.getByTestId(`block-${EX}-rest-timer`).click();
   await page.getByTestId(`block-${EX}-rest-60`).click();
 
   // Mark the draft set as a Drop set, then complete it.
