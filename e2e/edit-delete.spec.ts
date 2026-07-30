@@ -50,11 +50,12 @@ test("edit a committed set; delete a set; both survive reload", async ({ page })
   await page.getByTestId("edit-0-save").click();
   await expect(page.getByTestId("committed-0-weight")).toHaveText("105");
 
-  // Delete set 2 via the set-options (⋯) menu.
+  // Delete set 2 via the set-options (⋯) menu → Delete Set → confirm.
   const liveBefore = await liveRowCount(page, "set_logs");
   await page.getByTestId("committed-1").hover();
   await page.getByTestId("set-menu-1").click();
   await page.getByTestId("set-menu-1-delete").click();
+  await page.getByTestId("set-menu-1-delete-confirm").click();
   await expect(page.getByTestId("committed-1")).not.toBeVisible();
   // The removal above is optimistic — wait for the soft delete to land
   // server-side, otherwise the reload can abort the in-flight request and the
