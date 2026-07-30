@@ -1,16 +1,19 @@
-import type { MuscleByExercise, RecordsSessionInput } from "@frog/core";
+import {
+  FIRST_WEEKDAY,
+  type MuscleByExercise,
+  type RecordsSessionInput,
+} from "@frog/core";
 import { useMemo } from "react";
 import { useMeasurements } from "./measure-queries";
-import { useUserPrefs } from "./profile-queries";
 import { useExercises } from "./queries";
 import { useRecordsData } from "./records-queries";
 
 // Shared data seam for the Monthly report + Year in Review screens (M10). The
 // report builders in @frog/core take (history, muscles, …); everything they need
 // is already cached elsewhere — the records-data history (recordsData), the
-// exercise list (for the muscle map + exercise names), user prefs (first
-// weekday + warm-up inclusion), and the latest bodyweight (for bodyweight-
-// exercise volume). This hook assembles them so the screens stay presentational.
+// exercise list (for the muscle map + exercise names), and the latest
+// bodyweight (for bodyweight-exercise volume). This hook assembles them so
+// the screens stay presentational.
 export type ReportData = {
   history: RecordsSessionInput[];
   muscles: MuscleByExercise;
@@ -28,7 +31,6 @@ export function useReportData(): {
 } {
   const { data: records, isLoading: recLoading } = useRecordsData();
   const { data: exercises = [], isLoading: exLoading } = useExercises();
-  const { data: prefs } = useUserPrefs();
   const { data: measurements = [] } = useMeasurements();
 
   const data = useMemo<ReportData | undefined>(() => {
@@ -45,10 +47,10 @@ export function useReportData(): {
       muscles,
       nameOf: (id) => names.get(id) ?? "Exercise",
       includeWarmups: records.includeWarmups,
-      firstWeekday: prefs?.firstWeekday ?? 1,
+      firstWeekday: FIRST_WEEKDAY,
       bodyweightKg,
     };
-  }, [records, exercises, prefs, measurements]);
+  }, [records, exercises, measurements]);
 
   return { data, isLoading: recLoading || exLoading };
 }

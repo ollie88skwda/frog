@@ -1441,7 +1441,6 @@ export class SupabaseRepo implements Repo {
       updatedAt: r.updated_at as number,
       deletedAt: (r.deleted_at as number | null) ?? null,
       ownerId: r.owner_id as string,
-      firstWeekday: (r.first_weekday as number) ?? 1,
       includeWarmupsInStats: (r.include_warmups_in_stats as boolean) ?? true,
       defaultRestSec: (r.default_rest_sec as number | null) ?? null,
       previousValuesScope: (r.previous_values_scope as string) ?? "any",
@@ -1453,7 +1452,6 @@ export class SupabaseRepo implements Repo {
 
   async updateUserPrefs(patch: UserPrefsPatch): Promise<void> {
     const row: Row = {};
-    if ("firstWeekday" in patch) row.first_weekday = patch.firstWeekday;
     if ("includeWarmupsInStats" in patch)
       row.include_warmups_in_stats = patch.includeWarmupsInStats;
     if ("defaultRestSec" in patch)

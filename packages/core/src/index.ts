@@ -1,4 +1,4 @@
-export { APP_NAME } from "./config";
+export { APP_NAME, FIRST_WEEKDAY } from "./config";
 export * from "./db/schema";
 export * from "./db/seed-ids";
 export * from "./domain/anatomy";

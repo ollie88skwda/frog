@@ -1,5 +1,6 @@
 import {
   computeStreak,
+  FIRST_WEEKDAY,
   type MuscleByExercise,
   muscleCredits,
   PR_TYPE_LABELS,
@@ -18,7 +19,7 @@ import {
 import { BodyHeatmap } from "@/components/charts/body-heatmap";
 import { ShareButton, type ShareCardData } from "@/components/share-card";
 import { formatDate, formatDuration } from "@/lib/format";
-import { useAllSessions, useUserPrefs } from "@/lib/profile-queries";
+import { useAllSessions } from "@/lib/profile-queries";
 import { useSession, useSessionExercises } from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
 import { useUnit } from "@/lib/settings";
@@ -47,11 +48,9 @@ export function PostSaveSummary({
   const { data: session } = useSession(sessionId);
   const { data: blocks = [] } = useSessionExercises(sessionId);
   const { data: allSessions = [] } = useAllSessions();
-  const { data: prefs } = useUserPrefs();
   const { data: recordsData } = useRecordsData();
   const muscleMap = useMuscleMap();
 
-  const firstWeekday = prefs?.firstWeekday ?? 1;
   const startedAt = session?.startedAt ?? Date.now();
 
   // Ordinal workout number: how many workouts up to and including this one.
@@ -66,15 +65,15 @@ export function PostSaveSummary({
   // Streak — celebrated only on the first workout of the current week.
   const streak = useMemo(() => {
     const starts = [...allSessions.map((s) => s.startedAt), startedAt];
-    return computeStreak(starts, firstWeekday, Date.now());
-  }, [allSessions, startedAt, firstWeekday]);
+    return computeStreak(starts, FIRST_WEEKDAY, Date.now());
+  }, [allSessions, startedAt]);
   const firstOfWeek = useMemo(() => {
-    const wk = weekStart(startedAt, firstWeekday);
+    const wk = weekStart(startedAt, FIRST_WEEKDAY);
     const inWeek = allSessions.filter(
-      (s) => s.id !== sessionId && weekStart(s.startedAt, firstWeekday) === wk,
+      (s) => s.id !== sessionId && weekStart(s.startedAt, FIRST_WEEKDAY) === wk,
     );
     return inWeek.every((s) => s.startedAt >= startedAt);
-  }, [allSessions, startedAt, firstWeekday, sessionId]);
+  }, [allSessions, startedAt, sessionId]);
   const showStreak = firstOfWeek && streak.weeks >= 1;
 
   // Overview totals.
@@ -147,6 +146,7 @@ export function PostSaveSummary({
             title,
             subtitle,
             stats: overviewStats,
+            strong: prLines.length > 0,
           },
           filename: `workout-${ordinal}`,
           testId: "share-slide-hero",
@@ -196,6 +196,7 @@ export function PostSaveSummary({
               title,
               subtitle,
               lines: prLines,
+              strong: true,
             },
             filename: `workout-${ordinal}-prs`,
             testId: "share-slide-prs",
@@ -241,6 +242,7 @@ export function PostSaveSummary({
                 value: String(week.filter((d) => d.count > 0).length),
               },
             ],
+            strong: prLines.length > 0,
           },
           filename: `workout-${ordinal}-consistency`,
           testId: "share-slide-consistency",
@@ -287,6 +289,7 @@ export function PostSaveSummary({
             title,
             subtitle,
             stats: overviewStats,
+            strong: prLines.length > 0,
           },
           filename: `workout-${ordinal}-summary`,
           testId: "share-slide-overview",
@@ -326,6 +329,7 @@ export function PostSaveSummary({
               (b) =>
                 `${b.exerciseName} · ${b.sets.length} set${b.sets.length === 1 ? "" : "s"}`,
             ),
+            strong: prLines.length > 0,
           },
           filename: `workout-${ordinal}-exercises`,
           testId: "share-slide-muscles",

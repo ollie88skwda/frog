@@ -560,35 +560,16 @@ function WarmupMethodEditor() {
   );
 }
 
-// ── Display (calendar + body diagram) ───────────────────────────────────────
-
-const WEEKDAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
+// ── Display (body diagram) ──────────────────────────────────────────────────
 
 function DisplaySection() {
   const { data: prefs } = useUserPrefs();
   const updatePrefs = useUpdateUserPrefs();
-  const firstWeekday = prefs?.firstWeekday ?? 1;
   const bodyDiagram = prefs?.bodyDiagram ?? "neutral";
 
   return (
     <Section title="Display">
       <div className="mt-1 divide-y divide-border">
-        <Row label="First day of week" hint="Calendar and weekly streak start.">
-          <SelectField
-            value={String(firstWeekday)}
-            onChange={(v) => updatePrefs.mutate({ firstWeekday: Number(v) })}
-            testid="first-weekday-select"
-            options={WEEKDAYS.map((d, i) => ({ value: String(i), label: d }))}
-          />
-        </Row>
         <Row label="Body diagram" hint="Figure used on the stats heat map.">
           <SelectField
             value={bodyDiagram}

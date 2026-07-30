@@ -1,6 +1,7 @@
 import {
   distributionBetween,
   type Exercise,
+  FIRST_WEEKDAY,
   MUSCLE_REGION_LABELS,
   MUSCLE_REGIONS,
   type MuscleByExercise,
@@ -27,7 +28,6 @@ import { GroupedBarChart } from "@/components/charts/grouped-bars";
 import { StackedBarChart, stackColor } from "@/components/charts/stacked-bars";
 import { ShareButton } from "@/components/share-card";
 import { formatDuration } from "@/lib/format";
-import { useUserPrefs } from "@/lib/profile-queries";
 import { useExercises } from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
 import { useUnit } from "@/lib/settings";
@@ -68,7 +68,6 @@ export default function StatsScreen() {
   const navigate = useNavigate();
   const { data: recordsData, isLoading: recLoading } = useRecordsData();
   const { data: exercises = [], isLoading: exLoading } = useExercises();
-  const { data: prefs } = useUserPrefs();
   const muscleMap = useMuscleMap();
   const { unit } = useUnit();
   const { t } = useVoice();
@@ -77,9 +76,9 @@ export default function StatsScreen() {
     () => ({
       now: Date.now(),
       includeWarmups: recordsData?.includeWarmups ?? true,
-      firstWeekday: prefs?.firstWeekday ?? 1,
+      firstWeekday: FIRST_WEEKDAY,
     }),
-    [recordsData?.includeWarmups, prefs?.firstWeekday],
+    [recordsData?.includeWarmups],
   );
   const history = recordsData?.history ?? [];
 

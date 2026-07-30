@@ -1,4 +1,4 @@
-import { weekStart } from "@frog/core";
+import { FIRST_WEEKDAY, weekStart } from "@frog/core";
 import {
   BarChart3,
   CalendarDays,
@@ -39,31 +39,30 @@ export default function ProfileScreen() {
 
   const displayName = prefs?.displayName || authName;
   const initial = (displayName[0] ?? "?").toUpperCase();
-  const firstWeekday = prefs?.firstWeekday ?? 1;
 
   const starts = useMemo(() => sessions.map((s) => s.startedAt), [sessions]);
   const recent = sessions.slice(0, 5);
 
   // Weekly workout counts over the last ~3 months, oldest → newest.
   const activity = useMemo(() => {
-    const thisWeek = weekStart(Date.now(), firstWeekday);
+    const thisWeek = weekStart(Date.now(), FIRST_WEEKDAY);
     const counts = new Map<number, number>();
     for (const t of starts) {
-      const ws = weekStart(t, firstWeekday);
+      const ws = weekStart(t, FIRST_WEEKDAY);
       counts.set(ws, (counts.get(ws) ?? 0) + 1);
     }
     const bars: { label: string; value: number }[] = [];
     let prevMonth = -1;
     for (let i = ACTIVITY_WEEKS - 1; i >= 0; i--) {
       // Re-normalize onto a true week boundary (DST-safe).
-      const ws = weekStart(thisWeek - i * WEEK_MS + WEEK_MS / 2, firstWeekday);
+      const ws = weekStart(thisWeek - i * WEEK_MS + WEEK_MS / 2, FIRST_WEEKDAY);
       const d = new Date(ws);
       const label = d.getMonth() !== prevMonth ? monthFmt.format(d) : "";
       prevMonth = d.getMonth();
       bars.push({ label, value: counts.get(ws) ?? 0 });
     }
     return bars;
-  }, [starts, firstWeekday]);
+  }, [starts]);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
@@ -98,7 +97,7 @@ export default function ProfileScreen() {
             {sessions.length}
           </p>
         </div>
-        <StreakCard starts={starts} firstWeekday={firstWeekday} />
+        <StreakCard starts={starts} />
       </div>
 
       {/* 3-month weekly activity. */}

@@ -10,3 +10,11 @@
  * is supabase/functions/send-rest-push (Deno; cannot import @frog/core).
  */
 export const APP_NAME = "Frog";
+
+/**
+ * Calendar/streak week start — Sunday (0=Sun…6=Sat), hardcoded per
+ * docs/DECISIONS.md 2026-07-30. Previously a per-user preference
+ * (`user_prefs.first_weekday`); the picker was removed, so every call site
+ * that used to read the preference now imports this constant instead.
+ */
+export const FIRST_WEEKDAY = 0;

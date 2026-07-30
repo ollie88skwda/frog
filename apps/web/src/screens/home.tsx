@@ -1,4 +1,4 @@
-import { sevenDayMuscleSets } from "@frog/core";
+import { FIRST_WEEKDAY, sevenDayMuscleSets } from "@frog/core";
 import { BarChart3, LibraryBig, Play, Users } from "lucide-react";
 import { useMemo } from "react";
 import { Link, useNavigate } from "react-router";
@@ -8,7 +8,7 @@ import { StreakCard } from "@/components/streak-card";
 import { TrainFindingsCard } from "@/components/train-findings-card";
 import { Button } from "@/components/ui/button";
 import { formatTime } from "@/lib/format";
-import { useAllSessions, useUserPrefs } from "@/lib/profile-queries";
+import { useAllSessions } from "@/lib/profile-queries";
 import { useActiveSession } from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
 import { useStartSession } from "@/lib/start-session";
@@ -20,7 +20,6 @@ export default function HomeScreen() {
   const { t } = useVoice();
   const { data: active } = useActiveSession();
   const { start, starting } = useStartSession();
-  const { data: prefs } = useUserPrefs();
   const { data: sessions = [] } = useAllSessions();
   const { data: recordsData } = useRecordsData();
   const muscleMap = useMuscleMap();
@@ -33,10 +32,10 @@ export default function HomeScreen() {
         ? sevenDayMuscleSets(recordsData.history, muscleMap, {
             now: Date.now(),
             includeWarmups: recordsData.includeWarmups,
-            firstWeekday: prefs?.firstWeekday ?? 1,
+            firstWeekday: FIRST_WEEKDAY,
           })
         : {},
-    [recordsData, muscleMap, prefs?.firstWeekday],
+    [recordsData, muscleMap],
   );
 
   return (
@@ -79,7 +78,7 @@ export default function HomeScreen() {
       <ReportPromo />
 
       <Link to="/calendar" className="mt-4 block" data-testid="home-streak">
-        <StreakCard starts={starts} firstWeekday={prefs?.firstWeekday ?? 1} />
+        <StreakCard starts={starts} />
       </Link>
 
       {/* Trailing-7-day muscle map — a glanceable teaser into full Statistics. */}

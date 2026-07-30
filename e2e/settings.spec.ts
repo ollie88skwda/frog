@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 
-// M12: settings hub — device-local unit prefs persist, server-backed prefs
-// (first weekday) round-trip through user_prefs, and the warm-up method editor
-// edits the stored ramp.
+// M12: settings hub — device-local unit prefs persist, and the warm-up method
+// editor edits the stored ramp. (First-day-of-week was a user_prefs setting;
+// the week now hardcodes to Sunday everywhere — see docs/DECISIONS.md
+// 2026-07-30 — and the picker here is gone.)
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
@@ -30,29 +31,6 @@ test("unit toggles persist across reload", async ({ page }) => {
   await expect(page.getByTestId("distance-unit-km")).toHaveClass(
     /bg-surface-active/,
   );
-});
-
-test("first day of week persists to user_prefs", async ({ page }) => {
-  await page.goto("/settings");
-  // Radix Select (not a native <select>): open the trigger, click the option.
-  await page.getByTestId("first-weekday-select").click();
-  await page.getByRole("option", { name: "Sunday" }).click();
-
-  await expect
-    .poll(() =>
-      page.evaluate(async () => {
-        const { data } = await window.__frog.supabase
-          .from("user_prefs")
-          .select("first_weekday")
-          .maybeSingle();
-        return data?.first_weekday ?? null;
-      }),
-    )
-    .toBe(0);
-
-  await page.reload();
-  // The Radix Select trigger renders the selected option's label.
-  await expect(page.getByTestId("first-weekday-select")).toHaveText(/Sunday/);
 });
 
 test("warm-up method editor adds, removes, and resets steps", async ({

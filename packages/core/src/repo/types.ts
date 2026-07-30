@@ -505,7 +505,6 @@ export type MeasurementPatch = Partial<{
 }>;
 
 export type UserPrefsPatch = Partial<{
-  firstWeekday: number;
   includeWarmupsInStats: boolean;
   defaultRestSec: number | null;
   previousValuesScope: "any" | "routine";
