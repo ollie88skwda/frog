@@ -3,9 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRepo } from "./repo";
 
 // Profile / Calendar / Home streak all read the same two things: the user's
-// preferences (first weekday, display name) and their full session history
-// (starts feed the streak + activity bars + calendar). One cheap fetch each,
-// cached and shared across the three screens.
+// preferences (display name, …) and their full session history (starts feed
+// the streak + activity bars + calendar). One cheap fetch each, cached and
+// shared across the three screens.
 
 // A high ceiling on the session fetch: computeStreak only walks back to the
 // first gap, and the calendar/activity views cover recent months, so this
@@ -14,7 +14,7 @@ import { useRepo } from "./repo";
 // for these consistency views (findingsData/recordsData own full history).
 const ALL_SESSIONS_LIMIT = 1000;
 
-/** User preferences (first weekday, display name, …); shares the cache key with
+/** User preferences (display name, …); shares the cache key with
  * records-queries so the two never double-fetch. */
 export function useUserPrefs() {
   const repo = useRepo();
@@ -25,8 +25,8 @@ export function useUserPrefs() {
   });
 }
 
-/** Patch user preferences with an optimistic cache write so display-name and
- * first-weekday edits reflect instantly (the calendar grid re-lays-out live). */
+/** Patch user preferences with an optimistic cache write so edits (e.g.
+ * display name) reflect instantly. */
 export function useUpdateUserPrefs() {
   const repo = useRepo();
   const qc = useQueryClient();
@@ -48,7 +48,6 @@ export function useUpdateUserPrefs() {
               updatedAt: now,
               deletedAt: null,
               ownerId: "",
-              firstWeekday: 1,
               includeWarmupsInStats: true,
               defaultRestSec: null,
               previousValuesScope: "any",

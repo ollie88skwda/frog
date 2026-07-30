@@ -398,7 +398,6 @@ export const userPrefs = pgTable(
   {
     ...base,
     ownerId: requiredOwner,
-    firstWeekday: integer("first_weekday").notNull().default(1), // 0=Sun … 6=Sat
     includeWarmupsInStats: boolean("include_warmups_in_stats")
       .notNull()
       .default(true),

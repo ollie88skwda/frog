@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 // The frog brand mark as in-app chrome (docs/brand/frog-brand-identity.html).
@@ -16,13 +17,20 @@ import { cn } from "@/lib/utils";
 // mark is NOT the tile's fixed black-on-green: the tile owns its palette, the
 // app chrome follows the theme. Never swap this for a raster: it is ~1.3 kB
 // inline against 5-20 kB, and the bundle is CI-gated.
-export function FrogMark({ className }: { className?: string }) {
+export function FrogMark({
+  className,
+  style,
+}: {
+  className?: string;
+  style?: CSSProperties;
+}) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       aria-hidden="true"
       className={cn("shrink-0", className)}
+      style={style}
     >
       <g
         fill="var(--accent)"

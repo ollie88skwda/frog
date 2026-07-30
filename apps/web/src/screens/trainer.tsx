@@ -4,6 +4,7 @@ import {
   EQUIPMENT_KINDS,
   EQUIPMENT_LABELS,
   type EquipmentKind,
+  FIRST_WEEKDAY,
   formatWeight,
   type GeneratorConfig,
   type GeneratorExperience,
@@ -38,7 +39,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useMeasurements } from "@/lib/measure-queries";
-import { useUserPrefs } from "@/lib/profile-queries";
 import {
   useActiveProgram,
   useDeleteProgram,
@@ -1016,7 +1016,6 @@ function ProgressReport({
 }) {
   const { unit } = useUnit();
   const { data: exercises = [] } = useExercises();
-  const { data: prefs } = useUserPrefs();
   const { data: records } = useRecordsData();
   const { data: measurements = [] } = useMeasurements();
 
@@ -1028,11 +1027,10 @@ function ProgressReport({
   // Pinned once per mount so the report doesn't jitter (and the memos below
   // stay stable): now + the stats options.
   const now = useMemo(() => Date.now(), []);
-  const firstWeekday = prefs?.firstWeekday ?? 1;
   const includeWarmups = records?.includeWarmups ?? true;
   const opts = useMemo(
-    () => ({ now, firstWeekday, includeWarmups }),
-    [now, firstWeekday, includeWarmups],
+    () => ({ now, firstWeekday: FIRST_WEEKDAY, includeWarmups }),
+    [now, includeWarmups],
   );
 
   const consistency = useMemo(

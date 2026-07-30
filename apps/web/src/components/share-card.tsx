@@ -1,17 +1,29 @@
 import { APP_NAME } from "@frog/core";
 import { Download, Share2 } from "lucide-react";
+import type { CSSProperties } from "react";
 import { useCallback, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { createRoot } from "react-dom/client";
+import { FrogMark } from "@/components/frog-mark";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { randomTagline } from "@/lib/frog-tagline";
 import { cn } from "@/lib/utils";
 
-// Share-as-image cards (Hevy-parity M9, plan §D). A clean branded PNG rendered
-// entirely on a <canvas> — zero dependencies, no network, no hosting. Social
-// pillar is deliberately out of scope: there are no links or uploads, only a
-// client-rendered image the user can share via the OS sheet (navigator.share)
-// or save to their device. Three background variants (dark/light/transparent)
-// mirror Hevy's background switcher; transparent is meant for overlaying on a
-// photo in the destination app, so it draws light text with a soft shadow.
+// Share-as-image cards (Hevy-parity M9, plan §D; redesign docs/DECISIONS.md
+// 2026-07-30). A branded PNG rendered entirely on a <canvas> — zero
+// dependencies, no network, no hosting. Social pillar is deliberately out of
+// scope: there are no links or uploads, only a client-rendered image the user
+// can share via the OS sheet (navigator.share) or save to their device.
+// Three background variants (dark/light/transparent) mirror Hevy's background
+// switcher; transparent is meant for overlaying on a photo in the destination
+// app, so it draws light text with a soft shadow.
+//
+// The card matches the app's own design system exactly rather than
+// approximating it: colors are sampled at render time from the real Radix
+// grass/sage tokens (theme.css), never a hand-picked hex that can drift, and
+// the brand mark is rasterized from the shared FrogMark component — never a
+// third hand-copy of its path geometry (AGENTS.md already flags two).
 
 export type ShareStat = { label: string; value: string };
 
@@ -25,6 +37,10 @@ export type ShareCardData = {
   stats?: ShareStat[];
   /** Freeform bullet lines — e.g. PRs earned or the exercise list. */
   lines?: string[];
+  /** Session-quality signal the caller already computed (a PR landed this
+   * session) — biases the frog-sass tagline's tone. Never invented just for
+   * the caption; when the caller has no such signal, omit it. */
+  strong?: boolean;
 };
 
 type Variant = "dark" | "light" | "transparent";
@@ -40,8 +56,15 @@ const VARIANT_LABELS: Record<Variant, string> = {
 const W = 1080;
 const H = 1350;
 const PAD = 96;
+const MARK_SIZE = 84;
 
-const FONT = `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif`;
+// Same faces the app uses (theme.css `--font-sans` / `--font-mono`): sans for
+// everything, the fixed-width mono stack for numeric values — canvas text
+// can't do `font-variant-numeric: tabular-nums`, but these families are
+// inherently fixed-width, which gets the same aligned-digits result the
+// app's `.num` utility achieves in the DOM.
+const FONT_SANS = `"Bricolage Grotesque", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+const FONT_MONO = `ui-monospace, "SF Mono", "Berkeley Mono", Menlo, monospace`;
 
 type Palette = {
   bg: string | null; // null = leave the canvas transparent
@@ -53,15 +76,50 @@ type Palette = {
   shadow: boolean; // draw a text shadow (transparent overlay legibility)
 };
 
+/** Resolve a raw Radix scale step (`--sage-N`, `--grass-N`) under a FORCED
+ * light/dark class, not the page's live theme — so picking "Dark" always
+ * looks the same regardless of which theme the app is currently in. Radix's
+ * scale files key off a flat `.light`/`.dark` class on any element (not
+ * `:root`-scoped), so a detached, temporarily-classed span resolves the
+ * requested theme's value correctly. */
+function sampleForcedToken(
+  themeClass: "light" | "dark",
+  cssVar: string,
+  fallback: string,
+): string {
+  if (typeof document === "undefined") return fallback;
+  const el = document.createElement("span");
+  el.className = themeClass;
+  el.style.display = "none";
+  el.style.color = `var(${cssVar})`;
+  document.body.appendChild(el);
+  const c = getComputedStyle(el).color;
+  el.remove();
+  return c || fallback;
+}
+
+/** Resolve a token against the page's LIVE theme — only for values that are
+ * identical across light/dark (the grass accent never changes by theme). */
+function sampleLiveToken(cssVar: string, fallback: string): string {
+  if (typeof document === "undefined") return fallback;
+  const el = document.createElement("span");
+  el.style.display = "none";
+  el.style.color = `var(${cssVar})`;
+  document.body.appendChild(el);
+  const c = getComputedStyle(el).color;
+  el.remove();
+  return c || fallback;
+}
+
 function paletteFor(variant: Variant, accent: string): Palette {
   switch (variant) {
     case "light":
       return {
-        bg: "#f5f8f5",
-        ink: "#1a211e",
-        soft: "#5f6563",
-        faint: "#868e8b",
-        hair: "#dfe2e0",
+        bg: "#ffffff", // theme.css `:root { --bg: white }` — not sage-2
+        ink: sampleForcedToken("light", "--sage-12", "#1a211e"),
+        soft: sampleForcedToken("light", "--sage-11", "#5f6563"),
+        faint: sampleForcedToken("light", "--sage-10", "#7c8481"),
+        hair: sampleForcedToken("light", "--sage-6", "#d7dad9"),
         accent,
         shadow: false,
       };
@@ -72,40 +130,77 @@ function paletteFor(variant: Variant, accent: string): Palette {
         soft: "rgba(255,255,255,0.82)",
         faint: "rgba(255,255,255,0.62)",
         hair: "rgba(255,255,255,0.28)",
-        accent: "#ffffff",
+        accent,
         shadow: true,
       };
     default:
       return {
-        bg: "#101211",
-        ink: "#eceeed",
-        soft: "#adb5b2",
-        faint: "#717d79",
-        hair: "#2e3130",
+        // theme.css `:root.dark { --bg: var(--sage-1) }`
+        bg: sampleForcedToken("dark", "--sage-1", "#101211"),
+        ink: sampleForcedToken("dark", "--sage-12", "#eceeed"),
+        soft: sampleForcedToken("dark", "--sage-11", "#adb5b2"),
+        faint: sampleForcedToken("dark", "--sage-10", "#717d79"),
+        hair: sampleForcedToken("dark", "--sage-6", "#373b39"),
         accent,
         shadow: false,
       };
   }
 }
 
-/** Resolve a CSS custom property to a concrete rgb() string usable on canvas. */
-function sampleToken(cssVar: string, fallback: string): string {
-  if (typeof document === "undefined") return fallback;
-  const el = document.createElement("span");
-  el.style.color = `var(${cssVar})`;
-  el.style.display = "none";
-  document.body.appendChild(el);
-  const c = getComputedStyle(el).color;
-  el.remove();
-  return c || fallback;
+// Rasterized FrogMark, keyed by its resolved colors — cheap to redo (a ~1 kB
+// inline SVG) but no reason to re-decode on every repaint of the same variant.
+const markImageCache = new Map<string, HTMLImageElement>();
+
+function loadFrogMarkImage(
+  outline: string,
+  accent: string,
+): Promise<HTMLImageElement> {
+  const key = `${outline}|${accent}`;
+  const cached = markImageCache.get(key);
+  if (cached) return Promise.resolve(cached);
+
+  // Rasterize the SAME component the rest of the app uses for its brand mark
+  // — never a third hand-copy of the path geometry. Mounted into a detached
+  // host via the app's own react-dom/client (already loaded; react-dom/server
+  // would double the bundle for this one icon) and read back with the native
+  // XMLSerializer, so no react-dom/server import is needed. FrogMark's
+  // outline is `currentColor` and its body is `var(--accent)`; set both via
+  // inline style/custom-property so the serialized SVG (no access to the
+  // page's live CSS once it's a standalone document) resolves the requested
+  // palette.
+  const host = document.createElement("div");
+  host.style.position = "fixed";
+  host.style.left = "-9999px";
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  const style = { color: outline, "--accent": accent } as CSSProperties;
+  flushSync(() => root.render(<FrogMark style={style} />));
+  // XMLSerializer already includes xmlns on an SVG element (it's in the SVG
+  // namespace in the live DOM) — no need to inject one.
+  const svgEl = host.querySelector("svg");
+  const markup = svgEl ? new XMLSerializer().serializeToString(svgEl) : "";
+  root.unmount();
+  host.remove();
+  const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      markImageCache.set(key, img);
+      resolve(img);
+    };
+    img.onerror = () => reject(new Error("frog mark failed to rasterize"));
+    img.src = url;
+  });
 }
 
 /** Draw the card onto `canvas` at full resolution. */
-export function renderShareCard(
+export async function renderShareCard(
   canvas: HTMLCanvasElement,
   data: ShareCardData,
   variant: Variant,
   accent: string,
+  tagline: string,
 ) {
   canvas.width = W;
   canvas.height = H;
@@ -119,9 +214,10 @@ export function renderShareCard(
     ctx.fillRect(0, 0, W, H);
   }
 
-  // Accent rule down the left gutter — the one flash of brand color.
-  ctx.fillStyle = p.accent;
-  ctx.fillRect(PAD, PAD, 64, 8);
+  // The background fill above is enough for a "the card painted" check —
+  // everything below (including the async mark rasterization) can safely
+  // take a beat without the card reading as blank.
+  if (typeof document !== "undefined") await document.fonts.ready;
 
   const shadow = () => {
     if (p.shadow) {
@@ -135,39 +231,54 @@ export function renderShareCard(
     }
   };
 
-  let y = PAD + 8;
+  let y = PAD;
 
-  // Wordmark.
-  y += 74;
+  // Header lockup: frog mark + wordmark (matches the nav shell's mark +
+  // APP_NAME pairing), then a hairline rule — not an arbitrary accent block.
   shadow();
-  ctx.fillStyle = p.soft;
-  ctx.font = `600 34px ${FONT}`;
+  try {
+    const mark = await loadFrogMarkImage(p.ink, p.accent);
+    ctx.drawImage(mark, PAD, y, MARK_SIZE, MARK_SIZE);
+  } catch {
+    // Rasterizing the mark failed — the wordmark alone still reads fine.
+  }
+  ctx.fillStyle = p.ink;
+  ctx.font = `700 40px ${FONT_SANS}`;
+  ctx.textBaseline = "middle";
+  ctx.fillText(APP_NAME.toUpperCase(), PAD + MARK_SIZE + 24, y + MARK_SIZE / 2);
   ctx.textBaseline = "alphabetic";
-  ctx.fillText(APP_NAME.toUpperCase(), PAD, y);
+
+  y += MARK_SIZE + 40;
+  ctx.strokeStyle = p.hair;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(PAD, y);
+  ctx.lineTo(W - PAD, y);
+  ctx.stroke();
 
   // Kicker (eyebrow).
   if (data.kicker) {
-    y += 96;
+    y += 76;
     ctx.fillStyle = p.accent;
-    ctx.font = `700 40px ${FONT}`;
+    ctx.font = `700 40px ${FONT_SANS}`;
     ctx.fillText(data.kicker.toUpperCase(), PAD, y);
   }
 
   // Title (wrapped, up to 3 lines).
   y += 92;
   ctx.fillStyle = p.ink;
-  ctx.font = `800 84px ${FONT}`;
+  ctx.font = `800 84px ${FONT_SANS}`;
   y = wrap(ctx, data.title, PAD, y, W - PAD * 2, 92, 3);
 
   // Subtitle.
   if (data.subtitle) {
     y += 54;
     ctx.fillStyle = p.soft;
-    ctx.font = `500 40px ${FONT}`;
+    ctx.font = `500 40px ${FONT_SANS}`;
     ctx.fillText(data.subtitle, PAD, y);
   }
 
-  // Stats grid (two columns).
+  // Stats grid (two columns) — values in the mono/tabular face, like `.num`.
   if (data.stats?.length) {
     y += 96;
     const colW = (W - PAD * 2) / 2;
@@ -178,10 +289,10 @@ export function renderShareCard(
       const x = PAD + col * colW;
       const ry = y + row * 172;
       ctx.fillStyle = p.faint;
-      ctx.font = `600 30px ${FONT}`;
+      ctx.font = `600 30px ${FONT_SANS}`;
       ctx.fillText(s.label.toUpperCase(), x, ry);
       ctx.fillStyle = p.ink;
-      ctx.font = `700 76px ${FONT}`;
+      ctx.font = `700 76px ${FONT_MONO}`;
       ctx.fillText(s.value, x, ry + 78);
     }
     y += Math.ceil(data.stats.length / 2) * 172;
@@ -200,15 +311,20 @@ export function renderShareCard(
       ctx.arc(PAD + 7, y - 14, 7, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = p.soft;
-      ctx.font = `500 42px ${FONT}`;
+      ctx.font = `500 42px ${FONT_SANS}`;
       ctx.fillText(clip(ctx, line, W - PAD * 2 - 48), PAD + 40, y);
     }
   }
 
+  // Frog-sass tagline — the one goofy line on an otherwise serious card
+  // (the split rule: edges get the frog voice, data stays deadpan).
+  ctx.fillStyle = p.soft;
+  ctx.font = `italic 500 32px ${FONT_SANS}`;
+  ctx.fillText(clip(ctx, tagline, W - PAD * 2), PAD, H - PAD - 56);
+
   // Footer.
-  shadow();
   ctx.fillStyle = p.faint;
-  ctx.font = `500 30px ${FONT}`;
+  ctx.font = `500 30px ${FONT_SANS}`;
   ctx.fillText(`Tracked with ${APP_NAME}`, PAD, H - PAD);
   ctx.shadowColor = "transparent";
   ctx.shadowBlur = 0;
@@ -298,8 +414,12 @@ function ShareSheet({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [variant, setVariant] = useState<Variant>("dark");
   const [busy, setBusy] = useState(false);
-  // Sampled once — the app accent is the same grass green in light and dark.
-  const accent = useRef(sampleToken("--accent", "#46a758")).current;
+  // Sampled/picked once — the app accent is the same grass green in light and
+  // dark, and the tagline is this share's caption, not a per-render reroll.
+  const accent = useRef(sampleLiveToken("--accent", "#46a758")).current;
+  const tagline = useRef(
+    randomTagline(data.strong ? "strong" : "normal"),
+  ).current;
   const canShareFiles =
     typeof navigator !== "undefined" &&
     typeof navigator.canShare === "function";
@@ -311,9 +431,9 @@ function ShareSheet({
   const attachCanvas = useCallback(
     (el: HTMLCanvasElement | null) => {
       canvasRef.current = el;
-      if (el) renderShareCard(el, data, variant, accent);
+      if (el) void renderShareCard(el, data, variant, accent, tagline);
     },
-    [data, variant, accent],
+    [data, variant, accent, tagline],
   );
 
   async function currentBlob(): Promise<Blob | null> {

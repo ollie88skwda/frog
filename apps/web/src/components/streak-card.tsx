@@ -1,4 +1,4 @@
-import { computeStreak } from "@frog/core";
+import { computeStreak, FIRST_WEEKDAY } from "@frog/core";
 import { Flame } from "lucide-react";
 import { useVoice } from "@/lib/voice";
 
@@ -10,17 +10,15 @@ import { useVoice } from "@/lib/voice";
 
 export function StreakCard({
   starts,
-  firstWeekday,
   className,
 }: {
   starts: number[];
-  firstWeekday: number;
   className?: string;
 }) {
   const { t } = useVoice();
   const { weeks, currentWeekPending, restDays } = computeStreak(
     starts,
-    firstWeekday,
+    FIRST_WEEKDAY,
     Date.now(),
   );
 
@@ -33,48 +31,40 @@ export function StreakCard({
 
   return (
     <div
-      className={`flex items-center justify-between gap-4 border border-border bg-surface p-4 ${className ?? ""}`}
+      className={`border border-border bg-surface p-4 ${className ?? ""}`}
       data-testid="streak-card"
     >
-      <div className="min-w-0">
-        <div className="flex items-center gap-1.5 text-2xs font-medium tracking-widest text-faint uppercase">
-          <Flame className="size-3.5" />
-          {t("Streak", "Consistency")}
-        </div>
-        <p className="mt-1 flex items-baseline gap-1">
-          <span
-            className="num text-2xl font-semibold"
-            data-testid="streak-weeks"
-          >
-            {weeks}
-          </span>
-          <span className="text-sm text-soft">
-            {weeks === 1 ? "week" : "weeks"}
-          </span>
-        </p>
-        {weeks > 0 && currentWeekPending && (
-          <p className="mt-0.5 text-2xs text-faint">
-            {t(
-              "Log this week to keep it going.",
-              `Consistency, n=${weeks}. Log this week to keep it.`,
-            )}
-          </p>
-        )}
-        {weeks === 0 && (
-          <p className="mt-0.5 text-2xs text-faint">
-            {t(
-              "Log a workout this week to start one.",
-              "The frog refuses to speculate. Log a workout this week to start.",
-            )}
-          </p>
-        )}
+      <div className="flex items-center gap-1.5 text-2xs font-medium tracking-widest text-faint uppercase">
+        <Flame className="size-3.5" />
+        {t("Streak", "Consistency")}
       </div>
-      <span
-        className="num shrink-0 text-xs text-soft"
-        data-testid="streak-rest"
-      >
-        {rest}
-      </span>
+      <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+        <span className="num text-2xl font-semibold" data-testid="streak-weeks">
+          {weeks}
+        </span>
+        <span className="text-sm text-soft">
+          {weeks === 1 ? "week" : "weeks"}
+        </span>
+        <span className="num text-xs text-soft" data-testid="streak-rest">
+          · {rest}
+        </span>
+      </p>
+      {weeks > 0 && currentWeekPending && (
+        <p className="mt-0.5 text-2xs text-faint">
+          {t(
+            "Log this week to keep it going.",
+            `Consistency, n=${weeks}. Log this week to keep it.`,
+          )}
+        </p>
+      )}
+      {weeks === 0 && (
+        <p className="mt-0.5 text-2xs text-faint">
+          {t(
+            "Log a workout this week to start one.",
+            "The frog refuses to speculate. Log a workout this week to start.",
+          )}
+        </p>
+      )}
     </div>
   );
 }

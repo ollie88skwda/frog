@@ -3,7 +3,8 @@ import { EMAIL, PASSWORD, signIn } from "./helpers";
 
 // Calendar + weekly streak (M6): a logged session fills its calendar day and
 // lights the streak; an empty past day retro-logs a backdated session and opens
-// the live editor; changing the first-day-of-week shifts the grid's start.
+// the live editor; the week grid always starts on Sunday (hardcoded — see
+// docs/DECISIONS.md 2026-07-30, the old first-day-of-week picker is gone).
 
 // Local YYYY-MM-DD (mirrors @frog/core localDateKey; Node + the browser share
 // this machine's timezone, so keys line up on both sides).
@@ -105,18 +106,8 @@ test("retro-logging an empty past day creates a backdated session", async ({
     .toBe(before + 1);
 });
 
-test("changing the first day of the week shifts the grid start", async ({
-  page,
-}) => {
+test("the week grid always starts on Sunday", async ({ page }) => {
   await page.goto("/calendar");
-
-  // Sunday-start → the first column is Sunday. Radix Select: open + pick.
-  await page.getByTestId("cal-first-weekday").click();
-  await page.getByRole("option", { name: "Sunday" }).click();
   await expect(page.getByTestId("cal-weekday-0")).toHaveText("Su");
-
-  // Saturday-start → the first column is Saturday (optimistic re-layout).
-  await page.getByTestId("cal-first-weekday").click();
-  await page.getByRole("option", { name: "Saturday" }).click();
-  await expect(page.getByTestId("cal-weekday-0")).toHaveText("Sa");
+  await expect(page.getByTestId("cal-weekday-6")).toHaveText("Sa");
 });

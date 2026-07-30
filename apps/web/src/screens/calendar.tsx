@@ -1,5 +1,4 @@
-import { localDateKey, type Session } from "@frog/core";
-import { Select } from "@radix-ui/themes";
+import { FIRST_WEEKDAY, localDateKey, type Session } from "@frog/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Grid3x3, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -9,25 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { StatusRing } from "@/components/ui/status-ring";
 import { formatDate, formatTime } from "@/lib/format";
-import {
-  useAllSessions,
-  useUpdateUserPrefs,
-  useUserPrefs,
-} from "@/lib/profile-queries";
+import { useAllSessions } from "@/lib/profile-queries";
 import { useRepo } from "@/lib/repo";
 import { useVoice } from "@/lib/voice";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
-const WEEKDAY_NAMES = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-const MONTHS = Array.from({ length: 12 }, (_, i) => i);
 const monthYearFmt = new Intl.DateTimeFormat(undefined, {
   month: "long",
   year: "numeric",
@@ -51,8 +36,8 @@ const cursorMonth = (c: number) => c - cursorYear(c) * 12;
 // array index.
 type Cell = { key: string; day: number | null };
 
-function monthCells(year: number, month: number, firstWeekday: number): Cell[] {
-  const lead = (new Date(year, month, 1).getDay() - firstWeekday + 7) % 7;
+function monthCells(year: number, month: number): Cell[] {
+  const lead = (new Date(year, month, 1).getDay() - FIRST_WEEKDAY + 7) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const cells: Cell[] = [];
   for (let i = 0; i < lead; i++) {
@@ -68,15 +53,66 @@ function monthCells(year: number, month: number, firstWeekday: number): Cell[] {
   return cells;
 }
 
+// A single day in the year-zoom contribution graph: `date` is null for the
+// leading/trailing pad days that round the year out to full Sunday-start
+// weeks (never rendered as a cell, just keeps the grid rectangular).
+type YearCell = { key: string; date: Date | null };
+
+// Sunday-start weeks spanning Jan 1..Dec 31 of `year`, padded at both ends to
+// full 7-day weeks — the same column-per-week shape GitHub's contribution
+// graph uses.
+function yearWeeks(year: number): YearCell[][] {
+  const start = new Date(year, 0, 1);
+  start.setDate(start.getDate() - start.getDay());
+  const end = new Date(year, 11, 31);
+  end.setDate(end.getDate() + (6 - end.getDay()));
+
+  const weeks: YearCell[][] = [];
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const week: YearCell[] = [];
+    for (let i = 0; i < 7; i++) {
+      const inYear = cursor.getFullYear() === year;
+      week.push({
+        key: dayKey(cursor.getFullYear(), cursor.getMonth(), cursor.getDate()),
+        date: inYear ? new Date(cursor) : null,
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+  return weeks;
+}
+
+// Sessions-logged intensity, GitHub-commit-graph style: 0 = no session that
+// day, 1 = a normal training day, 2 = a heavier day (2 sessions), 3 = a peak
+// day (3+) — see docs/DECISIONS.md 2026-07-30 for why session count (not
+// volume) is the signal.
+function intensityLevel(sessionCount: number): 0 | 1 | 2 | 3 {
+  if (sessionCount <= 0) return 0;
+  if (sessionCount === 1) return 1;
+  if (sessionCount === 2) return 2;
+  return 3;
+}
+
+const INTENSITY_BG = [
+  "bg-surface-2",
+  "bg-accent/35",
+  "bg-accent/65",
+  "bg-accent",
+];
+const YEAR_CELL = 11; // px
+const YEAR_GAP = 3; // px
+// Sunday-start row labels — only Mon/Wed/Fri text shown (GitHub's own
+// convention): a label on every row reads as clutter at 11px row height.
+const YEAR_ROW_LABELS = ["", "M", "", "W", "", "F", ""];
+
 export default function CalendarScreen() {
   const navigate = useNavigate();
   const repo = useRepo();
   const qc = useQueryClient();
-  const { data: prefs } = useUserPrefs();
   const { data: sessions = [] } = useAllSessions();
-  const updatePrefs = useUpdateUserPrefs();
 
-  const firstWeekday = prefs?.firstWeekday ?? 1;
   const now = new Date();
   const [view, setView] = useState<"month" | "year">("month");
   const [cursor, setCursor] = useState(() =>
@@ -106,7 +142,7 @@ export default function CalendarScreen() {
   const [sheetDay, setSheetDay] = useState<string | null>(null);
 
   // Arrow keys page months (month view) or years (year view). Ignore when a
-  // form control is focused so the weekday <select> keeps native behavior.
+  // form control is focused so it keeps native keyboard behavior.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
@@ -138,29 +174,10 @@ export default function CalendarScreen() {
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold tracking-tight">Calendar</h1>
-        <div className="flex items-center gap-2 text-2xs text-faint">
-          Week starts
-          <Select.Root
-            value={String(firstWeekday)}
-            onValueChange={(v) =>
-              updatePrefs.mutate({ firstWeekday: Number(v) })
-            }
-            size="2"
-          >
-            <Select.Trigger variant="surface" data-testid="cal-first-weekday" />
-            <Select.Content>
-              {WEEKDAY_NAMES.map((name, i) => (
-                <Select.Item key={name} value={String(i)}>
-                  {name}
-                </Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Root>
-        </div>
       </div>
 
       <div className="mt-4">
-        <StreakCard starts={starts} firstWeekday={firstWeekday} />
+        <StreakCard starts={starts} />
       </div>
 
       {/* Pager + zoom. */}
@@ -220,21 +237,12 @@ export default function CalendarScreen() {
         <MonthGrid
           year={year}
           month={month}
-          firstWeekday={firstWeekday}
           byDay={byDay}
           todayKey={todayKey}
           onDay={setSheetDay}
         />
       ) : (
-        <YearGrid
-          year={viewYear}
-          firstWeekday={firstWeekday}
-          byDay={byDay}
-          onMonth={(m) => {
-            setCursor(toCursor(viewYear, m));
-            setView("month");
-          }}
-        />
+        <YearGrid year={viewYear} byDay={byDay} />
       )}
 
       <Dialog
@@ -257,23 +265,21 @@ export default function CalendarScreen() {
 function MonthGrid({
   year,
   month,
-  firstWeekday,
   byDay,
   todayKey,
   onDay,
 }: {
   year: number;
   month: number;
-  firstWeekday: number;
   byDay: Map<string, Session[]>;
   todayKey: string;
   onDay: (key: string) => void;
 }) {
   const headers = Array.from(
     { length: 7 },
-    (_, i) => WEEKDAYS[(firstWeekday + i) % 7],
+    (_, i) => WEEKDAYS[(FIRST_WEEKDAY + i) % 7],
   );
-  const cells = monthCells(year, month, firstWeekday);
+  const cells = monthCells(year, month);
   const todayMs = (() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -350,68 +356,114 @@ function MonthGrid({
   );
 }
 
-// Year zoom: 12 mini-month grids, workout days as accent dots. Tapping a month
-// opens it. (All-time navigation is the year pager above.)
+// Year zoom: a GitHub-contribution-graph — one column per Sunday-start week,
+// one row per weekday, cell intensity = sessions logged that day (see
+// docs/DECISIONS.md 2026-07-30). Glanceable data density over the old
+// 12-mini-month grid; a full year of days doesn't fit a 390px viewport at any
+// readable cell size, so the graph scrolls horizontally like GitHub's own
+// mobile view. Cells are a data display, not tap targets (they're far under
+// the 40px logging-path minimum by design, matching real GitHub) — the
+// per-day interactions (retro-log, view sessions) stay in month view.
 function YearGrid({
   year,
-  firstWeekday,
   byDay,
-  onMonth,
 }: {
   year: number;
-  firstWeekday: number;
   byDay: Map<string, Session[]>;
-  onMonth: (m: number) => void;
 }) {
-  return (
-    <div className="mt-4 grid grid-cols-3 gap-3 sm:grid-cols-4">
-      {MONTHS.map((m) => (
-        <button
-          key={m}
-          type="button"
-          onClick={() => onMonth(m)}
-          className="border border-border bg-surface p-2 text-left transition-colors duration-150 hover:border-border-strong"
-          data-testid={`cal-mini-${m}`}
-        >
-          <div className="mb-1 text-2xs font-medium text-soft">
-            {monthShortFmt.format(new Date(year, m, 1))}
-          </div>
-          <MiniMonth
-            year={year}
-            month={m}
-            firstWeekday={firstWeekday}
-            byDay={byDay}
-          />
-        </button>
-      ))}
-    </div>
-  );
-}
+  const weeks = useMemo(() => yearWeeks(year), [year]);
+  const todayMs = Date.now();
 
-function MiniMonth({
-  year,
-  month,
-  firstWeekday,
-  byDay,
-}: {
-  year: number;
-  month: number;
-  firstWeekday: number;
-  byDay: Map<string, Session[]>;
-}) {
-  const cells = monthCells(year, month, firstWeekday);
+  const total = useMemo(() => {
+    let n = 0;
+    for (const week of weeks)
+      for (const c of week) if (c.date) n += (byDay.get(c.key) ?? []).length;
+    return n;
+  }, [weeks, byDay]);
+
   return (
-    <div className="grid grid-cols-7 gap-px">
-      {cells.map((c) => {
-        if (c.day == null) return <div key={c.key} className="aspect-square" />;
-        const has = (byDay.get(c.key) ?? []).length > 0;
-        return (
-          <div
-            key={c.key}
-            className={`aspect-square ${has ? "bg-accent" : "bg-surface-2"}`}
+    <div className="mt-4">
+      <p className="text-2xs text-faint">
+        <span className="num">{total}</span>{" "}
+        {total === 1 ? "workout" : "workouts"} in {year}
+      </p>
+      <div className="mt-2 overflow-x-auto pb-1">
+        <div className="inline-flex" style={{ gap: YEAR_GAP }}>
+          <div className="flex shrink-0 flex-col" style={{ gap: YEAR_GAP }}>
+            <div style={{ height: YEAR_CELL }} />
+            {YEAR_ROW_LABELS.map((label, i) => (
+              <div
+                // biome-ignore lint/suspicious/noArrayIndexKey: fixed 7-row weekday labels, never reordered
+                key={i}
+                className="flex items-center justify-end text-[9px] leading-none text-faint"
+                style={{ height: YEAR_CELL, width: 10 }}
+              >
+                {label}
+              </div>
+            ))}
+          </div>
+          {weeks.map((week) => {
+            const firstOfMonth = week.find((c) => c.date?.getDate() === 1);
+            const label = firstOfMonth
+              ? monthShortFmt.format(firstOfMonth.date as Date)
+              : "";
+            return (
+              <div
+                key={week[0].key}
+                className="flex shrink-0 flex-col"
+                style={{ gap: YEAR_GAP }}
+              >
+                <div
+                  className="text-[9px] leading-none text-faint"
+                  style={{ height: YEAR_CELL, width: YEAR_CELL * 2 }}
+                >
+                  {label}
+                </div>
+                {week.map((c) => {
+                  if (!c.date)
+                    return (
+                      <div
+                        key={c.key}
+                        style={{ width: YEAR_CELL, height: YEAR_CELL }}
+                      />
+                    );
+                  const list = byDay.get(c.key) ?? [];
+                  const level = intensityLevel(list.length);
+                  const isFuture = c.date.getTime() > todayMs;
+                  return (
+                    <div
+                      key={c.key}
+                      className={`relative ${INTENSITY_BG[level]} ${
+                        isFuture && level === 0 ? "opacity-40" : ""
+                      }`}
+                      style={{ width: YEAR_CELL, height: YEAR_CELL }}
+                      title={`${formatDate(c.date.getTime())}: ${list.length} workout${list.length === 1 ? "" : "s"}`}
+                    >
+                      {list.length > 0 && (
+                        <span
+                          className="absolute inset-0"
+                          data-testid={`cal-filled-${c.key}`}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="mt-2 flex items-center justify-end gap-1 text-2xs text-faint">
+        Less
+        {INTENSITY_BG.map((bg) => (
+          <span
+            key={bg}
+            className={bg}
+            style={{ width: YEAR_CELL, height: YEAR_CELL }}
           />
-        );
-      })}
+        ))}
+        More
+      </div>
     </div>
   );
 }
