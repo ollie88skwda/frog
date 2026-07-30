@@ -20,6 +20,23 @@ export const formatDate = (ms: number) => dateFmt.format(ms);
 export const formatTime = (ms: number) => timeFmt.format(ms);
 export const formatDateTime = (ms: number) => fullFmt.format(ms);
 
+/** Calendar-day distance, phrased for glanceable meta lines ("4d ago"). Days
+ *  are compared as local calendar days, so a 9pm→9am gap reads "yesterday"
+ *  rather than "today". */
+export function formatDaysAgo(ms: number, now = Date.now()): string {
+  const startOfDay = (t: number) => {
+    const d = new Date(t);
+    d.setHours(0, 0, 0, 0);
+    return d.getTime();
+  };
+  const days = Math.round((startOfDay(now) - startOfDay(ms)) / 86_400_000);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d ago`;
+  if (days < 60) return `${Math.floor(days / 7)}w ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
 export function formatDuration(ms: number): string {
   const m = Math.max(0, Math.floor(ms / 60_000));
   const h = Math.floor(m / 60);

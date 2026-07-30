@@ -7,6 +7,7 @@ export * from "./domain/e1rm";
 export * from "./domain/exercise-types";
 export * from "./domain/ids";
 export * from "./domain/match-exercise";
+export * from "./domain/plan";
 export * from "./domain/plates";
 export * from "./domain/previous";
 export * from "./domain/progression";

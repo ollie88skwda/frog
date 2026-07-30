@@ -1,25 +1,19 @@
 import { FIRST_WEEKDAY, sevenDayMuscleSets } from "@frog/core";
-import { BarChart3, LibraryBig, Play, Users } from "lucide-react";
+import { BarChart3, LibraryBig, Users } from "lucide-react";
 import { useMemo } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link } from "react-router";
 import { BodyHeatmap } from "@/components/charts/body-heatmap";
+import { HomeHero } from "@/components/home-hero";
 import { ReportPromo } from "@/components/report-promo";
 import { StreakCard } from "@/components/streak-card";
 import { TrainFindingsCard } from "@/components/train-findings-card";
-import { Button } from "@/components/ui/button";
-import { formatTime } from "@/lib/format";
 import { useAllSessions } from "@/lib/profile-queries";
-import { useActiveSession } from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
-import { useStartSession } from "@/lib/start-session";
 import { useMuscleMap } from "@/lib/stats-queries";
 import { useVoice } from "@/lib/voice";
 
 export default function HomeScreen() {
-  const navigate = useNavigate();
   const { t } = useVoice();
-  const { data: active } = useActiveSession();
-  const { start, starting } = useStartSession();
   const { data: sessions = [] } = useAllSessions();
   const { data: recordsData } = useRecordsData();
   const muscleMap = useMuscleMap();
@@ -42,37 +36,9 @@ export default function HomeScreen() {
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
       <h1 className="text-lg font-semibold tracking-tight">Home</h1>
 
-      {/* Quick start — the lightweight entry; the full hub is Training. */}
-      <div className="mt-6 flex items-center justify-between gap-4 rounded-lg border border-border bg-surface p-4">
-        <div className="min-w-0">
-          <p className="text-sm font-medium">
-            {active
-              ? "Session in progress"
-              : t("Ready to train?", "The frog is ready when you are.")}
-          </p>
-          <p className="num mt-0.5 text-2xs text-faint">
-            {active
-              ? `started ${formatTime(active.startedAt)}`
-              : t(
-                  "Quick-start here, or open Training.",
-                  "Quick-start here, or open Training. The frog has no preference.",
-                )}
-          </p>
-        </div>
-        <Button
-          variant="primary"
-          size="md"
-          className="shrink-0"
-          disabled={starting}
-          onClick={() =>
-            active ? navigate(`/session/${active.id}`) : void start()
-          }
-          data-testid="home-start-btn"
-        >
-          <Play className="size-4" />
-          {starting ? "Starting…" : active ? "Resume" : "Start"}
-        </Button>
-      </div>
+      {/* Today's plan — the hero. Starting training is the screen's headline
+          act, not a chip in a status row (docs/DECISIONS.md 2026-07-30). */}
+      <HomeHero />
 
       {/* Monthly-report / Year-in-Review nudge (dismissible; time-gated). */}
       <ReportPromo />

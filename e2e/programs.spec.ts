@@ -57,6 +57,9 @@ test("save a catalog program creates a named folder + routines + program row", a
       .select("id")
       .eq("name", "Full Body Foundations")
       .is("deleted_at", null)
+      // Newest first: saving the same catalog program twice is legal, and this
+      // test is about the folder it just created, not an older namesake.
+      .order("created_at", { ascending: false })
       .limit(1);
     const folderId = f.data?.[0]?.id as string | undefined;
     if (!folderId) return 0;
@@ -68,4 +71,20 @@ test("save a catalog program creates a named folder + routines + program row", a
     return count ?? 0;
   });
   expect(routines).toBeGreaterThan(0);
+
+  // Saving a program re-aims the Home hero at that program's rotation — day
+  // one of it, named, rather than a generic Start. A live session deliberately
+  // outranks any plan there, so bin one left by an earlier spec first.
+  await page.evaluate(async () => {
+    const now = Date.now();
+    await window.__frog.supabase
+      .from("sessions")
+      .update({ deleted_at: now, updated_at: now })
+      .is("deleted_at", null)
+      .is("ended_at", null);
+  });
+  await page.goto("/");
+  const hero = page.getByTestId("home-hero");
+  await expect(hero).toContainText("Next in Full Body Foundations");
+  await expect(page.getByTestId("hero-plan-name")).not.toBeEmpty();
 });
