@@ -23,10 +23,33 @@ async function logSet(
   await expect(page.getByTestId(`committed-${index}-type`)).toBeVisible();
 }
 
+// Counts set_logs rows of a given type created at/after `since` — scopes a
+// poll to this test's own inserts instead of any type-matching row left over
+// from earlier local runs.
+async function typeCountSince(
+  page: import("@playwright/test").Page,
+  setType: string,
+  since: number,
+) {
+  return page.evaluate(
+    async ({ setType, since }) => {
+      const { count, error } = await window.__frog.supabase
+        .from("set_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("set_type", setType)
+        .gte("created_at", since);
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    },
+    { setType, since },
+  );
+}
+
 test("assign W/F/D markers on the draft row, edit a committed type, persist across reload", async ({
   page,
 }) => {
-  const EX = `SetType ${Date.now()}`;
+  const since = Date.now();
+  const EX = `SetType ${since}`;
 
   await page.goto("/library");
   await page.getByTestId("exercise-name-input").fill(EX);
@@ -54,10 +77,22 @@ test("assign W/F/D markers on the draft row, edit a committed type, persist acro
   await logSet(page, 2, "40", "8");
   await expect(page.getByTestId("committed-2-type")).toHaveText("3");
 
+  // Set 0's own insert (not just any of the three — each set's log fires an
+  // independent request, and they can land out of order) must reach the
+  // server before editing it: the edit updates by real server id, translated
+  // from the optimistic id via a map that only populates once that specific
+  // insert's response comes back. Editing too early silently no-ops (the
+  // update matches zero rows under the stale optimistic id).
+  await expect.poll(() => typeCountSince(page, "warmup", since)).toBe(1);
+
   // Re-type a committed set (Warm-up → Failure) via its number-cell menu.
   await page.getByTestId("committed-0-type").click();
   await page.getByTestId("committed-0-type-failure").click();
   await expect(page.getByTestId("committed-0-type")).toHaveText("F");
+
+  // The edit is optimistic — wait for it to land server-side before
+  // reloading, otherwise the reload can race the in-flight update.
+  await expect.poll(() => typeCountSince(page, "failure", since)).toBe(1);
 
   // Reload resumes the session; markers come back from the server.
   await page.reload();
@@ -66,7 +101,7 @@ test("assign W/F/D markers on the draft row, edit a committed type, persist acro
   await expect(page.getByTestId("committed-2-type")).toHaveText("3");
 });
 
-test("Remove set from the number-cell menu deletes a committed set", async ({
+test("Delete Set in the set-details sheet requires confirmation before removing a committed set", async ({
   page,
 }) => {
   const EX = `SetTypeRemove ${Date.now()}`;
@@ -83,7 +118,11 @@ test("Remove set from the number-cell menu deletes a committed set", async ({
   await logSet(page, 0, "50", "5");
   await expect(page.getByTestId("committed-0")).toBeVisible();
 
-  await page.getByTestId("committed-0-type").click();
-  await page.getByTestId("committed-0-type-remove").click();
+  await page.getByTestId("committed-0").hover();
+  await page.getByTestId("set-menu-0").click();
+  await page.getByTestId("set-menu-0-delete").click();
+  // Not deleted yet — the first tap only arms the confirm step.
+  await expect(page.getByTestId("committed-0")).toBeVisible();
+  await page.getByTestId("set-menu-0-delete-confirm").click();
   await expect(page.getByTestId("committed-0")).toBeHidden();
 });

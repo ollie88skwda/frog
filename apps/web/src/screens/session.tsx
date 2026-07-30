@@ -325,14 +325,12 @@ function SetTypeCell({
   setType,
   ringState,
   onChange,
-  onRemove,
   testId,
 }: {
   index: number;
   setType: SetType;
   ringState: "done" | "empty";
   onChange: (t: SetType) => void;
-  onRemove?: () => void;
   testId: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -393,24 +391,6 @@ function SetTypeCell({
                 {t === setType && <Check className="size-3.5 text-accent" />}
               </button>
             ))}
-            {onRemove && (
-              <>
-                <div className="my-1 border-t border-border" />
-                <button
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    setOpen(false);
-                    onRemove();
-                  }}
-                  data-testid={`${testId}-remove`}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-neg transition-colors duration-150 hover:bg-surface-hover"
-                >
-                  <Trash2 className="size-3.5" />
-                  Remove set
-                </button>
-              </>
-            )}
           </div>
         </>
       )}
@@ -2696,6 +2676,7 @@ function CommittedRow({
   const [rir, setRir] = useState("");
   const [rpe, setRpe] = useState("");
   const [note, setNote] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const has = (k: ColKey) => columns.some((c) => c.key === k);
   const effort = supportsEffort(type);
@@ -2715,6 +2696,7 @@ function CommittedRow({
     setRir(set.rir != null ? String(set.rir) : "");
     setRpe(set.rpe != null ? String(set.rpe) : "");
     setNote(set.note ?? "");
+    setConfirmDelete(false);
     setOpen(true);
   }
 
@@ -2790,7 +2772,6 @@ function CommittedRow({
           setType={setType}
           ringState="done"
           onChange={(t) => onSave({ setType: t })}
-          onRemove={onDelete}
           testId={`committed-${index}-type`}
         />
         {showPrevious && (
@@ -2960,18 +2941,39 @@ function CommittedRow({
             </div>
 
             <div className="flex items-center justify-between">
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => {
-                  setOpen(false);
-                  onDelete();
-                }}
-                data-testid={`set-menu-${index}-delete`}
-              >
-                <Trash2 className="size-3.5" />
-                Delete
-              </Button>
+              {confirmDelete ? (
+                <span className="flex items-center gap-2">
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => {
+                      setOpen(false);
+                      onDelete();
+                    }}
+                    data-testid={`set-menu-${index}-delete-confirm`}
+                  >
+                    <Trash2 className="size-3.5" />
+                    Confirm delete
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setConfirmDelete(false)}
+                  >
+                    Cancel
+                  </Button>
+                </span>
+              ) : (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setConfirmDelete(true)}
+                  data-testid={`set-menu-${index}-delete`}
+                >
+                  <Trash2 className="size-3.5" />
+                  Delete Set
+                </Button>
+              )}
               <Button
                 variant="primary"
                 size="sm"
@@ -3382,6 +3384,14 @@ function ActiveRow({
     }
   }
 
+  // Auto-checkoff: once both weight and reps carry a typed value, leaving
+  // either field commits the set — no separate confirm tap required. Doesn't
+  // adopt ghost values (unlike Enter's tap-to-accept), so it never silently
+  // pulls in an untyped duration/distance alongside it.
+  function onFieldBlur() {
+    if (weight.trim() !== "" && reps.trim() !== "") commit(false);
+  }
+
   // One input cell per data column (weight / reps / time / distance). The time
   // cell also carries the inline stopwatch control. `last` picks the mobile
   // keyboard's Return-key hint — "next" mid-row, "done" on the row's final
@@ -3402,6 +3412,7 @@ function ActiveRow({
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
           onKeyDown={onKeyDown}
+          onBlur={onFieldBlur}
           autoFocus={autoFocus}
           className="num h-10 md:h-8"
           data-testid={`set-${index}-weight`}
@@ -3419,6 +3430,7 @@ function ActiveRow({
           value={reps}
           onChange={(e) => setReps(e.target.value)}
           onKeyDown={onKeyDown}
+          onBlur={onFieldBlur}
           autoFocus={autoFocus}
           className="num h-10 md:h-8"
           data-testid={`set-${index}-reps`}
