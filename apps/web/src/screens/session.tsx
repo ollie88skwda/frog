@@ -103,6 +103,7 @@ import { Input } from "@/components/ui/input";
 import { StatusRing } from "@/components/ui/status-ring";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
 import { useHotkeys } from "@/lib/hotkeys";
+import type { LessonId } from "@/lib/lessons";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
 import {
@@ -2910,30 +2911,16 @@ function CommittedRow({
 
             {effort && (
               <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-1">
-                  <span className={cn(labelCls, "flex items-center gap-1")}>
-                    RIR
-                    <InfoTip lessonId="rir" />
-                  </span>
-                  <Input
-                    inputMode="numeric"
-                    placeholder="—"
-                    value={rir}
-                    onChange={(e) => setRir(e.target.value)}
+                {SET_MODIFIERS.map((m) => (
+                  <ModifierField
+                    key={m.key}
+                    config={m}
+                    value={m.key === "rir" ? rir : rpe}
+                    onChange={m.key === "rir" ? setRir : setRpe}
                     onKeyDown={onKeyDown}
-                    className="num"
-                    data-testid={`edit-${index}-rir`}
+                    testId={`edit-${index}-${m.key}`}
                   />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className={labelCls}>RPE</span>
-                  {/* TODO(lessons): <InfoTip lessonId="rpe" /> once copy exists */}
-                  <RpeSelect
-                    value={rpe}
-                    onChange={setRpe}
-                    testId={`edit-${index}-rpe`}
-                  />
-                </div>
+                ))}
               </div>
             )}
 
@@ -3006,33 +2993,81 @@ function CommittedRow({
 // select keeps it a quick pick and reads as clearly secondary to weight/reps.
 const RPE_OPTIONS = Array.from({ length: 19 }, (_, i) => 10 - i * 0.5);
 
-function RpeSelect({
+// Set-modifier registry (M4 UI redesign): RIR/RPE are the only two today, but
+// the captain expects at most 1-2 more, ever — not an unbounded plugin system.
+// A modifier is a small typed value attached to a set, rendered generically in
+// the details sheet; adding one is a config entry here, never new layout JSX.
+type ModifierConfig = {
+  key: "rir" | "rpe";
+  label: string;
+  kind: "number" | "select";
+  options?: number[];
+  infoTipLessonId?: LessonId;
+};
+
+const SET_MODIFIERS: ModifierConfig[] = [
+  { key: "rir", label: "RIR", kind: "number", infoTipLessonId: "rir" },
+  { key: "rpe", label: "RPE", kind: "select", options: RPE_OPTIONS },
+];
+
+// Shared field renderer for every modifier — the label row reserves a fixed
+// height (`min-h-6`) whether or not it carries an InfoTip icon, so RIR and RPE
+// (or a future third modifier) always sit flush in the same grid row instead
+// of drifting by the icon's height, and the select gets the exact classes as
+// the shared Input so its box never looks "elevated" next to a sibling field.
+function ModifierField({
+  config,
   value,
   onChange,
+  onKeyDown,
   autoFocus,
   testId,
 }: {
+  config: ModifierConfig;
   value: string;
   onChange: (v: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
   autoFocus?: boolean;
   testId: string;
 }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      // biome-ignore lint/a11y/noAutofocus: focuses the just-added RPE field
-      autoFocus={autoFocus}
-      data-testid={testId}
-      className="num h-8 w-16 rounded-md border border-border-strong bg-surface px-1.5 text-xs text-soft transition-colors duration-150 ease-(--ease-out-quad) focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
-    >
-      <option value="">—</option>
-      {RPE_OPTIONS.map((v) => (
-        <option key={v} value={v}>
-          {v}
-        </option>
-      ))}
-    </select>
+    <div className="flex flex-col gap-1">
+      <span className="flex min-h-6 items-center gap-1 text-2xs font-medium tracking-wide text-faint uppercase">
+        {config.label}
+        {config.infoTipLessonId && (
+          <InfoTip lessonId={config.infoTipLessonId} />
+        )}
+      </span>
+      {config.kind === "select" ? (
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          // biome-ignore lint/a11y/noAutofocus: focuses the just-added field
+          autoFocus={autoFocus}
+          data-testid={testId}
+          className="num h-8 w-full border border-border-strong bg-surface px-2 text-sm text-soft transition-colors duration-150 ease-(--ease-out-quad) focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+        >
+          <option value="">—</option>
+          {config.options?.map((v) => (
+            <option key={v} value={v}>
+              {v}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <Input
+          inputMode="numeric"
+          placeholder="—"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          autoFocus={autoFocus}
+          className="num"
+          data-testid={testId}
+        />
+      )}
+    </div>
   );
 }
 
@@ -3143,7 +3178,6 @@ function ActiveRow({
     () => new Set(draft?.extras ?? []),
   );
   const [lastAdded, setLastAdded] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const done = useRef(false);
   const [, tick] = useReducer((n: number) => n + 1, 0);
@@ -3215,19 +3249,10 @@ function ActiveRow({
   const durationDisplay =
     liveElapsed != null ? formatMMSS(liveElapsed) : duration;
 
-  const extraOptions = [
-    ...(effort
-      ? [
-          { key: "rir", label: "RIR" },
-          { key: "rpe", label: "RPE" },
-        ]
-      : []),
-    { key: "note", label: "Note" },
-    ...enabledMetrics.map((m) => ({ key: m.id, label: m.name })),
-  ];
-
+  // Custom per-exercise metrics stay opt-in (their count is unbounded, unlike
+  // the fixed RIR/RPE modifier set) — toggled on from inside the details
+  // sheet itself, where the newly-revealed input also lives.
   function toggleExtra(key: string) {
-    const wasEnabled = extras.has(key);
     setExtras((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
@@ -3235,10 +3260,6 @@ function ActiveRow({
       return next;
     });
     setLastAdded(key);
-    setMenuOpen(false);
-    // Enabling a field opens the details sheet straight to it, same as the
-    // old inline strip revealing + autofocusing it in place.
-    if (!wasEnabled) setDetailsOpen(true);
   }
 
   // Stop → capture elapsed into the duration field; start → begin the session
@@ -3456,20 +3477,17 @@ function ActiveRow({
     );
   }
 
-  // Compact preview of what's filled in behind the details-sheet trigger,
-  // in the same spirit as CommittedRow's collapsed RIR/RPE readout.
-  const extrasSummary = [
-    extras.has("rir") && rir.trim() !== "" ? `@${rir}` : null,
-    extras.has("rpe") && rpe.trim() !== "" ? `RPE ${rpe}` : null,
-    extras.has("note") && note.trim() !== "" ? "note" : null,
-    ...enabledMetrics
-      .filter(
-        (m) => extras.has(m.id) && (metricDraft[m.id] ?? "").trim() !== "",
-      )
-      .map((m) => m.name),
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  // Compact preview of what's filled in next to the details-sheet trigger —
+  // mirrors CommittedRow's collapsed RIR/RPE readout, so the same information
+  // is visible without opening the sheet on either row type.
+  const modifierPreview = effort
+    ? [
+        rir.trim() !== "" ? `@${rir}` : null,
+        rpe.trim() !== "" ? `RPE ${rpe}` : null,
+      ]
+        .filter(Boolean)
+        .join(" ")
+    : "";
 
   return (
     <div className="border-t border-border px-4 py-2">
@@ -3501,81 +3519,24 @@ function ActiveRow({
         {columns.map((c, i) =>
           dataCell(c.key, autoFocusWeight && i === 0, i === columns.length - 1),
         )}
-        <span className="relative flex items-center justify-center">
+        <span className="flex items-center justify-center gap-1">
+          {modifierPreview && (
+            <span className="num text-2xs text-faint">{modifierPreview}</span>
+          )}
           <button
             type="button"
-            onClick={() => setMenuOpen((o) => !o)}
+            onClick={() => setDetailsOpen(true)}
             // Keep the weight/reps input focused so tapping doesn't blur it
             // — Safari doesn't focus buttons on tap.
             onMouseDown={(e) => e.preventDefault()}
-            title={
-              barLoaded
-                ? "Add RIR / RPE / note / metrics · plate calculator"
-                : "Add RIR / RPE / note / metrics"
-            }
+            title="Set details"
             className="rounded-md border border-border bg-surface-2 p-1.5 text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
             data-testid={`set-${index}-more`}
           >
             <MoreHorizontal className="size-4" />
           </button>
-          {menuOpen && (
-            <>
-              <button
-                type="button"
-                aria-label="Close menu"
-                tabIndex={-1}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setMenuOpen(false)}
-                className="fixed inset-0 z-10 cursor-default"
-              />
-              <div className="floating absolute top-full right-0 z-20 mt-1 min-w-36 py-1">
-                {extraOptions.map((o) => (
-                  <button
-                    key={o.key}
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => toggleExtra(o.key)}
-                    data-testid={`set-${index}-add-${o.key}`}
-                    className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
-                  >
-                    {o.label}
-                    {extras.has(o.key) && (
-                      <Check className="size-3.5 text-accent" />
-                    )}
-                  </button>
-                ))}
-                {barLoaded && (
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setMenuOpen(false);
-                      openPlates();
-                    }}
-                    data-testid={`set-${index}-plates`}
-                    className="flex w-full items-center gap-2 border-t border-border px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
-                  >
-                    <Calculator className="size-3.5" />
-                    Plate calculator
-                  </button>
-                )}
-              </div>
-            </>
-          )}
         </span>
       </div>
-      {extras.size > 0 && (
-        <button
-          type="button"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => setDetailsOpen(true)}
-          className="mt-2 flex w-full items-center justify-between gap-2 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
-          data-testid={`set-${index}-details`}
-        >
-          <span className="truncate">{extrasSummary || "Set details"}</span>
-          <MoreHorizontal className="size-3.5 shrink-0" />
-        </button>
-      )}
 
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent
@@ -3583,57 +3544,33 @@ function ActiveRow({
           className="md:max-w-sm"
         >
           <div className="flex flex-col gap-4">
-            {(extras.has("rir") || extras.has("rpe")) && (
+            {effort && (
               <div className="grid grid-cols-2 gap-3">
-                {extras.has("rir") && (
-                  <div className="flex flex-col gap-1">
-                    <span className="flex items-center gap-1 text-2xs font-medium tracking-wide text-faint uppercase">
-                      RIR
-                      <InfoTip lessonId="rir" />
-                    </span>
-                    <Input
-                      inputMode="numeric"
-                      placeholder="—"
-                      value={rir}
-                      onChange={(e) => setRir(e.target.value)}
-                      autoFocus={lastAdded === "rir"}
-                      className="num"
-                      data-testid={`set-${index}-rir`}
-                    />
-                  </div>
-                )}
-                {extras.has("rpe") && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-2xs font-medium tracking-wide text-faint uppercase">
-                      RPE
-                    </span>
-                    {/* TODO(lessons): <InfoTip lessonId="rpe" /> once copy exists */}
-                    <RpeSelect
-                      value={rpe}
-                      onChange={setRpe}
-                      autoFocus={lastAdded === "rpe"}
-                      testId={`set-${index}-rpe`}
-                    />
-                  </div>
-                )}
+                {SET_MODIFIERS.map((m) => (
+                  <ModifierField
+                    key={m.key}
+                    config={m}
+                    value={m.key === "rir" ? rir : rpe}
+                    onChange={m.key === "rir" ? setRir : setRpe}
+                    autoFocus={lastAdded === m.key}
+                    testId={`set-${index}-${m.key}`}
+                  />
+                ))}
               </div>
             )}
-            {extras.has("note") && (
-              <label className="flex flex-col gap-1">
-                <span className="text-2xs font-medium tracking-wide text-faint uppercase">
-                  Note
-                </span>
-                <textarea
-                  rows={3}
-                  placeholder="// note"
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  autoFocus={lastAdded === "note"}
-                  data-testid={`set-${index}-note`}
-                  className="w-full resize-y rounded-md border border-border-strong bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
-                />
-              </label>
-            )}
+            <label className="flex flex-col gap-1">
+              <span className="text-2xs font-medium tracking-wide text-faint uppercase">
+                Note
+              </span>
+              <textarea
+                rows={3}
+                placeholder="// note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                data-testid={`set-${index}-note`}
+                className="w-full resize-y rounded-md border border-border-strong bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+              />
+            </label>
             {enabledMetrics
               .filter((m) => extras.has(m.id))
               .map((m) => (
@@ -3672,6 +3609,38 @@ function ActiveRow({
                   )}
                 </div>
               ))}
+            {enabledMetrics.some((m) => !extras.has(m.id)) && (
+              <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
+                {enabledMetrics
+                  .filter((m) => !extras.has(m.id))
+                  .map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => toggleExtra(m.id)}
+                      data-testid={`set-${index}-add-${m.id}`}
+                      className="flex items-center gap-1 rounded-full border border-border bg-surface-2 px-2.5 py-1 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+                    >
+                      <Plus className="size-3" />
+                      {m.name}
+                    </button>
+                  ))}
+              </div>
+            )}
+            {barLoaded && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDetailsOpen(false);
+                  openPlates();
+                }}
+                data-testid={`set-${index}-plates`}
+                className="flex items-center gap-2 border-t border-border pt-3 text-left text-xs text-soft transition-colors duration-150 hover:text-ink"
+              >
+                <Calculator className="size-3.5" />
+                Plate calculator
+              </button>
+            )}
           </div>
         </DialogContent>
       </Dialog>

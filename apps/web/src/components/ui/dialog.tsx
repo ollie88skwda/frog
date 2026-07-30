@@ -1,6 +1,6 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import type { ComponentProps, ReactNode } from "react";
+import { type ComponentProps, type ReactNode, useEffect, useRef } from "react";
 import { themePortalContainer } from "@/lib/theme-portal";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +14,29 @@ export function DialogContent({
   title,
   ...props
 }: ComponentProps<typeof DialogPrimitive.Content> & { title: ReactNode }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // The on-screen keyboard shrinks the *visual* viewport without resizing the
+  // layout viewport, so a focused field near the bottom of the sheet can end
+  // up hidden behind it — the user has to dismiss the keyboard and re-tap to
+  // see what they're typing. Nudge whatever's focused back into view whenever
+  // the visual viewport resizes (keyboard open/close/resize).
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLElement &&
+        scrollRef.current?.contains(active)
+      ) {
+        active.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
+    };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
+
   return (
     // Portal into the Radix Themes root, not <body>, so the overlay inherits
     // Radix's scoped tokens (radius, --color-panel-solid). See theme-portal.ts.
@@ -40,7 +63,16 @@ export function DialogContent({
             <X className="size-4" />
           </DialogPrimitive.Close>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
+        <div
+          ref={scrollRef}
+          // On mobile the sheet sits flush to the screen edge (see above), so
+          // its own bottom padding is the only thing between action buttons
+          // and the home indicator — max-md:pb-safe-footer (theme.css) adds
+          // the safe-area inset plus a comfortable minimum on top of it.
+          className="min-h-0 flex-1 overflow-y-auto p-4 max-md:pb-safe-footer"
+        >
+          {children}
+        </div>
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>
   );
