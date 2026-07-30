@@ -10,6 +10,7 @@ import {
   type RoutineDetail,
   type RoutineExerciseInput,
   type SelectableExercise,
+  suggestRoutineId,
   tierRank,
 } from "@frog/core";
 import { useQueries } from "@tanstack/react-query";
@@ -304,20 +305,14 @@ export function useTrainerData(program: Program | null): TrainerData {
     lastByRoutine,
   ]);
 
+  // Shared with the Home hero — `suggestRoutineId` is the single definition of
+  // "what's next" so the two screens can never disagree (domain/plan.ts).
   const nextRoutine = useMemo(() => {
-    if (routines.length === 0) return null;
-    let best = routines[0];
-    let bestAt = Number.POSITIVE_INFINITY;
-    for (const r of routines) {
-      // Never completed → 0 (oldest); routines are position-sorted so the
-      // lowest-position never-done routine wins ties.
-      const at = lastByRoutine.get(r.id)?.endedAt ?? 0;
-      if (at < bestAt) {
-        bestAt = at;
-        best = r;
-      }
-    }
-    return best;
+    const lastPerformed = new Map(
+      [...lastByRoutine].map(([id, v]) => [id, v.endedAt] as const),
+    );
+    const id = suggestRoutineId(routines, lastPerformed);
+    return routines.find((r) => r.id === id) ?? null;
   }, [routines, lastByRoutine]);
 
   return {
