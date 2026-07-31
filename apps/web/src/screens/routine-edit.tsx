@@ -66,6 +66,11 @@ type DraftSet = {
   distance: string; // km/mi display
   rirMin: string; // target RIR range (reps-based types only)
   rirMax: string;
+  // Not authored here (the weight input was dropped from the builder) but
+  // carried through the draft so a save doesn't erase a generator-seeded or
+  // session-written-back target — updateRoutine re-creates the set graph from
+  // this input rather than merging into it. Null for genuinely new sets.
+  existingTargetWeightKg: number | null;
 };
 
 type DraftExercise = {
@@ -115,6 +120,15 @@ const NO_FOLDER = "__none__";
 const DEFAULT_RIR_MIN = "1";
 const DEFAULT_RIR_MAX = "2";
 
+// The numeric fields are free-text inputs (inputMode only hints the mobile
+// keyboard), so a non-numeric entry must resolve to "no target" explicitly —
+// letting NaN through writes a silent null at the JSON boundary.
+function parseIntOrNull(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const v = Number.parseInt(raw, 10);
+  return Number.isFinite(v) ? v : null;
+}
+
 function emptySet(): DraftSet {
   return {
     key: crypto.randomUUID(),
@@ -125,6 +139,7 @@ function emptySet(): DraftSet {
     distance: "",
     rirMin: DEFAULT_RIR_MIN,
     rirMax: DEFAULT_RIR_MAX,
+    existingTargetWeightKg: null,
   };
 }
 
@@ -291,6 +306,7 @@ export default function RoutineEditScreen() {
           // claim a prescription that was never made.
           rirMin: s.targetRirMin != null ? String(s.targetRirMin) : "",
           rirMax: s.targetRirMax != null ? String(s.targetRirMax) : "",
+          existingTargetWeightKg: s.targetWeightKg ?? null,
         })),
       })),
     );
@@ -519,20 +535,24 @@ export default function RoutineEditScreen() {
       note: d.note.trim() || null,
       sets: d.sets.map((s, si) => {
         const fields = TYPE_FIELDS[d.exerciseType];
-        const reps = s.reps.trim() === "" ? null : Number.parseInt(s.reps, 10);
-        const repsMax =
-          s.repsMax.trim() === "" ? null : Number.parseInt(s.repsMax, 10);
-        const rirMin =
-          s.rirMin.trim() === "" ? null : Number.parseInt(s.rirMin, 10);
-        const rirMax =
-          s.rirMax.trim() === "" ? null : Number.parseInt(s.rirMax, 10);
+        const reps = parseIntOrNull(s.reps);
+        const repsMax = parseIntOrNull(s.repsMax);
+        const rawRirMin = parseIntOrNull(s.rirMin);
+        const rawRirMax = parseIntOrNull(s.rirMax);
+        // An inverted range is unreadable as a prescription — drop it rather
+        // than persist bounds the session UI would render backwards.
+        const inverted =
+          rawRirMin != null && rawRirMax != null && rawRirMin > rawRirMax;
+        const rirMin = inverted ? null : rawRirMin;
+        const rirMax = inverted ? null : rawRirMax;
         return {
           setNo: si,
           setType: s.setType,
           // Weight is no longer authored ahead of time (dropped from the
-          // form); Update Routine Values still writes this back from
-          // performed weight after a session.
-          targetWeightKg: null,
+          // form), but an existing target still round-trips: Update Routine
+          // Values and the generator both write it, and updateRoutine
+          // re-creates the set graph from this input rather than merging.
+          targetWeightKg: s.existingTargetWeightKg ?? null,
           targetReps: fields.reps ? reps : null,
           targetRepsMax: fields.reps ? repsMax : null,
           targetDurationSec: fields.duration ? parseDuration(s.duration) : null,
@@ -745,7 +765,7 @@ export default function RoutineEditScreen() {
                 <span>SET</span>
                 {fields.reps ? (
                   <span>RIR</span>
-                ) : fields.duration ? (
+                ) : fields.duration && !fields.weight ? (
                   <span>TIME</span>
                 ) : (
                   <span />
@@ -800,7 +820,7 @@ export default function RoutineEditScreen() {
                         data-testid={`routine-ex-${i}-set-${si}-rirmax`}
                       />
                     </div>
-                  ) : fields.duration ? (
+                  ) : fields.duration && !fields.weight ? (
                     <Input
                       inputMode="numeric"
                       placeholder="mm:ss"
