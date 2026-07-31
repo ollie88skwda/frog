@@ -64,8 +64,11 @@ test("parses a pasted routine into matched drafts and surfaces the unmatched lin
   // import is never silent.
   await expect(page.getByTestId("routine-unparsed")).toContainText("Plank 60s");
 
-  // Resolve it via "Create exercise" — appends a third matched draft row.
+  // Resolve it via "Create exercise…" — opens the editor prefilled with the
+  // raw line; saving appends a third matched draft row.
   await unmatchedRow.getByRole("button", { name: "Create exercise" }).click();
+  await expect(page.getByTestId("exercise-name-input")).toHaveValue(UNKNOWN);
+  await page.getByTestId("add-exercise-btn").click();
   await expect(unmatchedRow).not.toBeVisible();
   await expect(page.getByTestId("routine-ex-2")).toContainText(UNKNOWN);
   await expect(page.getByTestId("routine-ex-2-set-0-reps")).toHaveValue("5");
