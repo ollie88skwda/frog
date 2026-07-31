@@ -7,6 +7,7 @@ import {
   epley,
   FIRST_WEEKDAY,
   PR_TYPE_LABELS,
+  type RecordsSessionInput,
   type SessionCardBlock,
   setVolumeKg,
   weekStart,
@@ -31,6 +32,26 @@ import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+// Window the "heavy" tagline tone compares against (frog-tagline.ts).
+const TRAILING_MS = 4 * WEEK_MS;
+
+// Tonnage for one recordsData history session — the same Σ setVolumeKg the
+// session card itself computes, over the raw per-session sets.
+function historyVolumeKg(
+  s: RecordsSessionInput,
+  bodyweightKg: number | null,
+): number {
+  return s.exercises.reduce(
+    (sum, e) =>
+      sum +
+      e.sets.reduce(
+        (s2, set) =>
+          s2 + setVolumeKg(e.exerciseType as ExerciseType, set, bodyweightKg),
+        0,
+      ),
+    0,
+  );
+}
 
 // Post-save celebration (Hevy-parity M9, plan §D; redesigned per the share
 // system rebuild — docs/DECISIONS.md). Shown once, over the fresh history
@@ -235,19 +256,7 @@ export function PostSaveSummary({
       (s) => s.startedAt >= thisWeekStart && s.startedAt <= startedAt,
     );
     const volumeKgThisWeek = weekSessions.reduce(
-      (sum, s) =>
-        sum +
-        s.exercises.reduce(
-          (s2, e) =>
-            s2 +
-            e.sets.reduce(
-              (s3, set) =>
-                s3 +
-                setVolumeKg(e.exerciseType as ExerciseType, set, bodyweightKg),
-              0,
-            ),
-          0,
-        ),
+      (sum, s) => sum + historyVolumeKg(s, bodyweightKg),
       0,
     );
     const weeksWithWork = new Set(
@@ -283,6 +292,39 @@ export function PostSaveSummary({
     identity,
   ]);
 
+  // "Heavy" tagline tone (lib/frog-tagline.ts): this session out-tonnaged the
+  // trailing 4-week average session. Reads the same records history the PR
+  // sparkline and the streak slide already fetched — no extra query.
+  const isHeavy = useMemo(() => {
+    const volumeKg = shareBlocks.reduce(
+      (sum, b) =>
+        sum +
+        b.sets.reduce(
+          (s, set) => s + setVolumeKg(b.exerciseType, set, bodyweightKg),
+          0,
+        ),
+      0,
+    );
+    if (volumeKg <= 0) return false;
+    const prior = (recordsData?.history ?? []).filter(
+      (s) =>
+        s.sessionId !== sessionId &&
+        s.endedAt != null &&
+        s.startedAt >= startedAt - TRAILING_MS &&
+        s.startedAt < startedAt,
+    );
+    if (prior.length === 0) return false;
+    const average =
+      prior.reduce((sum, s) => sum + historyVolumeKg(s, bodyweightKg), 0) /
+      prior.length;
+    return volumeKg > average;
+  }, [shareBlocks, bodyweightKg, recordsData, sessionId, startedAt]);
+  // The PR and Streak slides carry their own tones, so the Session slide only
+  // claims "heavy" when neither of those signals fired (pr > streak > heavy >
+  // normal).
+  const sessionTone =
+    !heroPrEvent && !showStreak && isHeavy ? "heavy" : undefined;
+
   const title = session?.title || "Workout";
   const subtitle = formatDate(startedAt);
 
@@ -293,6 +335,7 @@ export function PostSaveSummary({
         <SlideShell
           source={sessionSource}
           sessionId={sessionId}
+          tone={sessionTone}
           sharePending={shareDataPending}
           filename={`workout-${ordinal}`}
           testId="share-slide-hero"
