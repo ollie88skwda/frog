@@ -91,6 +91,8 @@ const bundle: ExportBundle = {
       distanceM: null,
       reps: 5,
       rir: 2,
+      rirMin: null,
+      rirMax: null,
       rpe: 8,
       restSec: 90,
       note: 'felt "heavy"',
@@ -105,10 +107,10 @@ describe("setsCsv", () => {
     const csv = setsCsv(bundle);
     const [header, row] = csv.split("\n");
     expect(header).toBe(
-      "session_started_at,session_title,exercise,set_no,set_type,weight_kg,reps,duration_sec,distance_m,rir,rpe,rest_sec,note,Sleep (h)",
+      "session_started_at,session_title,exercise,set_no,set_type,weight_kg,reps,duration_sec,distance_m,rir,rir_min,rir_max,rpe,rest_sec,note,Sleep (h)",
     );
     expect(row).toBe(
-      '2026-01-02T10:00:00.000Z,,"Bench, Press",0,normal,100,5,,,2,8,90,"felt ""heavy""",7.5',
+      '2026-01-02T10:00:00.000Z,,"Bench, Press",0,normal,100,5,,,2,,,8,90,"felt ""heavy""",7.5',
     );
   });
 
@@ -118,5 +120,16 @@ describe("setsCsv", () => {
       setLogs: [{ ...bundle.setLogs[0], deletedAt: 5 }],
     };
     expect(setsCsv(withDeleted).split("\n")).toHaveLength(1);
+  });
+
+  it("splits a logged RIR range into rir_min/rir_max columns", () => {
+    const withRange: ExportBundle = {
+      ...bundle,
+      setLogs: [{ ...bundle.setLogs[0], rir: null, rirMin: 1, rirMax: 2 }],
+    };
+    const [, row] = setsCsv(withRange).split("\n");
+    expect(row).toBe(
+      '2026-01-02T10:00:00.000Z,,"Bench, Press",0,normal,100,5,,,,1,2,8,90,"felt ""heavy""",7.5',
+    );
   });
 });

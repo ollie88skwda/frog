@@ -220,6 +220,10 @@ export const routineSets = pgTable(
     targetRepsMax: integer("target_reps_max"),
     targetDurationSec: integer("target_duration_sec"),
     targetDistanceM: real("target_distance_m"),
+    // Target RIR range (reps-based exercise types only). Both nullable —
+    // no target authored until the user sets one.
+    targetRirMin: integer("target_rir_min"),
+    targetRirMax: integer("target_rir_max"),
   },
   (t) => [
     index("routine_sets_owner_idx").on(t.ownerId),
@@ -330,7 +334,9 @@ export const setLogs = pgTable(
     reps: integer("reps"),
     durationSec: integer("duration_sec"), // duration-type exercises
     distanceM: real("distance_m"), // distance-type exercises (canonical meters)
-    rir: integer("rir"),
+    rir: integer("rir"), // legacy scalar RIR — kept as a read-compat fallback
+    rirMin: integer("rir_min"),
+    rirMax: integer("rir_max"),
     rpe: real("rpe"), // 1–10 perceived exertion (halves allowed); RIR ≈ 10 − RPE
     note: text("note"),
     restSec: integer("rest_sec"), // seconds rested before this set (null = first/unknown)

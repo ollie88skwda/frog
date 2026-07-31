@@ -10,7 +10,7 @@ import {
   Plus,
   Sparkles,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -31,6 +31,14 @@ import {
 import { useStartSession } from "@/lib/start-session";
 import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
+
+// Hand-rolled popup menus (no shared Popover component in this app yet) —
+// flip upward when there isn't enough viewport room below. A fixed height is
+// a pragmatic call: item counts here are small, developer-controlled, and
+// bounded, so a rough overestimate never leaves a menu clipped, only flips
+// slightly more eagerly than strictly required at the boundary.
+const FOLDER_MENU_HEIGHT = 80; // 2 items (Rename/Delete folder) × h-9 row + p-1 padding
+const ROUTINE_MENU_HEIGHT = 152; // up to 4 items (Edit/Duplicate/Move/Delete) × h-9 row + p-1 padding
 
 export default function TrainScreen() {
   const navigate = useNavigate();
@@ -241,10 +249,22 @@ function FolderSection({
   const { t } = useVoice();
   const [open, setOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuUpward, setMenuUpward] = useState(false);
+  const menuWrapRef = useRef<HTMLDivElement>(null);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(folder.name);
   const rename = useRenameRoutineFolder();
   const del = useDeleteRoutineFolder();
+
+  // Flip the menu upward when there isn't enough viewport room below it
+  // (mobile-first: a menu clipped below the fold must never be unreachable).
+  function toggleMenu() {
+    if (!menuOpen && menuWrapRef.current) {
+      const r = menuWrapRef.current.getBoundingClientRect();
+      setMenuUpward(window.innerHeight - r.bottom < FOLDER_MENU_HEIGHT);
+    }
+    setMenuOpen((o) => !o);
+  }
 
   return (
     <div data-testid={`folder-${folder.name}`}>
@@ -263,17 +283,22 @@ function FolderSection({
           <span className="text-sm font-medium">{folder.name}</span>
           <span className="num text-2xs text-faint">{routines.length}</span>
         </button>
-        <div className="relative">
+        <div className="relative" ref={menuWrapRef}>
           <Button
             variant="ghost"
             size="icon"
             aria-label="Folder menu"
-            onClick={() => setMenuOpen((o) => !o)}
+            onClick={toggleMenu}
           >
             <MoreHorizontal className="size-4" />
           </Button>
           {menuOpen && (
-            <div className="absolute right-0 z-10 mt-1 flex w-36 flex-col rounded-md border border-border bg-surface p-1 shadow-md">
+            <div
+              className={cn(
+                "absolute right-0 z-10 flex w-36 flex-col rounded-md border border-border bg-surface p-1 shadow-md",
+                menuUpward ? "bottom-full mb-1" : "top-full mt-1",
+              )}
+            >
               <MenuItem
                 label="Rename"
                 onClick={() => {
@@ -347,6 +372,8 @@ function RoutineCard({
   const navigate = useNavigate();
   const repo = useRepo();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuUpward, setMenuUpward] = useState(false);
+  const menuWrapRef = useRef<HTMLDivElement>(null);
   const [moveOpen, setMoveOpen] = useState(false);
   const [startingR, setStartingR] = useState(false);
   const duplicate = useDuplicateRoutine();
@@ -362,6 +389,17 @@ function RoutineCard({
     } finally {
       setStartingR(false);
     }
+  }
+
+  // Flip the menu upward when there isn't enough viewport room below it —
+  // the last card in a long list otherwise renders its menu entirely below
+  // the fold, with no scroll gesture that can reach it (mobile-first).
+  function toggleMenu() {
+    if (!menuOpen && menuWrapRef.current) {
+      const r = menuWrapRef.current.getBoundingClientRect();
+      setMenuUpward(window.innerHeight - r.bottom < ROUTINE_MENU_HEIGHT);
+    }
+    setMenuOpen((o) => !o);
   }
 
   return (
@@ -384,18 +422,24 @@ function RoutineCard({
       >
         <Play className="size-4" /> Start
       </Button>
-      <div className="relative">
+      <div className="relative" ref={menuWrapRef}>
         <Button
           variant="ghost"
           size="icon"
           aria-label="Routine menu"
-          onClick={() => setMenuOpen((o) => !o)}
+          onClick={toggleMenu}
           data-testid={`routine-menu-${routine.name}`}
         >
           <MoreHorizontal className="size-4" />
         </Button>
         {menuOpen && (
-          <div className="absolute right-0 z-10 mt-1 flex w-40 flex-col rounded-md border border-border bg-surface p-1 shadow-md">
+          <div
+            className={cn(
+              "absolute right-0 z-10 flex w-40 flex-col rounded-md border border-border bg-surface p-1 shadow-md",
+              menuUpward ? "bottom-full mb-1" : "top-full mt-1",
+            )}
+            data-testid={`routine-menu-${routine.name}-popup`}
+          >
             <MenuItem
               label="Edit"
               onClick={() => navigate(`/routines/${routine.id}/edit`)}
