@@ -75,12 +75,9 @@ import {
   useMachines,
   useMetrics,
   useSeedExercises,
-  useSetExerciseClassification,
   useSetExerciseFavorite,
-  useSetExerciseMachine,
-  useSetExerciseTags,
-  useSetExerciseTypeEquipment,
   useSetMetricExercises,
+  useUpdateExercise,
 } from "@/lib/queries";
 import { useUnit } from "@/lib/settings";
 import { useInView } from "@/lib/use-in-view";
@@ -690,7 +687,7 @@ const ExerciseRow = memo(function ExerciseRow({
 }) {
   const { t } = useVoice();
   const toggleMetric = useSetMetricExercises();
-  const setTags = useSetExerciseTags();
+  const update = useUpdateExercise();
   const deleteExercise = useDeleteExercise();
   const [confirmingArchive, setConfirmingArchive] = useState(false);
   // Gate the per-row last-set lookup on visibility — otherwise the seeded
@@ -834,7 +831,7 @@ const ExerciseRow = memo(function ExerciseRow({
 
           {exercise.isCustom && (
             <div className="mt-3 border-t border-border pt-2">
-              <TagEditor exercise={exercise} setTags={setTags} />
+              <TagEditor exercise={exercise} update={update} />
               <Button
                 variant="ghost"
                 size="sm"
@@ -916,9 +913,7 @@ function CustomExerciseEditor({
   exercise: Exercise;
   machines: Machine[];
 }) {
-  const classify = useSetExerciseClassification();
-  const setMachine = useSetExerciseMachine();
-  const setTypeEquip = useSetExerciseTypeEquipment();
+  const update = useUpdateExercise();
   const { data: history = [] } = useLastSets(exercise.id);
   const [muscleDraft, setMuscleDraft] = useState("");
   const [tierDraft, setTierDraft] = useState<Tier>("S");
@@ -930,16 +925,10 @@ function CustomExerciseEditor({
   const typeLocked = history.length > 0;
 
   function setTargets(next: MuscleTarget[]) {
-    classify.mutate({
-      exerciseId: exercise.id,
-      classification: { muscleTargets: next },
-    });
+    update.mutate({ exerciseId: exercise.id, patch: { muscleTargets: next } });
   }
   function setActions(next: string[]) {
-    classify.mutate({
-      exerciseId: exercise.id,
-      classification: { jointActions: next },
-    });
+    update.mutate({ exerciseId: exercise.id, patch: { jointActions: next } });
   }
 
   return (
@@ -950,10 +939,9 @@ function CustomExerciseEditor({
           value={exType}
           disabled={typeLocked}
           onChange={(e) =>
-            setTypeEquip.mutate({
+            update.mutate({
               exerciseId: exercise.id,
-              exerciseType: e.target.value,
-              equipment: exercise.equipment ?? null,
+              patch: { exerciseType: e.target.value },
             })
           }
           className="h-6 max-w-40 border border-border bg-surface px-1 text-2xs text-ink disabled:opacity-50"
@@ -972,10 +960,9 @@ function CustomExerciseEditor({
         <select
           value={exercise.equipment ?? ""}
           onChange={(e) =>
-            setTypeEquip.mutate({
+            update.mutate({
               exerciseId: exercise.id,
-              exerciseType: exType,
-              equipment: e.target.value || null,
+              patch: { equipment: e.target.value || null },
             })
           }
           className="h-6 max-w-40 border border-border bg-surface px-1 text-2xs text-ink"
@@ -1092,9 +1079,9 @@ function CustomExerciseEditor({
         <select
           value={exercise.machineId ?? ""}
           onChange={(e) =>
-            setMachine.mutate({
+            update.mutate({
               exerciseId: exercise.id,
-              machineId: e.target.value || null,
+              patch: { machineId: e.target.value || null },
             })
           }
           className="h-6 max-w-64 border border-border bg-surface px-1 text-2xs text-ink"
@@ -1115,10 +1102,10 @@ function CustomExerciseEditor({
 
 function TagEditor({
   exercise,
-  setTags,
+  update,
 }: {
   exercise: Exercise;
-  setTags: ReturnType<typeof useSetExerciseTags>;
+  update: ReturnType<typeof useUpdateExercise>;
 }) {
   const [tagDraft, setTagDraft] = useState("");
   // Hold the latest tags so a rapid second add appends to the first instead of
@@ -1134,7 +1121,7 @@ function TagEditor({
     if (current.includes(tag)) return;
     const nextTags = [...current, tag];
     tagsRef.current = nextTags;
-    setTags.mutate({ exerciseId: exercise.id, tags: nextTags });
+    update.mutate({ exerciseId: exercise.id, patch: { tags: nextTags } });
   }
 
   return (
@@ -1149,9 +1136,9 @@ function TagEditor({
             type="button"
             title={`Remove tag ${t}`}
             onClick={() =>
-              setTags.mutate({
+              update.mutate({
                 exerciseId: exercise.id,
-                tags: (exercise.tags ?? []).filter((x) => x !== t),
+                patch: { tags: (exercise.tags ?? []).filter((x) => x !== t) },
               })
             }
             className="text-faint hover:text-neg"

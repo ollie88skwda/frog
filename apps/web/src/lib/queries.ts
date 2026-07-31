@@ -1,7 +1,7 @@
 import {
   type Exercise,
-  type ExerciseClassification,
   type ExerciseFavorite,
+  type ExercisePatch,
   type ExercisePref,
   type Machine,
   type MachinePatch,
@@ -261,116 +261,31 @@ export function useDeleteMetric() {
   });
 }
 
-export function useSetExerciseTags() {
+// Replaces useSetExerciseClassification/useSetExerciseTypeEquipment/
+// useSetExerciseTags/useSetExerciseMachine — one optimistic patch mutation
+// instead of a narrow hook per editable field. Patch keys match Exercise's
+// own field shape, so the optimistic write is a plain spread.
+export function useUpdateExercise() {
   const repo = useRepo();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { exerciseId: string; tags: string[] }) =>
-      repo.setExerciseTags(input.exerciseId, input.tags),
-    onMutate: ({ exerciseId, tags }) => {
+    mutationFn: (input: { exerciseId: string; patch: ExercisePatch }) =>
+      repo.updateExercise(input.exerciseId, input.patch),
+    onMutate: ({ exerciseId, patch }) => {
       void qc.cancelQueries({ queryKey: ["exercises"] });
       const prev = qc.getQueryData<Exercise[]>(["exercises"]);
       updateExerciseRows(qc, (old) =>
-        old.map((e) =>
-          e.id === exerciseId ? { ...e, tags: tags.length ? tags : null } : e,
-        ),
+        old.map((e) => (e.id === exerciseId ? { ...e, ...patch } : e)),
       );
       return { prev };
     },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
-  });
-}
-
-export function useSetExerciseClassification() {
-  const repo = useRepo();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      exerciseId: string;
-      classification: ExerciseClassification;
-    }) =>
-      repo.setExerciseClassification(input.exerciseId, input.classification),
-    onMutate: ({ exerciseId, classification }) => {
-      void qc.cancelQueries({ queryKey: ["exercises"] });
-      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      updateExerciseRows(qc, (old) =>
-        old.map((e) =>
-          e.id === exerciseId
-            ? {
-                ...e,
-                ...("jointActions" in classification
-                  ? { jointActions: classification.jointActions ?? null }
-                  : {}),
-                ...("muscleTargets" in classification
-                  ? { muscleTargets: classification.muscleTargets ?? null }
-                  : {}),
-              }
-            : e,
-        ),
-      );
-      return { prev };
+    onSettled: (_d, _e, { exerciseId }) => {
+      void qc.invalidateQueries({ queryKey: ["exercises"] });
+      void qc.invalidateQueries({ queryKey: ["exercise", exerciseId] });
     },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
-  });
-}
-
-// Measurement type + equipment (custom exercises only). Type is app-enforced
-// immutable once the exercise has logged sets — the caller disables the control.
-export function useSetExerciseTypeEquipment() {
-  const repo = useRepo();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      exerciseId: string;
-      exerciseType: string;
-      equipment: string | null;
-    }) =>
-      repo.setExerciseTypeEquipment(
-        input.exerciseId,
-        input.exerciseType,
-        input.equipment,
-      ),
-    onMutate: ({ exerciseId, exerciseType, equipment }) => {
-      void qc.cancelQueries({ queryKey: ["exercises"] });
-      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      updateExerciseRows(qc, (old) =>
-        old.map((e) =>
-          e.id === exerciseId ? { ...e, exerciseType, equipment } : e,
-        ),
-      );
-      return { prev };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
-  });
-}
-
-export function useSetExerciseMachine() {
-  const repo = useRepo();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { exerciseId: string; machineId: string | null }) =>
-      repo.setExerciseMachine(input.exerciseId, input.machineId),
-    onMutate: ({ exerciseId, machineId }) => {
-      void qc.cancelQueries({ queryKey: ["exercises"] });
-      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      updateExerciseRows(qc, (old) =>
-        old.map((e) => (e.id === exerciseId ? { ...e, machineId } : e)),
-      );
-      return { prev };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
   });
 }
 

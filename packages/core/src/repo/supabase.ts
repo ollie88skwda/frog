@@ -29,7 +29,7 @@ import type { ImportedSession, ImportResult } from "../import/types";
 import type { RecordsSessionInput } from "../records/types";
 import type {
   CreatedApiToken,
-  ExerciseClassification,
+  ExercisePatch,
   ExportBundle,
   GhostSet,
   MachinePatch,
@@ -430,34 +430,47 @@ export class SupabaseRepo implements Repo {
     throwIf(error);
   }
 
-  async setExerciseMachine(
-    exerciseId: string,
-    machineId: string | null,
-  ): Promise<void> {
-    const { error } = await this.client
-      .from("exercises")
-      .update({ machine_id: machineId, updated_at: Date.now() })
-      .eq("id", exerciseId);
-    throwIf(error);
-  }
-
-  async setExerciseClassification(
-    exerciseId: string,
-    classification: ExerciseClassification,
-  ): Promise<void> {
+  // Replaces setExerciseMachine/setExerciseClassification/
+  // setExerciseTypeEquipment/setExerciseTags — one patch method instead of a
+  // narrow setter per editable field (RLS still restricts writes to the
+  // caller's own custom rows; this is the seam, not the security boundary).
+  async updateExercise(id: string, patch: ExercisePatch): Promise<void> {
     const row: Row = { updated_at: Date.now() };
-    if ("jointActions" in classification)
-      row.joint_actions = classification.jointActions?.length
-        ? classification.jointActions
+    if ("name" in patch && patch.name != null) row.name = patch.name;
+    if ("muscleTargets" in patch)
+      row.muscle_targets = patch.muscleTargets?.length
+        ? patch.muscleTargets
         : null;
-    if ("muscleTargets" in classification)
-      row.muscle_targets = classification.muscleTargets?.length
-        ? classification.muscleTargets
+    if ("jointActions" in patch)
+      row.joint_actions = patch.jointActions?.length
+        ? patch.jointActions
         : null;
+    if ("machineId" in patch) row.machine_id = patch.machineId ?? null;
+    if ("exerciseType" in patch && patch.exerciseType != null)
+      row.exercise_type = patch.exerciseType;
+    if ("equipment" in patch) row.equipment = patch.equipment ?? null;
+    if ("tags" in patch) row.tags = patch.tags?.length ? patch.tags : null;
+    if ("mechanic" in patch) row.mechanic = patch.mechanic ?? null;
+    if ("movementPattern" in patch)
+      row.movement_pattern = patch.movementPattern ?? null;
+    if ("laterality" in patch) row.laterality = patch.laterality ?? null;
+    if ("defaultRepsMin" in patch)
+      row.default_reps_min = patch.defaultRepsMin ?? null;
+    if ("defaultRepsMax" in patch)
+      row.default_reps_max = patch.defaultRepsMax ?? null;
+    if ("defaultRestSec" in patch)
+      row.default_rest_sec = patch.defaultRestSec ?? null;
+    if ("notes" in patch) row.notes = patch.notes ?? null;
+    if ("aliases" in patch)
+      row.aliases = patch.aliases?.length ? patch.aliases : null;
+    if ("instructions" in patch)
+      row.instructions = patch.instructions?.length ? patch.instructions : null;
+    if ("imageUrls" in patch)
+      row.image_urls = patch.imageUrls?.length ? patch.imageUrls : null;
     const { error } = await this.client
       .from("exercises")
       .update(row)
-      .eq("id", exerciseId);
+      .eq("id", id);
     throwIf(error);
   }
 
@@ -706,14 +719,6 @@ export class SupabaseRepo implements Repo {
       .from("set_logs")
       .update(row)
       .eq("id", setId);
-    throwIf(error);
-  }
-
-  async setExerciseTags(exerciseId: string, tags: string[]): Promise<void> {
-    const { error } = await this.client
-      .from("exercises")
-      .update({ tags: tags.length ? tags : null, updated_at: Date.now() })
-      .eq("id", exerciseId);
     throwIf(error);
   }
 
@@ -1467,22 +1472,6 @@ export class SupabaseRepo implements Repo {
       exercise_id: exerciseId,
       favorite,
     });
-    throwIf(error);
-  }
-
-  async setExerciseTypeEquipment(
-    exerciseId: string,
-    exerciseType: string,
-    equipment: string | null,
-  ): Promise<void> {
-    const { error } = await this.client
-      .from("exercises")
-      .update({
-        exercise_type: exerciseType,
-        equipment,
-        updated_at: Date.now(),
-      })
-      .eq("id", exerciseId);
     throwIf(error);
   }
 

@@ -119,10 +119,29 @@ export type NewExerciseOpts = {
   aliases?: string[] | null;
 };
 
-export type ExerciseClassification = {
-  jointActions?: string[] | null;
-  muscleTargets?: MuscleTarget[] | null;
-};
+// One patch method replaces the four narrow setters
+// (setExerciseClassification/setExerciseTypeEquipment/setExerciseTags/
+// setExerciseMachine) that used to accrete one per new editable field.
+export type ExercisePatch = Partial<{
+  name: string;
+  muscleTargets: MuscleTarget[] | null;
+  jointActions: string[] | null;
+  machineId: string | null;
+  /** App-enforced immutable once the exercise has logged sets. */
+  exerciseType: string;
+  equipment: string | null;
+  tags: string[] | null;
+  mechanic: string | null;
+  movementPattern: string | null;
+  laterality: string | null;
+  defaultRepsMin: number | null;
+  defaultRepsMax: number | null;
+  defaultRestSec: number | null;
+  notes: string | null;
+  aliases: string[] | null;
+  instructions: string[] | null;
+  imageUrls: string[] | null;
+}>;
 
 export type LoggedSet = {
   id: string;
@@ -208,6 +227,13 @@ export interface Repo {
   listExercises(): Promise<Exercise[]>;
   /** Full row, including the How-to-tab-only fields listExercises omits. */
   getExercise(id: string): Promise<Exercise | null>;
+  /**
+   * Partial update — only provided fields are written. Custom exercises
+   * only (seed rows are read-only under RLS; the client-side `isCustom`
+   * gate is the UX affordance, RLS is the actual boundary). Includes rename
+   * — there was previously no rename path for any exercise.
+   */
+  updateExercise(id: string, patch: ExercisePatch): Promise<void>;
 
   // Machines: the user's gym equipment — settings entered once, shown in
   // every session (setup memory). No seed machines; all rows owner-scoped.
@@ -217,16 +243,6 @@ export interface Repo {
   updateMachine(id: string, patch: MachinePatch): Promise<void>;
   /** Soft delete + detaches the owner's exercises referencing it. */
   deleteMachine(id: string): Promise<void>;
-  /** Custom exercises only (seeds read-only under RLS). null detaches. */
-  setExerciseMachine(
-    exerciseId: string,
-    machineId: string | null,
-  ): Promise<void>;
-  /** Joint actions + muscle targets (custom exercises only). */
-  setExerciseClassification(
-    exerciseId: string,
-    classification: ExerciseClassification,
-  ): Promise<void>;
   /** Uploads the user's own photo (already resized) and stores its path. */
   uploadMachinePhoto(machineId: string, file: Blob): Promise<void>;
   /** Short-lived signed URL for the machine's photo, or null if none. */
@@ -274,9 +290,6 @@ export interface Repo {
   deleteExercise(id: string): Promise<void>;
   deleteMetric(id: string): Promise<void>;
   deleteSession(id: string): Promise<void>;
-
-  /** Light tagging (custom exercises; seeds are read-only under RLS). */
-  setExerciseTags(exerciseId: string, tags: string[]): Promise<void>;
 
   /**
    * Bulk history import (Hevy etc.): find-or-create exercises by name,
@@ -391,17 +404,6 @@ export interface Repo {
   listExerciseFavorites(): Promise<ExerciseFavorite[]>;
   /** Favorite (true) or unfavorite (false) an exercise. Upserts one row. */
   setExerciseFavorite(exerciseId: string, favorite: boolean): Promise<void>;
-
-  /**
-   * Measurement type + equipment (custom exercises only, like classification).
-   * Type is app-enforced immutable once the exercise has logged sets —
-   * duplicate-as-custom is the reset path.
-   */
-  setExerciseTypeEquipment(
-    exerciseId: string,
-    exerciseType: string,
-    equipment: string | null,
-  ): Promise<void>;
 
   // Per-exercise prefs: satellite on shared seed rows (favorites pattern).
   listExercisePrefs(): Promise<ExercisePref[]>;
