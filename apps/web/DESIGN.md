@@ -34,8 +34,10 @@ invalid var. Add the scale import if you need another.
 **Frog is used on phones, in gyms. Desktop is secondary.** Every screen, control,
 and layout is designed for a ~390px viewport FIRST, then adapted up.
 
-- Touch targets on interaction paths are ≥44px on mobile: Radix `size="3"` (or
-  `h-11`) on mobile, dense `size="2"` (`md:h-8`) as the `md:` override.
+- Touch targets on interaction paths meet the ≥40px floor AGENTS.md sets:
+  Radix `size="3"` (40px — `ui/button`'s `lg` and `icon-lg`) or `h-10`/`h-11`.
+  Dense `size="2"` (`md:h-8`, `icon` = 32px) is a desktop-only override;
+  `icon-lg` has none, so the session logging controls hold 40px at every width.
 - Hover-revealed affordances (trash, ✕) must also be reachable on touch: visible
   by default on mobile, hover-revealed only from `md:` up.
 - Dialogs are bottom sheets on mobile (full-width, rounded top, pinned to the
@@ -82,7 +84,9 @@ classes:
 
 - Surfaces: `bg-bg` (page) → `bg-surface` → `bg-surface-2/3`; hover
   `bg-surface-hover`, selected `bg-surface-active`, translucent `bg-translucent`.
-  Dialog/overlay panels use Radix `--color-panel-solid`.
+  Dialog/overlay panels use Radix `--color-panel-solid` — and so does anything
+  fixed over scrolled content (the PR ribbon, the rest dock): the translucent
+  tints below only read on a known surface.
 - Text: `text-ink` (sage-12) → `text-ink-2`/`text-soft` (sage-11) →
   `text-faint` (sage-10). Note sage-10 is ~4.5:1 — reserve `text-faint` for
   genuinely tertiary meta, and lean on size/weight for hierarchy.
