@@ -320,4 +320,45 @@ describe("buildExerciseRecordsCard", () => {
     });
     expect(card?.heroPrType).toBe("best_e1rm");
   });
+
+  it("falls back to best_set_reps for a bodyweight exercise (no weight PR types exist)", () => {
+    const pullup = (id: string, startedAt: number, reps: number) => ({
+      sessionId: id,
+      startedAt,
+      endedAt: startedAt + 3_600_000,
+      pausedMs: 0,
+      exercises: [
+        {
+          exerciseId: "pullup",
+          exerciseType: "bodyweight_reps",
+          sets: [
+            {
+              setType: "normal",
+              weightKg: null,
+              reps,
+              durationSec: null,
+              distanceM: null,
+            },
+          ],
+        },
+      ],
+    });
+    const { byExercise } = computeRecords(
+      [pullup("a", 0, 8), pullup("b", 86_400_000, 10)],
+      { includeWarmups: true },
+    );
+    const records = byExercise.get("pullup");
+    if (!records) throw new Error("expected records");
+    const card = buildExerciseRecordsCard({
+      exerciseName: "Pull-up",
+      type: "bodyweight_reps",
+      records,
+      unit: "kg",
+      distUnit: "km",
+      sparkline: [],
+      identity: IDENTITY,
+    });
+    expect(card?.heroPrType).toBe("best_set_reps");
+    expect(card?.hero.value).toBe("10 reps");
+  });
 });

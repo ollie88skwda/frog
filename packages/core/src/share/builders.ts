@@ -425,12 +425,24 @@ export function buildExerciseRecordsCard(input: {
   identity: ShareIdentity;
 }): ExerciseRecordsCard | null {
   const { records, unit, distUnit } = input;
-  const heroEntry = records.bests.best_e1rm ?? records.bests.heaviest_weight;
-  const heroPrType: PrType | null = records.bests.best_e1rm
-    ? "best_e1rm"
-    : records.bests.heaviest_weight
-      ? "heaviest_weight"
-      : null;
+  // Priority order for the hero stat, falling back through PR types so every
+  // exercise type keeps a working card — only weight_reps/weighted_bodyweight
+  // ever have best_e1rm/heaviest_weight; bodyweight_reps/assisted_bodyweight,
+  // duration/weight_duration, and distance_duration/weight_distance each need
+  // a different PR type to headline with.
+  const HERO_PRIORITY: PrType[] = [
+    "best_e1rm",
+    "heaviest_weight",
+    "best_time",
+    "best_pace",
+    "longest_distance",
+    "best_set_reps",
+    "best_session_volume",
+    "best_session_reps",
+  ];
+  const heroPrType =
+    HERO_PRIORITY.find((t) => records.bests[t] != null) ?? null;
+  const heroEntry = heroPrType ? records.bests[heroPrType] : undefined;
   if (!heroEntry || !heroPrType) return null;
 
   const setRecordRows = [...records.setRecords.entries()]
