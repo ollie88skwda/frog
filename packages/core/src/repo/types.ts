@@ -49,6 +49,8 @@ export type NewSetInput = {
   weightKg: number | null;
   reps: number | null;
   rir?: number | null;
+  rirMin?: number | null;
+  rirMax?: number | null;
   rpe?: number | null;
   note?: string | null;
   /** Seconds rested before this set (time since the previous set committed). */
@@ -150,6 +152,9 @@ export type RoutineSetInput = {
   targetRepsMax?: number | null;
   targetDurationSec?: number | null;
   targetDistanceM?: number | null;
+  /** Target RIR range (reps-based exercise types only). */
+  targetRirMin?: number | null;
+  targetRirMax?: number | null;
 };
 
 export type RoutineExerciseInput = {

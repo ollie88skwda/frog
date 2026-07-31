@@ -50,6 +50,8 @@ export type RecordsSetInput = {
   durationSec: number | null;
   distanceM: number | null;
   rir?: number | null;
+  rirMin?: number | null;
+  rirMax?: number | null;
   rpe?: number | null;
 };
 

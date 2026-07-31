@@ -18,7 +18,7 @@ Base: `<SUPABASE_PROJECT_URL>/functions/v1/api`
 
 - `GET /v1/exercises?limit&offset` — exercises (global seeds + user's custom)
 - `GET /v1/sessions?limit&offset` — sessions, newest first, incl. `condition_values` ({metric_id: value})
-- `GET /v1/sets?limit&offset` — flat set logs (weight_kg, reps, rir, note, metric_values)
+- `GET /v1/sets?limit&offset` — flat set logs (weight_kg, reps, rir, rir_min, rir_max, note, metric_values)
 - `GET /v1/export` — everything: exercises, metrics, sessions, session_exercises, set_logs
 
 Example:

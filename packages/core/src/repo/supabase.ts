@@ -178,6 +178,8 @@ function toSetLog(r: Row): SetLog {
     durationSec: (r.duration_sec as number | null) ?? null,
     distanceM: (r.distance_m as number | null) ?? null,
     rir: (r.rir as number | null) ?? null,
+    rirMin: (r.rir_min as number | null) ?? null,
+    rirMax: (r.rir_max as number | null) ?? null,
     rpe: (r.rpe as number | null) ?? null,
     note: (r.note as string | null) ?? null,
     restSec: (r.rest_sec as number | null) ?? null,
@@ -284,6 +286,8 @@ function toRoutineSet(r: Row): RoutineSet {
     targetRepsMax: (r.target_reps_max as number | null) ?? null,
     targetDurationSec: (r.target_duration_sec as number | null) ?? null,
     targetDistanceM: (r.target_distance_m as number | null) ?? null,
+    targetRirMin: (r.target_rir_min as number | null) ?? null,
+    targetRirMax: (r.target_rir_max as number | null) ?? null,
   };
 }
 
@@ -590,6 +594,8 @@ export class SupabaseRepo implements Repo {
     if ("weightKg" in patch) row.weight_kg = patch.weightKg ?? null;
     if ("reps" in patch) row.reps = patch.reps ?? null;
     if ("rir" in patch) row.rir = patch.rir ?? null;
+    if ("rirMin" in patch) row.rir_min = patch.rirMin ?? null;
+    if ("rirMax" in patch) row.rir_max = patch.rirMax ?? null;
     if ("rpe" in patch) row.rpe = patch.rpe ?? null;
     if ("note" in patch) row.note = patch.note ?? null;
     if ("restSec" in patch) row.rest_sec = patch.restSec ?? null;
@@ -651,6 +657,8 @@ export class SupabaseRepo implements Repo {
       weight_kg: set.weightKg,
       reps: set.reps,
       rir: set.rir ?? null,
+      rir_min: set.rirMin ?? null,
+      rir_max: set.rirMax ?? null,
       rpe: set.rpe ?? null,
       note: set.note ?? null,
       rest_sec: set.restSec ?? null,
@@ -846,7 +854,7 @@ export class SupabaseRepo implements Repo {
     const { data, error } = await this.client
       .from("sessions")
       .select(
-        "id, started_at, ended_at, paused_ms, deleted_at, session_exercises(exercise_id, deleted_at, exercises(exercise_type), set_logs(set_type, weight_kg, reps, duration_sec, distance_m, rir, rpe, deleted_at))",
+        "id, started_at, ended_at, paused_ms, deleted_at, session_exercises(exercise_id, deleted_at, exercises(exercise_type), set_logs(set_type, weight_kg, reps, duration_sec, distance_m, rir, rir_min, rir_max, rpe, deleted_at))",
       )
       .is("deleted_at", null)
       .order("started_at", { ascending: true });
@@ -872,6 +880,8 @@ export class SupabaseRepo implements Repo {
               durationSec: (sl.duration_sec as number | null) ?? null,
               distanceM: (sl.distance_m as number | null) ?? null,
               rir: (sl.rir as number | null) ?? null,
+              rirMin: (sl.rir_min as number | null) ?? null,
+              rirMax: (sl.rir_max as number | null) ?? null,
               rpe: (sl.rpe as number | null) ?? null,
             })),
         })),
@@ -1895,6 +1905,8 @@ export class SupabaseRepo implements Repo {
         target_reps_max: s.targetRepsMax ?? null,
         target_duration_sec: s.targetDurationSec ?? null,
         target_distance_m: s.targetDistanceM ?? null,
+        target_rir_min: s.targetRirMin ?? null,
+        target_rir_max: s.targetRirMax ?? null,
       })),
     );
     if (setRows.length) {
@@ -2011,6 +2023,8 @@ export class SupabaseRepo implements Repo {
           targetRepsMax: s.targetRepsMax,
           targetDurationSec: s.targetDurationSec,
           targetDistanceM: s.targetDistanceM,
+          targetRirMin: s.targetRirMin,
+          targetRirMax: s.targetRirMax,
         })),
       })),
     });

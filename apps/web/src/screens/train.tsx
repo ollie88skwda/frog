@@ -10,7 +10,7 @@ import {
   Plus,
   Sparkles,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -31,6 +31,34 @@ import {
 import { useStartSession } from "@/lib/start-session";
 import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
+
+// Hand-rolled popup menus (no shared Popover component in this app yet) —
+// flip upward when there isn't enough viewport room below. A fixed height is
+// a pragmatic call: item counts here are small, developer-controlled, and
+// bounded. Each constant must stay at or above the real rendered height
+// (36px per h-9 row + 8px p-1 + 2px border + 4px offset) — an underestimate
+// renders downward and clips the last row off-viewport; a small overestimate
+// only flips slightly more eagerly than strictly required at the boundary.
+const FOLDER_MENU_HEIGHT = 88; // 2 items (Rename/Delete folder), measured 86
+const ROUTINE_MENU_HEIGHT = 160; // up to 4 items (Edit/Duplicate/Move/Delete), measured 158
+
+// One owner for the collision rule shared by both menus below: measure the
+// trigger on open, and flip only when the room below can't fit the popup.
+function useFlippableMenu(height: number) {
+  const [open, setOpen] = useState(false);
+  const [upward, setUpward] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  function toggle() {
+    if (!open && wrapRef.current) {
+      const r = wrapRef.current.getBoundingClientRect();
+      setUpward(window.innerHeight - r.bottom < height);
+    }
+    setOpen((o) => !o);
+  }
+
+  return { open, upward, wrapRef, toggle, close: () => setOpen(false) };
+}
 
 export default function TrainScreen() {
   const navigate = useNavigate();
@@ -240,7 +268,8 @@ function FolderSection({
 }) {
   const { t } = useVoice();
   const [open, setOpen] = useState(true);
-  const [menuOpen, setMenuOpen] = useState(false);
+  // Mobile-first: a menu clipped below the fold must never be unreachable.
+  const menu = useFlippableMenu(FOLDER_MENU_HEIGHT);
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState(folder.name);
   const rename = useRenameRoutineFolder();
@@ -263,21 +292,26 @@ function FolderSection({
           <span className="text-sm font-medium">{folder.name}</span>
           <span className="num text-2xs text-faint">{routines.length}</span>
         </button>
-        <div className="relative">
+        <div className="relative" ref={menu.wrapRef}>
           <Button
             variant="ghost"
             size="icon"
             aria-label="Folder menu"
-            onClick={() => setMenuOpen((o) => !o)}
+            onClick={menu.toggle}
           >
             <MoreHorizontal className="size-4" />
           </Button>
-          {menuOpen && (
-            <div className="absolute right-0 z-10 mt-1 flex w-36 flex-col rounded-md border border-border bg-surface p-1 shadow-md">
+          {menu.open && (
+            <div
+              className={cn(
+                "absolute right-0 z-10 flex w-36 flex-col rounded-md border border-border bg-surface p-1 shadow-md",
+                menu.upward ? "bottom-full mb-1" : "top-full mt-1",
+              )}
+            >
               <MenuItem
                 label="Rename"
                 onClick={() => {
-                  setMenuOpen(false);
+                  menu.close();
                   setRenaming(true);
                 }}
               />
@@ -285,7 +319,7 @@ function FolderSection({
                 label="Delete folder"
                 destructive
                 onClick={() => {
-                  setMenuOpen(false);
+                  menu.close();
                   if (
                     window.confirm(
                       `Delete folder "${folder.name}"? Its routines stay (unfiled).`,
@@ -346,7 +380,9 @@ function RoutineCard({
 }) {
   const navigate = useNavigate();
   const repo = useRepo();
-  const [menuOpen, setMenuOpen] = useState(false);
+  // The last card in a long list otherwise renders its menu entirely below
+  // the fold, with no scroll gesture that can reach it (mobile-first).
+  const menu = useFlippableMenu(ROUTINE_MENU_HEIGHT);
   const [moveOpen, setMoveOpen] = useState(false);
   const [startingR, setStartingR] = useState(false);
   const duplicate = useDuplicateRoutine();
@@ -384,18 +420,24 @@ function RoutineCard({
       >
         <Play className="size-4" /> Start
       </Button>
-      <div className="relative">
+      <div className="relative" ref={menu.wrapRef}>
         <Button
           variant="ghost"
           size="icon"
           aria-label="Routine menu"
-          onClick={() => setMenuOpen((o) => !o)}
+          onClick={menu.toggle}
           data-testid={`routine-menu-${routine.name}`}
         >
           <MoreHorizontal className="size-4" />
         </Button>
-        {menuOpen && (
-          <div className="absolute right-0 z-10 mt-1 flex w-40 flex-col rounded-md border border-border bg-surface p-1 shadow-md">
+        {menu.open && (
+          <div
+            className={cn(
+              "absolute right-0 z-10 flex w-40 flex-col rounded-md border border-border bg-surface p-1 shadow-md",
+              menu.upward ? "bottom-full mb-1" : "top-full mt-1",
+            )}
+            data-testid={`routine-menu-${routine.name}-popup`}
+          >
             <MenuItem
               label="Edit"
               onClick={() => navigate(`/routines/${routine.id}/edit`)}
@@ -403,7 +445,7 @@ function RoutineCard({
             <MenuItem
               label="Duplicate"
               onClick={() => {
-                setMenuOpen(false);
+                menu.close();
                 duplicate.mutate(routine.id);
               }}
             />
@@ -411,7 +453,7 @@ function RoutineCard({
               <MenuItem
                 label="Move to folder…"
                 onClick={() => {
-                  setMenuOpen(false);
+                  menu.close();
                   setMoveOpen(true);
                 }}
               />
@@ -420,7 +462,7 @@ function RoutineCard({
               label="Delete"
               destructive
               onClick={() => {
-                setMenuOpen(false);
+                menu.close();
                 if (window.confirm(`Delete routine "${routine.name}"?`))
                   del.mutate(routine.id);
               }}

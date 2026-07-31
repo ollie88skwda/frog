@@ -13,14 +13,15 @@ import type { ComponentProps } from "react";
 //     Tailwind utilities sit in a later cascade layer than radix (theme.css).
 type InputProps = Omit<
   ComponentProps<typeof TextField.Root>,
-  "size" | "variant" | "color"
+  "variant" | "color"
 >;
 
-export function Input({ className, ...props }: InputProps) {
+export function Input({ className, size = "2", ...props }: InputProps) {
   return (
     <TextField.Root
-      // 2 = 32px, holding the previous h-8 default so no layout shifts.
-      size="2"
+      // 2 = 32px, holding the previous default so no layout shifts;
+      // opt into 3 (40px) at call sites that need a bigger tap target.
+      size={size}
       // Filled + bordered, so it still reads as tappable/editable on touch
       // rather than blending into the row surface (mobile-first).
       variant="surface"

@@ -105,6 +105,8 @@ export function editableExercises(detail: RoutineDetail): EditableExercise[] {
           targetRepsMax: s.targetRepsMax,
           targetDurationSec: s.targetDurationSec,
           targetDistanceM: s.targetDistanceM,
+          targetRirMin: s.targetRirMin,
+          targetRirMax: s.targetRirMax,
         })),
     }));
 }

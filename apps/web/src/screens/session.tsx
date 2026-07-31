@@ -1206,6 +1206,11 @@ export default function SessionScreen() {
             targetRepsMax: null,
             targetDurationSec: s.durationSec,
             targetDistanceM: s.distanceM,
+            // Performed sets carry no RIR prescription — updateRoutine
+            // re-creates the set graph, so the authored range has to come
+            // from the template or it's erased.
+            targetRirMin: t?.sets[si]?.targetRirMin ?? null,
+            targetRirMax: t?.sets[si]?.targetRirMax ?? null,
           })),
         };
       }),

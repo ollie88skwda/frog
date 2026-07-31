@@ -3,7 +3,6 @@ import {
   type Exercise,
   type ExerciseType,
   groupByPrimaryMuscle,
-  lbToKg,
   type NewRoutineInput,
   type ParsedExercise,
   parseRoutineText,
@@ -13,9 +12,6 @@ import {
   SET_TYPES,
   type SetType,
   TYPE_FIELDS,
-  toDisplayWeight,
-  unitLabel,
-  weightLabel,
 } from "@frog/core";
 // Imported by exact subpath, not the "@frog/core" barrel: a second, unrelated
 // matcher landed at packages/core/src/domain/match-exercise.ts (voice
@@ -64,11 +60,17 @@ import { useVoice } from "@/lib/voice";
 type DraftSet = {
   key: string;
   setType: SetType;
-  weight: string;
   reps: string;
   repsMax: string;
   duration: string; // mm:ss or seconds
   distance: string; // km/mi display
+  rirMin: string; // target RIR range (reps-based types only)
+  rirMax: string;
+  // Not authored here (the weight input was dropped from the builder) but
+  // carried through the draft so a save doesn't erase a generator-seeded or
+  // session-written-back target — updateRoutine re-creates the set graph from
+  // this input rather than merging into it. Null for genuinely new sets.
+  existingTargetWeightKg: number | null;
 };
 
 type DraftExercise = {
@@ -92,8 +94,6 @@ type UnmatchedLine = ParsedExercise & { key: string };
 // text has no id and can repeat verbatim, hence the generated key.
 type UnparsedLine = { key: string; text: string };
 
-const REST_CHOICES = [null, 0, 30, 45, 60, 90, 120, 150, 180, 240, 300];
-
 // A pasted line parsing to more sets than this is almost certainly a
 // misread (e.g. weight×reps like "80x5" read as sets×reps, or a stray
 // digit run) rather than a real prescription — route it to the unmatched
@@ -111,21 +111,55 @@ const FALLBACK_SETS = 3;
 // silently.
 const MAX_PARSED_EXERCISES = 50;
 
-// Radix Select forbids empty-string values; these sentinels stand in for the
-// null cases (no folder / default rest) and map back to null at the boundary.
+// Radix Select forbids empty-string values; this sentinel stands in for the
+// null case (no folder) and maps back to null at the boundary.
 const NO_FOLDER = "__none__";
-const REST_DEFAULT = "__default__";
+
+// A fresh set's target RIR range default: "leave a little in the tank" for
+// most working sets (RIR ≈ 10 − RPE; 1-2 RIR ≈ RPE 8-9). Editable per set.
+const DEFAULT_RIR_MIN = "1";
+const DEFAULT_RIR_MAX = "2";
+
+// The numeric fields are free-text inputs (inputMode only hints the mobile
+// keyboard), so a non-numeric entry must resolve to "no target" explicitly —
+// letting NaN through writes a silent null at the JSON boundary.
+function parseIntOrNull(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const v = Number.parseInt(raw, 10);
+  return Number.isFinite(v) ? v : null;
+}
 
 function emptySet(): DraftSet {
   return {
     key: crypto.randomUUID(),
     setType: "normal",
-    weight: "",
     reps: "",
     repsMax: "",
     duration: "",
     distance: "",
+    rirMin: DEFAULT_RIR_MIN,
+    rirMax: DEFAULT_RIR_MAX,
+    existingTargetWeightKg: null,
   };
+}
+
+// + Add set inherits the prescription (reps/range/duration/distance/RIR
+// range) from the previous set — not weight (intentionally variable
+// set-to-set, e.g. ramping/drop sets) and not setType (a warmup/failure/drop
+// label carried forward would silently mislabel a new working set).
+function inheritedSet(prev: DraftSet | undefined): DraftSet {
+  const base = emptySet();
+  return prev
+    ? {
+        ...base,
+        reps: prev.reps,
+        repsMax: prev.repsMax,
+        duration: prev.duration,
+        distance: prev.distance,
+        rirMin: prev.rirMin,
+        rirMax: prev.rirMax,
+      }
+    : base;
 }
 
 function exerciseTypeOf(e: Exercise | undefined): ExerciseType {
@@ -254,10 +288,6 @@ export default function RoutineEditScreen() {
         sets: re.sets.map((s) => ({
           key: crypto.randomUUID(),
           setType: (s.setType as SetType) ?? "normal",
-          weight:
-            s.targetWeightKg != null
-              ? String(toDisplayWeight(s.targetWeightKg, unit))
-              : "",
           reps: s.targetReps != null ? String(s.targetReps) : "",
           repsMax: s.targetRepsMax != null ? String(s.targetRepsMax) : "",
           duration:
@@ -271,6 +301,12 @@ export default function RoutineEditScreen() {
                   ) / 100,
                 )
               : "",
+          // A pre-existing set with no authored target RIR shows blank, not
+          // the fresh-set default — fabricating "1-2" for old data would
+          // claim a prescription that was never made.
+          rirMin: s.targetRirMin != null ? String(s.targetRirMin) : "",
+          rirMax: s.targetRirMax != null ? String(s.targetRirMax) : "",
+          existingTargetWeightKg: s.targetWeightKg ?? null,
         })),
       })),
     );
@@ -499,19 +535,24 @@ export default function RoutineEditScreen() {
       note: d.note.trim() || null,
       sets: d.sets.map((s, si) => {
         const fields = TYPE_FIELDS[d.exerciseType];
-        const w = s.weight.trim() === "" ? null : Number.parseFloat(s.weight);
-        const reps = s.reps.trim() === "" ? null : Number.parseInt(s.reps, 10);
-        const repsMax =
-          s.repsMax.trim() === "" ? null : Number.parseInt(s.repsMax, 10);
+        const reps = parseIntOrNull(s.reps);
+        const repsMax = parseIntOrNull(s.repsMax);
+        const rawRirMin = parseIntOrNull(s.rirMin);
+        const rawRirMax = parseIntOrNull(s.rirMax);
+        // An inverted range is unreadable as a prescription — drop it rather
+        // than persist bounds the session UI would render backwards.
+        const inverted =
+          rawRirMin != null && rawRirMax != null && rawRirMin > rawRirMax;
+        const rirMin = inverted ? null : rawRirMin;
+        const rirMax = inverted ? null : rawRirMax;
         return {
           setNo: si,
           setType: s.setType,
-          targetWeightKg:
-            fields.weight && w != null && Number.isFinite(w)
-              ? unit === "kg"
-                ? w
-                : lbToKg(w)
-              : null,
+          // Weight is no longer authored ahead of time (dropped from the
+          // form), but an existing target still round-trips: Update Routine
+          // Values and the generator both write it, and updateRoutine
+          // re-creates the set graph from this input rather than merging.
+          targetWeightKg: s.existingTargetWeightKg ?? null,
           targetReps: fields.reps ? reps : null,
           targetRepsMax: fields.reps ? repsMax : null,
           targetDurationSec: fields.duration ? parseDuration(s.duration) : null,
@@ -521,6 +562,8 @@ export default function RoutineEditScreen() {
             if (!Number.isFinite(v)) return null;
             return unit === "kg" ? v * 1000 : v * 1609.344;
           })(),
+          targetRirMin: fields.reps ? rirMin : null,
+          targetRirMax: fields.reps ? rirMax : null,
         };
       }),
     }));
@@ -586,10 +629,16 @@ export default function RoutineEditScreen() {
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <Input
+          size="3"
           placeholder="Routine name"
           value={routineName}
           onChange={(e) => setName(e.target.value)}
-          className="flex-1"
+          // sm:flex-1, not flex-1: below `sm` this row is flex-col, and a
+          // flex-basis:0 item there ignores its own explicit height (collapses
+          // to content size) — only grow to fill width once the row is
+          // actually a row. Mobile already gets full width from the default
+          // align-items:stretch cross-axis behavior.
+          className="sm:flex-1"
           data-testid="routine-name-input"
         />
         <Select.Root
@@ -702,53 +751,21 @@ export default function RoutineEditScreen() {
                 </Button>
               </div>
 
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="flex items-center gap-1 text-2xs text-soft">
-                  Rest
-                  <Select.Root
-                    value={d.restSec == null ? REST_DEFAULT : String(d.restSec)}
-                    onValueChange={(v) =>
-                      patchExercise(i, {
-                        restSec:
-                          v === REST_DEFAULT ? null : Number.parseInt(v, 10),
-                      })
-                    }
-                    size="2"
-                  >
-                    <Select.Trigger
-                      variant="surface"
-                      aria-label="Rest"
-                      data-testid={`routine-ex-${i}-rest`}
-                    />
-                    <Select.Content>
-                      {REST_CHOICES.map((r) => (
-                        <Select.Item
-                          key={String(r)}
-                          value={r == null ? REST_DEFAULT : String(r)}
-                        >
-                          {r == null
-                            ? "Default"
-                            : r === 0
-                              ? "Off"
-                              : formatMMSS(r)}
-                        </Select.Item>
-                      ))}
-                    </Select.Content>
-                  </Select.Root>
-                </span>
+              <div className="mt-2">
                 <Input
                   placeholder="Exercise note (shows every session)"
                   value={d.note}
                   onChange={(e) => patchExercise(i, { note: e.target.value })}
-                  className="h-8 min-w-40 flex-1 text-xs"
+                  className="h-8 w-full text-xs"
+                  data-testid={`routine-ex-${i}-note`}
                 />
               </div>
 
               <div className="num mt-2 grid grid-cols-[2.5rem_1fr_1fr_2rem] items-center gap-1 text-2xs text-faint">
                 <span>SET</span>
-                {fields.weight ? (
-                  <span>{weightLabel(d.exerciseType, unitLabel(unit))}</span>
-                ) : fields.duration ? (
+                {fields.reps ? (
+                  <span>RIR</span>
+                ) : fields.duration && !fields.weight ? (
                   <span>TIME</span>
                 ) : (
                   <span />
@@ -776,18 +793,34 @@ export default function RoutineEditScreen() {
                     onChange={(t) => patchSet(i, si, { setType: t })}
                     testId={`routine-ex-${i}-set-${si}-type`}
                   />
-                  {fields.weight ? (
-                    <Input
-                      inputMode="decimal"
-                      placeholder="—"
-                      value={s.weight}
-                      onChange={(e) =>
-                        patchSet(i, si, { weight: e.target.value })
-                      }
-                      className="num h-8"
-                      data-testid={`routine-ex-${i}-set-${si}-weight`}
-                    />
-                  ) : fields.duration ? (
+                  {fields.reps ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        size="3"
+                        inputMode="numeric"
+                        placeholder="RIR"
+                        value={s.rirMin}
+                        onChange={(e) =>
+                          patchSet(i, si, { rirMin: e.target.value })
+                        }
+                        className="num"
+                        data-testid={`routine-ex-${i}-set-${si}-rirmin`}
+                      />
+                      <span className="text-2xs text-faint">–</span>
+                      <Input
+                        size="3"
+                        inputMode="numeric"
+                        placeholder="RIR"
+                        title="Target RIR range max"
+                        value={s.rirMax}
+                        onChange={(e) =>
+                          patchSet(i, si, { rirMax: e.target.value })
+                        }
+                        className="num"
+                        data-testid={`routine-ex-${i}-set-${si}-rirmax`}
+                      />
+                    </div>
+                  ) : fields.duration && !fields.weight ? (
                     <Input
                       inputMode="numeric"
                       placeholder="mm:ss"
@@ -868,7 +901,9 @@ export default function RoutineEditScreen() {
                 size="sm"
                 className="mt-2"
                 onClick={() =>
-                  patchExercise(i, { sets: [...d.sets, emptySet()] })
+                  patchExercise(i, {
+                    sets: [...d.sets, inheritedSet(d.sets.at(-1))],
+                  })
                 }
                 data-testid={`routine-ex-${i}-add-set`}
               >
@@ -1176,7 +1211,7 @@ function SetTypeCell({
       <button
         type="button"
         className={cn(
-          "num flex h-8 w-8 items-center justify-center rounded-md border border-border bg-surface-2 text-xs",
+          "num flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface-2 text-xs",
           value === "warmup" && "text-warn",
           value === "failure" && "text-neg",
           value === "drop" && "text-accent",
