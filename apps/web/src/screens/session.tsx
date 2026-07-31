@@ -84,6 +84,7 @@ import {
 import { useLocation, useNavigate, useParams } from "react-router";
 import { ExerciseRibbon, ExerciseThumb } from "@/components/anatomy-ui";
 import { ConditionsChip } from "@/components/conditions";
+import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
   filterExercises,
@@ -1766,6 +1767,23 @@ function ExercisePicker({
   const pendingExercises = usePendingExercises();
   const [query, setQuery] = useState("");
   const [filterMuscle, setFilterMuscle] = useState("");
+  const [creatingNew, setCreatingNew] = useState(false);
+  // Set by the editor's onCreated; auto-picked the instant its INSERT lands
+  // (same FK wait pickExercise already does for any pending row) — the
+  // highest-value change in the custom-exercise-adder plan: discovering
+  // mid-workout that a lift isn't in the book no longer means abandoning
+  // the session to go add it in Library first.
+  const [awaitingPick, setAwaitingPick] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  useEffect(() => {
+    if (awaitingPick && !pendingExercises.has(awaitingPick.id)) {
+      onPick(awaitingPick.id, awaitingPick.name);
+      setAwaitingPick(null);
+      onOpenChange(false);
+    }
+  }, [awaitingPick, pendingExercises, onPick, onOpenChange]);
   // Muscle-grouped, tier-sorted — same reading order as the Library ribbon.
   const filtered = filterExercises(exercises, query, filterMuscle);
   const groups = groupByPrimaryMuscle(filtered);
@@ -1788,9 +1806,21 @@ function ExercisePicker({
               No exercises yet — add one in Library.
             </p>
           ) : filtered.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-faint">
-              No exercises match your search.
-            </p>
+            <div className="flex flex-col items-center gap-3 px-4 py-6">
+              <p className="text-center text-xs text-faint">
+                No exercises match your search.
+              </p>
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={() => setCreatingNew(true)}
+                data-testid="picker-create-exercise-btn"
+              >
+                <Plus className="size-4" />
+                Create "{query}"
+              </Button>
+            </div>
           ) : (
             <div className="overflow-hidden border border-border bg-surface">
               {groups.map((group) => (
@@ -1819,6 +1849,13 @@ function ExercisePicker({
           )}
         </div>
       </DialogContent>
+      <ExerciseEditor
+        open={creatingNew}
+        onOpenChange={setCreatingNew}
+        mode="create"
+        initialName={query}
+        onCreated={(id, name) => setAwaitingPick({ id, name })}
+      />
     </Dialog>
   );
 }
