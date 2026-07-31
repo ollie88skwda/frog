@@ -336,17 +336,25 @@ function RecordsPanel({
   const bests = prTypes
     .map((pr) => ({ pr, entry: records?.bests[pr] }))
     .filter((r): r is { pr: PrType; entry: RecordEntry } => r.entry != null);
-  const card = records
-    ? buildExerciseRecordsCard({
-        exerciseName,
-        type,
-        records,
-        unit,
-        distUnit,
-        sparkline,
-        identity: { displayName: prefs?.displayName ?? null },
-      })
-    : null;
+  const card = useMemo(
+    () =>
+      records
+        ? buildExerciseRecordsCard({
+            exerciseName,
+            type,
+            records,
+            unit,
+            distUnit,
+            sparkline,
+            identity: { displayName: prefs?.displayName ?? null },
+          })
+        : null,
+    [records, exerciseName, type, unit, distUnit, sparkline, prefs],
+  );
+  const source = useMemo(
+    () => (card ? { kind: "static" as const, card } : null),
+    [card],
+  );
 
   return (
     <div className="mt-4">
@@ -354,9 +362,9 @@ function RecordsPanel({
         <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
           Records
         </h2>
-        {card && (
+        {source && (
           <ShareButton
-            source={{ kind: "static", card }}
+            source={source}
             filename={`records-${exerciseName.toLowerCase().replace(/\s+/g, "-")}`}
             testId="records-share-btn"
             variant="ghost"

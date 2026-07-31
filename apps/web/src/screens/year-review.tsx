@@ -1,10 +1,17 @@
-import { MUSCLE_REGION_LABELS, PR_TYPE_LABELS, yearReview } from "@frog/core";
+import {
+  buildYearCard,
+  MUSCLE_REGION_LABELS,
+  PR_TYPE_LABELS,
+  yearReview,
+} from "@frog/core";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { BarChart } from "@/components/charts/bars";
 import { MonthDots } from "@/components/report-calendar";
+import { ShareButton } from "@/components/share-sheet";
 import { formatDuration } from "@/lib/format";
+import { useUserPrefs } from "@/lib/profile-queries";
 import { formatVolume, prValue } from "@/lib/report-format";
 import { type ReportData, useReportData } from "@/lib/report-queries";
 import { distanceUnitFor, type Unit, useUnit } from "@/lib/settings";
@@ -119,11 +126,39 @@ function YearBody({
     () => new Set(review.workoutDays),
     [review.workoutDays],
   );
+  const { data: prefs } = useUserPrefs();
+  const shareSource = useMemo(
+    () => ({
+      kind: "static" as const,
+      card: buildYearCard({
+        review,
+        unit,
+        topExerciseName: review.topExercises[0]
+          ? data.nameOf(review.topExercises[0].exerciseId)
+          : null,
+        identity: { displayName: prefs?.displayName ?? null },
+      }),
+    }),
+    [review, unit, data, prefs],
+  );
 
   return (
     <div className="mt-4 flex flex-col gap-4">
       {/* Hero totals. */}
-      <Slide title={`${year} in numbers`} testId="year-totals">
+      <Slide
+        title={`${year} in numbers`}
+        testId="year-totals"
+        action={
+          <ShareButton
+            source={shareSource}
+            filename={`year-review-${year}`}
+            testId="year-share-btn"
+            variant="ghost"
+            size="icon"
+            label={null}
+          />
+        }
+      >
         <div className="grid grid-cols-2 gap-2">
           <Stat
             label="Workouts"
@@ -278,19 +313,22 @@ function Stat({
 
 function Slide({
   title,
+  action,
   children,
   testId,
 }: {
   title: string;
+  action?: React.ReactNode;
   children: React.ReactNode;
   testId?: string;
 }) {
   return (
     <section className="border border-border bg-surface" data-testid={testId}>
-      <div className="border-b border-border px-4 py-2">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
         <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
           {title}
         </h2>
+        {action}
       </div>
       <div className="p-4">{children}</div>
     </section>

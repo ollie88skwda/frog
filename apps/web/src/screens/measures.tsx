@@ -352,36 +352,35 @@ function Trends({
   const suffix = metricSuffix(def.kind, unit);
   const { data: prefs } = useUserPrefs();
 
-  const changeSince = (days: number): string | null => {
-    if (series.length < 2) return null;
-    const latestEntry = series[series.length - 1];
-    const cutoff = parseLocal(latestEntry.m.measuredOn) - days * 86_400_000;
-    // Latest entry at or before the cutoff — the closest prior baseline.
-    let baseline: number | null = null;
-    for (const r of series) {
-      if (parseLocal(r.m.measuredOn) > cutoff) break;
-      baseline = r.value;
-    }
-    if (baseline == null) return null;
-    const delta = round1(latestEntry.value - baseline);
-    return `${delta > 0 ? "+" : ""}${delta} ${suffix}`;
-  };
-
-  const card =
-    latest != null
-      ? buildMeasurementCard({
-          metricLabel: def.label,
-          heroValue: String(latest),
-          heroUnit: suffix,
-          change30d: changeSince(30),
-          change90d: changeSince(90),
-          sparkline: series.map((r) => ({
-            at: parseLocal(r.m.measuredOn),
-            value: r.value,
-          })),
-          identity: { displayName: prefs?.displayName ?? null },
-        })
-      : null;
+  const card = useMemo(() => {
+    if (latest == null) return null;
+    const changeSince = (days: number): string | null => {
+      if (series.length < 2) return null;
+      const latestEntry = series[series.length - 1];
+      const cutoff = parseLocal(latestEntry.m.measuredOn) - days * 86_400_000;
+      // Latest entry at or before the cutoff — the closest prior baseline.
+      let baseline: number | null = null;
+      for (const r of series) {
+        if (parseLocal(r.m.measuredOn) > cutoff) break;
+        baseline = r.value;
+      }
+      if (baseline == null) return null;
+      const delta = round1(latestEntry.value - baseline);
+      return `${delta > 0 ? "+" : ""}${delta} ${suffix}`;
+    };
+    return buildMeasurementCard({
+      metricLabel: def.label,
+      heroValue: String(latest),
+      heroUnit: suffix,
+      change30d: changeSince(30),
+      change90d: changeSince(90),
+      sparkline: series.map((r) => ({
+        at: parseLocal(r.m.measuredOn),
+        value: r.value,
+      })),
+      identity: { displayName: prefs?.displayName ?? null },
+    });
+  }, [latest, def, suffix, series, prefs]);
 
   return (
     <div className="mt-4 border border-border bg-surface">
