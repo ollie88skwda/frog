@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  createExercise,
   EMAIL,
   liveRowCount,
   PASSWORD,
@@ -19,8 +20,7 @@ test("edit a committed set; delete a set; both survive reload", async ({ page })
   const EX = `EditLift ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   // Wait for the insert to land server-side before navigating — a full-page
   // goto aborts the optimistic create's in-flight request.
@@ -72,8 +72,7 @@ test("delete a custom exercise removes it from the picker; tags round-trip", asy
   const EX = `Tagged ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 

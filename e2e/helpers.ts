@@ -26,6 +26,14 @@ export async function signIn(page: Page) {
   await expect(page.getByTestId("start-session-btn")).toBeVisible();
 }
 
+/** Creates a custom exercise via the Library "+ New exercise" sheet. Assumes
+ * the caller is already on /library. */
+export async function createExercise(page: Page, name: string) {
+  await page.getByTestId("new-exercise-btn").click();
+  await page.getByTestId("exercise-name-input").fill(name);
+  await page.getByTestId("add-exercise-btn").click();
+}
+
 /** Poll until an exercise with this exact name exists server-side (optimistic
  * UI can show it before the insert lands; a full-page goto would abort it). */
 export async function waitForExercise(page: Page, name: string) {

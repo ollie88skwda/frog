@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // B1: tierNameClass(null) used to alias the tier-S ("Best") brightness class,
 // so every untiered exercise — 862 of 882 seed rows, and every hand-added
@@ -17,8 +17,7 @@ test("an untiered custom exercise does not render at tier-S brightness", async (
 }) => {
   const NAME = `UntieredEx ${Date.now()}`;
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(NAME);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, NAME);
   await waitForExercise(page, NAME);
 
   const nameEl = page

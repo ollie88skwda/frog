@@ -70,6 +70,7 @@ export function useExercise(id: string) {
     placeholderData: () =>
       qc.getQueryData<Exercise[]>(["exercises"])?.find((e) => e.id === id) ??
       undefined,
+    enabled: !!id,
   });
 }
 
@@ -842,5 +843,6 @@ export function useLastSets(exerciseId: string) {
     queryKey: ["last-sets", exerciseId],
     queryFn: () => repo.lastSetsForExercise(exerciseId),
     staleTime: 60_000,
+    enabled: !!exerciseId,
   });
 }

@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // M9: the post-save celebration summary (ordinal + overview slides), the
 // share-as-image card (client-rendered PNG, asserted via a download event), and
@@ -22,8 +22,7 @@ test.beforeEach(async ({ page }) => {
 
 async function newExercise(page: Page, name: string) {
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(name);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, name);
   await waitForExercise(page, name);
 }
 

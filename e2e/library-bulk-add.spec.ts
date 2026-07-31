@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // Bulk-add: dictate/paste many exercise names at once, defaults filled in,
 // editable later. Tooling only — no real exercise names originate here.
@@ -49,8 +49,7 @@ test("bulk add warns on duplicates against the library without blocking", async 
   const fresh = `Bulk New ${ts}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(existing);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, existing);
   await expect(page.getByTestId(`exercise-row-${existing}`)).toBeVisible();
   await waitForExercise(page, existing);
 

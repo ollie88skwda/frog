@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // M2 routine → session integration: build a routine with a fixed-target set and
 // a rep-range set, start it (draft grid prefilled from the targets, PREVIOUS
@@ -67,8 +67,7 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
 
   // Exercise to build the routine around.
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   // Build a routine: set 0 fixed (5 reps), set 1 rep-range (8–12). Weight is
@@ -142,8 +141,7 @@ test("start routine still prefills when the session row resolves after its exerc
   const ROUTINE = `Race routine ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   await page.goto("/train");
@@ -176,8 +174,7 @@ test("+ Add set inherits reps/range/RIR from the previous set, not weight or set
 }) => {
   const EX = `InheritEx ${Date.now()}`;
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   await page.goto("/routines/new");
@@ -216,8 +213,7 @@ test("a fresh set defaults its target RIR range to 1-2, and the bumped controls 
 }) => {
   const EX = `RirDefaultEx ${Date.now()}`;
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   await page.goto("/routines/new");
@@ -255,8 +251,7 @@ test("Exercise Note is a full-width row with no Rest select, and doesn't clip a 
   await page.setViewportSize({ width: 390, height: 844 });
   const EX = `NoteEx ${Date.now()}`;
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   await page.goto("/routines/new");

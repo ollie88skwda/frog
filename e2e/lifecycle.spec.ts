@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
 
 // G1: end session + resume-active on Train.
 
@@ -21,8 +21,7 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   });
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 

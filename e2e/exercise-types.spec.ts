@@ -23,6 +23,7 @@ async function createTyped(
   type: string,
 ) {
   await page.goto("/library");
+  await page.getByTestId("new-exercise-btn").click();
   await page.getByTestId("exercise-name-input").fill(name);
   // Radix Select: open the trigger, click the option by its exact label.
   await page.getByTestId("exercise-type-select").click();

@@ -18,6 +18,7 @@ import {
   MUSCLES,
   type MuscleTarget,
   muscleLabel,
+  newId,
   primaryMuscles,
   ratingsForExercise,
   secondaryMuscles,
@@ -29,7 +30,7 @@ import {
 import { sameExerciseName } from "@frog/core/generator/match-exercise";
 import { Select } from "@radix-ui/themes";
 import { Camera, ChevronDown, ChevronRight, Video, X } from "lucide-react";
-import { type ChangeEvent, useEffect, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { TierBadge } from "@/components/anatomy-ui";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ import { resizePhoto } from "@/lib/photo";
 import {
   useClearExerciseMedia,
   useCreateExercise,
+  useExercise,
   useExerciseMediaUrl,
   useExercises,
   useLastSets,
@@ -59,8 +61,8 @@ export type ExerciseEditorProps = {
   exercise?: Exercise;
   /** Create-mode name prefill (session picker search, routine-paste raw line). */
   initialName?: string;
-  /** Fires once, after a successful create, with the new row. */
-  onCreated?: (exercise: Exercise) => void;
+  /** Fires once Save is tapped in create mode, with the new row's id/name. */
+  onCreated?: (id: string, name: string) => void;
 };
 
 // One sheet for both create and edit — designed at 390×844 and nowhere else
@@ -82,7 +84,16 @@ export function ExerciseEditor({
   const update = useUpdateExercise();
   const uploadMedia = useUploadExerciseMedia();
   const clearMedia = useClearExerciseMedia();
-  const { data: mediaUrl } = useExerciseMediaUrl(exercise);
+  // The `exercise` prop comes from the narrow library-list row (LIST_COLUMNS,
+  // step 0) and never carries notes/instructions/imageUrls/media — fetch the
+  // full row so editing an exercise with existing how-to content or a demo
+  // clip doesn't silently blank it out on save. placeholderData from the
+  // list row keeps the sheet painting instantly either way.
+  const { data: fullExercise, isPlaceholderData } = useExercise(
+    exercise?.id ?? "",
+  );
+  const target = mode === "edit" ? (fullExercise ?? exercise) : undefined;
+  const { data: mediaUrl } = useExerciseMediaUrl(target);
 
   const [name, setName] = useState("");
   const [duplicateOf, setDuplicateOf] = useState<Exercise | null>(null);
@@ -109,41 +120,51 @@ export function ExerciseEditor({
   const [defaultsOpen, setDefaultsOpen] = useState(false);
   const [referenceOpen, setReferenceOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   // Radix unmounts DialogContent while closed, but re-opening the *same*
   // mounted editor for a different exercise (or from create back to create)
   // must not show the previous target's draft — reset explicitly on open.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: one-shot snapshot on open, not a live sync — a background refetch mid-edit must not stomp what the user is typing.
+  // Edit mode waits for the FULL row (not just the narrow list-row
+  // placeholder) so notes/instructions/media aren't blanked in the draft and
+  // then silently wiped out on save; appliedRef makes this a one-shot sync,
+  // not a live one, so a later background refetch mid-edit can't stomp what
+  // the user is typing.
+  const appliedRef = useRef(false);
   useEffect(() => {
-    if (!open) return;
-    setName(exercise?.name ?? initialName ?? "");
+    if (!open) {
+      appliedRef.current = false;
+      return;
+    }
+    if (appliedRef.current) return;
+    if (mode === "edit" && (!fullExercise || isPlaceholderData)) return;
+    appliedRef.current = true;
+    setName(target?.name ?? initialName ?? "");
     setDuplicateOf(null);
-    setAliases(exercise?.aliases ?? []);
+    setAliases(target?.aliases ?? []);
     setAliasDraft("");
-    setPrimary(exercise ? primaryMuscles(exercise.muscleTargets) : []);
-    setSecondary(exercise ? secondaryMuscles(exercise.muscleTargets) : []);
-    setJointActionsState(exercise?.jointActions ?? []);
-    setEquipment(exercise?.equipment ?? "");
-    setMachineId(exercise?.machineId ?? "");
-    setExerciseType((exercise?.exerciseType as ExerciseType) ?? "weight_reps");
-    setMechanic((exercise?.mechanic as Mechanic | null) ?? null);
-    setMovementPattern(exercise?.movementPattern ?? "");
-    setLaterality((exercise?.laterality as Laterality) ?? "bilateral");
-    setRepsMin(exercise?.defaultRepsMin?.toString() ?? "");
-    setRepsMax(exercise?.defaultRepsMax?.toString() ?? "");
-    setRestSec(exercise?.defaultRestSec?.toString() ?? "");
-    setNotes(exercise?.notes ?? "");
+    setPrimary(target ? primaryMuscles(target.muscleTargets) : []);
+    setSecondary(target ? secondaryMuscles(target.muscleTargets) : []);
+    setJointActionsState(target?.jointActions ?? []);
+    setEquipment(target?.equipment ?? "");
+    setMachineId(target?.machineId ?? "");
+    setExerciseType((target?.exerciseType as ExerciseType) ?? "weight_reps");
+    setMechanic((target?.mechanic as Mechanic | null) ?? null);
+    setMovementPattern(target?.movementPattern ?? "");
+    setLaterality((target?.laterality as Laterality) ?? "bilateral");
+    setRepsMin(target?.defaultRepsMin?.toString() ?? "");
+    setRepsMax(target?.defaultRepsMax?.toString() ?? "");
+    setRestSec(target?.defaultRestSec?.toString() ?? "");
+    setNotes(target?.notes ?? "");
     setTierDrafts(
       Object.fromEntries(
-        (exercise?.muscleTargets ?? []).map((t) => [t.muscle, t.tier]),
+        (target?.muscleTargets ?? []).map((t) => [t.muscle, t.tier]),
       ),
     );
     setPendingMedia(null);
     setDefaultsOpen(false);
     setReferenceOpen(false);
     setAdvancedOpen(false);
-  }, [open]);
+  }, [open, mode, target, fullExercise, isPlaceholderData, initialName]);
 
   const typeLocked = mode === "edit" && history.length > 0;
   const selectedMuscles = [...primary, ...secondary];
@@ -152,15 +173,17 @@ export function ExerciseEditor({
   const effectiveMechanic: Mechanic =
     mechanic ?? (selectedMuscles.length >= 2 ? "compound" : "isolation");
 
+  // tierDrafts stays {} in create mode (the Advanced section never renders
+  // there), so this reads null for every muscle exactly as before.
   const draftMuscleTargets: MuscleTarget[] = [
     ...primary.map((muscle) => ({
       muscle,
-      tier: null,
+      tier: tierDrafts[muscle] ?? null,
       role: "primary" as const,
     })),
     ...secondary.map((muscle) => ({
       muscle,
-      tier: null,
+      tier: tierDrafts[muscle] ?? null,
       role: "secondary" as const,
     })),
   ];
@@ -222,34 +245,31 @@ export function ExerciseEditor({
     };
   }
 
-  async function onSave() {
+  // Optimistic, like every other write in this app (AGENTS.md): the sheet
+  // closes the instant Save is tapped, it never waits on the network. The id
+  // is generated here (not left to the server) so a staged media file can be
+  // uploaded against it immediately, with no round trip to learn it.
+  function onSave() {
     const trimmed = name.trim();
-    if (!trimmed || saving) return;
-    setSaving(true);
-    try {
-      if (mode === "create") {
-        const created = await create.mutateAsync({
-          name: trimmed,
-          opts: buildOpts(),
-        });
-        if (pendingMedia) {
-          await uploadMedia.mutateAsync({
-            exerciseId: created.id,
-            file: pendingMedia.blob,
-            kind: pendingMedia.kind,
-          });
-        }
-        onCreated?.(created);
-      } else if (exercise) {
-        await update.mutateAsync({
-          exerciseId: exercise.id,
-          patch: { name: trimmed, ...buildOpts() },
+    if (!trimmed) return;
+    if (mode === "create") {
+      const id = newId();
+      create.mutate({ name: trimmed, opts: { id, ...buildOpts() } });
+      if (pendingMedia) {
+        uploadMedia.mutate({
+          exerciseId: id,
+          file: pendingMedia.blob,
+          kind: pendingMedia.kind,
         });
       }
-      onOpenChange(false);
-    } finally {
-      setSaving(false);
+      onCreated?.(id, trimmed);
+    } else if (exercise) {
+      update.mutate({
+        exerciseId: exercise.id,
+        patch: { name: trimmed, ...buildOpts() },
+      });
     }
+    onOpenChange(false);
   }
 
   return (
@@ -272,7 +292,7 @@ export function ExerciseEditor({
                 placeholder="Zercher Squat"
                 className="h-10"
                 aria-label="Exercise name"
-                data-testid="exercise-editor-name"
+                data-testid="exercise-name-input"
               />
             </div>
             {duplicateOf && (
@@ -383,7 +403,7 @@ export function ExerciseEditor({
               onChange={(v) => setExerciseType(v as ExerciseType)}
               disabled={typeLocked}
               hint={typeLocked ? "locked — has logged sets" : undefined}
-              testId="exercise-editor-type"
+              testId="exercise-type-select"
               options={EXERCISE_TYPES.map((t) => ({
                 value: t,
                 label: EXERCISE_TYPE_LABELS[t],
@@ -525,6 +545,7 @@ export function ExerciseEditor({
                     placeholder="Unset"
                     testId={`exercise-editor-tier-${muscle}`}
                     options={TIERS.map((t) => ({ value: t, label: t }))}
+                    triggerClassName="w-24 shrink-0"
                   />
                 </div>
               ))}
@@ -544,11 +565,11 @@ export function ExerciseEditor({
           <Button
             variant="primary"
             size="lg"
-            disabled={!name.trim() || saving}
-            onClick={() => void onSave()}
-            data-testid="exercise-editor-save"
+            disabled={!name.trim()}
+            onClick={onSave}
+            data-testid="add-exercise-btn"
           >
-            {saving ? "Saving…" : "Save"}
+            Save
           </Button>
         </div>
       </DialogContent>
@@ -646,6 +667,7 @@ function LabeledSelect({
   disabled,
   hint,
   testId,
+  triggerClassName = "w-full",
 }: {
   label?: string;
   value: string;
@@ -655,10 +677,17 @@ function LabeledSelect({
   disabled?: boolean;
   hint?: string;
   testId: string;
+  /** Override when this select sits beside another element in a row
+   * (e.g. a muscle-name label) instead of owning the full row. */
+  triggerClassName?: string;
 }) {
   const body = (
+    // A literal "" (never `undefined`) keeps this fully controlled — an
+    // "add" picker (muscle/joint-action) resets to "" after every pick, and
+    // an uncontrolled Select keeps its own last-picked value internally,
+    // which then can't resolve once that option is excluded from the list.
     <Select.Root
-      value={value || undefined}
+      value={value}
       onValueChange={onChange}
       disabled={disabled}
       size="2"
@@ -666,7 +695,7 @@ function LabeledSelect({
       <Select.Trigger
         variant="surface"
         placeholder={placeholder}
-        className="h-10 w-full"
+        className={cn("h-10", triggerClassName)}
         data-testid={testId}
       />
       <Select.Content>

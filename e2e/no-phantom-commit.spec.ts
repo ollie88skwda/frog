@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
 
 // Auto-checkoff: once both weight AND reps carry a value, leaving the row
 // commits the set (no separate checkmark tap needed) — the phantom-commit
@@ -17,8 +17,7 @@ test("filling only weight then tapping away does not commit a set", async ({
   const EX = `Phantom ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 
@@ -49,8 +48,7 @@ test("filling weight+reps then tapping away auto-checks off the set", async ({
   const EX = `Checkoff ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 
@@ -75,8 +73,7 @@ test("the checkmark commits the filled draft row", async ({ page }) => {
   const EX = `Check ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 

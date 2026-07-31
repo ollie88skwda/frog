@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
 
 // The 2026-07-28 sbl → frog identifier rename kept exactly one read-old/
 // write-new fallback on the browser side: an in-progress set draft. A user
@@ -32,8 +32,7 @@ test("a pre-rename set draft survives the rebrand and dies on commit", async ({
   const EX = `Rebrand ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   await page.goto("/train");

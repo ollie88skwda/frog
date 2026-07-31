@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // M3 supersets: the exercise ⋯ menu links two blocks into a superset (color
 // bar + data-superset marker), persists the grouping server-side, dissolves a
@@ -13,8 +13,7 @@ test.beforeEach(async ({ page }) => {
 
 async function makeExercise(page: Page, name: string) {
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(name);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, name);
   await waitForExercise(page, name);
 }
 

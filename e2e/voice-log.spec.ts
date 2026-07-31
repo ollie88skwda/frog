@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
 
 // Voice set logging: tap the mic, speak one utterance ("rear delt flies 250
 // lbs for 5 reps"), and the matching block's ACTIVE ROW gets filled — never
@@ -119,8 +119,7 @@ async function ensureExercise(page: Page, name: string) {
   }, name);
   if (existing > 0) return;
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(name);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, name);
   await waitForExercise(page, name);
 }
 
