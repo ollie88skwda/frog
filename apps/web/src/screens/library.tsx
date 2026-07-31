@@ -663,8 +663,9 @@ const ExerciseRow = memo(function ExerciseRow({
             <button
               type="button"
               onClick={() => onToggle(exercise.id)}
-              // The panel behind this toggle edits tags, metrics, machine and
-              // archive state — every one of them keyed by an id Postgres
+              // The panel behind this toggle edits tags, metrics and archive
+              // state, and its Edit button opens the editor over machine and
+              // classification — every one of them keyed by an id Postgres
               // doesn't have yet while the create is queued.
               disabled={pending}
               className="flex min-w-0 items-center gap-1.5 text-left"
