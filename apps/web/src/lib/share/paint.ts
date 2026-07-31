@@ -21,6 +21,12 @@ import { loadFrogMarkImage } from "./mark";
 const FONT_SANS = `"Bricolage Grotesque", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
 const FONT_MONO = `ui-monospace, "SF Mono", "Berkeley Mono", Menlo, monospace`;
 const MARK_SIZE_RATIO = 84 / 1080;
+/** Breathing room (× frame width) between the graphic and the footer above
+ * which it must never encroach. */
+const GRAPHIC_GAP_RATIO = 0.03;
+/** Below this height (× frame width) a heat map / strip / sparkline is a
+ * smear rather than a graphic — drop it instead of squashing it. */
+const MIN_GRAPHIC_RATIO = 0.055;
 
 export type PaintOptions = {
   frame: FrameKind;
@@ -83,14 +89,25 @@ export async function paintShareCard(
   y = paintHero(ctx, frame, p, pad, contentW, y, opts.card);
   y = paintSupport(ctx, frame, p, pad, contentW, y, opts.card);
 
+  // The graphic is the one zone that can be squeezed: everything above it is
+  // text whose height depends on the card kind (a session card carries an
+  // eyebrow + title + date + hero caption, a streak card only an eyebrow), and
+  // the footer is anchored to the bottom. Size it against the space actually
+  // left rather than the frame's nominal height, or long kinds paint their
+  // figures straight through the tagline and the identity hairline.
   const graphicTop = y;
-  paintGraphic(
-    ctx,
-    { x: pad, y: graphicTop, w: contentW, h: frame.graphicH },
-    p,
-    opts.card,
+  const graphicH = Math.min(
+    frame.graphicH,
+    footerTop(frame, pad) - frame.w * GRAPHIC_GAP_RATIO - graphicTop,
   );
-  y = graphicTop + frame.graphicH;
+  if (graphicH >= frame.w * MIN_GRAPHIC_RATIO) {
+    paintGraphic(
+      ctx,
+      { x: pad, y: graphicTop, w: contentW, h: graphicH },
+      p,
+      opts.card,
+    );
+  }
 
   paintFooter(ctx, frame, p, pad, contentW, opts.tagline, opts.card.identity);
 
@@ -207,16 +224,29 @@ function paintHero(
     cy += frame.heroPx * 0.15;
   }
 
+  // The unit sits after the value on the same line, so it needs its own slot
+  // reserved before the value is clipped — and the value must then be measured
+  // as clipped. Measuring the raw string would park the unit off the card
+  // whenever the value was long enough to need truncating.
+  const unitFont = `600 ${frame.unitPx}px ${FONT_SANS}`;
+  const unitGap = frame.w * 0.018;
+  let unitW = 0;
+  if (hero.unit) {
+    ctx.font = unitFont;
+    unitW = ctx.measureText(hero.unit).width + unitGap;
+  }
+
   cy += frame.heroPx * 0.78;
   ctx.fillStyle = p.ink;
   ctx.font = `800 ${frame.heroPx}px ${FONT_SANS}`;
-  ctx.fillText(clip(ctx, hero.value, contentW), pad, cy);
-  const valueW = ctx.measureText(hero.value).width;
+  const value = clip(ctx, hero.value, contentW - unitW);
+  ctx.fillText(value, pad, cy);
+  const valueW = ctx.measureText(value).width;
 
   if (hero.unit) {
     ctx.fillStyle = p.soft;
-    ctx.font = `600 ${frame.unitPx}px ${FONT_SANS}`;
-    ctx.fillText(hero.unit, pad + valueW + frame.w * 0.018, cy);
+    ctx.font = unitFont;
+    ctx.fillText(hero.unit, pad + valueW + unitGap, cy);
   }
 
   return cy + frame.heroPx * 0.3;
@@ -339,6 +369,13 @@ function identityLine(identity: ShareIdentity): {
   };
 }
 
+/** Top edge of the footer zone — the floor every zone above it must clear. */
+function footerTop(frame: Frame, pad: number): number {
+  const identityH = frame.w * 0.028 + frame.w * 0.05;
+  const taglineH = frame.showTagline ? frame.w * 0.07 : 0;
+  return frame.h - frame.safeBottom - pad - identityH - taglineH;
+}
+
 function paintFooter(
   ctx: CanvasRenderingContext2D,
   frame: Frame,
@@ -348,9 +385,7 @@ function paintFooter(
   tagline: string,
   identity: ShareIdentity,
 ) {
-  const identityH = frame.w * 0.028 + frame.w * 0.05;
-  const taglineH = frame.showTagline ? frame.w * 0.07 : 0;
-  let y = frame.h - frame.safeBottom - pad - identityH - taglineH;
+  let y = footerTop(frame, pad);
 
   if (frame.showTagline) {
     y += frame.w * 0.03;

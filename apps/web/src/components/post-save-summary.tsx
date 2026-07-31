@@ -26,7 +26,7 @@ import { useExercises, useSession, useSessionExercises } from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
 import { useUnit } from "@/lib/settings";
 import { ordinalFor } from "@/lib/share/ordinal";
-import { useLatestBodyweight, useMuscleMap } from "@/lib/stats-queries";
+import { useLatestBodyweightQuery, useMuscleMap } from "@/lib/stats-queries";
 import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
 
@@ -52,12 +52,22 @@ export function PostSaveSummary({
   const { unit } = useUnit();
   const { data: session } = useSession(sessionId);
   const { data: blocks = [] } = useSessionExercises(sessionId);
-  const { data: allSessions = [] } = useAllSessions();
+  const { data: allSessions = [], isPending: sessionsPending } =
+    useAllSessions();
   const { data: recordsData } = useRecordsData();
-  const { data: exercises = [] } = useExercises();
-  const { data: prefs } = useUserPrefs();
+  const { data: exercises = [], isPending: exercisesPending } = useExercises();
+  const { data: prefs, isPending: prefsPending } = useUserPrefs();
   const muscleMap = useMuscleMap();
-  const bodyweightKg = useLatestBodyweight();
+  const { data: bodyweightKg = null, isPending: bodyweightPending } =
+    useLatestBodyweightQuery();
+
+  // The finish flow lands here straight from a session, so `sessions-all` (only
+  // warmed by home/profile/calendar) can still be cold — and every one of these
+  // feeds a value a card states as fact: the ordinal, per-exercise volume, the
+  // identity handle. Hold the Share affordance, not the truth (the same gate
+  // history-detail.tsx's ShareWorkoutSheet applies to the same card).
+  const shareDataPending =
+    sessionsPending || exercisesPending || prefsPending || bodyweightPending;
 
   const startedAt = session?.startedAt ?? Date.now();
   const identity = useMemo(
@@ -273,6 +283,7 @@ export function PostSaveSummary({
         <SlideShell
           source={sessionSource}
           sessionId={sessionId}
+          sharePending={shareDataPending}
           filename={`workout-${ordinal}`}
           testId="share-slide-hero"
         >
@@ -317,6 +328,7 @@ export function PostSaveSummary({
         <SlideShell
           source={prSource}
           tone="pr"
+          sharePending={shareDataPending}
           filename={`workout-${ordinal}-pr`}
           testId="share-slide-pr"
         >
@@ -355,6 +367,7 @@ export function PostSaveSummary({
         <SlideShell
           source={streakSource}
           tone="streak"
+          sharePending={shareDataPending}
           filename={`workout-${ordinal}-streak`}
           testId="share-slide-streak"
         >
@@ -414,6 +427,7 @@ function SlideShell({
   source,
   sessionId,
   tone,
+  sharePending,
   filename,
   testId,
 }: {
@@ -421,6 +435,7 @@ function SlideShell({
   source: ShareSource;
   sessionId?: string;
   tone?: "pr" | "streak" | "heavy" | "normal";
+  sharePending: boolean;
   filename: string;
   testId: string;
 }) {
@@ -432,6 +447,7 @@ function SlideShell({
           source={source}
           sessionId={sessionId}
           tone={tone}
+          disabled={sharePending}
           filename={filename}
           testId={testId}
           variant="outline"

@@ -205,6 +205,19 @@ describe("buildStreakCard", () => {
     expect(card.hero).toEqual({ value: "4", unit: "weeks streak" });
     expect(card.support[2]).toEqual({ label: "Rest", value: "Trained today" });
   });
+
+  it("thousands-separates the weekly volume, like every other volume stat", () => {
+    const card = buildStreakCard({
+      weeksStreak: 4,
+      workoutsThisWeek: 3,
+      volumeKgThisWeek: 12500,
+      restDays: 1,
+      last13Weeks: Array(13).fill(true),
+      unit: "kg",
+      identity: IDENTITY,
+    });
+    expect(card.support[1]).toEqual({ label: "Volume", value: "12,500 kg" });
+  });
 });
 
 const bench = (targets: MuscleTarget[]): MuscleByExercise =>

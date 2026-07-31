@@ -302,7 +302,7 @@ export function buildStreakCard(input: {
       { label: "This week", value: String(input.workoutsThisWeek) },
       {
         label: "Volume",
-        value: formatWeight(input.volumeKgThisWeek, input.unit),
+        value: formatVolume(input.volumeKgThisWeek, input.unit),
       },
       {
         label: "Rest",

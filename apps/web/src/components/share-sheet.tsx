@@ -171,21 +171,25 @@ function ChipRow<T extends string>({
 function PhotoPicker({
   sessionId,
   selected,
+  selectedId,
   onSelect,
 }: {
   sessionId: string | undefined;
   selected: HTMLImageElement | null;
-  onSelect: (img: HTMLImageElement | null) => void;
+  /** Media row id of the chosen session photo, or null for a camera capture —
+   * the decoded image alone can't say which thumbnail produced it. */
+  selectedId: string | null;
+  onSelect: (img: HTMLImageElement | null, mediaId: string | null) => void;
 }) {
   const { data: photos = [] } = useSessionMedia(sessionId ?? "");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
-  async function pickSessionPhoto(url: string) {
+  async function pickSessionPhoto(url: string, mediaId: string) {
     setBusy(true);
     setFailed(false);
     try {
-      onSelect(await loadImageFromUrl(url));
+      onSelect(await loadImageFromUrl(url), mediaId);
     } catch {
       // A signed storage URL can expire between the media query and this tap.
       setFailed(true);
@@ -202,7 +206,7 @@ function PhotoPicker({
     setFailed(false);
     try {
       const resized = await resizePhoto(file, 1280);
-      onSelect(await loadImageFromBlob(resized));
+      onSelect(await loadImageFromBlob(resized), null);
     } catch {
       setFailed(true);
     } finally {
@@ -226,10 +230,11 @@ function PhotoPicker({
               key={p.row.id}
               type="button"
               disabled={busy}
-              onClick={() => void pickSessionPhoto(p.url as string)}
+              onClick={() => void pickSessionPhoto(p.url as string, p.row.id)}
+              aria-pressed={p.row.id === selectedId}
               className={cn(
-                "size-16 shrink-0 border object-cover",
-                selected ? "border-border" : "border-border",
+                "size-16 shrink-0 border object-cover transition-colors duration-150",
+                p.row.id === selectedId ? "border-accent" : "border-border",
               )}
               data-testid={`share-photo-${p.row.position}`}
             >
@@ -317,6 +322,7 @@ export function ShareSheet({
   );
   const [heroSet, setHeroSet] = useState<SessionSetRef | null>(null);
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
+  const [photoMediaId, setPhotoMediaId] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -324,10 +330,11 @@ export function ShareSheet({
   // releaseImage) — the sheet owns it, and frees it when the photo is swapped
   // or the sheet closes.
   const photoRef = useRef<HTMLImageElement | null>(null);
-  function selectPhoto(img: HTMLImageElement | null) {
+  function selectPhoto(img: HTMLImageElement | null, mediaId: string | null) {
     if (photoRef.current !== img) releaseImage(photoRef.current);
     photoRef.current = img;
     setPhoto(img);
+    setPhotoMediaId(img ? mediaId : null);
   }
   useEffect(
     () => () => {
@@ -489,6 +496,7 @@ export function ShareSheet({
           <PhotoPicker
             sessionId={sessionId}
             selected={photo}
+            selectedId={photoMediaId}
             onSelect={selectPhoto}
           />
         )}
@@ -535,6 +543,7 @@ export function ShareButton({
   size = "sm",
   label = "Share",
   className,
+  disabled = false,
 }: {
   source: ShareSource;
   sessionId?: string;
@@ -545,6 +554,9 @@ export function ShareButton({
   size?: "sm" | "md" | "lg" | "icon";
   label?: string | null;
   className?: string;
+  /** For callers whose card data is still loading — a card built from a cold
+   * cache states wrong numbers as fact (see post-save-summary.tsx). */
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -553,14 +565,15 @@ export function ShareButton({
         variant={variant}
         size={size}
         onClick={() => setOpen(true)}
-        title="Share as image"
+        disabled={disabled}
+        title={disabled ? "Building your card…" : "Share as image"}
         data-testid={testId}
         className={className}
       >
         <Share2 className="size-4" />
         {label}
       </Button>
-      {open && (
+      {open && !disabled && (
         <ShareSheet
           source={source}
           sessionId={sessionId}

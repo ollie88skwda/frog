@@ -496,6 +496,11 @@ function MeasurementShareGate({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [open, setOpen] = useState(false);
+  // Stable object identity, not an inline literal — an unmemoized `source`
+  // would give ShareSheet a new object every render (any Trends re-render: a
+  // measurement query settling, a delete, a unit change), defeating its own
+  // internal memoization and re-encoding a 1080×1920 PNG mid-interaction.
+  const source = useMemo(() => ({ kind: "static" as const, card }), [card]);
 
   return (
     <>
@@ -538,7 +543,7 @@ function MeasurementShareGate({
       </Dialog>
       {open && (
         <ShareSheet
-          source={{ kind: "static", card }}
+          source={source}
           filename={filename}
           onClose={() => setOpen(false)}
         />
