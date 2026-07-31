@@ -100,7 +100,10 @@ test("measurement sharing is never auto-offered and confirms every time", async 
   page,
 }) => {
   await page.goto("/measures");
-  await page.getByTestId("measure-date").fill("2021-04-04");
+  // Dated after every other measurement fixture in the suite (measures.spec.ts's
+  // latest is 2021-07-01) — trend-latest reflects the newest dated entry across
+  // the whole shared seeded user, not just what this test just wrote.
+  await page.getByTestId("measure-date").fill("2021-08-01");
   await page.getByTestId("measure-field-bodyweightKg").fill("82");
   await page.getByTestId("measure-field-bodyweightKg").blur();
   await expect(page.getByTestId("trend-latest")).toContainText("82");
