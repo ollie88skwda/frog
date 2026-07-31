@@ -77,6 +77,13 @@ export function TierBadge({
 // line art and must stay legible on the dark theme. "sm" (24px) for dense
 // logging-path lists (session picker, block header); "lg" (64px) for the
 // library ribbon, where the image is the primary visual anchor.
+//
+// Custom exercises never have a reference diagram, so a bare `null` here read
+// as broken/missing rather than "no photo yet" — swap in a neutral dumbbell
+// glyph instead. Deliberately monochrome (no per-muscle hue): the app has a
+// single accent color (docs/brand/frog-brand-identity.html), so this reuses
+// the same faint/surface-2 treatment as an untiered exercise name rather than
+// inventing a color-coded palette.
 export function ExerciseThumb({
   imageUrl,
   name,
@@ -88,21 +95,28 @@ export function ExerciseThumb({
   size?: "sm" | "lg";
   className?: string;
 }) {
-  if (!imageUrl) return null;
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center border border-border bg-white",
+        "flex shrink-0 items-center justify-center border border-border",
+        imageUrl ? "bg-white" : "bg-surface-2",
         size === "sm" ? "size-6" : "size-16",
         className,
       )}
     >
-      <img
-        src={imageUrl}
-        alt={name}
-        loading="lazy"
-        className="size-full object-contain"
-      />
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={name}
+          loading="lazy"
+          className="size-full object-contain"
+        />
+      ) : (
+        <Dumbbell
+          className={cn("text-faint", size === "sm" ? "size-3.5" : "size-6")}
+          aria-hidden
+        />
+      )}
     </span>
   );
 }

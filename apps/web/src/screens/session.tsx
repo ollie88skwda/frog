@@ -1774,6 +1774,7 @@ function ExercisePicker({
   const pendingExercises = usePendingExercises();
   const [query, setQuery] = useState("");
   const [filterMuscle, setFilterMuscle] = useState("");
+  const [yoursOnly, setYoursOnly] = useState(false);
   const [creatingNew, setCreatingNew] = useState(false);
   // Set by the editor's onCreated; auto-picked the instant its INSERT lands
   // (same FK wait pickExercise already does for any pending row) — the
@@ -1792,7 +1793,9 @@ function ExercisePicker({
     }
   }, [awaitingPick, pendingExercises, onPick, onOpenChange]);
   // Muscle-grouped, tier-sorted — same reading order as the Library ribbon.
-  const filtered = filterExercises(exercises, query, filterMuscle);
+  const filtered = filterExercises(exercises, query, filterMuscle).filter(
+    (ex) => !yoursOnly || ex.isCustom,
+  );
   const groups = groupByPrimaryMuscle(filtered);
 
   return (
@@ -1805,6 +1808,22 @@ function ExercisePicker({
             muscle={filterMuscle}
             onMuscle={setFilterMuscle}
             autoFocus
+            after={
+              <button
+                type="button"
+                onClick={() => setYoursOnly((v) => !v)}
+                aria-pressed={yoursOnly}
+                className={cn(
+                  "h-8 shrink-0 px-2.5 text-2xs transition-colors duration-150",
+                  yoursOnly
+                    ? "bg-accent-soft text-accent"
+                    : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
+                )}
+                data-testid="picker-filter-yours"
+              >
+                Yours
+              </button>
+            }
           />
           {isLoading ? (
             <p className="px-4 py-6 text-center text-xs text-faint">Loading…</p>

@@ -668,9 +668,9 @@ const ExerciseRow = memo(function ExerciseRow({
               )}
             </button>
             <span className="flex shrink-0 items-center gap-1">
-              {!exercise.isCustom && (
-                <span className="bg-translucent px-2 py-0.5 text-2xs text-faint">
-                  seed
+              {exercise.isCustom && (
+                <span className="bg-accent-soft px-2 py-0.5 text-2xs text-accent">
+                  yours
                 </span>
               )}
               <FavoriteButton

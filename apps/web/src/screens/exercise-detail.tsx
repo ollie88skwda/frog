@@ -23,11 +23,18 @@ import {
   toDisplayWeight,
   unitLabel,
 } from "@frog/core";
-import { ArrowLeft, ChevronDown, ChevronRight, Copy } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Pencil,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ExerciseThumb, TierBadge } from "@/components/anatomy-ui";
 import { type ChartPoint, LineChart } from "@/components/charts/line";
+import { ExerciseEditor } from "@/components/exercise-editor";
 import { ShareButton } from "@/components/share-sheet";
 import { formatDate, formatDateTime, formatMMSS } from "@/lib/format";
 import { useUserPrefs } from "@/lib/profile-queries";
@@ -628,11 +635,12 @@ function HowToTab({ exercise }: { exercise: Exercise }) {
   );
 }
 
-// ── ⋯ menu: duplicate exercise ───────────────────────────────────────────────
+// ── ⋯ menu: edit (custom) / duplicate exercise ──────────────────────────────
 function MoreMenu({ exercise }: { exercise: Exercise }) {
   const create = useCreateExercise();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   // Clone into a fresh custom exercise with NO history (Hevy: the "reset an
   // exercise's stats" mechanism). Carries the classification + type +
@@ -674,6 +682,20 @@ function MoreMenu({ exercise }: { exercise: Exercise }) {
             className="fixed inset-0 z-10 cursor-default"
           />
           <div className="floating absolute top-full right-0 z-20 mt-1 min-w-40 py-1">
+            {exercise.isCustom && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setEditing(true);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+                data-testid="exercise-edit"
+              >
+                <Pencil className="size-3.5" />
+                Edit
+              </button>
+            )}
             <button
               type="button"
               onClick={() => void duplicate()}
@@ -681,11 +703,23 @@ function MoreMenu({ exercise }: { exercise: Exercise }) {
               data-testid="exercise-duplicate"
             >
               <Copy className="size-3.5" />
-              Duplicate exercise
+              {/* Seed rows are immutable book data — "duplicate" undersells
+                  that this is the only way to get an editable copy. Custom
+                  rows keep the literal label since they're also editable
+                  directly (see the Edit action above). */}
+              {exercise.isCustom
+                ? "Duplicate exercise"
+                : "Customise this exercise"}
             </button>
           </div>
         </>
       )}
+      <ExerciseEditor
+        open={editing}
+        onOpenChange={setEditing}
+        mode="edit"
+        exercise={exercise}
+      />
     </div>
   );
 }

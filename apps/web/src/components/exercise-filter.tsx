@@ -1,6 +1,7 @@
 import { EQUIPMENT_LABELS, MUSCLES, type MuscleTarget } from "@frog/core";
 import { Select } from "@radix-ui/themes";
 import { Search } from "lucide-react";
+import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 
 // Radix Select forbids an empty-string item value, so the "All muscles" option
@@ -62,12 +63,15 @@ export function ExerciseFilterBar({
   muscle,
   onMuscle,
   autoFocus,
+  after,
 }: {
   query: string;
   onQuery: (v: string) => void;
   muscle: string;
   onMuscle: (v: string) => void;
   autoFocus?: boolean;
+  /** Extra control appended after the muscle select (e.g. a "Yours" toggle). */
+  after?: ReactNode;
 }) {
   return (
     <div className="flex gap-2">
@@ -102,6 +106,7 @@ export function ExerciseFilterBar({
           <Select.Item value="other">Other</Select.Item>
         </Select.Content>
       </Select.Root>
+      {after}
     </div>
   );
 }
