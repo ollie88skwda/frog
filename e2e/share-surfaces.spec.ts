@@ -1,0 +1,216 @@
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { expect, type Page, test } from "@playwright/test";
+import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+
+// The share surfaces share-summary.spec.ts doesn't reach:
+//
+//  1. The exercise Records card on a reps-only type. `bodyweight_reps` has no
+//     best_e1rm/heaviest_weight record at all, so the card's hero has to fall
+//     back through the PR priority list (builders.ts) — a null card takes the
+//     Share button with it and the whole surface silently disappears.
+//  2. The Measurement card, which is gated: never auto-offered, and a confirm
+//     step in front of the sheet *every* time (measures.tsx MeasurementShareGate).
+//  3. The frame × ground matrix — one canvas layout engine, three shareable
+//     frames × four grounds, all painting a full-resolution card.
+//
+// Set E2E_EVIDENCE_DIR to also dump the painted PNGs + sheet screenshots there.
+
+const evidenceDir = process.env.E2E_EVIDENCE_DIR;
+const evidence = (name: string) => join(evidenceDir as string, name);
+
+test.beforeEach(async ({ page }) => {
+  test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
+  if (evidenceDir) mkdirSync(evidenceDir, { recursive: true });
+  await signIn(page);
+  // Display kg so typed weights map 1:1 to the canonical store (app defaults lb).
+  await page.evaluate(() => localStorage.setItem("unit", "kg"));
+});
+
+/** Full-resolution canvas with at least one opaque pixel — a download-only
+ * check passes on a blank card. */
+async function paintedSize(page: Page): Promise<string> {
+  return page.getByTestId("share-canvas").evaluate((c: HTMLCanvasElement) => {
+    const ctx = c.getContext("2d");
+    if (!ctx || c.width < 1000) return "unpainted";
+    const opaque = ctx.getImageData(20, 20, 1, 1).data[3] > 0;
+    return opaque ? `${c.width}x${c.height}` : "transparent";
+  });
+}
+
+async function saveCard(page: Page, name: string) {
+  if (!evidenceDir) return;
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByTestId("share-save").click(),
+  ]);
+  await download.saveAs(evidence(name));
+}
+
+test("a reps-only exercise keeps a Records share card that paints", async ({
+  page,
+}) => {
+  const EX = `Pullup ${Date.now()}`;
+
+  await page.goto("/library");
+  await page.getByTestId("exercise-name-input").fill(EX);
+  await page.getByTestId("exercise-type-select").click();
+  await page
+    .getByRole("option", { name: "Bodyweight reps", exact: true })
+    .click();
+  await page.getByTestId("add-exercise-btn").click();
+  await waitForExercise(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+  for (const [i, reps] of ["12", "10"].entries()) {
+    await page.getByTestId(`set-${i}-reps`).fill(reps);
+    await page.getByTestId(`set-${i}-add`).click();
+    await expect(page.getByTestId(`committed-${i}-type`)).toBeVisible();
+  }
+  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("finish-save").click();
+  await expect(page.getByTestId("post-save-summary")).toBeVisible();
+  await page.getByTestId("summary-dismiss").click();
+
+  await page.goto("/library");
+  await page.getByTestId(`open-exercise-${EX}`).click();
+  await expect(page.getByTestId("exercise-detail-name")).toHaveText(EX);
+
+  // Records exist for this type — reps records only, no weight-based PR.
+  await expect(page.getByTestId("record-best_set_reps")).toContainText("12");
+  await expect(page.getByTestId("record-heaviest_weight")).toHaveCount(0);
+  await expect(page.getByTestId("record-best_e1rm")).toHaveCount(0);
+
+  // …so the Share button must still be there, and its card must paint.
+  await page.getByTestId("records-share-btn").click();
+  await expect(page.getByTestId("share-sheet")).toBeVisible();
+  await expect.poll(() => paintedSize(page)).toBe("1080x1920");
+
+  if (evidenceDir) {
+    await page
+      .getByTestId("share-sheet")
+      .screenshot({ path: evidence("records-bodyweight-sheet.png") });
+    await saveCard(page, "records-bodyweight-card.png");
+  }
+});
+
+test("measurement sharing is never auto-offered and confirms every time", async ({
+  page,
+}) => {
+  await page.goto("/measures");
+  await page.getByTestId("measure-date").fill("2021-04-04");
+  await page.getByTestId("measure-field-bodyweightKg").fill("82");
+  await page.getByTestId("measure-field-bodyweightKg").blur();
+  await expect(page.getByTestId("trend-latest")).toContainText("82");
+
+  // Tapping Share opens a confirm, NOT the sheet.
+  await page.getByTestId("measures-share-btn").click();
+  await expect(page.getByText(/asks every time/i)).toBeVisible();
+  await expect(page.getByTestId("share-sheet")).toHaveCount(0);
+  if (evidenceDir) {
+    await page.screenshot({ path: evidence("measurement-confirm.png") });
+  }
+
+  // Cancel keeps the sheet closed.
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByTestId("share-sheet")).toHaveCount(0);
+
+  // Continue opens it, and the card paints.
+  await page.getByTestId("measures-share-btn").click();
+  await page.getByTestId("measures-share-confirm").click();
+  await expect(page.getByTestId("share-sheet")).toBeVisible();
+  await expect.poll(() => paintedSize(page)).toBe("1080x1920");
+  if (evidenceDir) {
+    await page
+      .getByTestId("share-sheet")
+      .screenshot({ path: evidence("measurement-sheet.png") });
+    await saveCard(page, "measurement-card.png");
+  }
+
+  // Every time: reopening asks again rather than remembering the consent.
+  await page.getByTestId("share-close").click();
+  await page.getByTestId("measures-share-btn").click();
+  await expect(page.getByText(/asks every time/i)).toBeVisible();
+  await expect(page.getByTestId("share-sheet")).toHaveCount(0);
+});
+
+test("one layout engine paints every frame × ground of a session card", async ({
+  page,
+}) => {
+  const EX = `Matrix ${Date.now()}`;
+  await page.goto("/library");
+  await page.getByTestId("exercise-name-input").fill(EX);
+  await page.getByTestId("add-exercise-btn").click();
+  await waitForExercise(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+  for (const [i, [w, r]] of [
+    ["100", "8"],
+    ["120", "3"],
+  ].entries()) {
+    await page.getByTestId(`set-${i}-weight`).fill(w);
+    await page.getByTestId(`set-${i}-reps`).fill(r);
+    await page.getByTestId(`set-${i}-add`).click();
+    await expect(page.getByTestId(`committed-${i}-type`)).toBeVisible();
+  }
+  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("finish-save").click();
+  await expect(page.getByTestId("post-save-summary")).toBeVisible();
+  await page.getByTestId("summary-dismiss").click();
+
+  await page.getByTestId("history-share-btn").click();
+  await expect(page.getByTestId("share-sheet")).toBeVisible();
+
+  // Headline set: defaults to the auto pick (the top set, 120 × 3), and
+  // tapping a set chip re-headlines the card with that set instead (100 × 8).
+  await page.getByTestId("share-hero-picker").scrollIntoViewIfNeeded();
+  await expect.poll(() => paintedSize(page)).toBe("1080x1920");
+  if (evidenceDir) {
+    await page.screenshot({ path: evidence("session-sheet-hero-auto.png") });
+    await saveCard(page, "session-story-hero-auto.png");
+  }
+  const setChip = page.getByTestId(/^share-hero-set-/).first();
+  const autoChip = page.getByTestId("share-hero-auto");
+  const autoBg = await autoChip.evaluate(
+    (el) => getComputedStyle(el).backgroundColor,
+  );
+  await setChip.click();
+  await expect.poll(() => paintedSize(page)).toBe("1080x1920");
+  // The picked chip takes the selected treatment the Auto chip had, so the
+  // sheet says which set is headlined without reading the canvas.
+  await expect(setChip).toHaveCSS("background-color", autoBg);
+  await expect(autoChip).not.toHaveCSS("background-color", autoBg);
+  if (evidenceDir) {
+    await page.screenshot({ path: evidence("session-sheet-hero-picked.png") });
+    await saveCard(page, "session-story-hero-picked.png");
+  }
+  await page.getByTestId("share-hero-auto").click();
+
+  const SIZES = { story: "1080x1920", post: "1080x1350", square: "1080x1080" };
+  for (const [frame, size] of Object.entries(SIZES)) {
+    await page.getByTestId(`share-frame-${frame}`).click();
+    for (const ground of ["dark", "light", "green", "photo"]) {
+      await page.getByTestId(`share-ground-${ground}`).click();
+      // The Photo ground with no photo picked still paints a ground — it must
+      // never leave a transparent (invisible) card behind.
+      await expect.poll(() => paintedSize(page)).toBe(size);
+      if (evidenceDir && frame === "story") {
+        await saveCard(page, `session-story-${ground}.png`);
+      }
+    }
+  }
+
+  if (evidenceDir) {
+    await page.getByTestId("share-frame-square").click();
+    await page.getByTestId("share-ground-green").click();
+    await expect.poll(() => paintedSize(page)).toBe(SIZES.square);
+    await saveCard(page, "session-square-green.png");
+    await page
+      .getByTestId("share-sheet")
+      .screenshot({ path: evidence("session-sheet-square-green.png") });
+  }
+});
