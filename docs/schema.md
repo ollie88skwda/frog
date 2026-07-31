@@ -87,6 +87,7 @@ shared seed rows too).
 | title | text? | |
 | started_at / ended_at | bigint ms | |
 | condition_values | jsonb | {metric_id: value} |
+| share_slug | text? | dormant — future public share link, unused today |
 | owner_id | uuid | |
 
 ### session_exercises

@@ -61,6 +61,7 @@ const bundle: ExportBundle = {
       notes: null,
       routineId: null,
       pausedMs: 0,
+      shareSlug: null,
     },
   ],
   sessionExercises: [
