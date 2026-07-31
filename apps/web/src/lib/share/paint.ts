@@ -103,7 +103,7 @@ async function paintBrand(
 ): Promise<number> {
   const markSize = frame.w * MARK_SIZE_RATIO;
   try {
-    const mark = await loadFrogMarkImage(p.ink, p.accent);
+    const mark = await loadFrogMarkImage(p.ink, p.markBody);
     ctx.drawImage(mark, pad, y, markSize, markSize);
   } catch {
     // Rasterizing the mark failed — the wordmark alone still reads fine.
@@ -433,7 +433,7 @@ export async function paintBrandOg(canvas: HTMLCanvasElement) {
   let y = pad;
 
   try {
-    const mark = await loadFrogMarkImage(p.ink, p.accent);
+    const mark = await loadFrogMarkImage(p.ink, p.markBody);
     ctx.drawImage(mark, pad, y, markSize, markSize);
   } catch {
     // Wordmark alone still reads fine.
@@ -468,7 +468,7 @@ export async function paintBrandOg(canvas: HTMLCanvasElement) {
   // Right column: the mark, large, centred — the one shape people recognise.
   const bigSize = frame.h * 0.62;
   try {
-    const mark = await loadFrogMarkImage(p.ink, p.accent);
+    const mark = await loadFrogMarkImage(p.ink, p.markBody);
     ctx.drawImage(
       mark,
       colW + (frame.w - colW - bigSize) / 2,

@@ -24,6 +24,13 @@ export type Palette = {
   hair: string;
   accent: string;
   shadow: boolean; // text shadow for legibility over a photo
+  /** Fill for the brand mark's body — `accent` on every ground except Green,
+   * where the tile spec (AGENTS.md "Brand mark") wants the body the SAME
+   * green as the ground so only the black line work reads, not a solid
+   * silhouette. Kept separate from `accent` because `accent` elsewhere on
+   * the card (eyebrow text, heat-map highlight) needs to CONTRAST with the
+   * green ground, which the tile's own green body deliberately does not. */
+  markBody: string;
 };
 
 // Fixed brand-tile palette (must match GROUND/#ground in scripts/gen-pwa-icons.ts
@@ -70,6 +77,7 @@ export function paletteFor(ground: Ground, accent: string): Palette {
         // hairline for the light ground specifically.
         hair: sampleForcedToken("light", "--sage-7", "#c1c6c4"),
         accent,
+        markBody: accent,
         shadow: false,
       };
     case "photo":
@@ -80,6 +88,7 @@ export function paletteFor(ground: Ground, accent: string): Palette {
         faint: "rgba(255,255,255,0.62)",
         hair: "rgba(255,255,255,0.28)",
         accent,
+        markBody: accent,
         shadow: true,
       };
     case "green":
@@ -90,6 +99,10 @@ export function paletteFor(ground: Ground, accent: string): Palette {
         faint: "rgba(19,20,38,0.55)",
         hair: "rgba(19,20,38,0.35)",
         accent: GREEN_INK,
+        // Body = the ground's own green (AGENTS.md "Brand mark" — the tile's
+        // body carries the same green as its ground); only the black line
+        // work should read, not a solid silhouette.
+        markBody: GREEN_BG,
         shadow: false,
       };
     default:
@@ -101,6 +114,7 @@ export function paletteFor(ground: Ground, accent: string): Palette {
         faint: sampleForcedToken("dark", "--sage-10", "#717d79"),
         hair: sampleForcedToken("dark", "--sage-6", "#373b39"),
         accent,
+        markBody: accent,
         shadow: false,
       };
   }

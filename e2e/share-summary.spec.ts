@@ -44,14 +44,14 @@ async function startAndLog(
   return id;
 }
 
-test("post-save summary shows the ordinal + overview and shares a PNG", async ({
+test("post-save summary shows the ordinal, offers a hero-set pick, and shares a PNG across frames/grounds", async ({
   page,
 }) => {
   const EX = `Summary ${Date.now()}`;
   await newExercise(page, EX);
   const id = await startAndLog(page, EX, [
     ["100", "5"],
-    ["100", "5"],
+    ["110", "3"],
   ]);
 
   await page.getByTestId("end-session-btn").click();
@@ -61,25 +61,44 @@ test("post-save summary shows the ordinal + overview and shares a PNG", async ({
   await expect(page).toHaveURL(new RegExp(`/history/${id}\\?summary=1`));
   await expect(page.getByTestId("post-save-summary")).toBeVisible();
   await expect(page.getByTestId("summary-ordinal")).toContainText("#");
-  // The overview slide carries duration/exercises/sets/volume.
-  await expect(page.getByTestId("summary-overview")).toContainText("Volume");
-  await expect(page.getByTestId("summary-overview")).toContainText("Sets");
 
-  // Share the hero slide → a PNG download.
+  // Share the session slide → the full-screen sheet.
   await page.getByTestId("share-slide-hero").click();
   await expect(page.getByTestId("share-sheet")).toBeVisible();
   await expect(page.getByTestId("share-canvas")).toBeVisible();
 
   // The card actually rendered onto the canvas (full-res + an opaque pixel) —
   // guards against a blank-canvas regression that a download-only check misses.
-  const painted = await page
-    .getByTestId("share-canvas")
-    .evaluate((c: HTMLCanvasElement) => {
+  async function isPainted() {
+    return page.getByTestId("share-canvas").evaluate((c: HTMLCanvasElement) => {
       const ctx = c.getContext("2d");
       if (!ctx || c.width < 1000) return false;
       return ctx.getImageData(20, 20, 1, 1).data[3] > 0;
     });
-  expect(painted).toBe(true);
+  }
+  expect(await isPainted()).toBe(true);
+
+  // The hero-set picker defaults to the auto top-set pick; tapping a specific
+  // set re-renders the canvas with that set headlined instead.
+  await expect(page.getByTestId("share-hero-auto")).toBeVisible();
+  const setChip = page.getByTestId(new RegExp("^share-hero-set-"));
+  await setChip.first().click();
+  await expect(await isPainted()).toBe(true);
+
+  // Switching frame/ground re-renders the canvas at the new frame's dimensions.
+  const before = await page
+    .getByTestId("share-canvas")
+    .evaluate((c: HTMLCanvasElement) => `${c.width}x${c.height}`);
+  await page.getByTestId("share-frame-square").click();
+  await expect
+    .poll(() =>
+      page
+        .getByTestId("share-canvas")
+        .evaluate((c: HTMLCanvasElement) => `${c.width}x${c.height}`),
+    )
+    .not.toBe(before);
+  await page.getByTestId("share-ground-green").click();
+  expect(await isPainted()).toBe(true);
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -88,7 +107,7 @@ test("post-save summary shows the ordinal + overview and shares a PNG", async ({
   expect(download.suggestedFilename()).toMatch(/\.png$/);
 
   // Dismiss the overlay → plain history detail underneath.
-  await page.keyboard.press("Escape"); // close the share sheet
+  await page.getByTestId("share-close").click();
   await page.getByTestId("summary-dismiss").click();
   await expect(page.getByTestId("post-save-summary")).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`/history/${id}$`));

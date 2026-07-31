@@ -405,7 +405,7 @@ export function ShareSheet({
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <div
-          className="mx-auto w-full max-w-sm bg-[repeating-conic-gradient(var(--surface-2)_0_25%,transparent_0_50%)] bg-[length:24px_24px] p-2"
+          className="mx-auto w-full max-w-sm bg-[repeating-conic-gradient(var(--surface-2)_0_25%,transparent_0_50%)] bg-[length:24px_24px] p-1"
           data-testid="share-preview"
         >
           <canvas
