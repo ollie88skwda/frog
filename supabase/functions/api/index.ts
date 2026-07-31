@@ -55,10 +55,12 @@ Deno.serve(async (req) => {
   const limit = Math.min(Number(url.searchParams.get("limit") ?? 100) || 100, 1000);
   const offset = Number(url.searchParams.get("offset") ?? 0) || 0;
 
+  // Full row, like every other resource below — a hand-written column list
+  // here silently drops new exercise columns from the API (docs/DECISIONS.md).
   const ownExercises = () =>
     admin
       .from("exercises")
-      .select("id, name, tags, is_custom, owner_id, created_at, updated_at")
+      .select()
       .or(`owner_id.eq.${owner},owner_id.is.null`)
       .is("deleted_at", null);
 

@@ -37,13 +37,22 @@ The user's gym equipment — settings entered once, recalled in every session.
 | is_custom | boolean | false = seed row |
 | machine_id | uuid? | FK → machines |
 | joint_actions | jsonb | string[], display labels |
-| muscle_targets | jsonb | `{muscle, tier}[]`; first = primary (library grouping) |
+| muscle_targets | jsonb | `{muscle, tier, role?}[]`; `role` is `"primary" \| "secondary"` — absent role means index 0 is primary, everything after is secondary (back-compat, `roleAt()`). An exercise can declare two primaries. First target still decides library grouping regardless of role. |
 | image_url | text? | reference diagram (seed rows only) |
 | image_attribution | text? | image credit |
 | exercise_type | text | measurement type (`domain/exercise-types.ts`); immutable once sets exist |
 | equipment | text? | `barbell` \| `ez_bar` \| `dumbbell` \| `kettlebell` \| `machine` \| `cable` \| `band` \| `suspension` \| `bodyweight` \| `plate` \| `other` |
 | instructions | jsonb? | string[], how-to steps (detail screen only) |
 | image_urls | jsonb? | string[], how-to frames (detail screen only) |
+| mechanic | text? | `compound` \| `isolation`; explicit, overrides the muscle-count proxy in `generator/generate.ts` |
+| movement_pattern | text? | `horizontal-push` \| `vertical-push` \| `horizontal-pull` \| `vertical-pull` \| `squat` \| `hinge` \| `lunge` \| `carry` \| `rotation` \| `isolation` |
+| laterality | text? | `bilateral` \| `unilateral` \| `alternating`; unilateral doubles muscle-credit and labels the reps column "reps/side" in-session |
+| default_reps_min / default_reps_max | integer? | prefill only — routine editor "Add exercise" + generator; never rewrites a logged/prescribed value |
+| default_rest_sec | integer? | prefill only — session rest timer default when a block has no explicit `rest_sec` |
+| notes | text? | the user's own note about the exercise (setup, cue); shown read-only under the block header in a session |
+| aliases | jsonb? | string[], alternate names; matched by the fuzzy matcher (voice logging, routine paste) and search alongside `name` |
+| media_path | text? | storage path in the private `exercise-media` bucket (user-uploaded demo image/video, resized client-side); null = no media |
+| media_type | text? | `image` \| `video`; null when `media_path` is null |
 | owner_id | uuid? | null = global seed |
 | created_at / updated_at / deleted_at | bigint ms | |
 
@@ -258,3 +267,8 @@ Web-push endpoints for rest-timer/PR notifications (M12).
 - `set_logs`: + `set_type`, `duration_sec`, `distance_m`. `weight_kg` is reinterpreted per exercise type (added weight for weighted-bodyweight, assistance for assisted-bodyweight).
 - `session_exercises`: + `superset_group`, `rest_sec`, `note`, `routine_exercise_id` (provenance → routine write-back + same-routine PREVIOUS scope).
 - `sessions`: + `routine_id` (provenance; null = empty workout), `paused_ms` (duration = ended − started − paused).
+
+### Column additions (2026-07-30, custom exercise adder)
+- `exercises`: + `mechanic`, `movement_pattern`, `laterality`, `default_reps_min`, `default_reps_max`, `default_rest_sec`, `notes`, `aliases` (jsonb string[]), `media_path`, `media_type`. `muscle_targets` entries gained an optional `role` field (`"primary" | "secondary"`, back-compat absent = index-0-primary). All nullable, no default — a book row that never fills them behaves exactly as before.
+- New private storage bucket `exercise-media`, RLS-scoped to the owning user (same `(storage.foldername(name))[1] = (select auth.jwt()->>'sub')` pattern as `session-media`/machine photos), holding the file `media_path` points at.
+- `GET /v1/exercises` (and the `exercises` field of `GET /v1/export`) now select the full row instead of a hand-picked column list — see docs/DECISIONS.md.

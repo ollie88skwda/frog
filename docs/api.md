@@ -15,14 +15,17 @@ token can be revoked at any time.
 
 ### `GET /v1/exercises`
 
-Global seed exercises (`owner_id: null`, `is_custom: false`) plus your custom ones.
+Global seed exercises (`owner_id: null`, `is_custom: false`) plus your custom
+ones. Every column on the `exercises` table (see [schema.md](./schema.md)) —
+there's no separate hand-picked subset here, so a new column shows up
+automatically instead of silently missing the API.
 
 ```sh
 curl -H "Authorization: Bearer $FROG_TOKEN" "$FROG_API_URL/v1/exercises?limit=100"
 ```
 
 ```json
-{ "exercises": [ { "id": "…", "name": "Squat", "tags": null, "is_custom": false, "owner_id": null, "created_at": 1760000000000, "updated_at": 1760000000000 } ] }
+{ "exercises": [ { "id": "…", "name": "Squat", "tags": null, "is_custom": false, "owner_id": null, "muscle_targets": [{ "muscle": "quads", "tier": "S" }], "equipment": "barbell", "aliases": null, "notes": null, "created_at": 1760000000000, "updated_at": 1760000000000 } ] }
 ```
 
 ### `GET /v1/sessions`
