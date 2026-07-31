@@ -16,6 +16,18 @@ export function formatWeight(kg: number, unit: "kg" | "lb"): string {
   return `${toDisplayWeight(kg, unit)} ${unitLabel(unit)}`;
 }
 
+// Volume/tonnage totals run into the thousands (a session's Σweight×reps),
+// so — unlike a single set's weight — they get thousands separators.
+const volumeNf = new Intl.NumberFormat();
+/** The grouped number alone, for callers that lay the unit out themselves
+ * (e.g. the year card's hero, which paints value and unit at different sizes). */
+export function formatVolumeNumber(kg: number, unit: "kg" | "lb"): string {
+  return volumeNf.format(toDisplayWeight(kg, unit));
+}
+export function formatVolume(kg: number, unit: "kg" | "lb"): string {
+  return `${formatVolumeNumber(kg, unit)} ${unitLabel(unit)}`;
+}
+
 // Distance (canonical meters) — km/mi display for cardio exercise types.
 export const M_PER_MI = 1609.344;
 export const miToM = (mi: number) => mi * M_PER_MI;

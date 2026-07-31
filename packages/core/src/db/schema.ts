@@ -261,10 +261,20 @@ export const sessions = pgTable(
     routineId: uuid("routine_id").references(() => routines.id),
     // Total paused time; duration = endedAt − startedAt − pausedMs.
     pausedMs: bigint("paused_ms", { mode: "number" }).notNull().default(0),
+    // Dormant hook for a future public share link (share redesign, see
+    // docs/DECISIONS.md): null until a session is explicitly published.
+    // Nothing reads or writes this yet — no public read path, no RLS policy
+    // exposing it, no UI. Exists now so adding public links later is a
+    // backend-only change (mint a slug + a public SELECT policy keyed off
+    // "share_slug is not null"), not a schema rework. Unique so a slug can
+    // safely double as the public URL segment; Postgres unique indexes allow
+    // any number of NULLs, so unpublished sessions are unaffected.
+    shareSlug: text("share_slug"),
   },
   (t) => [
     index("sessions_owner_started_idx").on(t.ownerId, t.startedAt.desc()),
     index("sessions_routine_idx").on(t.routineId),
+    uniqueIndex("sessions_share_slug_idx").on(t.shareSlug),
   ],
 );
 

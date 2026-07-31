@@ -20,12 +20,17 @@ export function useMuscleMap(): MuscleByExercise {
 
 // Latest logged bodyweight (kg) — threads into distribution/report tonnage so
 // bodyweight-exercise volume counts (null = never logged; volume skipped).
-export function useLatestBodyweight(): number | null {
+// The query form is for callers that must distinguish "not logged" from "not
+// loaded yet" (the share card, whose volume stat is wrong either way).
+export function useLatestBodyweightQuery() {
   const repo = useRepo();
-  const { data = null } = useQuery({
+  return useQuery({
     queryKey: ["latest-bodyweight"],
     queryFn: () => repo.latestBodyweightKg(),
     staleTime: 5 * 60_000,
   });
-  return data;
+}
+
+export function useLatestBodyweight(): number | null {
+  return useLatestBodyweightQuery().data ?? null;
 }

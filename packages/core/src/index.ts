@@ -1,4 +1,4 @@
-export { APP_NAME, FIRST_WEEKDAY } from "./config";
+export { APP_NAME, FIRST_WEEKDAY, SHARE_DOMAIN } from "./config";
 export * from "./db/schema";
 export * from "./db/seed-ids";
 export * from "./domain/anatomy";
@@ -42,6 +42,7 @@ export * from "./records/live";
 export * from "./records/records";
 export * from "./records/types";
 export * from "./repo/types";
+export * from "./share";
 export * from "./stats/aggregate";
 export * from "./stats/monthly-report";
 export * from "./stats/year-review";

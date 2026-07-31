@@ -1,6 +1,8 @@
 import {
+  buildMonthCard,
   type DistributionTotals,
   distributionBetween,
+  type MonthCard,
   MUSCLE_REGION_LABELS,
   MUSCLE_REGIONS,
   monthlyReport,
@@ -13,7 +15,9 @@ import { Link, useNavigate } from "react-router";
 import { BarChart } from "@/components/charts/bars";
 import { GroupedBarChart } from "@/components/charts/grouped-bars";
 import { MonthHeatGrid } from "@/components/report-calendar";
+import { ShareButton } from "@/components/share-sheet";
 import { formatDuration } from "@/lib/format";
+import { useUserPrefs } from "@/lib/profile-queries";
 import {
   compactVolume,
   formatVolume,
@@ -198,6 +202,19 @@ function ReportBody({
     () => new Set(report.workoutDays),
     [report.workoutDays],
   );
+  const { data: prefs } = useUserPrefs();
+  const shareCard = useMemo(
+    () =>
+      buildMonthCard({
+        report,
+        unit,
+        topExerciseName: report.topExercises[0]
+          ? data.nameOf(report.topExercises[0].exerciseId)
+          : null,
+        identity: { displayName: prefs?.displayName ?? null },
+      }),
+    [report, unit, data, prefs],
+  );
 
   return (
     <div className="mt-4 flex flex-col gap-4">
@@ -208,6 +225,7 @@ function ReportBody({
         previous={report.previous.totals}
         prCount={report.prEvents.length}
         unit={unit}
+        card={shareCard}
       />
 
       <Slide title="Personal records" testId="monthly-prs">
@@ -367,14 +385,33 @@ function TotalsSlide({
   previous,
   prCount,
   unit,
+  card,
 }: {
   totals: DistributionTotals;
   previous: DistributionTotals;
   prCount: number;
   unit: Unit;
+  card: MonthCard;
 }) {
+  // Stable identity — an inline `{kind:"static",card}` literal would give
+  // ShareButton a new `source` object every render (share-sheet.tsx's own
+  // memoization notes why that matters once the sheet is open).
+  const source = useMemo(() => ({ kind: "static" as const, card }), [card]);
   return (
-    <Slide title="This month" testId="monthly-totals">
+    <Slide
+      title="This month"
+      testId="monthly-totals"
+      action={
+        <ShareButton
+          source={source}
+          filename="month-report"
+          testId="monthly-share-btn"
+          variant="ghost"
+          size="icon"
+          label={null}
+        />
+      }
+    >
       <div className="grid grid-cols-2 gap-2">
         <Stat
           label="Workouts"

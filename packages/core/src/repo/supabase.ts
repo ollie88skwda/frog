@@ -102,6 +102,7 @@ function toSession(r: Row): Session {
     notes: (r.notes as string | null) ?? null,
     routineId: (r.routine_id as string | null) ?? null,
     pausedMs: (r.paused_ms as number) ?? 0,
+    shareSlug: (r.share_slug as string | null) ?? null,
   };
 }
 

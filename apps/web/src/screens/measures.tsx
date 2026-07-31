@@ -1,20 +1,22 @@
 import {
+  buildMeasurementCard,
   kgToLb,
   lbToKg,
   type Measurement,
+  type MeasurementCard,
   type MeasurementPatch,
   toDisplayLength,
   unitLabel,
 } from "@frog/core";
 import { Select } from "@radix-ui/themes";
-import { Camera, Trash2 } from "lucide-react";
+import { Camera, Share2, Trash2 } from "lucide-react";
 
 // Radix Select forbids an empty-string value; the "None" comparison option
 // uses a sentinel mapped back to "" (no comparison) at the boundary.
 const COMPARE_NONE = "__none__";
 
 import { type ChangeEvent, useMemo, useState } from "react";
-import { ShareButton } from "@/components/share-card";
+import { ShareSheet } from "@/components/share-sheet";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -27,6 +29,7 @@ import {
   useUploadProgressPhoto,
   useUpsertMeasurement,
 } from "@/lib/measure-queries";
+import { useUserPrefs } from "@/lib/profile-queries";
 import { type Unit, useUnit } from "@/lib/settings";
 import { useVoice } from "@/lib/voice";
 
@@ -347,6 +350,37 @@ function Trends({
   );
   const latest = rows[0]?.value ?? null;
   const suffix = metricSuffix(def.kind, unit);
+  const { data: prefs } = useUserPrefs();
+
+  const card = useMemo(() => {
+    if (latest == null) return null;
+    const changeSince = (days: number): string | null => {
+      if (series.length < 2) return null;
+      const latestEntry = series[series.length - 1];
+      const cutoff = parseLocal(latestEntry.m.measuredOn) - days * 86_400_000;
+      // Latest entry at or before the cutoff — the closest prior baseline.
+      let baseline: number | null = null;
+      for (const r of series) {
+        if (parseLocal(r.m.measuredOn) > cutoff) break;
+        baseline = r.value;
+      }
+      if (baseline == null) return null;
+      const delta = round1(latestEntry.value - baseline);
+      return `${delta > 0 ? "+" : ""}${delta} ${suffix}`;
+    };
+    return buildMeasurementCard({
+      metricLabel: def.label,
+      heroValue: String(latest),
+      heroUnit: suffix,
+      change30d: changeSince(30),
+      change90d: changeSince(90),
+      sparkline: series.map((r) => ({
+        at: parseLocal(r.m.measuredOn),
+        value: r.value,
+      })),
+      identity: { displayName: prefs?.displayName ?? null },
+    });
+  }, [latest, def, suffix, series, prefs]);
 
   return (
     <div className="mt-4 border border-border bg-surface">
@@ -376,22 +410,10 @@ function Trends({
             <span className="num text-sm text-soft" data-testid="trend-latest">
               {latest == null ? "—" : `${latest} ${suffix}`}
             </span>
-            {latest != null && (
-              <ShareButton
-                data={{
-                  kicker: "Measurement",
-                  title: def.label,
-                  subtitle: rows[0] ? formatDate(rows[0].m.createdAt) : "",
-                  stats: [
-                    { label: "Latest", value: `${latest} ${suffix}` },
-                    { label: "Entries", value: String(rows.length) },
-                  ],
-                }}
+            {card && (
+              <MeasurementShareGate
+                card={card}
                 filename={`measure-${def.key}`}
-                testId="measures-share-btn"
-                variant="ghost"
-                size="icon"
-                label={null}
               />
             )}
           </div>
@@ -457,6 +479,76 @@ function Trends({
         </ul>
       )}
     </div>
+  );
+}
+
+// Bodyweight/measurement sharing (report §5.2 "not a card type" / §7.2): kept,
+// but never auto-offered and never in a default carousel, and gated behind a
+// confirm every time — this is the most personal number in the app. Renders
+// the sheet itself (ShareSheet, not ShareButton) so the confirm step sits
+// between the trigger and the sheet opening.
+function MeasurementShareGate({
+  card,
+  filename,
+}: {
+  card: MeasurementCard;
+  filename: string;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [open, setOpen] = useState(false);
+  // Stable object identity, not an inline literal — an unmemoized `source`
+  // would give ShareSheet a new object every render (any Trends re-render: a
+  // measurement query settling, a delete, a unit change), defeating its own
+  // internal memoization and re-encoding a 1080×1920 PNG mid-interaction.
+  const source = useMemo(() => ({ kind: "static" as const, card }), [card]);
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => setConfirming(true)}
+        title="Share as image"
+        data-testid="measures-share-btn"
+      >
+        <Share2 className="size-4" />
+      </Button>
+      <Dialog open={confirming} onOpenChange={setConfirming}>
+        <DialogContent title="Share this measurement?">
+          <p className="text-xs text-soft">
+            {card.eyebrow} turns into a shareable image — nothing is shared
+            automatically, and this asks every time.
+          </p>
+          <div className="mt-3 flex justify-end gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setConfirming(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                setConfirming(false);
+                setOpen(true);
+              }}
+              data-testid="measures-share-confirm"
+            >
+              Continue
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {open && (
+        <ShareSheet
+          source={source}
+          filename={filename}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }
 

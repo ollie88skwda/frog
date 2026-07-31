@@ -26,7 +26,6 @@ import { BarChart } from "@/components/charts/bars";
 import { BodyHeatmap } from "@/components/charts/body-heatmap";
 import { GroupedBarChart } from "@/components/charts/grouped-bars";
 import { StackedBarChart, stackColor } from "@/components/charts/stacked-bars";
-import { ShareButton } from "@/components/share-card";
 import { formatDuration } from "@/lib/format";
 import { useExercises } from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
@@ -397,24 +396,9 @@ function DistributionSection({
       title="Muscle distribution"
       testId="stats-distribution"
       right={
-        <div className="flex items-center gap-2">
-          <span className="text-2xs text-faint">
-            vs previous {RANGE_LABELS[range].toLowerCase()}
-          </span>
-          <ShareButton
-            data={{
-              kicker: `Last ${RANGE_LABELS[range].toLowerCase()}`,
-              title: "Muscle distribution",
-              subtitle: `vs previous ${RANGE_LABELS[range].toLowerCase()}`,
-              stats: totals.map((t) => ({ label: t.label, value: t.cur })),
-            }}
-            filename="distribution"
-            testId="distribution-share-btn"
-            variant="ghost"
-            size="icon"
-            label={null}
-          />
-        </div>
+        <span className="text-2xs text-faint">
+          vs previous {RANGE_LABELS[range].toLowerCase()}
+        </span>
       }
     >
       <Chips

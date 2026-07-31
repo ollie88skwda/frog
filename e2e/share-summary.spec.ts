@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
@@ -44,14 +46,14 @@ async function startAndLog(
   return id;
 }
 
-test("post-save summary shows the ordinal + overview and shares a PNG", async ({
+test("post-save summary shows the ordinal, offers a hero-set pick, and shares a PNG across frames/grounds", async ({
   page,
 }) => {
   const EX = `Summary ${Date.now()}`;
   await newExercise(page, EX);
   const id = await startAndLog(page, EX, [
     ["100", "5"],
-    ["100", "5"],
+    ["110", "3"],
   ]);
 
   await page.getByTestId("end-session-btn").click();
@@ -61,25 +63,44 @@ test("post-save summary shows the ordinal + overview and shares a PNG", async ({
   await expect(page).toHaveURL(new RegExp(`/history/${id}\\?summary=1`));
   await expect(page.getByTestId("post-save-summary")).toBeVisible();
   await expect(page.getByTestId("summary-ordinal")).toContainText("#");
-  // The overview slide carries duration/exercises/sets/volume.
-  await expect(page.getByTestId("summary-overview")).toContainText("Volume");
-  await expect(page.getByTestId("summary-overview")).toContainText("Sets");
 
-  // Share the hero slide → a PNG download.
+  // Share the session slide → the full-screen sheet.
   await page.getByTestId("share-slide-hero").click();
   await expect(page.getByTestId("share-sheet")).toBeVisible();
   await expect(page.getByTestId("share-canvas")).toBeVisible();
 
   // The card actually rendered onto the canvas (full-res + an opaque pixel) —
   // guards against a blank-canvas regression that a download-only check misses.
-  const painted = await page
-    .getByTestId("share-canvas")
-    .evaluate((c: HTMLCanvasElement) => {
+  async function isPainted() {
+    return page.getByTestId("share-canvas").evaluate((c: HTMLCanvasElement) => {
       const ctx = c.getContext("2d");
       if (!ctx || c.width < 1000) return false;
       return ctx.getImageData(20, 20, 1, 1).data[3] > 0;
     });
-  expect(painted).toBe(true);
+  }
+  expect(await isPainted()).toBe(true);
+
+  // The hero-set picker defaults to the auto top-set pick; tapping a specific
+  // set re-renders the canvas with that set headlined instead.
+  await expect(page.getByTestId("share-hero-auto")).toBeVisible();
+  const setChip = page.getByTestId(new RegExp("^share-hero-set-"));
+  await setChip.first().click();
+  await expect(await isPainted()).toBe(true);
+
+  // Switching frame/ground re-renders the canvas at the new frame's dimensions.
+  const before = await page
+    .getByTestId("share-canvas")
+    .evaluate((c: HTMLCanvasElement) => `${c.width}x${c.height}`);
+  await page.getByTestId("share-frame-square").click();
+  await expect
+    .poll(() =>
+      page
+        .getByTestId("share-canvas")
+        .evaluate((c: HTMLCanvasElement) => `${c.width}x${c.height}`),
+    )
+    .not.toBe(before);
+  await page.getByTestId("share-ground-green").click();
+  expect(await isPainted()).toBe(true);
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -88,10 +109,147 @@ test("post-save summary shows the ordinal + overview and shares a PNG", async ({
   expect(download.suggestedFilename()).toMatch(/\.png$/);
 
   // Dismiss the overlay → plain history detail underneath.
-  await page.keyboard.press("Escape"); // close the share sheet
+  await page.getByTestId("share-close").click();
   await page.getByTestId("summary-dismiss").click();
   await expect(page.getByTestId("post-save-summary")).toHaveCount(0);
   await expect(page).toHaveURL(new RegExp(`/history/${id}$`));
+});
+
+// The "heavy" tagline tone (lib/frog-tagline.ts) fires when the session
+// out-tonnages the trailing 4-week average and neither a PR nor a streak
+// claimed the slide. Asserted where the user actually sees it — the painted
+// card — by sharing the SAME session twice: once from the post-save session
+// slide (tone "heavy") and once from history detail (no tone → "normal").
+// Same card body, different caption band.
+test("post-save session slide paints the heavy tagline when the session out-tonnages the trailing average", async ({
+  page,
+}) => {
+  // Three full log-and-finish sessions, two library adds and three 1080×1920
+  // canvas paints — well past the config's 30 s default on a loaded runner.
+  test.setTimeout(120_000);
+  const evidenceDir = process.env.E2E_EVIDENCE_DIR;
+  if (evidenceDir) mkdirSync(evidenceDir, { recursive: true });
+
+  // Pin the word-bank pick so the two captions are stable strings:
+  // heavy → "A heavy-handed frog for every single rep.",
+  // normal → "A live frog for every single rep."
+  await page.addInitScript(() => {
+    Math.random = () => 0;
+  });
+
+  const stamp = Date.now();
+  const BASE = `Baseline ${stamp}`;
+  const HEAVY = `Heavy ${stamp}`;
+  await newExercise(page, BASE);
+  await newExercise(page, HEAVY);
+
+  // Session 1 — the trailing-average baseline: 2 000 kg of tonnage.
+  await startAndLog(page, BASE, [
+    ["100", "10"],
+    ["100", "10"],
+  ]);
+  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("finish-save").click();
+  await expect(page.getByTestId("post-save-summary")).toBeVisible();
+  await page.getByTestId("summary-dismiss").click();
+
+  // Session 2 — 4 000 kg on a brand-new exercise, so no PR event fires (an
+  // exercise's first-ever session only seeds baselines), and it is not the
+  // week's first workout, so no streak slide either. Only "heavy" is left.
+  const id = await startAndLog(page, HEAVY, [
+    ["100", "8"],
+    ["100", "8"],
+    ["100", "8"],
+    ["100", "8"],
+    ["100", "8"],
+  ]);
+  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("finish-save").click();
+  await expect(page).toHaveURL(new RegExp(`/history/${id}\\?summary=1`));
+  await expect(page.getByTestId("post-save-summary")).toBeVisible();
+  await expect(page.getByTestId("share-slide-pr")).toHaveCount(0);
+  await expect(page.getByTestId("share-slide-streak")).toHaveCount(0);
+
+  // The tagline sits in the Story frame's footer zone (paint.ts paintFooter);
+  // the body band above it carries the ordinal, hero set and graphic.
+  async function bandHashes() {
+    await expect
+      .poll(() =>
+        page
+          .getByTestId("share-canvas")
+          .evaluate((c: HTMLCanvasElement) => c.width),
+      )
+      .toBe(1080);
+    return page.getByTestId("share-canvas").evaluate((c: HTMLCanvasElement) => {
+      const ctx = c.getContext("2d");
+      if (!ctx) throw new Error("no 2d context");
+      const hash = (y: number, h: number) => {
+        const d = ctx.getImageData(0, y, c.width, h).data;
+        let acc = 0;
+        for (let i = 0; i < d.length; i += 4)
+          acc = (acc * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) | 0;
+        return acc;
+      };
+      return { tagline: hash(1405, 60), body: hash(300, 900) };
+    });
+  }
+
+  await expect(page.getByTestId("share-slide-hero")).toBeEnabled();
+  await page.getByTestId("share-slide-hero").click();
+  await expect(page.getByTestId("share-canvas")).toBeVisible();
+  const heavy = await bandHashes();
+  if (evidenceDir) {
+    await page
+      .getByTestId("share-sheet")
+      .screenshot({ path: join(evidenceDir, "heavy-share-sheet.png") });
+    const [dl] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByTestId("share-save").click(),
+    ]);
+    await dl.saveAs(join(evidenceDir, "heavy-tone-card.png"));
+  }
+
+  // Same session, shared from history detail — that call site passes no tone.
+  await page.getByTestId("share-close").click();
+  await page.getByTestId("summary-dismiss").click();
+  await expect(page.getByTestId("post-save-summary")).toHaveCount(0);
+  await page.getByTestId("history-share-btn").click();
+  await expect(page.getByTestId("share-canvas")).toBeVisible();
+  const normal = await bandHashes();
+  if (evidenceDir) {
+    const [dl] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByTestId("share-save").click(),
+    ]);
+    await dl.saveAs(join(evidenceDir, "normal-tone-card.png"));
+  }
+
+  // Caption changed; every other pixel of the card body did not.
+  expect(heavy.tagline).not.toBe(normal.tagline);
+  expect(heavy.body).toBe(normal.body);
+
+  // Session 3 — a light session (100 kg, well under the 3 000 kg trailing
+  // average) on another new exercise: the tone gate has to fall back to
+  // "normal", so the post-save slide paints the same caption history detail
+  // does. Guards against a tone that is simply always on.
+  const LIGHT = `Light ${stamp}`;
+  await newExercise(page, LIGHT);
+  await startAndLog(page, LIGHT, [["20", "5"]]);
+  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("finish-save").click();
+  await expect(page.getByTestId("post-save-summary")).toBeVisible();
+  await expect(page.getByTestId("share-slide-hero")).toBeEnabled();
+  await page.getByTestId("share-slide-hero").click();
+  await expect(page.getByTestId("share-canvas")).toBeVisible();
+  const light = await bandHashes();
+  if (evidenceDir) {
+    const [dl] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByTestId("share-save").click(),
+    ]);
+    await dl.saveAs(join(evidenceDir, "light-session-normal-tone-card.png"));
+  }
+  expect(light.tagline).toBe(normal.tagline);
 });
 
 test("photo attached at finish appears in the history carousel", async ({
