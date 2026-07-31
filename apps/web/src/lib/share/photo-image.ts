@@ -18,14 +18,20 @@ export async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
   const img = new Image();
   img.src = objUrl;
   try {
-    // decode() (not onload) so the bitmap is fully in memory before the object
-    // URL is revoked — a load-only wait can leave the browser needing to
-    // re-fetch a src that no longer resolves.
     await img.decode();
     return img;
   } catch {
-    throw new Error("photo failed to decode");
-  } finally {
     URL.revokeObjectURL(objUrl);
+    throw new Error("photo failed to decode");
   }
+}
+
+/** Frees the object URL backing an image from `loadImageFrom*`. Call it when
+ * the image is replaced or its owner unmounts — NOT straight after decode: a
+ * detached image whose decoded frame the UA later drops (memory pressure, a
+ * backgrounded tab — the exact Share → OS sheet → return path on iOS) re-reads
+ * its `src`, and a revoked object URL answers nothing, so the photo silently
+ * disappears from the card. */
+export function releaseImage(img: HTMLImageElement | null) {
+  if (img?.src.startsWith("blob:")) URL.revokeObjectURL(img.src);
 }

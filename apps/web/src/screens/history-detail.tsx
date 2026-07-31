@@ -30,7 +30,7 @@ import { useRepo } from "@/lib/repo";
 import { useCreateRoutine } from "@/lib/routine-queries";
 import { useUnit } from "@/lib/settings";
 import { ordinalFor } from "@/lib/share/ordinal";
-import { useLatestBodyweight, useMuscleMap } from "@/lib/stats-queries";
+import { useLatestBodyweightQuery, useMuscleMap } from "@/lib/stats-queries";
 import { useVoice } from "@/lib/voice";
 import type { SeedSet } from "./session";
 
@@ -73,11 +73,13 @@ function ShareWorkoutSheet({
   onClose: () => void;
 }) {
   const { unit } = useUnit();
-  const { data: exercises = [] } = useExercises();
-  const { data: allSessions = [] } = useAllSessions();
-  const { data: prefs } = useUserPrefs();
+  const { data: exercises = [], isPending: exercisesPending } = useExercises();
+  const { data: allSessions = [], isPending: sessionsPending } =
+    useAllSessions();
+  const { data: prefs, isPending: prefsPending } = useUserPrefs();
+  const { data: bodyweightKg = null, isPending: bodyweightPending } =
+    useLatestBodyweightQuery();
   const muscleMap = useMuscleMap();
-  const bodyweightKg = useLatestBodyweight();
 
   const exerciseTypeById = useMemo(
     () => new Map(exercises.map((e) => [e.id, e.exerciseType as ExerciseType])),
@@ -131,6 +133,22 @@ function ShareWorkoutSheet({
     }),
     [shareBlocks, buildShareCard],
   );
+
+  // Every one of these feeds a value the card states as fact — the ordinal,
+  // per-exercise volume, the identity handle. Painting before they land would
+  // render (and, once the export blob resolves, let the user share) a card
+  // saying "Workout #1" with a missing volume. Hold the card, not the truth.
+  if (exercisesPending || sessionsPending || prefsPending || bodyweightPending)
+    return (
+      <button
+        type="button"
+        onClick={onClose}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-bg text-xs text-faint"
+        data-testid="share-sheet-loading"
+      >
+        Building your card…
+      </button>
+    );
 
   return (
     <ShareSheet

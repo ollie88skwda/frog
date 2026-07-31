@@ -20,7 +20,11 @@ import {
   sampleToken,
 } from "@/lib/share/grounds";
 import { paintShareCard } from "@/lib/share/paint";
-import { loadImageFromBlob, loadImageFromUrl } from "@/lib/share/photo-image";
+import {
+  loadImageFromBlob,
+  loadImageFromUrl,
+  releaseImage,
+} from "@/lib/share/photo-image";
 import { cn } from "@/lib/utils";
 
 export type ShareSource =
@@ -316,6 +320,23 @@ export function ShareSheet({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // The picked photo's object URL has to outlive its decode (see
+  // releaseImage) — the sheet owns it, and frees it when the photo is swapped
+  // or the sheet closes.
+  const photoRef = useRef<HTMLImageElement | null>(null);
+  function selectPhoto(img: HTMLImageElement | null) {
+    if (photoRef.current !== img) releaseImage(photoRef.current);
+    photoRef.current = img;
+    setPhoto(img);
+  }
+  useEffect(
+    () => () => {
+      releaseImage(photoRef.current);
+      photoRef.current = null;
+    },
+    [],
+  );
+
   // Lazy initializers (not useRef(expr), which re-evaluates its argument on
   // every render even though it only keeps the first result) — sampled/built
   // once per sheet, not every render.
@@ -468,7 +489,7 @@ export function ShareSheet({
           <PhotoPicker
             sessionId={sessionId}
             selected={photo}
-            onSelect={setPhoto}
+            onSelect={selectPhoto}
           />
         )}
       </div>
