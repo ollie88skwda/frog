@@ -1,4 +1,4 @@
-import { MUSCLE_REGION_LABELS, type MuscleRegion, regionOf } from "@frog/core";
+import { MUSCLE_REGION_LABELS, type MuscleRegion } from "@frog/core";
 import { useState } from "react";
 import {
   type BodyView,
@@ -6,6 +6,7 @@ import {
   opacityFor,
   PART,
   REGION_ORDER,
+  regionSetsOf,
   VIEW_REGIONS,
 } from "./body-paths";
 
@@ -21,25 +22,6 @@ import {
 //
 // The path geometry itself lives in ./body-paths.ts — the share card's canvas
 // painter (lib/share/graphics.ts) draws the same figure from that one module.
-
-/** Roll per-muscle set counts up to the six coarse regions. */
-export function regionSetsOf(
-  muscleSets: Record<string, number>,
-): Record<MuscleRegion, number> {
-  const out = {
-    chest: 0,
-    back: 0,
-    legs: 0,
-    shoulders: 0,
-    arms: 0,
-    core: 0,
-  } as Record<MuscleRegion, number>;
-  for (const [muscle, n] of Object.entries(muscleSets)) {
-    const region = regionOf(muscle);
-    if (region) out[region] += n;
-  }
-  return out;
-}
 
 function Figure({
   view,

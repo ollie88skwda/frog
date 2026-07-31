@@ -4,7 +4,7 @@ import type {
   SessionSetRef,
   ShareCard,
 } from "@frog/core";
-import { toDisplayWeight, unitLabel } from "@frog/core";
+import { formatHeroSet } from "@frog/core";
 import { Camera, Download, Share2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -40,16 +40,10 @@ function heroSetLabel(
   unit: "kg" | "lb",
 ): Array<{ id: string; setId: string; label: string }> {
   return block.sets.map((s) => {
-    let value: string;
-    if (s.weightKg != null && s.weightKg > 0) {
-      value = `${toDisplayWeight(s.weightKg, unit)} ${unitLabel(unit)}${s.reps ? ` × ${s.reps}` : ""}`;
-    } else if (s.reps != null) {
-      value = `${s.reps} reps`;
-    } else if (s.durationSec != null) {
-      value = `${Math.round(s.durationSec)}s`;
-    } else {
-      value = "—";
-    }
+    // The chip states exactly what the card will paint once it is tapped —
+    // same formatter, so the two can never disagree.
+    const hero = formatHeroSet(block, s, unit);
+    const value = hero.unit ? `${hero.value} ${hero.unit}` : hero.value;
     return {
       id: `${block.exerciseId}:${s.id}`,
       setId: s.id,
@@ -324,6 +318,7 @@ export function ShareSheet({
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null);
   const [photoMediaId, setPhotoMediaId] = useState<string | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [paintFailed, setPaintFailed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // The picked photo's object URL has to outlive its decode (see
@@ -389,19 +384,35 @@ export function ShareSheet({
     // The blob on hand belongs to the outgoing render — drop it so Share/Save
     // stay disabled until this paint produces the image the user is looking at.
     setPendingFile(null);
+    setPaintFailed(false);
     const run = paintQueue.current.then(async () => {
       if (!live) return;
-      await paintShareCard(el, { frame, ground, card, tagline, accent, photo });
-      if (!live) return;
-      const blob = await toBlob(el);
-      if (!live || !blob) return;
-      setPendingFile(
-        new File([blob], `${filename}.png`, { type: "image/png" }),
-      );
+      try {
+        await paintShareCard(el, {
+          frame,
+          ground,
+          card,
+          tagline,
+          accent,
+          photo,
+        });
+        if (!live) return;
+        const blob = await toBlob(el);
+        if (!live) return;
+        if (!blob) throw new Error("canvas produced no image");
+        setPendingFile(
+          new File([blob], `${filename}.png`, { type: "image/png" }),
+        );
+      } catch {
+        // A 2D context or an export can fail outright (iOS Safari under
+        // memory pressure on a 1080×1920 canvas). Say so and leave Share/Save
+        // disabled rather than handing the user a blank card.
+        if (live) setPaintFailed(true);
+      }
     });
     // Superseded paints are skipped, not aborted mid-draw — chaining keeps a
     // slow earlier run from repainting the canvas after a later one finished.
-    paintQueue.current = run.catch(() => {});
+    paintQueue.current = run;
     return () => {
       live = false;
     };
@@ -503,6 +514,12 @@ export function ShareSheet({
       </div>
 
       <div className="flex shrink-0 flex-col gap-2 border-t border-border p-4 max-md:pb-safe-footer">
+        {paintFailed && (
+          <p className="text-2xs text-neg" data-testid="share-paint-error">
+            This card wouldn't render. Try another frame or ground, or reopen
+            the sheet.
+          </p>
+        )}
         <Button
           variant="primary"
           className="h-14 w-full text-sm"

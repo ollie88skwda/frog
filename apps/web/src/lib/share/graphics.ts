@@ -5,12 +5,12 @@
 // same path geometry as the interactive SVG (components/charts/body-paths.ts)
 // so the two never drift.
 import type { MuscleRegion } from "@frog/core";
-import { regionSetsOf } from "@/components/charts/body-heatmap";
 import {
   type BodyView,
   NEUTRAL_PARTS,
   opacityFor,
   PART,
+  regionSetsOf,
   VIEW_REGIONS,
 } from "@/components/charts/body-paths";
 import type { Palette } from "./grounds";

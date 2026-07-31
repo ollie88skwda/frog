@@ -124,6 +124,9 @@ test("post-save summary shows the ordinal, offers a hero-set pick, and shares a 
 test("post-save session slide paints the heavy tagline when the session out-tonnages the trailing average", async ({
   page,
 }) => {
+  // Three full log-and-finish sessions, two library adds and three 1080×1920
+  // canvas paints — well past the config's 30 s default on a loaded runner.
+  test.setTimeout(120_000);
   const evidenceDir = process.env.E2E_EVIDENCE_DIR;
   if (evidenceDir) mkdirSync(evidenceDir, { recursive: true });
 

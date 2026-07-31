@@ -46,7 +46,9 @@ export async function paintShareCard(
   canvas.width = frame.w;
   canvas.height = frame.h;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  // Throw rather than return quietly: a caller that exported the untouched
+  // canvas anyway would hand the user a fully transparent PNG.
+  if (!ctx) throw new Error("2D canvas context unavailable");
   // The Photo ground paints no background of its own (palette `bg: null`), so
   // without a photo it would leave the card fully transparent and its white
   // ink invisible. Dark is the readable stand-in until one is picked.
@@ -460,7 +462,7 @@ export async function paintBrandOg(canvas: HTMLCanvasElement) {
   canvas.width = frame.w;
   canvas.height = frame.h;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return;
+  if (!ctx) throw new Error("2D canvas context unavailable");
   const p = paletteFor("green", "#131426");
 
   ctx.fillStyle = p.bg as string;

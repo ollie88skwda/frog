@@ -1,4 +1,4 @@
-import type { MuscleRegion } from "@frog/core";
+import { type MuscleRegion, regionOf } from "@frog/core";
 
 // Shared front/back figure geometry — the ONE copy of these path strings.
 // `body-heatmap.tsx` (interactive SVG) and `lib/share/graphics.ts` (canvas
@@ -71,4 +71,23 @@ export const REGION_ORDER: MuscleRegion[] = [
 export function opacityFor(value: number, max: number): number {
   if (value <= 0) return 0;
   return 0.15 + 0.7 * Math.min(1, value / max);
+}
+
+/** Roll per-muscle set counts up to the six coarse regions. */
+export function regionSetsOf(
+  muscleSets: Record<string, number>,
+): Record<MuscleRegion, number> {
+  const out = {
+    chest: 0,
+    back: 0,
+    legs: 0,
+    shoulders: 0,
+    arms: 0,
+    core: 0,
+  } as Record<MuscleRegion, number>;
+  for (const [muscle, n] of Object.entries(muscleSets)) {
+    const region = regionOf(muscle);
+    if (region) out[region] += n;
+  }
+  return out;
 }

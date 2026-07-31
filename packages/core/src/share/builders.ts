@@ -9,6 +9,7 @@ import { MUSCLE_REGION_LABELS } from "../domain/anatomy";
 import type { ExerciseType } from "../domain/exercise-types";
 import {
   formatVolume,
+  formatVolumeNumber,
   formatWeight,
   toDisplayWeight,
   unitLabel,
@@ -102,7 +103,10 @@ function findHeroSet(
   return block && set ? { block, set, score: [0, 0, 0, 0] } : null;
 }
 
-function formatHeroSet(
+/** The hero slot for one set. Exported because the share sheet's headline-set
+ * picker labels each chip with the very number the card will paint once it is
+ * tapped — two hand-written copies of this precedence would drift. */
+export function formatHeroSet(
   block: SessionCardBlock,
   set: SessionCardSet,
   unit: Unit,
@@ -391,7 +395,7 @@ export function buildYearCard(input: {
     kind: "year",
     eyebrow: String(review.year),
     hero: {
-      value: formatVolume(review.volumeKg, unit).split(" ")[0],
+      value: formatVolumeNumber(review.volumeKg, unit),
       unit: unitLabel(unit),
     },
     support: [
