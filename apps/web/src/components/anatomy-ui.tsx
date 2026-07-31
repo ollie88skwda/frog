@@ -18,8 +18,13 @@ const TIER_NAME_CLASS: Record<Tier, string> = {
   C: "text-faint",
 };
 
+// Untiered (no rating for this muscle — 862 of 882 seed rows, and every
+// hand-added custom exercise) must never read as tier S ("Best"): it means
+// "unrated", not "top-rated". Rank it visually below C, not above it.
+const UNTIERED_NAME_CLASS = "text-faint";
+
 export function tierNameClass(tier: Tier | null | undefined): string {
-  return tier ? TIER_NAME_CLASS[tier] : "text-ink";
+  return tier ? TIER_NAME_CLASS[tier] : UNTIERED_NAME_CLASS;
 }
 
 // Key explaining the name-brightness scale. Brighter = better exercise.

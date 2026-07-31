@@ -48,6 +48,15 @@ import type {
 
 type Row = Record<string, unknown>;
 
+// Library/picker list rows never render `instructions`/`image_urls` — those
+// are How-to-tab-only (exercise-detail.tsx) — yet `select()` downloaded them
+// on every cold load (734 kB of the ~1.17 MB payload on the seeded library).
+// getExercise()/useExercise() fetch the fat fields for one row on demand.
+const LIST_COLUMNS =
+  "id, created_at, updated_at, deleted_at, owner_id, name, tags, is_custom, " +
+  "machine_id, joint_actions, muscle_targets, image_url, image_attribution, " +
+  "exercise_type, equipment";
+
 // PostgREST speaks snake_case; the app speaks the schema's camelCase types.
 function toExercise(r: Row): Exercise {
   return {
@@ -463,11 +472,27 @@ export class SupabaseRepo implements Repo {
   async listExercises(): Promise<Exercise[]> {
     const { data, error } = await this.client
       .from("exercises")
-      .select()
+      .select(LIST_COLUMNS)
       .is("deleted_at", null)
       .order("name");
     throwIf(error);
-    return (data as Row[]).map(toExercise);
+    // The untyped column-list string can't be validated against a generated
+    // schema (this client has none), so supabase-js falls back to an error
+    // sentinel type here rather than Row[] — safe to cast, same as every
+    // other hand-written `.select("…")` in this file.
+    return (data as unknown as Row[]).map(toExercise);
+  }
+
+  /** Fat fields (instructions, imageUrls, notes) for one exercise — see B2. */
+  async getExercise(id: string): Promise<Exercise | null> {
+    const { data, error } = await this.client
+      .from("exercises")
+      .select()
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    throwIf(error);
+    return data ? toExercise(data as Row) : null;
   }
 
   async startSession(title?: string): Promise<Session> {

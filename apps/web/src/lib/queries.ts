@@ -58,6 +58,21 @@ export function useExercises() {
   });
 }
 
+// Full row (instructions/imageUrls included) for exercise-detail — the
+// cached list row (already loaded for every screen behind this one) is the
+// placeholder, so the header paints instantly while the fat fields arrive.
+export function useExercise(id: string) {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: ["exercise", id],
+    queryFn: () => repo.getExercise(id),
+    placeholderData: () =>
+      qc.getQueryData<Exercise[]>(["exercises"])?.find((e) => e.id === id) ??
+      undefined,
+  });
+}
+
 // Bulk add fires one create per name, so creates run concurrently. Counted
 // here rather than read back off the mutation cache: a mutation is still
 // `pending` while its own `onSettled` runs, so two creates settling in the

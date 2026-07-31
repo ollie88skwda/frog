@@ -31,7 +31,7 @@ import { type ChartPoint, LineChart } from "@/components/charts/line";
 import { ShareButton } from "@/components/share-sheet";
 import { formatDate, formatDateTime, formatMMSS } from "@/lib/format";
 import { useUserPrefs } from "@/lib/profile-queries";
-import { useCreateExercise, useExercises } from "@/lib/queries";
+import { useCreateExercise, useExercise } from "@/lib/queries";
 import { type RecordsData, useRecordsData } from "@/lib/records-queries";
 import {
   type DistanceUnit,
@@ -59,12 +59,10 @@ export default function ExerciseDetailScreen() {
   const { t } = useVoice();
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { data: exercises = [], isLoading: exLoading } = useExercises();
+  const { data: exercise, isLoading: exLoading } = useExercise(id);
   const { data: recordsData, isLoading: recLoading } = useRecordsData();
   const { unit } = useUnit();
   const [tab, setTab] = useState<Tab>("summary");
-
-  const exercise = exercises.find((e) => e.id === id);
 
   if (exLoading || recLoading) {
     return (
@@ -637,9 +635,8 @@ function MoreMenu({ exercise }: { exercise: Exercise }) {
   const [open, setOpen] = useState(false);
 
   // Clone into a fresh custom exercise with NO history (Hevy: the "reset an
-  // exercise's stats" mechanism). Carries the classification + type + equipment;
-  // instructions/images are not carried (createExercise doesn't persist them —
-  // reported as a core gap).
+  // exercise's stats" mechanism). Carries the classification + type +
+  // equipment + how-to content.
   async function duplicate() {
     setOpen(false);
     const copy = await create.mutateAsync({
@@ -649,6 +646,8 @@ function MoreMenu({ exercise }: { exercise: Exercise }) {
         jointActions: exercise.jointActions,
         exerciseType: exercise.exerciseType,
         equipment: exercise.equipment,
+        instructions: exercise.instructions,
+        imageUrls: exercise.imageUrls,
       },
     });
     navigate(`/exercises/${copy.id}`);

@@ -196,7 +196,10 @@ export type RoutineDetail = {
  */
 export interface Repo {
   createExercise(name: string, opts?: NewExerciseOpts): Promise<Exercise>;
+  /** Narrow columns only — excludes instructions/imageUrls (see getExercise). */
   listExercises(): Promise<Exercise[]>;
+  /** Full row, including the How-to-tab-only fields listExercises omits. */
+  getExercise(id: string): Promise<Exercise | null>;
 
   // Machines: the user's gym equipment — settings entered once, shown in
   // every session (setup memory). No seed machines; all rows owner-scoped.

@@ -40,6 +40,10 @@ The user's gym equipment — settings entered once, recalled in every session.
 | muscle_targets | jsonb | `{muscle, tier}[]`; first = primary (library grouping) |
 | image_url | text? | reference diagram (seed rows only) |
 | image_attribution | text? | image credit |
+| exercise_type | text | measurement type (`domain/exercise-types.ts`); immutable once sets exist |
+| equipment | text? | `barbell` \| `ez_bar` \| `dumbbell` \| `kettlebell` \| `machine` \| `cable` \| `band` \| `suspension` \| `bodyweight` \| `plate` \| `other` |
+| instructions | jsonb? | string[], how-to steps (detail screen only) |
+| image_urls | jsonb? | string[], how-to frames (detail screen only) |
 | owner_id | uuid? | null = global seed |
 | created_at / updated_at / deleted_at | bigint ms | |
 
