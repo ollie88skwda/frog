@@ -103,6 +103,11 @@ function findHeroSet(
   return block && set ? { block, set, score: [0, 0, 0, 0] } : null;
 }
 
+/** The hero unit slot for a duration set. Unlike "kg × 3" / "reps" / "m" this
+ * is a descriptor rather than an inline unit — an mm:ss value already reads as
+ * a time — so surfaces that print value and unit on one line drop it. */
+export const HERO_DURATION_UNIT = "time";
+
 /** The hero slot for one set. Exported because the share sheet's headline-set
  * picker labels each chip with the very number the card will paint once it is
  * tapped — two hand-written copies of this precedence would drift. */
@@ -128,7 +133,11 @@ export function formatHeroSet(
     };
   }
   if (set.durationSec != null && set.durationSec > 0) {
-    return { caption, value: formatSetMMSS(set.durationSec), unit: "time" };
+    return {
+      caption,
+      value: formatSetMMSS(set.durationSec),
+      unit: HERO_DURATION_UNIT,
+    };
   }
   if (set.distanceM != null && set.distanceM > 0) {
     return { caption, value: String(Math.round(set.distanceM)), unit: "m" };

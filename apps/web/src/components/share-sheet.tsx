@@ -4,7 +4,7 @@ import type {
   SessionSetRef,
   ShareCard,
 } from "@frog/core";
-import { formatHeroSet } from "@frog/core";
+import { formatHeroSet, HERO_DURATION_UNIT } from "@frog/core";
 import { Camera, Download, Share2, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -43,7 +43,9 @@ function heroSetLabel(
     // The chip states exactly what the card will paint once it is tapped —
     // same formatter, so the two can never disagree.
     const hero = formatHeroSet(block, s, unit);
-    const value = hero.unit ? `${hero.value} ${hero.unit}` : hero.value;
+    const inlineUnit =
+      hero.unit === HERO_DURATION_UNIT ? "" : (hero.unit ?? "");
+    const value = inlineUnit ? `${hero.value} ${inlineUnit}` : hero.value;
     return {
       id: `${block.exerciseId}:${s.id}`,
       setId: s.id,
