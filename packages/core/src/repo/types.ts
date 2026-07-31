@@ -109,6 +109,14 @@ export type NewExerciseOpts = {
   /** How-to content — carried over by duplicate-exercise. */
   instructions?: string[] | null;
   imageUrls?: string[] | null;
+  mechanic?: string | null;
+  movementPattern?: string | null;
+  laterality?: string | null;
+  defaultRepsMin?: number | null;
+  defaultRepsMax?: number | null;
+  defaultRestSec?: number | null;
+  notes?: string | null;
+  aliases?: string[] | null;
 };
 
 export type ExerciseClassification = {
@@ -223,6 +231,20 @@ export interface Repo {
   uploadMachinePhoto(machineId: string, file: Blob): Promise<void>;
   /** Short-lived signed URL for the machine's photo, or null if none. */
   machinePhotoUrl(machine: Machine): Promise<string | null>;
+
+  /**
+   * Uploads a user demo image (already resized) or video for a custom
+   * exercise and stores its path + kind. Custom exercises only.
+   */
+  uploadExerciseMedia(
+    exerciseId: string,
+    file: Blob,
+    kind: "image" | "video",
+  ): Promise<void>;
+  /** Short-lived signed URL for the exercise's demo media, or null if none. */
+  exerciseMediaUrl(exercise: Exercise): Promise<string | null>;
+  /** Removes the stored object and clears the exercise's media fields. */
+  clearExerciseMedia(exerciseId: string): Promise<void>;
 
   startSession(title?: string): Promise<Session>;
   /** Stamps ended_at. Active session = ended_at null. */

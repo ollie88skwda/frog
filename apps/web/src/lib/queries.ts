@@ -109,6 +109,16 @@ function optimisticExercise(
     equipment: opts?.equipment ?? null,
     instructions: null,
     imageUrls: null,
+    mechanic: opts?.mechanic ?? null,
+    movementPattern: opts?.movementPattern ?? null,
+    laterality: opts?.laterality ?? null,
+    defaultRepsMin: opts?.defaultRepsMin ?? null,
+    defaultRepsMax: opts?.defaultRepsMax ?? null,
+    defaultRestSec: opts?.defaultRestSec ?? null,
+    notes: opts?.notes ?? null,
+    aliases: opts?.aliases ?? null,
+    mediaPath: null,
+    mediaType: null,
   };
 }
 
@@ -490,6 +500,45 @@ export function useMachinePhotoUrl(machine: Machine | null | undefined) {
     queryKey: ["machine-photo", machine?.id, machine?.photoPath],
     queryFn: () => (machine ? repo.machinePhotoUrl(machine) : null),
     enabled: !!machine?.photoPath,
+    staleTime: 45 * 60_000, // signed URLs live an hour
+  });
+}
+
+export function useUploadExerciseMedia() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      exerciseId: string;
+      file: Blob;
+      kind: "image" | "video";
+    }) => repo.uploadExerciseMedia(input.exerciseId, input.file, input.kind),
+    // Off the logging hot path — no optimistic write; thumbnail appears on settle.
+    onSettled: (_d, _e, { exerciseId }) => {
+      void qc.invalidateQueries({ queryKey: ["exercise", exerciseId] });
+      void qc.invalidateQueries({ queryKey: ["exercise-media", exerciseId] });
+    },
+  });
+}
+
+export function useClearExerciseMedia() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (exerciseId: string) => repo.clearExerciseMedia(exerciseId),
+    onSettled: (_d, _e, exerciseId) => {
+      void qc.invalidateQueries({ queryKey: ["exercise", exerciseId] });
+      void qc.invalidateQueries({ queryKey: ["exercise-media", exerciseId] });
+    },
+  });
+}
+
+export function useExerciseMediaUrl(exercise: Exercise | null | undefined) {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["exercise-media", exercise?.id, exercise?.mediaPath],
+    queryFn: () => (exercise ? repo.exerciseMediaUrl(exercise) : null),
+    enabled: !!exercise?.mediaPath,
     staleTime: 45 * 60_000, // signed URLs live an hour
   });
 }

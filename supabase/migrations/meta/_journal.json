@@ -85,6 +85,13 @@
       "when": 1785539460620,
       "tag": "20260731231100_pink_brother_voodoo",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785544340549,
+      "tag": "20260801003220_magenta_enchantress",
+      "breakpoints": true
     }
   ]
 }

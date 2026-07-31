@@ -52,10 +52,14 @@ type Row = Record<string, unknown>;
 // are How-to-tab-only (exercise-detail.tsx) — yet `select()` downloaded them
 // on every cold load (734 kB of the ~1.17 MB payload on the seeded library).
 // getExercise()/useExercise() fetch the fat fields for one row on demand.
+// excluded: instructions, image_urls, notes, media_path, media_type — detail
+// screen only (media_path/media_type also cost a signed-URL round trip; not
+// worth paying for on ~900 rows only to render a thumbnail nobody asked for).
 const LIST_COLUMNS =
   "id, created_at, updated_at, deleted_at, owner_id, name, tags, is_custom, " +
   "machine_id, joint_actions, muscle_targets, image_url, image_attribution, " +
-  "exercise_type, equipment";
+  "exercise_type, equipment, mechanic, movement_pattern, laterality, " +
+  "default_reps_min, default_reps_max, default_rest_sec, aliases";
 
 // PostgREST speaks snake_case; the app speaks the schema's camelCase types.
 function toExercise(r: Row): Exercise {
@@ -77,6 +81,16 @@ function toExercise(r: Row): Exercise {
     equipment: (r.equipment as string | null) ?? null,
     instructions: (r.instructions as string[] | null) ?? null,
     imageUrls: (r.image_urls as string[] | null) ?? null,
+    mechanic: (r.mechanic as string | null) ?? null,
+    movementPattern: (r.movement_pattern as string | null) ?? null,
+    laterality: (r.laterality as string | null) ?? null,
+    defaultRepsMin: (r.default_reps_min as number | null) ?? null,
+    defaultRepsMax: (r.default_reps_max as number | null) ?? null,
+    defaultRestSec: (r.default_rest_sec as number | null) ?? null,
+    notes: (r.notes as string | null) ?? null,
+    aliases: (r.aliases as string[] | null) ?? null,
+    mediaPath: (r.media_path as string | null) ?? null,
+    mediaType: (r.media_type as string | null) ?? null,
   };
 }
 
@@ -343,6 +357,14 @@ export class SupabaseRepo implements Repo {
       equipment: opts?.equipment ?? null,
       instructions: opts?.instructions?.length ? opts.instructions : null,
       image_urls: opts?.imageUrls?.length ? opts.imageUrls : null,
+      mechanic: opts?.mechanic ?? null,
+      movement_pattern: opts?.movementPattern ?? null,
+      laterality: opts?.laterality ?? null,
+      default_reps_min: opts?.defaultRepsMin ?? null,
+      default_reps_max: opts?.defaultRepsMax ?? null,
+      default_rest_sec: opts?.defaultRestSec ?? null,
+      notes: opts?.notes ?? null,
+      aliases: opts?.aliases?.length ? opts.aliases : null,
     };
     const { data, error } = await this.client
       .from("exercises")
@@ -465,6 +487,58 @@ export class SupabaseRepo implements Repo {
     const { data, error } = await this.client.storage
       .from("machine-photos")
       .createSignedUrl(machine.photoPath, 60 * 60);
+    throwIf(error);
+    return data?.signedUrl ?? null;
+  }
+
+  async uploadExerciseMedia(
+    exerciseId: string,
+    file: Blob,
+    kind: "image" | "video",
+  ): Promise<void> {
+    const uid = await this.ownerId();
+    // Image is always resized to JPEG client-side (lib/photo.ts); video is
+    // uploaded as-is, so keep its own content type for correct playback.
+    const path = `${uid}/${exerciseId}.${kind === "image" ? "jpg" : "mp4"}`;
+    const { error: uploadError } = await this.client.storage
+      .from("exercise-media")
+      .upload(path, file, {
+        upsert: true,
+        contentType: kind === "image" ? "image/jpeg" : file.type || "video/mp4",
+      });
+    throwIf(uploadError);
+    const { error } = await this.client
+      .from("exercises")
+      .update({ media_path: path, media_type: kind, updated_at: Date.now() })
+      .eq("id", exerciseId);
+    throwIf(error);
+  }
+
+  async clearExerciseMedia(exerciseId: string): Promise<void> {
+    const { data, error: readError } = await this.client
+      .from("exercises")
+      .select("media_path")
+      .eq("id", exerciseId)
+      .limit(1);
+    throwIf(readError);
+    const path =
+      ((data as Row[] | null)?.[0]?.media_path as string | null) ?? null;
+    if (path) {
+      // Best-effort object removal; the row update is the source of truth.
+      await this.client.storage.from("exercise-media").remove([path]);
+    }
+    const { error } = await this.client
+      .from("exercises")
+      .update({ media_path: null, media_type: null, updated_at: Date.now() })
+      .eq("id", exerciseId);
+    throwIf(error);
+  }
+
+  async exerciseMediaUrl(exercise: Exercise): Promise<string | null> {
+    if (!exercise.mediaPath) return null;
+    const { data, error } = await this.client.storage
+      .from("exercise-media")
+      .createSignedUrl(exercise.mediaPath, 60 * 60);
     throwIf(error);
     return data?.signedUrl ?? null;
   }
