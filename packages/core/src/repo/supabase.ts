@@ -517,6 +517,11 @@ export class SupabaseRepo implements Repo {
     // Image is always resized to JPEG client-side (lib/photo.ts); video is
     // uploaded as-is, so keep its own content type for correct playback.
     const path = `${uid}/${exerciseId}.${kind === "image" ? "jpg" : "mp4"}`;
+    // Swapping a demo image for a clip (or back) writes a different key, so
+    // `upsert` can't replace the old object and the row keeps only the new
+    // path — the previous file would sit in the bucket with nothing pointing
+    // at it. Read what it is replacing before the row moves on.
+    const previous = await this.exerciseMediaPath(exerciseId);
     const { error: uploadError } = await this.client.storage
       .from("exercise-media")
       .upload(path, file, {
@@ -529,17 +534,25 @@ export class SupabaseRepo implements Repo {
       .update({ media_path: path, media_type: kind, updated_at: Date.now() })
       .eq("id", exerciseId);
     throwIf(error);
+    if (previous && previous !== path) {
+      // Best-effort, same as clearExerciseMedia: the row already points at the
+      // new object, so a failed removal costs storage, not correctness.
+      await this.client.storage.from("exercise-media").remove([previous]);
+    }
   }
 
-  async clearExerciseMedia(exerciseId: string): Promise<void> {
-    const { data, error: readError } = await this.client
+  private async exerciseMediaPath(exerciseId: string): Promise<string | null> {
+    const { data, error } = await this.client
       .from("exercises")
       .select("media_path")
       .eq("id", exerciseId)
       .limit(1);
-    throwIf(readError);
-    const path =
-      ((data as Row[] | null)?.[0]?.media_path as string | null) ?? null;
+    throwIf(error);
+    return ((data as Row[] | null)?.[0]?.media_path as string | null) ?? null;
+  }
+
+  async clearExerciseMedia(exerciseId: string): Promise<void> {
+    const path = await this.exerciseMediaPath(exerciseId);
     if (path) {
       // Best-effort object removal; the row update is the source of truth.
       await this.client.storage.from("exercise-media").remove([path]);

@@ -261,7 +261,7 @@ export default function RoutineEditScreen() {
   const [creatingFor, setCreatingFor] = useState<UnmatchedLine | null>(null);
   const [pendingTwinCreate, setPendingTwinCreate] = useState<{
     id: string;
-    forName: string;
+    forRawName: string;
   } | null>(null);
 
   const byId = useMemo(
@@ -494,7 +494,7 @@ export default function RoutineEditScreen() {
     // the row we just created rather than leaving a button that
     // duplicates it.
     const twins = unmatchedRef.current.filter((x) =>
-      sameExerciseName(x.rawName, pendingTwinCreate.forName),
+      sameExerciseName(x.rawName, pendingTwinCreate.forRawName),
     );
     setDrafts((prev) => [
       ...(prev ?? []),
@@ -502,7 +502,7 @@ export default function RoutineEditScreen() {
     ]);
     setUnmatched((prev) =>
       prev.filter(
-        (x) => !sameExerciseName(x.rawName, pendingTwinCreate.forName),
+        (x) => !sameExerciseName(x.rawName, pendingTwinCreate.forRawName),
       ),
     );
     setPendingTwinCreate(null);
@@ -1130,7 +1130,13 @@ export default function RoutineEditScreen() {
         onOpenChange={(o) => !o && setCreatingFor(null)}
         mode="create"
         initialName={creatingFor?.rawName ?? ""}
-        onCreated={(id, name) => setPendingTwinCreate({ id, forName: name })}
+        onCreated={(id) => {
+          // The pasted line, not the name the user saved: the unmatched list
+          // is keyed by raw line, so a corrected spelling in the sheet would
+          // match none of it and silently resolve nothing.
+          if (creatingFor)
+            setPendingTwinCreate({ id, forRawName: creatingFor.rawName });
+        }}
       />
 
       <Dialog

@@ -101,8 +101,10 @@ export const exercises = pgTable(
     // The user's own note about the exercise itself (setup, cue, "left
     // knee") — rendered read-only under the block header in a session.
     notes: text("notes"),
-    // Alternate names the fuzzy matcher and search also accept, normalized
-    // on write with normalizeExerciseName (domain/match-exercise).
+    // Alternate names the fuzzy matcher and search also accept. Stored as the
+    // user typed them (trimmed only) — normalizeExerciseName runs over every
+    // label at match time (domain/match-exercise), so anything reading this
+    // column directly must normalize before comparing.
     aliases: jsonb("aliases").$type<string[]>(),
     // User-uploaded demo image/video (captain's call: real storage, not a
     // URL field) — path in the private exercise-media bucket, resized

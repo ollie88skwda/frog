@@ -151,10 +151,20 @@ function addExerciseRows(qc: QueryClient, rows: Exercise[]) {
 // Puts every name on screen in one write, before any insert is dispatched —
 // bulk add bounds its network fan-out, and the user must not watch their paste
 // trickle in one worker slot at a time. Returns the ids to create under.
+//
+// Also the only way to register a row as pending *synchronously*: TanStack
+// awaits `onMutate`, so a create dispatched from a click is not in the pending
+// registry until a microtask later — one render too late for the FK guards
+// that read it (the session picker's auto-pick). Any create whose id is handed
+// straight to a consumer must seed here first; `useCreateExercise.onMutate` is
+// idempotent by id, so the two together write the row exactly once. Pass the
+// same `opts` the create gets, or the optimistic row loses them.
 export function useSeedExercises() {
   const qc = useQueryClient();
-  return (names: string[]) => {
-    const rows = names.map((name) => optimisticExercise(newId(), name));
+  return (items: { name: string; opts?: NewExerciseOpts }[]) => {
+    const rows = items.map(({ name, opts }) =>
+      optimisticExercise(opts?.id ?? newId(), name, opts),
+    );
     addExerciseRows(qc, rows);
     markExercisesPending(rows);
     return rows.map(({ id, name }) => ({ id, name }));

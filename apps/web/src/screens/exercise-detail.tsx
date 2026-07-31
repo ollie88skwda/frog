@@ -66,7 +66,11 @@ export default function ExerciseDetailScreen() {
   const { t } = useVoice();
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { data: exercise, isLoading: exLoading } = useExercise(id);
+  const {
+    data: exercise,
+    isLoading: exLoading,
+    isPlaceholderData,
+  } = useExercise(id);
   const { data: recordsData, isLoading: recLoading } = useRecordsData();
   const { unit } = useUnit();
   const [tab, setTab] = useState<Tab>("summary");
@@ -136,7 +140,7 @@ export default function ExerciseDetailScreen() {
             {primary && <span>· {muscleLabel(primary)}</span>}
           </p>
         </div>
-        <MoreMenu exercise={exercise} />
+        <MoreMenu exercise={exercise} partial={isPlaceholderData} />
       </div>
 
       <div className="mt-4 flex gap-1">
@@ -636,7 +640,16 @@ function HowToTab({ exercise }: { exercise: Exercise }) {
 }
 
 // ── ⋯ menu: edit (custom) / duplicate exercise ──────────────────────────────
-function MoreMenu({ exercise }: { exercise: Exercise }) {
+function MoreMenu({
+  exercise,
+  partial,
+}: {
+  exercise: Exercise;
+  /** True while `exercise` is still the narrow list row (LIST_COLUMNS): the
+   * screen paints off that placeholder, and it has no instructions/imageUrls
+   * to copy. Edit is unaffected — the sheet fetches the full row itself. */
+  partial: boolean;
+}) {
   const create = useCreateExercise();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -698,8 +711,10 @@ function MoreMenu({ exercise }: { exercise: Exercise }) {
             )}
             <button
               type="button"
+              disabled={partial}
+              title={partial ? "Still loading this exercise" : undefined}
               onClick={() => void duplicate()}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
               data-testid="exercise-duplicate"
             >
               <Copy className="size-3.5" />

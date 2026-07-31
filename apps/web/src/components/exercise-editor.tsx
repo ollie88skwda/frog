@@ -42,6 +42,7 @@ import {
   useExercises,
   useLastSets,
   useMachines,
+  useSeedExercises,
   useUpdateExercise,
   useUploadExerciseMedia,
 } from "@/lib/queries";
@@ -54,6 +55,16 @@ const MEDIA_MAX_DIM = 1280; // matches machine/progress photo precedent
 // the exercise-media bucket's own file_size_limit — refuse it here, where the
 // sheet is still open to say so, rather than letting storage reject it after.
 const MEDIA_MAX_BYTES = 50 * 1024 * 1024;
+// Some pickers hand back a File with an empty or unrecognised `type` (the
+// Android "Files" provider, .mov/.heic outside Safari), so the MIME type alone
+// can't decide this — a clip classed as an image goes to the image decoder and
+// fails there instead.
+const VIDEO_EXTENSION = /\.(mp4|m4v|mov|webm|ogv|avi|mkv|3gp)$/i;
+function mediaKind(file: File): "image" | "video" {
+  if (file.type.startsWith("video/")) return "video";
+  if (file.type.startsWith("image/")) return "image";
+  return VIDEO_EXTENSION.test(file.name) ? "video" : "image";
+}
 
 export type ExerciseEditorProps = {
   open: boolean;
@@ -83,6 +94,7 @@ export function ExerciseEditor({
   const { data: machines = [] } = useMachines();
   const { data: history = [] } = useLastSets(exercise?.id ?? "");
   const create = useCreateExercise();
+  const seedExercises = useSeedExercises();
   const update = useUpdateExercise();
   const uploadMedia = useUploadExerciseMedia();
   const clearMedia = useClearExerciseMedia();
@@ -218,11 +230,18 @@ export function ExerciseEditor({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    const kind: "image" | "video" = file.type.startsWith("video/")
-      ? "video"
-      : "image";
-    const blob =
-      kind === "image" ? await resizePhoto(file, MEDIA_MAX_DIM) : file;
+    const kind = mediaKind(file);
+    let blob: Blob = file;
+    if (kind === "image") {
+      try {
+        blob = await resizePhoto(file, MEDIA_MAX_DIM);
+      } catch {
+        setMediaError(
+          "Couldn't read that file — pick a photo or a video clip.",
+        );
+        return;
+      }
+    }
     if (blob.size > MEDIA_MAX_BYTES) {
       setMediaError(
         `That ${kind} is ${Math.round(blob.size / (1024 * 1024))} MB — the limit is 50 MB. Trim it and try again.`,
@@ -276,8 +295,13 @@ export function ExerciseEditor({
     if (mode === "create") {
       const id = newId();
       const staged = pendingMedia;
+      const opts = { id, ...buildOpts() };
+      // Synchronously, before dispatch: `onCreated` below hands this id to
+      // consumers that write it as a foreign key the moment it stops being
+      // pending, and `onMutate` doesn't run until a microtask later.
+      seedExercises([{ name: trimmed, opts }]);
       create
-        .mutateAsync({ name: trimmed, opts: { id, ...buildOpts() } })
+        .mutateAsync({ name: trimmed, opts })
         .then(() => {
           if (staged) {
             uploadMedia.mutate({

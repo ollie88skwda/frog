@@ -381,7 +381,7 @@ function BulkAddDialog({
     setOpen(false);
     const runId = startBulkAddRun();
     // Every row lands now; only the inserts behind them are bounded.
-    const queued = seedExercises(toCreate);
+    const queued = seedExercises(toCreate.map((name) => ({ name })));
     void runBounded(queued, ({ id, name }) =>
       // A user change mid-run retires the run: the names belong to the account
       // that pasted them, and the pool would otherwise insert the rest into
