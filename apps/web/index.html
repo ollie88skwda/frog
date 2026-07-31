@@ -14,6 +14,33 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Frog" />
+    <!-- og:title/og:site_name/twitter:title are checked against APP_NAME by
+         scripts/gen-og-image.ts (packages/core/src/config.ts is the source of
+         truth; index.html can't import it — see AGENTS.md "The name") — a
+         rebrand that only changes APP_NAME will fail that check until these
+         are updated by hand. og:image is a static brand card (Green ground,
+         same painter as the share cards), not per-route: this is a
+         client-only SPA with no public read path for a session, so a link
+         unfurl can only ever carry the brand, never a real user's data. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Frog" />
+    <meta property="og:title" content="Frog — a training lab notebook" />
+    <meta
+      property="og:description"
+      content="Log the work and the conditions around it, then see what actually moves the needle."
+    />
+    <meta property="og:url" content="/" />
+    <meta property="og:image" content="/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Frog — a training lab notebook" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Frog — a training lab notebook" />
+    <meta
+      name="twitter:description"
+      content="Log the work and the conditions around it, then see what actually moves the needle."
+    />
+    <meta name="twitter:image" content="/og.png" />
     <script>
       // Set theme before first paint to avoid a flash of the wrong theme.
       // Sets BOTH seams: data-theme (app tokens) and the light/dark class that
