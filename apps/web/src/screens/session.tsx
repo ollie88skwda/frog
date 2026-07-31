@@ -2336,15 +2336,15 @@ function BlockMenu({
 
   return (
     <span className="relative">
-      <button
-        type="button"
+      <Button
+        variant="outline"
+        size="icon-lg"
         onClick={() => setOpen((o) => !o)}
         title="Exercise options"
-        className="rounded-sm p-1 text-faint transition-colors duration-150 hover:text-ink md:p-0.5"
         data-testid={`block-${blockName}-menu`}
       >
         <MoreVertical className="size-4" />
-      </button>
+      </Button>
       {open && (
         <>
           <button
@@ -2815,15 +2815,19 @@ function CommittedRow({
                 .join(" ")}
             </span>
           )}
-          <button
-            type="button"
+          {/* Visible by default on touch, hover-revealed only from `md:` up —
+              the display utilities restore `inline-flex` (the button's own
+              display), not `block`, so the icon stays centred. */}
+          <Button
+            variant="outline"
+            size="icon-lg"
             onClick={openDetails}
             title="Set details"
-            className="rounded-sm p-1 text-faint transition-colors duration-150 hover:text-ink max-md:block md:hidden md:p-0.5 md:group-hover:block"
+            className="md:hidden md:group-hover:inline-flex"
             data-testid={`set-menu-${index}`}
           >
             <MoreHorizontal className="size-4" />
-          </button>
+          </Button>
         </span>
       </div>
 
