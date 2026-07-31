@@ -130,3 +130,57 @@ test("start routine still prefills when the session row resolves after its exerc
   await expect(page.getByTestId("set-0-weight")).toHaveValue("60");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
 });
+
+// Regression: starting a routine with N configured sets used to render only
+// the one active (currently-being-logged) row — the other N-1 were invisible
+// until each prior set was logged, which read as "the routine only kept 1 of
+// my 5 sets." All N are now visible immediately: one editable active row plus
+// read-only "upcoming" previews for the rest, counting down as sets are logged.
+test("start routine materializes every configured set as a visible row, not just the active one", async ({
+  page,
+}) => {
+  const EX = `MaterializeEx ${Date.now()}`;
+  const ROUTINE = `Materialize routine ${Date.now()}`;
+
+  await page.goto("/library");
+  await page.getByTestId("exercise-name-input").fill(EX);
+  await page.getByTestId("add-exercise-btn").click();
+  await waitForExercise(page, EX);
+
+  // 5 identical rep-range sets (6-8), matching the reported repro exactly.
+  await page.goto("/train");
+  await page.getByTestId("new-routine-btn").click();
+  await page.getByTestId("routine-name-input").fill(ROUTINE);
+  await page.getByTestId("routine-add-exercise-btn").click();
+  await page.getByTestId(`routine-pick-${EX}`).click();
+  await page.getByTestId("routine-ex-0-add-set").click(); // 3 → 4
+  await page.getByTestId("routine-ex-0-add-set").click(); // 4 → 5
+  for (let i = 0; i < 5; i++) {
+    await page.getByTestId(`routine-ex-0-set-${i}-reps`).fill("6");
+    await page.getByTestId(`routine-ex-0-set-${i}-repsmax`).fill("8");
+  }
+  await page.getByTestId("routine-save-btn").click();
+  await expect(page).toHaveURL(/\/train$/);
+
+  await page.getByTestId(`routine-start-${ROUTINE}`).click();
+  await expect(page).toHaveURL(/\/session\//);
+
+  // Set 0 is the active, editable row; sets 1-4 are read-only upcoming
+  // previews — all 5 configured sets are on screen with zero user action.
+  await expect(page.getByTestId("set-0-reps")).toBeVisible();
+  for (let i = 1; i < 5; i++) {
+    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
+  }
+
+  // Logging set 0 advances the active row to index 1 and drops it from the
+  // upcoming list — the previously-seeded target isn't left behind or
+  // duplicated, and it isn't something the user had to re-add by hand.
+  await page.getByTestId("set-0-reps").fill("7");
+  await page.getByTestId("set-0-add").click();
+  await expect(page.getByTestId("committed-0")).toBeVisible();
+  await expect(page.getByTestId("set-1-reps")).toBeVisible();
+  await expect(page.getByTestId("upcoming-1-reps")).toHaveCount(0);
+  for (let i = 2; i < 5; i++) {
+    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
+  }
+});
