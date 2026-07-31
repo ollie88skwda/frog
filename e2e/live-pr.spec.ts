@@ -61,4 +61,20 @@ test("beating a prior session raises the PR banner + medal; first log never PRs"
     "Heaviest weight",
   );
   await expect(page.getByTestId("committed-0-medal")).toBeVisible();
+
+  // Regression: the banner used to sit on a ~5% alpha wash (bg-accent-soft),
+  // reading as nearly see-through over whatever scrolled underneath it.
+  const alpha = await page.getByTestId("pr-banner").evaluate((el) => {
+    const bg = getComputedStyle(el).backgroundColor;
+    // Alpha only ever appears after the slash in `color(display-p3 r g b / a)`
+    // or as the 4th slot of legacy `rgba()`. Everything else — `rgb()`, a
+    // slashless `color()` on a P3 display — is opaque, and reading slot 3 of a
+    // blind digit match there would pick up a colour channel instead.
+    const slash = bg.match(/\/\s*([\d.]+)\s*\)$/);
+    if (slash) return Number(slash[1]);
+    const rgba = bg.match(/^rgba\(([^)]*)\)$/);
+    const parts = rgba ? rgba[1].split(",") : [];
+    return parts.length === 4 ? Number(parts[3]) : 1;
+  });
+  expect(alpha).toBe(1);
 });

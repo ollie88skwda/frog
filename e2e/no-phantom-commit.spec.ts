@@ -96,3 +96,34 @@ test("the checkmark commits the filled draft row", async ({ page }) => {
   await expect(page.getByTestId("committed-0")).toBeVisible();
   await expect(page.getByTestId("set-1-weight")).toBeVisible();
 });
+
+test("tapping the checkmark on a touch device commits exactly one set", async ({
+  page,
+}) => {
+  // Regression: on a real touch device, tapping the checkmark while the reps
+  // field still holds focus fires touchstart-driven blur (auto-checkoff)
+  // *and* the button's click — a mousedown-preventDefault guard stops this on
+  // desktop mice, but touch doesn't route through mousedown the same way, so
+  // both `commit()` calls could land as two separate rows without the fix.
+  const EX = `Tap ${Date.now()}`;
+
+  await page.goto("/library");
+  await page.getByTestId("exercise-name-input").fill(EX);
+  await page.getByTestId("add-exercise-btn").click();
+  await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
+  await waitForExercise(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  const before = await rowCount(page, "set_logs");
+  await page.getByTestId("set-0-weight").fill("100");
+  await page.getByTestId("set-0-reps").fill("5");
+  await page.getByTestId("set-0-done").tap();
+
+  await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
+  await expect(page.getByTestId("committed-0")).toBeVisible();
+  await expect(page.getByTestId("committed-1")).not.toBeVisible();
+  await expect(page.getByTestId("set-1-weight")).toBeVisible();
+});

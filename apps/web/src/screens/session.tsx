@@ -241,12 +241,15 @@ function columnsFor(
 }
 
 // `2.5rem` set-number + optional PREVIOUS reference + one flexible column each +
-// `2.5rem` menu gutter, so the header / committed / active rows stay
-// pixel-aligned regardless of type. PREVIOUS only claims space when there's
-// prior/target data to show (blank column suppressed for a brand-new exercise).
+// a menu gutter floored at `2.5rem` (the icon-button size) so the header /
+// committed / active rows stay pixel-aligned regardless of type, and allowed to
+// grow past it for the rows that also carry a modifier preview (`@2 RPE 8`)
+// alongside the button — a fixed track would spill that text past the card edge.
+// PREVIOUS only claims space when there's prior/target data to show (blank
+// column suppressed for a brand-new exercise).
 function gridTemplate(cols: Column[], showPrevious: boolean): string {
   const prev = showPrevious ? "3.5rem " : "";
-  return `2.5rem ${prev}${cols.map(() => "1fr").join(" ")} 2.5rem`;
+  return `2.5rem ${prev}${cols.map(() => "1fr").join(" ")} minmax(2.5rem, auto)`;
 }
 
 // Compact previous-performance string for the PREVIOUS column: weight sans unit
@@ -874,8 +877,12 @@ export default function SessionScreen() {
   }, [blocks]);
 
   const logSet = useMutation({
-    mutationFn: (input: { seId: string; set: CommitInput; tempId: string }) =>
-      repo.logSet(input.seId, input.set),
+    mutationFn: (input: {
+      seId: string;
+      set: CommitInput;
+      tempId: string;
+      setNo: number;
+    }) => repo.logSet(input.seId, input.set, input.tempId, input.setNo),
     // Record the optimistic→real id mapping (edit/delete translate through it).
     // The committed row keeps its optimistic id, so it never remounts here.
     onSuccess: (realId, { tempId }) => {
@@ -925,25 +932,29 @@ export default function SessionScreen() {
       prevAt != null ? Math.round((Date.now() - prevAt) / 1000) : null;
     const withRest = { ...set, restSec };
     const tempId = newId();
+    const block = (blocks ?? []).find((b) => b.seId === seId);
+    // One number for both the optimistic row and the write, so a retry can't
+    // re-derive a different one. High-water mark rather than a count: removing
+    // a set leaves a gap (the row is only soft-deleted server-side), and
+    // reusing its number would collide with a live row.
+    const setNo = (block?.committed ?? []).reduce(
+      (next, s) => Math.max(next, s.setNo + 1),
+      0,
+    );
     setBlocks((prev) =>
       (prev ?? []).map((b) =>
         b.seId === seId
           ? {
               ...b,
-              committed: [
-                ...b.committed,
-                { ...withRest, id: tempId, setNo: b.committed.length },
-              ],
+              committed: [...b.committed, { ...withRest, id: tempId, setNo }],
             }
           : b,
       ),
     );
     setLastCommitByBlock((prev) => ({ ...prev, [seId]: Date.now() }));
-    logSet.mutate({ seId, set: withRest, tempId });
+    logSet.mutate({ seId, set: withRest, tempId, setNo });
     // The uncommitted row is now saved server-side — drop its local draft.
     clearDraft(seId);
-
-    const block = (blocks ?? []).find((b) => b.seId === seId);
 
     // Live PR check against the mount-time bests snapshot (session-scoped types
     // finalize at save; only set-scoped ones fire live).
@@ -1318,46 +1329,26 @@ export default function SessionScreen() {
         />
       )}
       <header className="sticky top-0 z-10 border-b border-border bg-bg">
-        <div className="mx-auto flex h-12 max-w-2xl items-center justify-between gap-3 px-4">
+        {/* Title row: title + finish + mic only — everything else (duration,
+            time-since-last-set) lives in the subheader row below so the title
+            keeps its full width instead of wrapping around header metadata. */}
+        <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-3 px-4">
           <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">
             {session?.title ?? "Session"}
           </h1>
           <div className="flex shrink-0 items-center gap-2">
-            {session && (
-              <SessionDurationControl
-                startedAt={session.startedAt}
-                endedAt={session.endedAt}
-                paused={paused}
-                pausedMs={pausedMs}
-                pauseStartedAt={pauseStartedAt}
-                onTogglePause={togglePause}
-                onEditStart={(ms) => {
-                  void repo.updateSessionStartedAt(sessionId, ms);
-                  qc.setQueryData<Session | null>(
-                    ["session", sessionId],
-                    (old) => (old ? { ...old, startedAt: ms } : old),
-                  );
-                }}
-              />
-            )}
-            <RestTimer since={lastCommitAt} />
             {speechSupported && (
               <span className="relative flex items-center">
-                <button
-                  type="button"
+                <Button
+                  variant={listening ? "primary" : "outline"}
+                  size="icon-lg"
                   onClick={listening ? stopListening : startListening}
                   title={listening ? "Stop listening" : "Log a set by voice"}
                   aria-pressed={listening}
-                  className={cn(
-                    "flex size-10 shrink-0 items-center justify-center rounded-md border border-border transition-colors duration-100 md:size-8",
-                    listening
-                      ? "bg-accent text-accent-fg"
-                      : "bg-surface-2 text-soft hover:bg-surface-hover hover:text-ink",
-                  )}
                   data-testid="voice-log-mic"
                 >
                   <Mic className="size-4" />
-                </button>
+                </Button>
                 {/* Always mounted: a live region that enters the DOM with its
                     text already in it is routinely missed by screen readers. */}
                 <span
@@ -1372,7 +1363,7 @@ export default function SessionScreen() {
               </span>
             )}
             <Button
-              size="sm"
+              size="lg"
               onClick={() => setFinishOpen(true)}
               title="Finish session (e)"
               data-testid="end-session-btn"
@@ -1381,6 +1372,26 @@ export default function SessionScreen() {
               Finish
             </Button>
           </div>
+        </div>
+        <div className="mx-auto flex max-w-2xl items-center gap-2 border-t border-border px-4 py-1.5">
+          {session && (
+            <SessionDurationControl
+              startedAt={session.startedAt}
+              endedAt={session.endedAt}
+              paused={paused}
+              pausedMs={pausedMs}
+              pauseStartedAt={pauseStartedAt}
+              onTogglePause={togglePause}
+              onEditStart={(ms) => {
+                void repo.updateSessionStartedAt(sessionId, ms);
+                qc.setQueryData<Session | null>(
+                  ["session", sessionId],
+                  (old) => (old ? { ...old, startedAt: ms } : old),
+                );
+              }}
+            />
+          )}
+          <RestTimer since={lastCommitAt} />
         </div>
       </header>
 
@@ -2325,15 +2336,15 @@ function BlockMenu({
 
   return (
     <span className="relative">
-      <button
-        type="button"
+      <Button
+        variant="outline"
+        size="icon-lg"
         onClick={() => setOpen((o) => !o)}
         title="Exercise options"
-        className="rounded-sm p-1 text-faint transition-colors duration-150 hover:text-ink md:p-0.5"
         data-testid={`block-${blockName}-menu`}
       >
         <MoreVertical className="size-4" />
-      </button>
+      </Button>
       {open && (
         <>
           <button
@@ -2804,15 +2815,19 @@ function CommittedRow({
                 .join(" ")}
             </span>
           )}
-          <button
-            type="button"
+          {/* Visible by default on touch, hover-revealed only from `md:` up —
+              the display utilities restore `inline-flex` (the button's own
+              display), not `block`, so the icon stays centred. */}
+          <Button
+            variant="outline"
+            size="icon-lg"
             onClick={openDetails}
             title="Set details"
-            className="rounded-sm p-1 text-faint transition-colors duration-150 hover:text-ink max-md:block md:hidden md:p-0.5 md:group-hover:block"
+            className="md:hidden md:group-hover:inline-flex"
             data-testid={`set-menu-${index}`}
           >
             <MoreHorizontal className="size-4" />
-          </button>
+          </Button>
         </span>
       </div>
 
@@ -3535,18 +3550,18 @@ function ActiveRow({
           {modifierPreview && (
             <span className="num text-2xs text-faint">{modifierPreview}</span>
           )}
-          <button
-            type="button"
+          <Button
+            variant="outline"
+            size="icon-lg"
             onClick={() => setDetailsOpen(true)}
             // Keep the weight/reps input focused so tapping doesn't blur it
             // — Safari doesn't focus buttons on tap.
             onMouseDown={(e) => e.preventDefault()}
             title="Set details"
-            className="rounded-md border border-border bg-surface-2 p-1.5 text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
             data-testid={`set-${index}-more`}
           >
             <MoreHorizontal className="size-4" />
-          </button>
+          </Button>
         </span>
       </div>
 
@@ -3659,7 +3674,7 @@ function ActiveRow({
       <div className="mt-2 grid grid-cols-[1fr_auto] items-stretch gap-2">
         <Button
           variant="outline"
-          size="sm"
+          size="lg"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => commit(true)}
           data-testid={`set-${index}-add`}
@@ -3669,7 +3684,7 @@ function ActiveRow({
         </Button>
         <Button
           variant="outline"
-          size="icon"
+          size="icon-lg"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => commit(true)}
           title="Mark set done"

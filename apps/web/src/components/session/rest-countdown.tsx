@@ -150,7 +150,10 @@ export function RestDock({
         <div
           className={cn(
             "floating pointer-events-auto relative flex items-center gap-3 overflow-hidden px-3 py-2",
-            done && "border-accent bg-accent-soft",
+            // Opaque panel bg even when done — bg-accent-soft is a subtle
+            // wash meant for known surfaces, not a fixed dock over arbitrary
+            // scrolled content (matches the pr-banner fix).
+            done && "border-accent bg-(--color-panel-solid)",
           )}
           data-testid={testId}
         >
