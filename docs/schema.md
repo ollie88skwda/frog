@@ -109,7 +109,7 @@ One exercise performed within one session, ordered.
 | weight_kg | real? | canonical kg |
 | reps | integer? | |
 | rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null |
-| rir_min / rir_max | integer? | logged RIR range; read and exported today, no writer yet (range logging lands with the session-logging follow-up) |
+| rir_min / rir_max | integer? | logged RIR range; round-tripped by the repo, the API and the export today, but no app surface writes them yet (range logging lands with the session-logging follow-up) |
 | rpe | real? | 1–10 perceived exertion (halves allowed) |
 | rest_sec | integer? | seconds rested before this set (null = first/unknown) |
 | note | text? | |

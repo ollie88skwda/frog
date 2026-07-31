@@ -37,7 +37,9 @@ curl -H "Authorization: Bearer $FROG_TOKEN" "$FROG_API_URL/v1/sessions?limit=10"
 ### `GET /v1/sets`
 
 Flat set logs, newest first: `weight_kg` (canonical kg), `reps`, `rir`,
-`note`, `metric_values` (custom set metrics keyed by metric id).
+`rir_min` / `rir_max`, `note`, `metric_values` (custom set metrics keyed by
+metric id). `rir` is the legacy scalar; read it as the fallback when both
+range columns are null (see [schema.md](./schema.md#set_logs)).
 
 ```sh
 curl -H "Authorization: Bearer $FROG_TOKEN" "$FROG_API_URL/v1/sets?limit=50"
