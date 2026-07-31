@@ -34,6 +34,7 @@ export function selectableFrom(exercises: Exercise[]): SelectableExercise[] {
     equipment: e.equipment,
     exerciseType: e.exerciseType,
     muscleTargets: e.muscleTargets,
+    mechanic: e.mechanic,
   }));
 }
 

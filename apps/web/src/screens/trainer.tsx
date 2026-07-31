@@ -1020,7 +1020,13 @@ function ProgressReport({
   const { data: measurements = [] } = useMeasurements();
 
   const muscles: MuscleByExercise = useMemo(
-    () => new Map(exercises.map((e) => [e.id, e.muscleTargets ?? null])),
+    () =>
+      new Map(
+        exercises.map((e) => [
+          e.id,
+          { targets: e.muscleTargets ?? null, laterality: e.laterality },
+        ]),
+      ),
     [exercises],
   );
 

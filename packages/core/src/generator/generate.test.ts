@@ -9,6 +9,7 @@ const ex = (
   tier: string | null,
   equipment: string,
   secondary?: string,
+  mechanic: string | null = null,
 ): SelectableExercise => ({
   id,
   name: id,
@@ -19,6 +20,7 @@ const ex = (
     { muscle, tier },
     ...(secondary ? [{ muscle: secondary, tier: null }] : []),
   ],
+  mechanic,
 });
 
 const LIBRARY: SelectableExercise[] = [
@@ -100,6 +102,48 @@ describe("generateProgram", () => {
       targetRepsMax: 6,
     });
     expect(bench?.restSec).toBe(180);
+  });
+
+  it("an explicit mechanic overrides the muscle-count proxy", () => {
+    const config = {
+      goal: "muscle" as const,
+      experience: "intermediate" as const,
+      equipment: ["barbell", "dumbbell", "machine", "cable", "bodyweight"],
+      daysPerWeek: 5 as const,
+      minutesPerWorkout: 60 as const,
+    };
+    const library: SelectableExercise[] = [
+      // One target but explicitly compound — without reading `mechanic`,
+      // the muscle-count proxy would call this isolation.
+      ex(
+        "quad-explicit-compound",
+        "quads",
+        "S",
+        "barbell",
+        undefined,
+        "compound",
+      ),
+      // Two targets but explicitly isolation — the proxy would call this
+      // compound.
+      ex(
+        "quad-explicit-isolation",
+        "quads",
+        "S",
+        "barbell",
+        "glutes",
+        "isolation",
+      ),
+      ex("hamstrings-s", "hamstrings", "S", "barbell", "glutes"),
+      ex("glutes-s", "glutes", "S", "barbell"),
+      ex("calves-s", "calves", "S", "bodyweight"),
+      ex("abs-s", "abs", "S", "bodyweight"),
+    ];
+    const legIds = generateProgram(config, library)
+      .routines.find((r) => r.name === "Legs")
+      ?.exercises.map((e) => e.exerciseId);
+    // Legs' first slot wants a compound quad; same tier on both candidates,
+    // so this only resolves correctly if `mechanic` is read over the count.
+    expect(legIds?.[0]).toBe("quad-explicit-compound");
   });
 
   it("focus muscle injects an extra slot", () => {

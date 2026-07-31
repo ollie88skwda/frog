@@ -230,6 +230,7 @@ function columnsFor(
   type: ExerciseType,
   unit: Unit,
   distUnit: DistanceUnit,
+  laterality?: string | null,
 ): Column[] {
   const f = TYPE_FIELDS[type];
   const cols: Column[] = [];
@@ -237,7 +238,13 @@ function columnsFor(
     cols.push({ key: "weight", header: weightLabel(type, unitLabel(unit)) });
   if (f.distance) cols.push({ key: "distance", header: distUnit });
   if (f.duration) cols.push({ key: "duration", header: "time" });
-  if (f.reps) cols.push({ key: "reps", header: "reps" });
+  // Unilateral: one logged set is one side, so the reps column says so —
+  // matches muscleCredits' doubled per-side credit for the same exercises.
+  if (f.reps)
+    cols.push({
+      key: "reps",
+      header: laterality === "unilateral" ? "reps/side" : "reps",
+    });
   return cols;
 }
 
@@ -2129,7 +2136,7 @@ function ExerciseBlock({
   const override = weightUnitOverrideFor(prefs, block.exerciseId);
   const blockUnit = blockUnitFor(prefs, block.exerciseId, unit);
   const distUnit = distanceUnitFor(blockUnit);
-  const columns = columnsFor(type, blockUnit, distUnit);
+  const columns = columnsFor(type, blockUnit, distUnit, exercise?.laterality);
   const barLoaded =
     TYPE_FIELDS[type].weight && isBarLoaded(exercise?.equipment);
   const warmupEligible = TYPE_FIELDS[type].weight;
@@ -2138,7 +2145,10 @@ function ExerciseBlock({
     (max, s) => (s.weightKg != null && s.weightKg > max ? s.weightKg : max),
     0,
   );
-  const effectiveRestSec = block.restSec ?? defaultRestSec;
+  // Block's own override > this exercise's own default rest > the global
+  // user_prefs default.
+  const effectiveRestSec =
+    block.restSec ?? exercise?.defaultRestSec ?? defaultRestSec;
 
   // PREVIOUS column: last performance per set index ('any workout' scope — the
   // existing ghost lookup). Only claims grid space when there's prior or seeded
@@ -2224,6 +2234,18 @@ function ExerciseBlock({
           </button>
         </span>
       </header>
+
+      {/* The exercise's own cue ("brace before you unrack") — set once in
+          the exercise editor, read-only here, distinct from this session's
+          own note below. */}
+      {exercise?.notes && (
+        <p
+          className="px-4 pb-1 text-2xs text-faint"
+          data-testid={`block-${block.name}-exercise-notes`}
+        >
+          {exercise.notes}
+        </p>
+      )}
 
       <SessionNoteField
         blockName={block.name}

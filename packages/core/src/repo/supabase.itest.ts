@@ -312,14 +312,16 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     expect(fetched?.notes).toBe("brace before you unrack");
   });
 
-  it("listExercises omits the fat fields getExercise includes", async () => {
+  it("listExercises omits the fat fields getExercise includes, but not notes", async () => {
     const ex = await repoA.createExercise(
       `Fat Field Test ${newId().slice(0, 8)}`,
       { instructions: ["Step one"], notes: "a note" },
     );
     const listed = (await repoA.listExercises()).find((e) => e.id === ex.id);
     expect(listed?.instructions).toBeNull();
-    expect(listed?.notes).toBeNull();
+    // notes is cheap (short text, not an array of frames) and renders on the
+    // session logging hot path for every block — it stays in the list select.
+    expect(listed?.notes).toBe("a note");
 
     const full = await repoA.getExercise(ex.id);
     expect(full?.instructions).toEqual(["Step one"]);

@@ -5,7 +5,7 @@
 // client-side like findings and records.
 
 import type { MuscleRegion, MuscleTarget } from "../domain/anatomy";
-import { regionOf } from "../domain/anatomy";
+import { regionOf, roleAt } from "../domain/anatomy";
 import type { ExerciseType } from "../domain/exercise-types";
 import { weekStart } from "../domain/streak";
 import { setVolumeKg } from "../domain/volume";
@@ -42,18 +42,27 @@ function counts(set: { setType: string }, includeWarmups: boolean): boolean {
 /**
  * Set credit per muscle for one set: primary muscle 1.0, secondaries 0.5
  * (matches Hevy's fractional per-muscle set counts, e.g. "Shoulders 4.5").
+ * A unilateral exercise doubles credit — one logged set is one side, and the
+ * other side's identical work never gets its own row (alternating already
+ * counts both sides within the logged set, so it doesn't double).
  */
 export function muscleCredits(
   targets: MuscleTarget[] | null | undefined,
+  laterality?: string | null,
 ): Array<{ muscle: string; credit: number }> {
   if (!targets?.length) return [];
+  const sideMultiplier = laterality === "unilateral" ? 2 : 1;
   return targets.map((t, i) => ({
     muscle: t.muscle,
-    credit: i === 0 ? 1 : 0.5,
+    credit: (roleAt(targets, i) === "primary" ? 1 : 0.5) * sideMultiplier,
   }));
 }
 
-export type MuscleByExercise = Map<string, MuscleTarget[] | null>;
+export type MuscleInfo = {
+  targets: MuscleTarget[] | null;
+  laterality: string | null;
+};
+export type MuscleByExercise = Map<string, MuscleInfo>;
 
 export type SetsPerMuscleBucket = {
   start: number; // bucket start ms
@@ -92,7 +101,8 @@ export function setsPerMuscle(
       buckets.set(b, bucket);
     }
     for (const ex of s.exercises) {
-      const credits = muscleCredits(muscles.get(ex.exerciseId));
+      const info = muscles.get(ex.exerciseId);
+      const credits = muscleCredits(info?.targets, info?.laterality);
       if (!credits.length) continue;
       let n = 0;
       for (const set of ex.sets) if (counts(set, opts.includeWarmups)) n += 1;
@@ -159,7 +169,8 @@ function distributionWindow(
         s.endedAt - s.startedAt - (s.pausedMs ?? 0),
       );
     for (const ex of s.exercises) {
-      const credits = muscleCredits(muscles.get(ex.exerciseId));
+      const info = muscles.get(ex.exerciseId);
+      const credits = muscleCredits(info?.targets, info?.laterality);
       for (const set of ex.sets) {
         if (!counts(set, opts.includeWarmups)) continue;
         totals.sets += 1;

@@ -172,10 +172,23 @@ function draftFromExercise(e: Exercise, sets: DraftSet[]): DraftExercise {
     name: e.name,
     exerciseType: exerciseTypeOf(e),
     supersetGroup: null,
-    restSec: null,
+    restSec: e.defaultRestSec ?? null,
     note: "",
     sets,
   };
+}
+
+// A fresh "Add exercise" pick (not resolving a parsed/pasted line, which
+// already carries its own reps) — prefills the exercise's own default rep
+// range instead of three blank sets.
+function defaultSetsFor(e: Exercise): DraftSet[] {
+  const reps = e.defaultRepsMin != null ? String(e.defaultRepsMin) : "";
+  const repsMax = e.defaultRepsMax != null ? String(e.defaultRepsMax) : "";
+  return [emptySet(), emptySet(), emptySet()].map((s) => ({
+    ...s,
+    reps,
+    repsMax,
+  }));
 }
 
 function setsFromParsed(p: ParsedExercise): DraftSet[] {
@@ -516,7 +529,7 @@ export default function RoutineEditScreen() {
     } else {
       setDrafts((prev) => [
         ...(prev ?? []),
-        draftFromExercise(e, [emptySet(), emptySet(), emptySet()]),
+        draftFromExercise(e, defaultSetsFor(e)),
       ]);
     }
     setPicking(false);

@@ -52,14 +52,18 @@ type Row = Record<string, unknown>;
 // are How-to-tab-only (exercise-detail.tsx) — yet `select()` downloaded them
 // on every cold load (734 kB of the ~1.17 MB payload on the seeded library).
 // getExercise()/useExercise() fetch the fat fields for one row on demand.
-// excluded: instructions, image_urls, notes, media_path, media_type — detail
-// screen only (media_path/media_type also cost a signed-URL round trip; not
-// worth paying for on ~900 rows only to render a thumbnail nobody asked for).
+// excluded: instructions, image_urls, media_path, media_type — detail screen
+// only (media_path/media_type also cost a signed-URL round trip; not worth
+// paying for on ~900 rows only to render a thumbnail nobody asked for).
+// `notes` stays IN this list, unlike those: it's a short string (not an
+// array of frames), and the session's block header renders it read-only for
+// every logged block — fat-fielding it would mean one extra fetch per block
+// on the logging hot path, exactly what LIST_COLUMNS exists to avoid.
 const LIST_COLUMNS =
   "id, created_at, updated_at, deleted_at, owner_id, name, tags, is_custom, " +
   "machine_id, joint_actions, muscle_targets, image_url, image_attribution, " +
   "exercise_type, equipment, mechanic, movement_pattern, laterality, " +
-  "default_reps_min, default_reps_max, default_rest_sec, aliases";
+  "default_reps_min, default_reps_max, default_rest_sec, aliases, notes";
 
 // PostgREST speaks snake_case; the app speaks the schema's camelCase types.
 function toExercise(r: Row): Exercise {
@@ -570,7 +574,7 @@ export class SupabaseRepo implements Repo {
     return (data as unknown as Row[]).map(toExercise);
   }
 
-  /** Fat fields (instructions, imageUrls, notes) for one exercise — see B2. */
+  /** Fat fields (instructions, imageUrls) for one exercise — see B2. */
   async getExercise(id: string): Promise<Exercise | null> {
     const { data, error } = await this.client
       .from("exercises")

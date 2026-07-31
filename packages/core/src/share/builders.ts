@@ -50,7 +50,8 @@ export function sessionMuscleSets(
 ): Record<string, number> {
   const out: Record<string, number> = {};
   for (const b of blocks) {
-    const credits = muscleCredits(muscles.get(b.exerciseId));
+    const info = muscles.get(b.exerciseId);
+    const credits = muscleCredits(info?.targets, info?.laterality);
     if (!credits.length || b.sets.length === 0) continue;
     for (const { muscle, credit } of credits) {
       out[muscle] = (out[muscle] ?? 0) + b.sets.length * credit;
