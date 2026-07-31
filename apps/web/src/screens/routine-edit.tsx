@@ -3,6 +3,8 @@ import {
   type Exercise,
   type ExerciseType,
   groupByPrimaryMuscle,
+  isConfidentMatch,
+  matchExerciseName,
   type NewRoutineInput,
   type ParsedExercise,
   parseRoutineText,
@@ -11,18 +13,9 @@ import {
   SET_TYPE_MARKERS,
   SET_TYPES,
   type SetType,
+  sameExerciseName,
   TYPE_FIELDS,
 } from "@frog/core";
-// Imported by exact subpath, not the "@frog/core" barrel: a second, unrelated
-// matcher landed at packages/core/src/domain/match-exercise.ts (voice
-// logging) exporting the same names with a different shape, so the barrel
-// re-export is now ambiguous. This repo-wide dedupe is tracked separately
-// (see AGENTS.md's "Freeform-text → structured-data matching" note) — this
-// import just keeps this file unambiguously on its own matcher meanwhile.
-import {
-  matchExerciseName,
-  sameExerciseName,
-} from "@frog/core/generator/match-exercise";
 import { Select } from "@radix-ui/themes";
 import {
   ArrowDown,
@@ -430,10 +423,19 @@ export default function RoutineEditScreen() {
       // An implausible set count (likely a misread, not a real prescription)
       // always goes to the unmatched list for manual review, even if the
       // name matched cleanly — never auto-add a hundreds-of-sets draft row.
-      const match =
+      const raw =
         p.sets <= MAX_PARSED_SETS
           ? matchExerciseName(p.rawName, exercises)
           : null;
+      // Same confidence bar as voice logging (isConfidentMatch's default):
+      // the merged matcher's scoring is more generous than this file's old
+      // Jaccard formula was, so reusing that formula's old looser threshold
+      // here would silently accept shorthand it used to reject (a bare
+      // "row" against a library that also has "Barbell Bent Over Row").
+      // A tie (two candidates scoring equally) is never auto-picked either;
+      // it falls to "Pick manually" same as a low-confidence miss.
+      const match =
+        raw && raw.tied.length === 1 && isConfidentMatch(raw) ? raw : null;
       if (match)
         matchedDrafts.push(draftFromExercise(match, setsFromParsed(p)));
       else misses.push({ ...p, key: crypto.randomUUID() });

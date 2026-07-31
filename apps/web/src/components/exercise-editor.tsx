@@ -21,13 +21,10 @@ import {
   newId,
   primaryMuscles,
   ratingsForExercise,
+  sameExerciseName,
   secondaryMuscles,
   type Tier,
 } from "@frog/core";
-// Not barrel-exported — see AGENTS.md's matcher note; step 8 of the custom
-// exercise plan merges this into one module, at which point this import
-// moves to the barrel.
-import { sameExerciseName } from "@frog/core/generator/match-exercise";
 import { Select } from "@radix-ui/themes";
 import { Camera, ChevronDown, ChevronRight, Video, X } from "lucide-react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";

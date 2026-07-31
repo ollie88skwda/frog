@@ -4,6 +4,7 @@ import {
   MATCH_CONFIDENCE_THRESHOLD,
   matchExerciseName,
   normalizeExerciseName,
+  sameExerciseName,
 } from "./match-exercise";
 
 const CANDIDATES = [
@@ -103,5 +104,62 @@ describe("matchExerciseName", () => {
 
   it("returns null with an empty query", () => {
     expect(matchExerciseName("", CANDIDATES)).toBeNull();
+  });
+
+  it("does not substring-match inside a longer word (word-boundary aware)", () => {
+    // Token-set matching, not character substring — "row" is a distinct
+    // token from "narrow", never a substring hit inside it.
+    const candidates = [
+      { id: "1", name: "Narrow Grip Pulldown" },
+      { id: "2", name: "Seated Row" },
+    ];
+    expect(matchExerciseName("row", candidates)?.id).toBe("2");
+  });
+
+  it("does not inflate the score when a candidate repeats a query token", () => {
+    const repeated = [{ id: "9", name: "Row Row Row Machine" }];
+    const match = matchExerciseName("row boat", repeated);
+    expect(isConfidentMatch(match!)).toBe(false);
+  });
+});
+
+describe("aliases", () => {
+  it("resolves a shorthand alias to its candidate", () => {
+    const candidates = [
+      { id: "1", name: "Overhead Press", aliases: ["OHP"] },
+      { id: "2", name: "Bench Press" },
+    ];
+    const match = matchExerciseName("OHP", candidates);
+    expect(match?.id).toBe("1");
+    expect(match?.matchType).toBe("subset");
+    expect(isConfidentMatch(match!)).toBe(true);
+  });
+
+  it("scores against whichever label (name or alias) fits best", () => {
+    const candidates = [
+      { id: "1", name: "Overhead Press", aliases: ["Military Press"] },
+    ];
+    const match = matchExerciseName("military press", candidates);
+    expect(match?.id).toBe("1");
+    expect(match?.score).toBe(1);
+  });
+
+  it("ignores a null/absent aliases list", () => {
+    const candidates = [{ id: "1", name: "Overhead Press", aliases: null }];
+    expect(matchExerciseName("overhead press", candidates)?.id).toBe("1");
+  });
+});
+
+describe("sameExerciseName", () => {
+  it("treats a trailing-plural mismatch as the same exercise", () => {
+    expect(sameExerciseName("Tricep Pushdowns", "Tricep Pushdown")).toBe(true);
+  });
+
+  it("ignores case and punctuation", () => {
+    expect(sameExerciseName("  Back-Squat!!  ", "back squat")).toBe(true);
+  });
+
+  it("returns false for genuinely different exercises", () => {
+    expect(sameExerciseName("Barbell Row", "Cable Row")).toBe(false);
   });
 });
