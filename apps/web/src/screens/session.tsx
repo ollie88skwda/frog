@@ -1,5 +1,4 @@
 import {
-  adjustRest,
   checkSetForPR,
   computeRecords,
   countSets,
@@ -34,7 +33,6 @@ import {
   previousCells,
   type RestTimerState,
   type RoutineDetail,
-  restRemainingSec,
   SET_TYPE_LABELS,
   SET_TYPE_MARKERS,
   SET_TYPES,
@@ -136,14 +134,12 @@ import {
   type Unit,
   useUnit,
 } from "@/lib/settings";
-import { alertRestDone, playRestBlip } from "@/lib/sound";
 import { cn } from "@/lib/utils";
 import { voice } from "@/lib/voice";
 import { getWarmupMethod } from "@/lib/warmup-method";
 import {
   useKeepAwake,
   useLivePrBanner,
-  useRestSoundVolume,
   useSmartSupersetScroll,
 } from "@/lib/workout-prefs";
 
@@ -153,11 +149,9 @@ type BlockState = {
   name: string;
   // Provenance from a routine-started session (null = ad-hoc / empty workout).
   routineExerciseId: string | null;
-  // Superset grouping (int id shared by members; null = solo). Rest-countdown
-  // target seconds (null = fall back to the user's default). Per-exercise
+  // Superset grouping (int id shared by members; null = solo). Per-exercise
   // session note (distinct from the routine template note).
   supersetGroup: number | null;
-  restSec: number | null;
   note: string | null;
   committed: LoggedSet[];
 };
@@ -483,15 +477,13 @@ export default function SessionScreen() {
   const { data: exercises = [] } = useExercises();
   const pendingExercises = usePendingExercises();
 
-  // Device prefs (localStorage) + server prefs (default rest, plate config).
+  // Device prefs (localStorage) + server prefs (plate config).
   const [smartScroll] = useSmartSupersetScroll();
-  const [restVolume] = useRestSoundVolume();
   const [livePrEnabled] = useLivePrBanner();
   const [keepAwake] = useKeepAwake();
   const { data: userPrefs } = useUserPrefs();
   const { data: exercisePrefs = [] } = useExercisePrefs();
   const updatePrefs = useUpdateUserPrefs();
-  const defaultRestSec = userPrefs?.defaultRestSec ?? null;
   const plateConfig = userPrefs?.plateConfig ?? null;
   // PREVIOUS-column scope: "routine" narrows the ghost lookup to same-routine
   // sessions (only meaningful for a routine-started workout); else any workout.
@@ -527,7 +519,7 @@ export default function SessionScreen() {
     };
   }, [keepAwake, session?.endedAt]);
 
-  // Per-block rest countdown (keyed by seId; absent = none running).
+  // Per-block rest stopwatch (keyed by seId; absent = none running).
   const [restByBlock, setRestByBlock] = useState<
     Record<string, RestTimerState>
   >({});
@@ -539,48 +531,8 @@ export default function SessionScreen() {
       return next;
     });
   }, []);
-  const adjustRestFor = useCallback((seId: string, delta: number) => {
-    setRestByBlock((prev) =>
-      prev[seId] ? { ...prev, [seId]: adjustRest(prev[seId], delta) } : prev,
-    );
-  }, []);
-  const restDoneFor = useCallback(
-    (seId: string, name: string) => {
-      playRestBlip(restVolume);
-      // The exercise name stays outside voice() so it survives every register
-      // (Ultrafrog ribbits words; the name is data).
-      alertRestDone(
-        `${name}: ${voice(
-          "Rest complete.",
-          "Rest complete. Adenosine triphosphate: replenished (approximately). The frog suggests you pick up the bar.",
-        )}`,
-      );
-      // Keep the "rest!" bar up briefly, then clear it.
-      window.setTimeout(() => dismissRest(seId), 3000);
-    },
-    [restVolume, dismissRest],
-  );
 
-  // Done-detection runs here, for every running countdown — the dock below
-  // renders one timer at a time, so a superset's second countdown would
-  // otherwise never fire its alert while off screen. Once per (block, start).
-  const firedRest = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (Object.keys(restByBlock).length === 0) return;
-    const id = window.setInterval(() => {
-      const now = Date.now();
-      for (const [seId, state] of Object.entries(restByBlock)) {
-        const key = `${seId}:${state.startedAt}`;
-        if (firedRest.current.has(key)) continue;
-        if (restRemainingSec(state, now) > 0) continue;
-        firedRest.current.add(key);
-        restDoneFor(seId, blocks?.find((b) => b.seId === seId)?.name ?? "");
-      }
-    }, 250);
-    return () => window.clearInterval(id);
-  }, [restByBlock, restDoneFor, blocks]);
-
-  // The dock shows the most recently started countdown — the set you just
+  // The dock shows the most recently started stopwatch — the set you just
   // finished. Any older one keeps ticking and takes the dock as it frees up.
   const activeRest = useMemo(() => {
     let latest: { seId: string; state: RestTimerState } | null = null;
@@ -884,7 +836,6 @@ export default function SessionScreen() {
         name: se.exerciseName,
         routineExerciseId: se.routineExerciseId,
         supersetGroup: se.supersetGroup,
-        restSec: se.restSec,
         note: se.note,
         committed: se.sets,
       })),
@@ -942,7 +893,6 @@ export default function SessionScreen() {
         name,
         routineExerciseId: null,
         supersetGroup: null,
-        restSec: null,
         note: null,
         committed: [],
       },
@@ -1049,17 +999,13 @@ export default function SessionScreen() {
       }
     }
 
-    // Rest countdown: per-exercise target (block override or user default).
-    // Suppressed when a drop set is next — including the just-committed set
-    // being a drop (drops chain into the next reduction with no rest).
-    const restTarget = block?.restSec ?? defaultRestSec;
+    // Rest stopwatch: starts on every commit. Suppressed when a drop set is
+    // next — including the just-committed set being a drop (drops chain into
+    // the next reduction with no rest).
     const committedIsDrop = (set.setType ?? "normal") === "drop";
     const nextType = committedIsDrop ? "drop" : ctx.nextSetType;
-    if (shouldStartRest(restTarget, nextType)) {
-      setRestByBlock((prev) => ({
-        ...prev,
-        [seId]: startRest(restTarget as number, Date.now()),
-      }));
+    if (shouldStartRest(nextType)) {
+      setRestByBlock((prev) => ({ ...prev, [seId]: startRest(Date.now()) }));
     }
 
     // Smart superset scrolling: advance the view to the next member (wrapping).
@@ -1082,15 +1028,6 @@ export default function SessionScreen() {
       (prev ?? []).map((b) => (b.seId === seId ? { ...b, note } : b)),
     );
     void repo.updateSessionExercise(seId, { note: note.trim() || null });
-  }
-
-  // Rest-countdown target for a block (null = off / use default nothing).
-  function setBlockRest(seId: string, restSec: number | null) {
-    setBlocks((prev) =>
-      (prev ?? []).map((b) => (b.seId === seId ? { ...b, restSec } : b)),
-    );
-    void repo.updateSessionExercise(seId, { restSec });
-    if (restSec == null) dismissRest(seId);
   }
 
   const nextGroupId = () => {
@@ -1396,10 +1333,9 @@ export default function SessionScreen() {
       <PrBanner data={prBanner} onDismiss={() => setPrBanner(null)} />
       {activeRest && (
         <RestDock
-          state={activeRest.state}
+          since={activeRest.state.startedAt}
           exerciseName={activeRest.name}
-          onAdjust={(d) => adjustRestFor(activeRest.seId, d)}
-          onDismiss={() => dismissRest(activeRest.seId)}
+          onStop={() => dismissRest(activeRest.seId)}
           testId={`rest-${activeRest.name}`}
         />
       )}
@@ -1512,13 +1448,11 @@ export default function SessionScreen() {
                 .filter((b) => b.seId !== block.seId)
                 .map((b) => ({ seId: b.seId, name: b.name }))}
               inSuperset={block.supersetGroup != null}
-              defaultRestSec={defaultRestSec}
               plateConfig={plateConfig}
               onSavePlateConfig={(cfg) =>
                 updatePrefs.mutate({ plateConfig: cfg })
               }
-              rest={restByBlock[block.seId]}
-              onSetRest={(sec) => setBlockRest(block.seId, sec)}
+              restRunning={restByBlock[block.seId] != null}
               onSetNote={(note) => setBlockNote(block.seId, note)}
               onLinkSuperset={(target) => linkSuperset(block.seId, target)}
               onUnlinkSuperset={() => unlinkSuperset(block.seId)}
@@ -2147,11 +2081,9 @@ function ExerciseBlock({
   supersetColor,
   otherBlocks,
   inSuperset,
-  defaultRestSec,
   plateConfig,
   onSavePlateConfig,
-  rest,
-  onSetRest,
+  restRunning,
   onSetNote,
   onLinkSuperset,
   onUnlinkSuperset,
@@ -2177,11 +2109,9 @@ function ExerciseBlock({
   supersetColor: string | null;
   otherBlocks: { seId: string; name: string }[];
   inSuperset: boolean;
-  defaultRestSec: number | null;
   plateConfig: PlateConfig | null;
   onSavePlateConfig: (cfg: PlateConfig) => void;
-  rest: RestTimerState | undefined;
-  onSetRest: (restSec: number | null) => void;
+  restRunning: boolean;
   onSetNote: (note: string) => void;
   onLinkSuperset: (targetSeId: string) => void;
   onUnlinkSuperset: () => void;
@@ -2231,10 +2161,6 @@ function ExerciseBlock({
     (max, s) => (s.weightKg != null && s.weightKg > max ? s.weightKg : max),
     0,
   );
-  // Block's own override > this exercise's own default rest > the global
-  // user_prefs default.
-  const effectiveRestSec =
-    block.restSec ?? exercise?.defaultRestSec ?? defaultRestSec;
 
   // PREVIOUS column: last performance per set index ('any workout' scope — the
   // existing ghost lookup). Only claims grid space when there's prior or seeded
@@ -2286,12 +2212,7 @@ function ExerciseBlock({
           </span>
         </span>
         <span className="flex items-center gap-2">
-          <RestControl
-            blockName={block.name}
-            restSec={effectiveRestSec}
-            running={rest != null}
-            onSetRest={onSetRest}
-          />
+          <RestControl blockName={block.name} running={restRunning} />
           <BlockMenu
             blockName={block.name}
             unit={blockUnit}

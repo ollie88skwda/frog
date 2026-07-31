@@ -1,11 +1,12 @@
 import type { SVGProps } from "react";
 
 /**
- * The rest timer's own mark — a stopwatch ring with a pause glyph inside
- * ("time the pause"). Hand-composed rather than picked from lucide so the rest
- * timer doesn't share a glyph with anything else on the session screen: lucide's
- * `Timer` is the *set* duration stopwatch and `Pause` is the session pause, and
- * the whole point of this control is that it reads as its own feature.
+ * The rest stopwatch's own mark — a plain stopwatch ring, no pause bars (rest
+ * is now an up-count, not a paused countdown). Hand-composed rather than
+ * picked from lucide because lucide's own `Timer` already means something
+ * else in this app — the *set-duration* stopwatch used by duration-type
+ * exercises' own start/stop control — and reusing it for rest would collide
+ * with that meaning.
  *
  * Drawn in lucide's grammar (24-unit box, 2px round strokes, `currentColor`) so
  * it sits in the same family as every other icon in the app. Vector + inline for
@@ -29,9 +30,6 @@ export function RestTimerIcon(props: SVGProps<SVGSVGElement>) {
       <path d="M12 2v3" />
       {/* Dial. */}
       <circle cx="12" cy="13" r="8" />
-      {/* Pause bars — rest, not elapsed time. */}
-      <path d="M10 10v6" />
-      <path d="M14 10v6" />
     </svg>
   );
 }

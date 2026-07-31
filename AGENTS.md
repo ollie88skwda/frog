@@ -14,7 +14,7 @@ Target user: intermediate/advanced lifters who autoregulate and control variable
 
 ## The name
 
-The app is **Frog**. The single source of truth for the display name is `APP_NAME` in `packages/core/src/config.ts` — never hardcode the literal anywhere else, so a future rebrand stays a one-line change. (The single sanctioned exception is `supabase/functions/send-rest-push`: Edge Functions are Deno and cannot import `@frog/core`.)
+The app is **Frog**. The single source of truth for the display name is `APP_NAME` in `packages/core/src/config.ts` — never hardcode the literal anywhere else, so a future rebrand stays a one-line change.
 
 Technical identifiers agree with the display name as of 2026-07-28 — package scope `@frog/*`, `FROG_*` env vars, the `frog_` PAT prefix, the `__frog` E2E bridge global. See `docs/DECISIONS.md` for what was deliberately *not* renamed (`sbl.pastUsers`, the Vercel project).
 
