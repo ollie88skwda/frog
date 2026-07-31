@@ -634,15 +634,22 @@ export class SupabaseRepo implements Repo {
     return row.id;
   }
 
-  async logSet(sessionExerciseId: string, set: NewSetInput): Promise<string> {
+  async logSet(
+    sessionExerciseId: string,
+    set: NewSetInput,
+    id: string,
+  ): Promise<string> {
     const now = Date.now();
+    // Excludes `id` itself so a retry of this same write (upserted below)
+    // doesn't count its own prior attempt and drift its set_no.
     const { count, error: countError } = await this.client
       .from("set_logs")
       .select("id", { count: "exact", head: true })
-      .eq("session_exercise_id", sessionExerciseId);
+      .eq("session_exercise_id", sessionExerciseId)
+      .neq("id", id);
     throwIf(countError);
     const row = {
-      id: newId(),
+      id,
       created_at: now,
       updated_at: now,
       session_exercise_id: sessionExerciseId,
@@ -659,7 +666,12 @@ export class SupabaseRepo implements Repo {
       distance_m: set.distanceM ?? null,
       completed: true,
     };
-    const { error } = await this.client.from("set_logs").insert(row);
+    // Upsert (not insert): a mutation retry after a lost response replays
+    // this with the same `id`, and must overwrite the same row rather than
+    // append a duplicate set.
+    const { error } = await this.client
+      .from("set_logs")
+      .upsert(row, { onConflict: "id" });
     throwIf(error);
     return row.id;
   }

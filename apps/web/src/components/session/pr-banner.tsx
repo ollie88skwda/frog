@@ -36,7 +36,10 @@ export function PrBanner({
   return (
     <div className="pointer-events-none fixed inset-x-0 top-14 z-30 flex justify-center px-4">
       <div
-        className="pointer-events-auto flex max-w-md items-center gap-2 rounded-md border border-accent bg-accent-soft px-3 py-2 shadow-(--inset-control)"
+        // Opaque panel (not bg-accent-soft): that token is a ~5% alpha wash
+        // meant for pills sitting on a known surface, and read as nearly
+        // transparent floating over arbitrary scrolled content underneath.
+        className="float-in pointer-events-auto flex max-w-md items-center gap-2 rounded-md border border-accent bg-(--color-panel-solid) px-3 py-2 shadow-(--shadow-6)"
         role="status"
         data-testid="pr-banner"
       >

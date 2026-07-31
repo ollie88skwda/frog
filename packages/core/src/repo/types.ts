@@ -224,7 +224,14 @@ export interface Repo {
   /** Newest open session (ended_at null), if any. */
   activeSession(): Promise<Session | null>;
   addExerciseToSession(sessionId: string, exerciseId: string): Promise<string>;
-  logSet(sessionExerciseId: string, set: NewSetInput): Promise<string>;
+  /** `id` is the caller's optimistic row id — also the write's idempotency
+   * key, so a mutation retry (see `apps/web` QueryClient's `retry: 3`) upserts
+   * the same row instead of inserting a duplicate. */
+  logSet(
+    sessionExerciseId: string,
+    set: NewSetInput,
+    id: string,
+  ): Promise<string>;
   /** Partial update — only provided fields are written (others preserved). */
   updateSet(setId: string, patch: Partial<NewSetInput>): Promise<void>;
 

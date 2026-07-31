@@ -61,4 +61,13 @@ test("beating a prior session raises the PR banner + medal; first log never PRs"
     "Heaviest weight",
   );
   await expect(page.getByTestId("committed-0-medal")).toBeVisible();
+
+  // Regression: the banner used to sit on a ~5% alpha wash (bg-accent-soft),
+  // reading as nearly see-through over whatever scrolled underneath it.
+  const alpha = await page.getByTestId("pr-banner").evaluate((el) => {
+    const bg = getComputedStyle(el).backgroundColor;
+    const parts = bg.match(/[\d.]+/g) ?? [];
+    return parts.length === 4 ? Number(parts[3]) : 1;
+  });
+  expect(alpha).toBe(1);
 });

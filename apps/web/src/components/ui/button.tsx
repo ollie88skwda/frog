@@ -5,7 +5,7 @@ import {
 import type { ButtonHTMLAttributes } from "react";
 
 type Variant = "primary" | "outline" | "ghost" | "danger";
-type Size = "sm" | "md" | "lg" | "icon";
+type Size = "sm" | "md" | "lg" | "icon" | "icon-lg";
 
 // Frog variant -> Radix Themes (variant, color).
 //
@@ -28,7 +28,15 @@ const VARIANT = {
 // Heights are held at the pre-Radix scale so no call-site layout shifts:
 // Radix size 2 = 32px (was h-8), size 3 = 40px (was h-10). `sm` and `md`
 // collapse onto the same height because they already both rendered at h-8.
-const SIZE = { sm: "2", md: "2", lg: "3", icon: "2" } as const;
+// `icon-lg` is the ≥40px tap target AGENTS.md requires on the logging path
+// (session screen) — `icon` stays 32px for icon buttons elsewhere.
+const SIZE = {
+  sm: "2",
+  md: "2",
+  lg: "3",
+  icon: "2",
+  "icon-lg": "3",
+} as const;
 
 // `color` is omitted from the HTML attrs because React's HTMLAttributes still
 // carries the legacy `color?: string`, which collides with Radix's accent prop.
@@ -45,7 +53,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const styling = VARIANT[variant];
-  const Comp = size === "icon" ? RtIconButton : RtButton;
+  const Comp = size === "icon" || size === "icon-lg" ? RtIconButton : RtButton;
   return (
     <Comp
       type={type}
