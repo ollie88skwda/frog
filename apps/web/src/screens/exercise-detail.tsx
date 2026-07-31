@@ -1,5 +1,6 @@
 import {
   ACTION_RATINGS,
+  buildExerciseRecordsCard,
   EQUIPMENT_LABELS,
   EXERCISE_TYPE_LABELS,
   type Exercise,
@@ -27,8 +28,9 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ExerciseThumb, TierBadge } from "@/components/anatomy-ui";
 import { type ChartPoint, LineChart } from "@/components/charts/line";
-import { ShareButton } from "@/components/share-card";
+import { ShareButton } from "@/components/share-sheet";
 import { formatDate, formatDateTime, formatMMSS } from "@/lib/format";
+import { useUserPrefs } from "@/lib/profile-queries";
 import { useCreateExercise, useExercises } from "@/lib/queries";
 import { type RecordsData, useRecordsData } from "@/lib/records-queries";
 import {
@@ -219,6 +221,24 @@ function SummaryTab({
 
   const latest = points.length ? points[points.length - 1].y : null;
 
+  // e1RM sparkline for the share card's records graphic — independent of the
+  // metric chip above (always e1RM), last 12 sessions containing this exercise.
+  const e1rmSparkline = useMemo(() => {
+    const out: Array<{ at: number; value: number }> = [];
+    for (const s of sessions) {
+      const sets = setsFor(s, exercise.id, includeWarmups);
+      if (!sets) continue;
+      let best: number | null = null;
+      for (const set of sets) {
+        if (set.weightKg == null || set.reps == null || set.reps < 1) continue;
+        const e = epley(set.weightKg, set.reps);
+        if (e != null && (best == null || e > best)) best = e;
+      }
+      if (best != null) out.push({ at: s.startedAt, value: best });
+    }
+    return out.slice(-12);
+  }, [sessions, exercise.id, includeWarmups]);
+
   return (
     <div>
       {/* Metric chips */}
@@ -288,6 +308,7 @@ function SummaryTab({
         records={records}
         unit={unit}
         distUnit={distUnit}
+        sparkline={e1rmSparkline}
       />
       {hasSetRecords(type) && <SetRecordsTable records={records} unit={unit} />}
     </div>
@@ -300,18 +321,32 @@ function RecordsPanel({
   records,
   unit,
   distUnit,
+  sparkline,
 }: {
   type: ExerciseType;
   exerciseName: string;
   records: ExerciseRecords | undefined;
   unit: Unit;
   distUnit: DistanceUnit;
+  sparkline: Array<{ at: number; value: number }>;
 }) {
   const { t } = useVoice();
+  const { data: prefs } = useUserPrefs();
   const prTypes = PR_TYPES_BY_EXERCISE_TYPE[type] ?? [];
   const bests = prTypes
     .map((pr) => ({ pr, entry: records?.bests[pr] }))
     .filter((r): r is { pr: PrType; entry: RecordEntry } => r.entry != null);
+  const card = records
+    ? buildExerciseRecordsCard({
+        exerciseName,
+        type,
+        records,
+        unit,
+        distUnit,
+        sparkline,
+        identity: { displayName: prefs?.displayName ?? null },
+      })
+    : null;
 
   return (
     <div className="mt-4">
@@ -319,16 +354,9 @@ function RecordsPanel({
         <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
           Records
         </h2>
-        {bests.length > 0 && (
+        {card && (
           <ShareButton
-            data={{
-              kicker: "Personal records",
-              title: exerciseName,
-              lines: bests.map(
-                ({ pr, entry }) =>
-                  `${PR_TYPE_LABELS[pr]} · ${formatPrValue(pr, entry.value, unit, distUnit)}`,
-              ),
-            }}
+            source={{ kind: "static", card }}
             filename={`records-${exerciseName.toLowerCase().replace(/\s+/g, "-")}`}
             testId="records-share-btn"
             variant="ghost"

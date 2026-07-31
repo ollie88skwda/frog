@@ -1,22 +1,39 @@
 // Share-card taglines — frog-sass in the spirit of "a live frog for every
 // single one." A handful of templates × word-bank slots combine into many
 // distinct-feeling variants from a small amount of code, rather than
-// hand-authoring hundreds of one-off lines. See docs/DECISIONS.md 2026-07-30.
+// hand-authoring hundreds of one-off lines. See docs/DECISIONS.md.
 // Cosmetic caption only — one `Math.random()` pick per share, no rigor needed.
 
-type Tone = "strong" | "normal";
+export type Tone = "pr" | "streak" | "heavy" | "normal";
 
-// "Strong" fires only on the one session-quality signal that already exists
-// in the data — a PR landed this session (post-save-summary.tsx's prLines) —
-// rather than inventing a new "workout quality" score for a caption.
+// Each tone fires on one session-quality signal the caller already has —
+// never a new "workout quality" score invented for the caption. "pr": a PR
+// landed this session. "streak": the weekly streak just extended. "heavy":
+// this session's volume beat the trailing 4-week average. "normal": none of
+// the above.
 const ADJECTIVES: Record<Tone, string[]> = {
-  strong: [
+  pr: [
     "record-breaking",
     "legendary",
     "unstoppable",
     "certified",
     "victorious",
     "PR-hungry",
+  ],
+  streak: [
+    "relentless",
+    "unbroken",
+    "dependable",
+    "creature-of-habit",
+    "clockwork",
+    "consistent",
+  ],
+  heavy: [
+    "heavy-handed",
+    "load-bearing",
+    "tonnage-obsessed",
+    "gravity-defying",
+    "iron-willed",
   ],
   normal: [
     "live",

@@ -129,10 +129,25 @@ export type ExerciseRecordsCard = {
   identity: ShareIdentity;
 };
 
+// ── Measurement (gated — never a promoted card type; see report §5.2 "not a
+// card type" / §7.2. Kept minimal and never auto-offered or in the default
+// carousel, but still runs through the same frame/ground painter as the six
+// numbered types rather than a bespoke rendering path.) ─────────────────────
+
+export type MeasurementCard = {
+  kind: "measurement";
+  eyebrow: string; // metric label, e.g. "BODY WEIGHT"
+  hero: ShareHero; // latest value
+  support: ShareStat[]; // 30d / 90d change, when enough history exists
+  sparkline: Array<{ at: number; value: number }>;
+  identity: ShareIdentity;
+};
+
 export type ShareCard =
   | SessionCard
   | PrCard
   | StreakCard
   | MonthCard
   | YearCard
-  | ExerciseRecordsCard;
+  | ExerciseRecordsCard
+  | MeasurementCard;

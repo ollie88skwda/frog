@@ -22,6 +22,7 @@ import type { YearReview } from "../stats/year-review";
 import { formatHM, formatSetMMSS } from "./format";
 import type {
   ExerciseRecordsCard,
+  MeasurementCard,
   MonthCard,
   PrCard,
   SessionCard,
@@ -449,6 +450,35 @@ export function buildExerciseRecordsCard(input: {
       label: `${reps}RM`,
       value: formatWeight(r.weightKg, unit),
     })),
+    sparkline: input.sparkline,
+    identity: input.identity,
+  };
+}
+
+// ── Measurement (gated, report §5.2/§7.2) ─────────────────────────────────
+
+/** Formatting stays with the caller (measures.tsx already owns kg/lb/cm/in/%
+ * display conversion per metric kind) — this just assembles the slots. */
+export function buildMeasurementCard(input: {
+  metricLabel: string;
+  heroValue: string;
+  heroUnit: string;
+  change30d: string | null;
+  change90d: string | null;
+  sparkline: Array<{ at: number; value: number }>;
+  identity: ShareIdentity;
+}): MeasurementCard {
+  const support: ShareStat[] = [];
+  if (input.change30d != null)
+    support.push({ label: "30d", value: input.change30d });
+  if (input.change90d != null)
+    support.push({ label: "90d", value: input.change90d });
+
+  return {
+    kind: "measurement",
+    eyebrow: input.metricLabel,
+    hero: { value: input.heroValue, unit: input.heroUnit },
+    support,
     sparkline: input.sparkline,
     identity: input.identity,
   };

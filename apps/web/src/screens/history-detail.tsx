@@ -1,4 +1,6 @@
 import {
+  buildSessionCard,
+  type ExerciseType,
   type NewRoutineInput,
   type SetType,
   toDisplayWeight,
@@ -6,16 +8,18 @@ import {
 } from "@frog/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Copy, ListPlus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { PostSaveSummary } from "@/components/post-save-summary";
 import { SessionPhotoCarousel } from "@/components/session-photos";
-import { ShareButton, type ShareCardData } from "@/components/share-card";
+import { ShareButton } from "@/components/share-sheet";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { formatDate, formatDuration } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { useAllSessions, useUserPrefs } from "@/lib/profile-queries";
 import {
+  useExercises,
   useMetrics,
   useSession,
   useSessionExercises,
@@ -24,6 +28,8 @@ import {
 import { useRepo } from "@/lib/repo";
 import { useCreateRoutine } from "@/lib/routine-queries";
 import { useUnit } from "@/lib/settings";
+import { ordinalFor } from "@/lib/share/ordinal";
+import { useLatestBodyweight, useMuscleMap } from "@/lib/stats-queries";
 import { useVoice } from "@/lib/voice";
 import type { SeedSet } from "./session";
 
@@ -62,6 +68,11 @@ export default function HistoryDetailScreen() {
   const { data: session } = useSession(id);
   const { data: blocks = [] } = useSessionExercises(id);
   const { data: metrics = [] } = useMetrics();
+  const { data: exercises = [] } = useExercises();
+  const { data: allSessions = [] } = useAllSessions();
+  const { data: prefs } = useUserPrefs();
+  const muscleMap = useMuscleMap();
+  const bodyweightKg = useLatestBodyweight();
   const updateStartedAt = useUpdateSessionStartedAt(id);
   const createRoutine = useCreateRoutine();
 
@@ -136,14 +147,8 @@ export default function HistoryDetailScreen() {
     )
     .map((m) => `${m.name}: ${conditions[m.id]}`);
 
-  // Share card for this workout (overview stats). PRs live in the post-save
-  // summary; the history card stays a light snapshot.
-  const setCount = blocks.reduce((n, b) => n + b.sets.length, 0);
-  const volumeKg = blocks.reduce(
-    (sum, b) =>
-      sum + b.sets.reduce((s, x) => s + (x.weightKg ?? 0) * (x.reps ?? 0), 0),
-    0,
-  );
+  // Share card for this workout — same Session card type as the post-save
+  // summary's hero slide (report §6 step 6: "history-detail → Session").
   const durationMs =
     session?.endedAt != null
       ? Math.max(
@@ -151,20 +156,59 @@ export default function HistoryDetailScreen() {
           session.endedAt - session.startedAt - (session.pausedMs ?? 0),
         )
       : 0;
-  const shareData: ShareCardData = {
-    kicker: "Workout summary",
-    title: session?.title || "Workout",
-    subtitle: session ? formatDate(session.startedAt) : "",
-    stats: [
-      { label: "Duration", value: formatDuration(durationMs) },
-      { label: "Exercises", value: String(blocks.length) },
-      { label: "Sets", value: String(setCount) },
-      {
-        label: "Volume",
-        value: `${toDisplayWeight(volumeKg, unit).toLocaleString()} ${unitLabel(unit)}`,
-      },
+  const exerciseTypeById = useMemo(
+    () => new Map(exercises.map((e) => [e.id, e.exerciseType as ExerciseType])),
+    [exercises],
+  );
+  const shareBlocks = useMemo(
+    () =>
+      blocks.map((b) => ({
+        exerciseId: b.exerciseId,
+        exerciseName: b.exerciseName,
+        exerciseType: exerciseTypeById.get(b.exerciseId) ?? "weight_reps",
+        sets: b.sets,
+      })),
+    [blocks, exerciseTypeById],
+  );
+  const ordinal = session
+    ? ordinalFor(allSessions, session.id, session.startedAt)
+    : 1;
+  const buildShareCard = useMemo(
+    () => (heroSet?: Parameters<typeof buildSessionCard>[0]["heroSet"]) =>
+      buildSessionCard({
+        ordinal,
+        title: session?.title || "Workout",
+        date: session ? formatDate(session.startedAt) : "",
+        durationMs,
+        blocks: shareBlocks,
+        muscles: muscleMap,
+        bodyweightKg,
+        unit,
+        identity: { displayName: prefs?.displayName ?? null },
+        heroSet,
+      }),
+    [
+      ordinal,
+      session,
+      durationMs,
+      shareBlocks,
+      muscleMap,
+      bodyweightKg,
+      unit,
+      prefs,
     ],
-  };
+  );
+  // Stable object identity, not an inline literal in the JSX below — an
+  // unmemoized `source` prop would give ShareButton a new object every
+  // render, defeating its own internal memoization (share-sheet.tsx).
+  const shareSource = useMemo(
+    () => ({
+      kind: "session" as const,
+      blocks: shareBlocks,
+      build: buildShareCard,
+    }),
+    [shareBlocks, buildShareCard],
+  );
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
@@ -200,12 +244,15 @@ export default function HistoryDetailScreen() {
             <Copy className="size-4" />
             {copying ? "Copying…" : "Copy workout"}
           </Button>
-          <ShareButton
-            data={shareData}
-            filename={`workout-${id.slice(0, 8)}`}
-            testId="history-share-btn"
-            label={null}
-          />
+          {blocks.length > 0 && (
+            <ShareButton
+              source={shareSource}
+              sessionId={id}
+              filename={`workout-${id.slice(0, 8)}`}
+              testId="history-share-btn"
+              label={null}
+            />
+          )}
           <Button
             variant="danger"
             size="sm"

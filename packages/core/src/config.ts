@@ -18,3 +18,12 @@ export const APP_NAME = "Frog";
  * that used to read the preference now imports this constant instead.
  */
 export const FIRST_WEEKDAY = 0;
+
+/**
+ * Share-card footer domain — single source of truth for the identity line's
+ * destination (`docs/DECISIONS.md`, share redesign). `null` until a custom
+ * domain is attached; the footer renders `@handle` alone with no domain when
+ * unset, never a placeholder Vercel URL. Flip to e.g. `"olivernguyen.com/frog"`
+ * once the domain is live — every share surface reads this one constant.
+ */
+export const SHARE_DOMAIN: string | null = null;

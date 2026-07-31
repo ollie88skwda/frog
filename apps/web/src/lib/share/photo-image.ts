@@ -1,0 +1,21 @@
+// Loads a photo (a signed storage URL, or an already-local blob) into an
+// HTMLImageElement the canvas can safely drawImage() + later export from.
+// Signed storage URLs are cross-origin — drawing them straight onto a canvas
+// taints it and blocks toBlob()/toDataURL(). Fetching to a Blob first and
+// loading that via an object URL keeps the pixels same-origin, same trick
+// `resizePhoto` already relies on elsewhere in this codebase.
+export async function loadImageFromUrl(url: string): Promise<HTMLImageElement> {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return loadImageFromBlob(blob);
+}
+
+export function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
+  const objUrl = URL.createObjectURL(blob);
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("photo failed to decode"));
+    img.src = objUrl;
+  });
+}

@@ -1,11 +1,14 @@
 import {
+  buildPrCard,
+  buildSessionCard,
+  buildStreakCard,
   computeStreak,
+  type ExerciseType,
+  epley,
   FIRST_WEEKDAY,
-  type MuscleByExercise,
-  muscleCredits,
   PR_TYPE_LABELS,
-  toDisplayWeight,
-  unitLabel,
+  type SessionCardBlock,
+  setVolumeKg,
   weekStart,
 } from "@frog/core";
 import { Flame, Medal, Trophy, X } from "lucide-react";
@@ -16,26 +19,28 @@ import {
   useRef,
   useState,
 } from "react";
-import { BodyHeatmap } from "@/components/charts/body-heatmap";
-import { ShareButton, type ShareCardData } from "@/components/share-card";
-import { formatDate, formatDuration } from "@/lib/format";
-import { useAllSessions } from "@/lib/profile-queries";
-import { useSession, useSessionExercises } from "@/lib/queries";
+import { ShareButton, type ShareSource } from "@/components/share-sheet";
+import { formatDate } from "@/lib/format";
+import { useAllSessions, useUserPrefs } from "@/lib/profile-queries";
+import { useExercises, useSession, useSessionExercises } from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
 import { useUnit } from "@/lib/settings";
-import { useMuscleMap } from "@/lib/stats-queries";
+import { ordinalFor } from "@/lib/share/ordinal";
+import { useLatestBodyweight, useMuscleMap } from "@/lib/stats-queries";
 import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
 
-const DAY = 24 * 60 * 60 * 1000;
-const WEEKDAY = ["S", "M", "T", "W", "T", "F", "S"];
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
-// Post-save celebration (Hevy-parity M9, plan §D). Shown once, over the fresh
-// history detail, when the finish flow lands on `/history/:id?summary=1`:
-// the ordinal workout number, the weekly streak (only when this is the first
-// workout of the week), then swipeable stat slides — PRs, 7-day consistency,
-// the workout overview, and the exercise list beside a session body heat map.
-// Every slide carries a Share button (client-rendered PNG, no hosting).
+// Post-save celebration (Hevy-parity M9, plan §D; redesigned per the share
+// system rebuild — docs/DECISIONS.md). Shown once, over the fresh history
+// detail, when the finish flow lands on `/history/:id?summary=1`: the
+// ordinal workout number, the weekly streak (only when this is the first
+// workout of the week), then up to THREE swipeable share slides — Session
+// (always), PR (only when one landed this session), Streak (only when the
+// streak extended). The old overview/exercise-list slides are cut: they
+// repeated the Session slide's own numbers, or listed exercise names nobody
+// reads at thumbnail size (report §5.4 "carousel discipline").
 export function PostSaveSummary({
   sessionId,
   onDismiss,
@@ -49,20 +54,24 @@ export function PostSaveSummary({
   const { data: blocks = [] } = useSessionExercises(sessionId);
   const { data: allSessions = [] } = useAllSessions();
   const { data: recordsData } = useRecordsData();
+  const { data: exercises = [] } = useExercises();
+  const { data: prefs } = useUserPrefs();
   const muscleMap = useMuscleMap();
+  const bodyweightKg = useLatestBodyweight();
 
   const startedAt = session?.startedAt ?? Date.now();
+  const identity = useMemo(
+    () => ({ displayName: prefs?.displayName ?? null }),
+    [prefs],
+  );
 
-  // Ordinal workout number: how many workouts up to and including this one.
-  const ordinal = useMemo(() => {
-    const earlierOrEqual = allSessions.filter(
-      (s) => s.startedAt <= startedAt,
-    ).length;
-    const present = allSessions.some((s) => s.id === sessionId);
-    return Math.max(1, present ? earlierOrEqual : earlierOrEqual + 1);
-  }, [allSessions, startedAt, sessionId]);
+  const ordinal = useMemo(
+    () => ordinalFor(allSessions, sessionId, startedAt),
+    [allSessions, sessionId, startedAt],
+  );
 
-  // Streak — celebrated only on the first workout of the current week.
+  // Streak — celebrated (and only offered as a share slide) on the first
+  // workout of the current week.
   const streak = useMemo(() => {
     const starts = [...allSessions.map((s) => s.startedAt), startedAt];
     return computeStreak(starts, FIRST_WEEKDAY, Date.now());
@@ -76,14 +85,6 @@ export function PostSaveSummary({
   }, [allSessions, startedAt, sessionId]);
   const showStreak = firstOfWeek && streak.weeks >= 1;
 
-  // Overview totals.
-  const setCount = blocks.reduce((n, b) => n + b.sets.length, 0);
-  const volumeKg = blocks.reduce(
-    (sum, b) =>
-      sum + b.sets.reduce((s, x) => s + (x.weightKg ?? 0) * (x.reps ?? 0), 0),
-    0,
-  );
-  const volume = toDisplayWeight(volumeKg, unit);
   const durationMs =
     session?.endedAt != null
       ? Math.max(
@@ -92,133 +93,253 @@ export function PostSaveSummary({
         )
       : 0;
 
+  const exerciseTypeById = useMemo(
+    () => new Map(exercises.map((e) => [e.id, e.exerciseType as ExerciseType])),
+    [exercises],
+  );
+  const shareBlocks: SessionCardBlock[] = useMemo(
+    () =>
+      blocks.map((b) => ({
+        exerciseId: b.exerciseId,
+        exerciseName: b.exerciseName,
+        exerciseType: exerciseTypeById.get(b.exerciseId) ?? "weight_reps",
+        sets: b.sets,
+      })),
+    [blocks, exerciseTypeById],
+  );
+
+  const buildShareCard = useMemo(
+    () => (heroSet?: Parameters<typeof buildSessionCard>[0]["heroSet"]) =>
+      buildSessionCard({
+        ordinal,
+        title: session?.title || "Workout",
+        date: formatDate(startedAt),
+        durationMs,
+        blocks: shareBlocks,
+        muscles: muscleMap,
+        bodyweightKg,
+        unit,
+        identity,
+        heroSet,
+      }),
+    [
+      ordinal,
+      session,
+      startedAt,
+      durationMs,
+      shareBlocks,
+      muscleMap,
+      bodyweightKg,
+      unit,
+      identity,
+    ],
+  );
+  const sessionSource: ShareSource = useMemo(
+    () => ({ kind: "session", blocks: shareBlocks, build: buildShareCard }),
+    [shareBlocks, buildShareCard],
+  );
+
   // PRs earned this session (from the client-computed records timeline).
   const nameById = useMemo(() => {
     const m = new Map<string, string>();
     for (const b of blocks) m.set(b.exerciseId, b.exerciseName);
     return m;
   }, [blocks]);
-  const prLines = useMemo(() => {
-    const events = recordsData?.records.events ?? [];
-    return events
-      .filter((e) => e.sessionId === sessionId)
+  const sessionPrEvents = useMemo(
+    () =>
+      (recordsData?.records.events ?? []).filter(
+        (e) => e.sessionId === sessionId,
+      ),
+    [recordsData, sessionId],
+  );
+  // Hero = the largest delta (or raw value, when there's no previous best to
+  // delta against) — report §5.2 Type 2 "hero = the largest delta".
+  const heroPrEvent = useMemo(() => {
+    if (sessionPrEvents.length === 0) return null;
+    return [...sessionPrEvents].sort((a, b) => {
+      const da = a.previous != null ? a.value - a.previous : a.value;
+      const db = b.previous != null ? b.value - b.previous : b.value;
+      return db - da;
+    })[0];
+  }, [sessionPrEvents]);
+  // e1RM sparkline for the hero PR's exercise, last 12 sessions.
+  const prSparkline = useMemo(() => {
+    if (!heroPrEvent) return [];
+    const out: Array<{ at: number; value: number }> = [];
+    for (const s of recordsData?.history ?? []) {
+      const block = s.exercises.find(
+        (e) => e.exerciseId === heroPrEvent.exerciseId,
+      );
+      if (!block) continue;
+      let best: number | null = null;
+      for (const set of block.sets) {
+        if (set.weightKg == null || set.reps == null || set.reps < 1) continue;
+        const e = epley(set.weightKg, set.reps);
+        if (e != null && (best == null || e > best)) best = e;
+      }
+      if (best != null) out.push({ at: s.startedAt, value: best });
+    }
+    return out.slice(-12);
+  }, [heroPrEvent, recordsData]);
+  const prSource: ShareSource | null = useMemo(() => {
+    if (!heroPrEvent) return null;
+    const extraPrLabels = sessionPrEvents
+      .filter((e) => e !== heroPrEvent)
       .map(
         (e) =>
           `${nameById.get(e.exerciseId) ?? "Exercise"} · ${PR_TYPE_LABELS[e.prType]}`,
       );
-  }, [recordsData, sessionId, nameById]);
+    return {
+      kind: "static",
+      card: buildPrCard({
+        event: heroPrEvent,
+        prTypeLabel: PR_TYPE_LABELS[heroPrEvent.prType],
+        exerciseName: nameById.get(heroPrEvent.exerciseId) ?? "Exercise",
+        unit,
+        distUnit: unit === "lb" ? "mi" : "km",
+        estOneRmKg:
+          heroPrEvent.prType === "best_e1rm" ? heroPrEvent.value : null,
+        sparkline: prSparkline,
+        extraPrLabels,
+        identity,
+      }),
+    };
+  }, [heroPrEvent, sessionPrEvents, nameById, unit, prSparkline, identity]);
 
-  // 7-day consistency: trailing week of days, count of workouts each day.
-  const week = useMemo(
-    () =>
-      sevenDayCounts(
-        allSessions.map((s) => s.startedAt),
-        Date.now(),
-      ),
-    [allSessions],
-  );
-
-  // Per-muscle set credit for this session's body heat map.
-  const sessionMuscleSets = useMemo(
-    () => muscleSetsFor(blocks, muscleMap),
-    [blocks, muscleMap],
-  );
+  // Streak share slide: this week's volume comes from the same records
+  // history the PR sparkline above already reads (no extra fetch).
+  const streakSource: ShareSource | null = useMemo(() => {
+    if (!showStreak) return null;
+    const thisWeekStart = weekStart(startedAt, FIRST_WEEKDAY);
+    const weekSessions = (recordsData?.history ?? []).filter(
+      (s) => s.startedAt >= thisWeekStart && s.startedAt <= startedAt,
+    );
+    const volumeKgThisWeek = weekSessions.reduce(
+      (sum, s) =>
+        sum +
+        s.exercises.reduce(
+          (s2, e) =>
+            s2 +
+            e.sets.reduce(
+              (s3, set) =>
+                s3 +
+                setVolumeKg(e.exerciseType as ExerciseType, set, bodyweightKg),
+              0,
+            ),
+          0,
+        ),
+      0,
+    );
+    const weeksWithWork = new Set(
+      allSessions.map((s) => weekStart(s.startedAt, FIRST_WEEKDAY)),
+    );
+    weeksWithWork.add(thisWeekStart);
+    let cursor = weekStart(startedAt, FIRST_WEEKDAY);
+    const last13Weeks: boolean[] = [];
+    for (let i = 0; i < 13; i++) {
+      last13Weeks.unshift(weeksWithWork.has(cursor));
+      cursor = weekStart(cursor - WEEK_MS / 2, FIRST_WEEKDAY);
+    }
+    return {
+      kind: "static",
+      card: buildStreakCard({
+        weeksStreak: streak.weeks,
+        workoutsThisWeek: weekSessions.length,
+        volumeKgThisWeek,
+        restDays: streak.restDays,
+        last13Weeks,
+        unit,
+        identity,
+      }),
+    };
+  }, [
+    showStreak,
+    startedAt,
+    recordsData,
+    bodyweightKg,
+    allSessions,
+    streak,
+    unit,
+    identity,
+  ]);
 
   const title = session?.title || "Workout";
   const subtitle = formatDate(startedAt);
-  const overviewStats: ShareCardData["stats"] = [
-    { label: "Duration", value: formatDuration(durationMs) },
-    { label: "Exercises", value: String(blocks.length) },
-    { label: "Sets", value: String(setCount) },
-    { label: "Volume", value: `${volume.toLocaleString()} ${unitLabel(unit)}` },
-  ];
 
-  // Slides — PRs slide only when at least one PR landed.
-  const slides: { key: string; node: ReactElement }[] = [];
-
-  slides.push({
-    key: "hero",
-    node: (
-      <SlideShell
-        share={{
-          data: {
-            kicker: `Workout #${ordinal}`,
-            title,
-            subtitle,
-            stats: overviewStats,
-            strong: prLines.length > 0,
-          },
-          filename: `workout-${ordinal}`,
-          testId: "share-slide-hero",
-        }}
-      >
-        <p className="text-2xs font-medium tracking-widest text-accent uppercase">
-          {t("Workout complete", "Workout recorded")}
-        </p>
-        <p
-          className="num mt-2 text-5xl font-bold tracking-tight"
-          data-testid="summary-ordinal"
-        >
-          #{ordinal}
-        </p>
-        <p className="mt-1 text-sm text-soft">{title}</p>
-        <p className="num mt-0.5 text-xs text-faint">{subtitle}</p>
-        {showStreak && (
-          <div
-            className="mt-6 flex items-center gap-2 border border-border bg-surface-2 px-4 py-3"
-            data-testid="summary-streak"
-          >
-            <Flame className="size-5 text-accent" />
-            <span className="num text-sm">
-              <span className="font-semibold">{streak.weeks}</span>
-              <span className="text-soft">
-                {" "}
-                {t(
-                  `week${streak.weeks === 1 ? "" : "s"} in a row`,
-                  `week${streak.weeks === 1 ? "" : "s"} in a row. Consistency, n=${streak.weeks}.`,
-                )}
-              </span>
-            </span>
-          </div>
-        )}
-      </SlideShell>
-    ),
-  });
-
-  if (prLines.length > 0) {
-    slides.push({
-      key: "prs",
+  const slides: { key: string; node: ReactElement }[] = [
+    {
+      key: "session",
       node: (
         <SlideShell
-          share={{
-            data: {
-              kicker: `${prLines.length} new PR${prLines.length === 1 ? "" : "s"}`,
-              title,
-              subtitle,
-              lines: prLines,
-              strong: true,
-            },
-            filename: `workout-${ordinal}-prs`,
-            testId: "share-slide-prs",
-          }}
+          source={sessionSource}
+          sessionId={sessionId}
+          filename={`workout-${ordinal}`}
+          testId="share-slide-hero"
+        >
+          <p className="text-2xs font-medium tracking-widest text-accent uppercase">
+            {t("Workout complete", "Workout recorded")}
+          </p>
+          <p
+            className="num mt-2 text-5xl font-bold tracking-tight"
+            data-testid="summary-ordinal"
+          >
+            #{ordinal}
+          </p>
+          <p className="mt-1 text-sm text-soft">{title}</p>
+          <p className="num mt-0.5 text-xs text-faint">{subtitle}</p>
+          {showStreak && (
+            <div
+              className="mt-6 flex items-center gap-2 border border-border bg-surface-2 px-4 py-3"
+              data-testid="summary-streak"
+            >
+              <Flame className="size-5 text-accent" />
+              <span className="num text-sm">
+                <span className="font-semibold">{streak.weeks}</span>
+                <span className="text-soft">
+                  {" "}
+                  {t(
+                    `week${streak.weeks === 1 ? "" : "s"} in a row`,
+                    `week${streak.weeks === 1 ? "" : "s"} in a row. Consistency, n=${streak.weeks}.`,
+                  )}
+                </span>
+              </span>
+            </div>
+          )}
+        </SlideShell>
+      ),
+    },
+  ];
+
+  if (prSource && heroPrEvent) {
+    slides.push({
+      key: "pr",
+      node: (
+        <SlideShell
+          source={prSource}
+          tone="pr"
+          filename={`workout-${ordinal}-pr`}
+          testId="share-slide-pr"
         >
           <div className="flex items-center gap-2">
             <Trophy className="size-5 text-accent" />
             <p className="text-sm font-semibold" data-testid="summary-pr-count">
               {t(
-                `${prLines.length} new record${prLines.length === 1 ? "" : "s"}`,
-                `${prLines.length} new record${prLines.length === 1 ? "" : "s"}. The frog is, on this occasion, impressed.`,
+                `${sessionPrEvents.length} new record${sessionPrEvents.length === 1 ? "" : "s"}`,
+                `${sessionPrEvents.length} new record${sessionPrEvents.length === 1 ? "" : "s"}. The frog is, on this occasion, impressed.`,
               )}
             </p>
           </div>
           <ul className="mt-4 flex w-full flex-col gap-2">
-            {prLines.map((line) => (
+            {sessionPrEvents.map((e) => (
               <li
-                key={line}
+                key={`${e.exerciseId}-${e.prType}`}
                 className="flex items-center gap-2 border border-border bg-surface-2 px-3 py-2 text-left text-sm"
               >
                 <Medal className="size-4 shrink-0 text-accent" />
-                <span className="truncate">{line}</span>
+                <span className="truncate">
+                  {nameById.get(e.exerciseId) ?? "Exercise"} ·{" "}
+                  {PR_TYPE_LABELS[e.prType]}
+                </span>
               </li>
             ))}
           </ul>
@@ -227,139 +348,32 @@ export function PostSaveSummary({
     });
   }
 
-  slides.push({
-    key: "consistency",
-    node: (
-      <SlideShell
-        share={{
-          data: {
-            kicker: "7-day consistency",
-            title,
-            subtitle,
-            stats: [
-              {
-                label: "Workouts this week",
-                value: String(week.filter((d) => d.count > 0).length),
-              },
-            ],
-            strong: prLines.length > 0,
-          },
-          filename: `workout-${ordinal}-consistency`,
-          testId: "share-slide-consistency",
-        }}
-      >
-        <p className="text-sm font-semibold">Last 7 days</p>
-        <div
-          className="mt-6 flex items-end justify-center gap-3"
-          data-testid="summary-consistency"
+  if (streakSource) {
+    slides.push({
+      key: "streak",
+      node: (
+        <SlideShell
+          source={streakSource}
+          tone="streak"
+          filename={`workout-${ordinal}-streak`}
+          testId="share-slide-streak"
         >
-          {week.map((d) => (
-            <div key={d.key} className="flex flex-col items-center gap-2">
-              <div className="flex h-16 items-end">
-                <div
-                  className={cn(
-                    "w-6 transition-all duration-150",
-                    d.count > 0 ? "bg-accent" : "bg-surface-3",
-                  )}
-                  style={{
-                    height:
-                      d.count > 0
-                        ? `${Math.min(64, 24 + d.count * 20)}px`
-                        : "6px",
-                  }}
-                />
-              </div>
-              <span className="num text-2xs text-faint">
-                {WEEKDAY[new Date(d.key).getDay()]}
-              </span>
-            </div>
-          ))}
-        </div>
-      </SlideShell>
-    ),
-  });
-
-  slides.push({
-    key: "overview",
-    node: (
-      <SlideShell
-        share={{
-          data: {
-            kicker: "Workout summary",
-            title,
-            subtitle,
-            stats: overviewStats,
-            strong: prLines.length > 0,
-          },
-          filename: `workout-${ordinal}-summary`,
-          testId: "share-slide-overview",
-        }}
-      >
-        <p className="text-sm font-semibold">Overview</p>
-        <dl
-          className="mt-5 grid w-full grid-cols-2 gap-3"
-          data-testid="summary-overview"
-        >
-          {overviewStats.map((s) => (
-            <div
-              key={s.label}
-              className="border border-border bg-surface-2 px-3 py-3"
-            >
-              <dt className="text-2xs font-medium tracking-wide text-faint uppercase">
-                {s.label}
-              </dt>
-              <dd className="num mt-1 text-2xl font-semibold">{s.value}</dd>
-            </div>
-          ))}
-        </dl>
-      </SlideShell>
-    ),
-  });
-
-  slides.push({
-    key: "muscles",
-    node: (
-      <SlideShell
-        share={{
-          data: {
-            kicker: "Muscles trained",
-            title,
-            subtitle,
-            lines: blocks.map(
-              (b) =>
-                `${b.exerciseName} · ${b.sets.length} set${b.sets.length === 1 ? "" : "s"}`,
-            ),
-            strong: prLines.length > 0,
-          },
-          filename: `workout-${ordinal}-exercises`,
-          testId: "share-slide-muscles",
-        }}
-      >
-        <p className="text-sm font-semibold">Exercises</p>
-        <div className="mt-3 w-full">
-          <ul className="flex flex-col gap-1.5" data-testid="summary-exercises">
-            {blocks.map((b) => (
-              <li
-                key={b.id}
-                className="flex items-center justify-between gap-2 text-sm"
-              >
-                <span className="truncate">{b.exerciseName}</span>
-                <span className="num shrink-0 text-2xs text-faint">
-                  {b.sets.length} {b.sets.length === 1 ? "set" : "sets"}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <BodyHeatmap
-            muscleSets={sessionMuscleSets}
-            interactive={false}
-            className="mx-auto mt-4 max-w-56"
-            testId="summary-heatmap"
-          />
-        </div>
-      </SlideShell>
-    ),
-  });
+          <p className="text-sm font-semibold">
+            {t("Streak extended", "The streak holds, n>0.")}
+          </p>
+          <p
+            className="num mt-4 text-5xl font-bold tracking-tight"
+            data-testid="summary-streak-weeks"
+          >
+            {streak.weeks}
+            <span className="ml-2 text-lg font-normal text-soft">
+              {streak.weeks === 1 ? "week" : "weeks"}
+            </span>
+          </p>
+        </SlideShell>
+      ),
+    });
+  }
 
   return (
     <div
@@ -397,19 +411,29 @@ export function PostSaveSummary({
 // A single slide's centered content plus its Share action.
 function SlideShell({
   children,
-  share,
+  source,
+  sessionId,
+  tone,
+  filename,
+  testId,
 }: {
   children: ReactNode;
-  share: { data: ShareCardData; filename: string; testId: string };
+  source: ShareSource;
+  sessionId?: string;
+  tone?: "pr" | "streak" | "heavy" | "normal";
+  filename: string;
+  testId: string;
 }) {
   return (
     <div className="mx-auto flex h-full max-w-sm flex-col items-center justify-center text-center">
       <div className="flex w-full flex-col items-center">{children}</div>
       <div className="mt-8">
         <ShareButton
-          data={share.data}
-          filename={share.filename}
-          testId={share.testId}
+          source={source}
+          sessionId={sessionId}
+          tone={tone}
+          filename={filename}
+          testId={testId}
           variant="outline"
           size="sm"
         />
@@ -466,47 +490,4 @@ function SlideDeck({
       )}
     </div>
   );
-}
-
-// Count workouts per day for the trailing 7 calendar days (oldest → newest).
-function sevenDayCounts(
-  starts: number[],
-  now: number,
-): { key: string; count: number }[] {
-  const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
-  const days: { key: string; count: number }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today.getTime() - i * DAY);
-    days.push({ key: dayKey(d), count: 0 });
-  }
-  const index = new Map(days.map((d, i) => [d.key, i]));
-  for (const s of starts) {
-    const i = index.get(dayKey(new Date(s)));
-    if (i !== undefined) days[i].count += 1;
-  }
-  return days;
-}
-
-function dayKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
-    d.getDate(),
-  ).padStart(2, "0")}`;
-}
-
-// Fractional per-muscle set counts for one session's blocks (primary 1 /
-// secondary 0.5 via muscleCredits), for the summary body heat map.
-function muscleSetsFor(
-  blocks: { exerciseId: string; sets: unknown[] }[],
-  muscleMap: MuscleByExercise,
-): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const b of blocks) {
-    const credits = muscleCredits(muscleMap.get(b.exerciseId));
-    if (!credits.length || b.sets.length === 0) continue;
-    for (const { muscle, credit } of credits) {
-      out[muscle] = (out[muscle] ?? 0) + b.sets.length * credit;
-    }
-  }
-  return out;
 }
