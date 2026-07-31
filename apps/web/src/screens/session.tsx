@@ -2103,7 +2103,11 @@ function ExerciseBlock({
   // (routine/copy) data. Per-index (no clamp-to-last), so a newly added set is
   // blank until logged once.
   const showPrevious = ghost.length > 0 || seedSets.length > 0;
-  const cells = previousCells(ghost, [], activeIndex + 1);
+  const cells = previousCells(
+    ghost,
+    [],
+    Math.max(activeIndex + 1, seedSets.length),
+  );
   const template = gridTemplate(columns, showPrevious);
 
   return (
@@ -2271,6 +2275,7 @@ function ExerciseBlock({
           columns={columns}
           template={template}
           showPrevious={showPrevious}
+          previous={cells[activeIndex + 1 + i]?.previous ?? null}
         />
       ))}
 
@@ -2679,6 +2684,7 @@ function UpcomingRow({
   columns,
   template,
   showPrevious,
+  previous,
 }: {
   index: number;
   seed: SeedSet;
@@ -2687,18 +2693,34 @@ function UpcomingRow({
   columns: Column[];
   template: string;
   showPrevious: boolean;
+  previous: GhostSet | null;
 }) {
   const marker = SET_TYPE_MARKERS[seed.setType];
   return (
     <div
-      className="grid h-8 items-center gap-x-2 border-t border-border px-4 opacity-60"
+      className="grid h-8 items-center gap-x-2 border-t border-border px-4"
       style={{ gridTemplateColumns: template }}
       data-testid={`upcoming-${index}`}
     >
-      <span className="num min-w-3 text-left text-2xs text-faint tabular-nums">
-        {marker || index + 1}
+      <span className="flex items-center gap-2">
+        <StatusRing state="empty" />
+        <span
+          className={cn(
+            "num min-w-3 text-left text-2xs tabular-nums",
+            markerColorClass(seed.setType),
+            seed.setType !== "normal" && "font-semibold",
+          )}
+        >
+          {marker || index + 1}
+        </span>
       </span>
-      {showPrevious && <span />}
+      {showPrevious && (
+        <PreviousCell
+          previous={previous}
+          unit={unit}
+          testId={`upcoming-${index}-previous`}
+        />
+      )}
       {columns.map((c) => (
         <span
           key={c.key}
