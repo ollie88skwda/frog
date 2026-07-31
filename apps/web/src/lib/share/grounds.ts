@@ -38,25 +38,17 @@ export type Palette = {
 const GREEN_BG = "#6AB347";
 const GREEN_INK = "#131426";
 
-function sampleForcedToken(
-  themeClass: "light" | "dark",
+/** Resolves a CSS custom property to a concrete color. Without `themeClass`
+ * it samples the token as the app is currently themed; with one it forces a
+ * theme so a ground can pin a palette the user isn't looking at. */
+export function sampleToken(
   cssVar: string,
   fallback: string,
+  themeClass?: "light" | "dark",
 ): string {
   if (typeof document === "undefined") return fallback;
   const el = document.createElement("span");
-  el.className = themeClass;
-  el.style.display = "none";
-  el.style.color = `var(${cssVar})`;
-  document.body.appendChild(el);
-  const c = getComputedStyle(el).color;
-  el.remove();
-  return c || fallback;
-}
-
-export function sampleLiveToken(cssVar: string, fallback: string): string {
-  if (typeof document === "undefined") return fallback;
-  const el = document.createElement("span");
+  if (themeClass) el.className = themeClass;
   el.style.display = "none";
   el.style.color = `var(${cssVar})`;
   document.body.appendChild(el);
@@ -70,12 +62,12 @@ export function paletteFor(ground: Ground, accent: string): Palette {
     case "light":
       return {
         bg: "#ffffff", // theme.css `:root { --bg: white }` — not sage-2
-        ink: sampleForcedToken("light", "--sage-12", "#1a211e"),
-        soft: sampleForcedToken("light", "--sage-11", "#5f6563"),
-        faint: sampleForcedToken("light", "--sage-10", "#7c8481"),
+        ink: sampleToken("--sage-12", "#1a211e", "light"),
+        soft: sampleToken("--sage-11", "#5f6563", "light"),
+        faint: sampleToken("--sage-10", "#7c8481", "light"),
         // sage-6 on white is effectively invisible — sage-7 is the visible
         // hairline for the light ground specifically.
-        hair: sampleForcedToken("light", "--sage-7", "#c1c6c4"),
+        hair: sampleToken("--sage-7", "#c1c6c4", "light"),
         accent,
         markBody: accent,
         shadow: false,
@@ -108,11 +100,11 @@ export function paletteFor(ground: Ground, accent: string): Palette {
     default:
       return {
         // theme.css `:root.dark { --bg: var(--sage-1) }`
-        bg: sampleForcedToken("dark", "--sage-1", "#101211"),
-        ink: sampleForcedToken("dark", "--sage-12", "#eceeed"),
-        soft: sampleForcedToken("dark", "--sage-11", "#adb5b2"),
-        faint: sampleForcedToken("dark", "--sage-10", "#717d79"),
-        hair: sampleForcedToken("dark", "--sage-6", "#373b39"),
+        bg: sampleToken("--sage-1", "#101211", "dark"),
+        ink: sampleToken("--sage-12", "#eceeed", "dark"),
+        soft: sampleToken("--sage-11", "#adb5b2", "dark"),
+        faint: sampleToken("--sage-10", "#717d79", "dark"),
+        hair: sampleToken("--sage-6", "#373b39", "dark"),
         accent,
         markBody: accent,
         shadow: false,

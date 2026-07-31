@@ -6,16 +6,26 @@
 // `resizePhoto` already relies on elsewhere in this codebase.
 export async function loadImageFromUrl(url: string): Promise<HTMLImageElement> {
   const res = await fetch(url);
+  // Signed storage URLs expire; an expired one answers 4xx with an XML/HTML
+  // error body that would otherwise be handed to the decoder as "an image".
+  if (!res.ok) throw new Error(`photo fetch failed (${res.status})`);
   const blob = await res.blob();
   return loadImageFromBlob(blob);
 }
 
-export function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
+export async function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
   const objUrl = URL.createObjectURL(blob);
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("photo failed to decode"));
-    img.src = objUrl;
-  });
+  const img = new Image();
+  img.src = objUrl;
+  try {
+    // decode() (not onload) so the bitmap is fully in memory before the object
+    // URL is revoked — a load-only wait can leave the browser needing to
+    // re-fetch a src that no longer resolves.
+    await img.decode();
+    return img;
+  } catch {
+    throw new Error("photo failed to decode");
+  } finally {
+    URL.revokeObjectURL(objUrl);
+  }
 }

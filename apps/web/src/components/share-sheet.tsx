@@ -6,7 +6,7 @@ import type {
 } from "@frog/core";
 import { toDisplayWeight, unitLabel } from "@frog/core";
 import { Camera, Download, Share2, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { randomTagline, type Tone } from "@/lib/frog-tagline";
 import { useSessionMedia } from "@/lib/media-queries";
@@ -17,7 +17,7 @@ import {
   GROUND_LABELS,
   GROUNDS,
   type Ground,
-  sampleLiveToken,
+  sampleToken,
 } from "@/lib/share/grounds";
 import { paintShareCard } from "@/lib/share/paint";
 import { loadImageFromBlob, loadImageFromUrl } from "@/lib/share/photo-image";
@@ -175,11 +175,16 @@ function PhotoPicker({
 }) {
   const { data: photos = [] } = useSessionMedia(sessionId ?? "");
   const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   async function pickSessionPhoto(url: string) {
     setBusy(true);
+    setFailed(false);
     try {
       onSelect(await loadImageFromUrl(url));
+    } catch {
+      // A signed storage URL can expire between the media query and this tap.
+      setFailed(true);
     } finally {
       setBusy(false);
     }
@@ -190,9 +195,12 @@ function PhotoPicker({
     e.target.value = "";
     if (!file) return;
     setBusy(true);
+    setFailed(false);
     try {
       const resized = await resizePhoto(file, 1280);
       onSelect(await loadImageFromBlob(resized));
+    } catch {
+      setFailed(true);
     } finally {
       setBusy(false);
     }
@@ -243,7 +251,12 @@ function PhotoPicker({
           />
         </label>
       </div>
-      {!selected && (
+      {failed && (
+        <p className="text-2xs text-neg" data-testid="share-photo-error">
+          That photo wouldn't load. Try another, or reopen the sheet to refresh.
+        </p>
+      )}
+      {!selected && !failed && (
         <p className="text-2xs text-faint">
           Pick a photo above to preview the Photo ground.
         </p>
@@ -293,6 +306,7 @@ export function ShareSheet({
 }) {
   const { unit } = useUnit();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const paintQueue = useRef<Promise<void>>(Promise.resolve());
   const [frame, setFrame] = useState<FrameKind>("story");
   const [ground, setGround] = useState<Ground>(
     source.kind === "static" && source.card.kind === "pr" ? "green" : "dark",
@@ -305,10 +319,13 @@ export function ShareSheet({
   // Lazy initializers (not useRef(expr), which re-evaluates its argument on
   // every render even though it only keeps the first result) — sampled/built
   // once per sheet, not every render.
-  const [accent] = useState(() => sampleLiveToken("--accent", "#46a758"));
+  const [accent] = useState(() => sampleToken("--accent", "#46a758"));
+  // Session cards are never "pr"/"streak" kinds, so their tone is "normal"
+  // without building the card — building one here just to read `kind` off it
+  // would run a full volume + muscle-credit pass and throw the result away.
   const [tagline] = useState(() =>
     randomTagline(
-      tone ?? toneFor(source.kind === "static" ? source.card : source.build()),
+      tone ?? (source.kind === "static" ? toneFor(source.card) : "normal"),
     ),
   );
 
@@ -330,32 +347,37 @@ export function ShareSheet({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const paint = useCallback(async () => {
+  // Re-paint whenever anything the card depends on changes — this ALSO
+  // pre-renders the export blob (iOS defensive fix, report §2.5/§6 step 5):
+  // navigator.share must be called inside the tap's own gesture, so the async
+  // render can't happen at tap time. It happens here, ahead of it. This is the
+  // ONLY thing that paints: the canvas takes a plain object ref (attached
+  // during commit, before this effect runs) rather than a callback ref, which
+  // would re-fire on every dep change and race a second paint against this one.
+  useEffect(() => {
     const el = canvasRef.current;
     if (!el) return;
-    await paintShareCard(el, { frame, ground, card, tagline, accent, photo });
-    const blob = await toBlob(el);
-    if (blob)
+    let live = true;
+    // The blob on hand belongs to the outgoing render — drop it so Share/Save
+    // stay disabled until this paint produces the image the user is looking at.
+    setPendingFile(null);
+    const run = paintQueue.current.then(async () => {
+      if (!live) return;
+      await paintShareCard(el, { frame, ground, card, tagline, accent, photo });
+      if (!live) return;
+      const blob = await toBlob(el);
+      if (!live || !blob) return;
       setPendingFile(
         new File([blob], `${filename}.png`, { type: "image/png" }),
       );
+    });
+    // Superseded paints are skipped, not aborted mid-draw — chaining keeps a
+    // slow earlier run from repainting the canvas after a later one finished.
+    paintQueue.current = run.catch(() => {});
+    return () => {
+      live = false;
+    };
   }, [frame, ground, card, tagline, accent, photo, filename]);
-
-  useEffect(() => {
-    void paint();
-    // Re-paint whenever anything the card depends on changes — this ALSO
-    // pre-renders the export blob (iOS defensive fix, report §2.5/§6 step 5):
-    // navigator.share must be called inside the tap's own gesture, so the
-    // async render can't happen at tap time. It happens here, ahead of it.
-  }, [paint]);
-
-  const attachCanvas = useCallback(
-    (el: HTMLCanvasElement | null) => {
-      canvasRef.current = el;
-      if (el) void paint();
-    },
-    [paint],
-  );
 
   function save() {
     if (pendingFile) downloadBlob(pendingFile, `${filename}.png`);
@@ -409,7 +431,7 @@ export function ShareSheet({
           data-testid="share-preview"
         >
           <canvas
-            ref={attachCanvas}
+            ref={canvasRef}
             className="h-auto w-full border border-border"
             style={{ aspectRatio: aspect }}
             data-testid="share-canvas"

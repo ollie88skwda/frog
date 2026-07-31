@@ -41,10 +41,15 @@ export async function paintShareCard(
   canvas.height = frame.h;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
-  const p = paletteFor(opts.ground, opts.accent);
+  // The Photo ground paints no background of its own (palette `bg: null`), so
+  // without a photo it would leave the card fully transparent and its white
+  // ink invisible. Dark is the readable stand-in until one is picked.
+  const ground: Ground =
+    opts.ground === "photo" && !opts.photo ? "dark" : opts.ground;
+  const p = paletteFor(ground, opts.accent);
 
   ctx.clearRect(0, 0, frame.w, frame.h);
-  if (opts.ground === "photo" && opts.photo) {
+  if (ground === "photo" && opts.photo) {
     drawCoverImage(ctx, opts.photo, frame.w, frame.h);
     drawScrim(ctx, frame.w, frame.h);
   } else if (p.bg) {
