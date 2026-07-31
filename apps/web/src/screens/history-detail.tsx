@@ -109,6 +109,7 @@ function ShareWorkoutSheet({
         unit,
         identity: { displayName: prefs?.displayName ?? null },
         heroSet,
+        includeWarmups: prefs?.includeWarmupsInStats ?? true,
       }),
     [
       ordinal,

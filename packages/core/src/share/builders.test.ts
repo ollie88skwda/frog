@@ -74,6 +74,7 @@ describe("buildSessionCard", () => {
       bodyweightKg: null,
       unit: "kg",
       identity: IDENTITY,
+      includeWarmups: true,
     });
     expect(card.hero.caption).toBe("Bench Press");
     expect(card.hero.value).toBe("110");
@@ -94,6 +95,7 @@ describe("buildSessionCard", () => {
       unit: "kg",
       identity: IDENTITY,
       heroSet: { exerciseId: "curl", setId: "s3" },
+      includeWarmups: true,
     });
     expect(card.hero.caption).toBe("Bicep Curl");
     expect(card.hero.value).toBe("20");
@@ -129,11 +131,79 @@ describe("buildSessionCard", () => {
       bodyweightKg: null, // no bodyweight logged
       unit: "kg",
       identity: IDENTITY,
+      includeWarmups: true,
     });
     expect(card.hero.value).toBe("15");
     expect(card.hero.unit).toBe("reps");
     // No bodyweight on record ⇒ volume can't be computed ⇒ "—", not 0.
     expect(card.support[0]).toEqual({ label: "Volume", value: "—" });
+  });
+
+  it("excludes warm-up sets from Volume/Sets/muscle credit when includeWarmups is false, matching every other stats surface", () => {
+    const warmupBlocks: SessionCardBlock[] = [
+      {
+        exerciseId: "bench",
+        exerciseName: "Bench Press",
+        exerciseType: "weight_reps",
+        sets: [
+          {
+            id: "w1",
+            setNo: 0,
+            setType: "warmup",
+            weightKg: 40,
+            reps: 10,
+            durationSec: null,
+            distanceM: null,
+          },
+          {
+            id: "s1",
+            setNo: 1,
+            setType: "normal",
+            weightKg: 100,
+            reps: 5,
+            durationSec: null,
+            distanceM: null,
+          },
+          {
+            id: "s2",
+            setNo: 2,
+            setType: "normal",
+            weightKg: 100,
+            reps: 5,
+            durationSec: null,
+            distanceM: null,
+          },
+        ],
+      },
+    ];
+    const withWarmups = buildSessionCard({
+      ordinal: 1,
+      title: "Push day",
+      date: "Jul 30",
+      durationMs: 0,
+      blocks: warmupBlocks,
+      muscles: new Map(),
+      bodyweightKg: null,
+      unit: "kg",
+      identity: IDENTITY,
+      includeWarmups: true,
+    });
+    const withoutWarmups = buildSessionCard({
+      ordinal: 1,
+      title: "Push day",
+      date: "Jul 30",
+      durationMs: 0,
+      blocks: warmupBlocks,
+      muscles: new Map(),
+      bodyweightKg: null,
+      unit: "kg",
+      identity: IDENTITY,
+      includeWarmups: false,
+    });
+    expect(withWarmups.support[1]).toEqual({ label: "Sets", value: "3" });
+    expect(withWarmups.support[0].value).toBe("1,400 kg");
+    expect(withoutWarmups.support[1]).toEqual({ label: "Sets", value: "2" });
+    expect(withoutWarmups.support[0].value).toBe("1,000 kg");
   });
 });
 

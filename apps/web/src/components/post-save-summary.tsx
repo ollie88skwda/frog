@@ -162,6 +162,7 @@ export function PostSaveSummary({
         unit,
         identity,
         heroSet,
+        includeWarmups: recordsData?.includeWarmups ?? true,
       }),
     [
       ordinal,
@@ -173,6 +174,7 @@ export function PostSaveSummary({
       bodyweightKg,
       unit,
       identity,
+      recordsData,
     ],
   );
   const sessionSource: ShareSource = useMemo(

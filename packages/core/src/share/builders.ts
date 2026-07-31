@@ -14,7 +14,7 @@ import {
   toDisplayWeight,
   unitLabel,
 } from "../domain/units";
-import { setVolumeKg } from "../domain/volume";
+import { countsForStats, setVolumeKg } from "../domain/volume";
 import type { ExerciseRecords, PrEvent, PrType } from "../records/types";
 import type { MuscleByExercise } from "../stats/aggregate";
 import { muscleCredits } from "../stats/aggregate";
@@ -157,10 +157,21 @@ export function buildSessionCard(input: {
   identity: ShareIdentity;
   /** A user-tapped set to headline; omit/null for the auto pick (top set). */
   heroSet?: SessionSetRef | null;
+  /** `user_prefs.includeWarmupsInStats` — the Session card's Volume, Sets,
+   * and body heat map must agree with /stats, the reports, and the records
+   * panel on whether warm-ups count, or the same session reads a different
+   * fact on different screens. The hero-set picker stays on the unfiltered
+   * `blocks`: a user explicitly tapping a set to headline is a deliberate
+   * choice, not a stats aggregate. */
+  includeWarmups: boolean;
 }): SessionCard {
-  const { blocks, unit, bodyweightKg } = input;
+  const { blocks, unit, bodyweightKg, includeWarmups } = input;
+  const countedBlocks: SessionCardBlock[] = blocks.map((b) => ({
+    ...b,
+    sets: b.sets.filter((s) => countsForStats(s, { includeWarmups })),
+  }));
 
-  const volumeKg = blocks.reduce(
+  const volumeKg = countedBlocks.reduce(
     (sum, b) =>
       sum +
       b.sets.reduce(
@@ -169,7 +180,7 @@ export function buildSessionCard(input: {
       ),
     0,
   );
-  const setCount = blocks.reduce((n, b) => n + b.sets.length, 0);
+  const setCount = countedBlocks.reduce((n, b) => n + b.sets.length, 0);
 
   const picked = input.heroSet ? findHeroSet(blocks, input.heroSet) : null;
   const auto = picked ?? pickAutoHeroSet(blocks);
@@ -200,7 +211,7 @@ export function buildSessionCard(input: {
     heroRef,
     isAutoHero,
     support,
-    muscleSets: sessionMuscleSets(blocks, input.muscles),
+    muscleSets: sessionMuscleSets(countedBlocks, input.muscles),
     identity: input.identity,
   };
 }
