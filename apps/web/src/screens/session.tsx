@@ -2260,6 +2260,20 @@ function ExerciseBlock({
         onCommit={onCommit}
       />
 
+      {seedSets.slice(activeIndex + 1).map((seed, i) => (
+        <UpcomingRow
+          // biome-ignore lint/suspicious/noArrayIndexKey: seed targets carry no id; position is the set number
+          key={activeIndex + 1 + i}
+          index={activeIndex + 1 + i}
+          seed={seed}
+          unit={blockUnit}
+          distUnit={distUnit}
+          columns={columns}
+          template={template}
+          showPrevious={showPrevious}
+        />
+      ))}
+
       <PlateSheet
         open={plateOpen}
         onOpenChange={setPlateOpen}
@@ -2627,6 +2641,76 @@ function committedText(
         ? String(toDisplayDistance(set.distanceM, distUnit))
         : "—";
   }
+}
+
+// Target-value formatter for a not-yet-active seeded set (rep range renders
+// as "6–8", same placeholder ActiveRow shows for its own reps field).
+function seedText(
+  key: ColKey,
+  seed: SeedSet,
+  unit: Unit,
+  distUnit: DistanceUnit,
+): string {
+  switch (key) {
+    case "weight":
+      return seed.weightKg != null
+        ? String(toDisplayWeight(seed.weightKg, unit))
+        : "—";
+    case "reps":
+      if (seed.repsMax != null) return `${seed.reps ?? ""}–${seed.repsMax}`;
+      return seed.reps != null ? String(seed.reps) : "—";
+    case "duration":
+      return seed.durationSec != null ? formatMMSS(seed.durationSec) : "—";
+    case "distance":
+      return seed.distanceM != null
+        ? String(toDisplayDistance(seed.distanceM, distUnit))
+        : "—";
+  }
+}
+
+// A planned set from the routine/copy seed that hasn't become the active row
+// yet — read-only, so the full count the template configured is visible from
+// the moment the session starts instead of only the one row being logged.
+function UpcomingRow({
+  index,
+  seed,
+  unit,
+  distUnit,
+  columns,
+  template,
+  showPrevious,
+}: {
+  index: number;
+  seed: SeedSet;
+  unit: Unit;
+  distUnit: DistanceUnit;
+  columns: Column[];
+  template: string;
+  showPrevious: boolean;
+}) {
+  const marker = SET_TYPE_MARKERS[seed.setType];
+  return (
+    <div
+      className="grid h-8 items-center gap-x-2 border-t border-border px-4 opacity-60"
+      style={{ gridTemplateColumns: template }}
+      data-testid={`upcoming-${index}`}
+    >
+      <span className="num min-w-3 text-left text-2xs text-faint tabular-nums">
+        {marker || index + 1}
+      </span>
+      {showPrevious && <span />}
+      {columns.map((c) => (
+        <span
+          key={c.key}
+          className="num text-sm text-faint"
+          data-testid={`upcoming-${index}-${c.key}`}
+        >
+          {seedText(c.key, seed, unit, distUnit)}
+        </span>
+      ))}
+      <span />
+    </div>
+  );
 }
 
 // PREVIOUS reference cell — quiet, tabular; blank when never logged at this
