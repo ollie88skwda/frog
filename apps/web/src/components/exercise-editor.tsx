@@ -58,12 +58,26 @@ const MEDIA_MAX_BYTES = 50 * 1024 * 1024;
 // Some pickers hand back a File with an empty or unrecognised `type` (the
 // Android "Files" provider, .mov/.heic outside Safari), so the MIME type alone
 // can't decide this — a clip classed as an image goes to the image decoder and
-// fails there instead.
-const VIDEO_EXTENSION = /\.(mp4|m4v|mov|webm|ogv|avi|mkv|3gp)$/i;
-function mediaKind(file: File): "image" | "video" {
-  if (file.type.startsWith("video/")) return "video";
-  if (file.type.startsWith("image/")) return "image";
-  return VIDEO_EXTENSION.test(file.name) ? "video" : "image";
+// fails there instead. The extension has to name the container as well as the
+// kind: storage serves back whatever content type it was handed, and a .mov
+// stored as video/mp4 is a dead player in Firefox.
+const VIDEO_MIME: Record<string, string> = {
+  mp4: "video/mp4",
+  m4v: "video/x-m4v",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  ogv: "video/ogg",
+  avi: "video/x-msvideo",
+  mkv: "video/x-matroska",
+  "3gp": "video/3gpp",
+};
+function classifyMedia(file: File): { kind: "image" | "video"; type: string } {
+  if (file.type.startsWith("video/")) return { kind: "video", type: file.type };
+  if (file.type.startsWith("image/")) return { kind: "image", type: file.type };
+  const videoType = VIDEO_MIME[file.name.split(".").pop()?.toLowerCase() ?? ""];
+  return videoType
+    ? { kind: "video", type: videoType }
+    : { kind: "image", type: file.type };
 }
 
 export type ExerciseEditorProps = {
@@ -230,7 +244,7 @@ export function ExerciseEditor({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    const kind = mediaKind(file);
+    const { kind, type } = classifyMedia(file);
     let blob: Blob = file;
     if (kind === "image") {
       try {
@@ -241,6 +255,8 @@ export function ExerciseEditor({
         );
         return;
       }
+    } else if (file.type !== type) {
+      blob = file.slice(0, file.size, type);
     }
     if (blob.size > MEDIA_MAX_BYTES) {
       setMediaError(

@@ -1770,7 +1770,9 @@ function ExercisePicker({
   const { data: exercises = [], isLoading } = useExercises();
   const { data: machines = [] } = useMachines();
   // A just-created exercise is in the list before its INSERT lands; adding it
-  // to the session would violate the session_exercises FK.
+  // to the session would violate the session_exercises FK. Leaving the
+  // registry says the create settled, not that it succeeded — the list itself
+  // is what separates the two (a rolled-back create takes its row with it).
   const pendingExercises = usePendingExercises();
   const [query, setQuery] = useState("");
   const [filterMuscle, setFilterMuscle] = useState("");
@@ -1786,12 +1788,13 @@ function ExercisePicker({
     name: string;
   } | null>(null);
   useEffect(() => {
-    if (awaitingPick && !pendingExercises.has(awaitingPick.id)) {
-      onPick(awaitingPick.id, awaitingPick.name);
-      setAwaitingPick(null);
-      onOpenChange(false);
-    }
-  }, [awaitingPick, pendingExercises, onPick, onOpenChange]);
+    if (!awaitingPick) return;
+    if (pendingExercises.has(awaitingPick.id)) return;
+    if (!exercises.some((e) => e.id === awaitingPick.id)) return;
+    onPick(awaitingPick.id, awaitingPick.name);
+    setAwaitingPick(null);
+    onOpenChange(false);
+  }, [awaitingPick, pendingExercises, exercises, onPick, onOpenChange]);
   // Muscle-grouped, tier-sorted — same reading order as the Library ribbon.
   const filtered = filterExercises(exercises, query, filterMuscle).filter(
     (ex) => !yoursOnly || ex.isCustom,
