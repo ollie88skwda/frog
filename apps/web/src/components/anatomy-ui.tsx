@@ -20,8 +20,14 @@ const TIER_NAME_CLASS: Record<Tier, string> = {
 
 // Untiered (no rating for this muscle — 862 of 882 seed rows, and every
 // hand-added custom exercise) must never read as tier S ("Best"): it means
-// "unrated", not "top-rated". Rank it visually below C, not above it.
-const UNTIERED_NAME_CLASS = "text-faint";
+// "unrated", not "top-rated". `text-faint` alone isn't enough — it's byte-
+// identical to tier C ("Weak"), so an unrated exercise read as *rated poorly*
+// rather than *not rated at all*. Italic is the distinguishing signal: same
+// faint brightness (still ranks visually below C, never above), but a
+// slant no real tier ever carries, so "unrated" and "Weak" don't collide.
+// No literal label — the module's own no-letters-on-the-reading-path rule
+// would put a word on ~862 of 882 rows.
+const UNTIERED_NAME_CLASS = "text-faint italic";
 
 export function tierNameClass(tier: Tier | null | undefined): string {
   return tier ? TIER_NAME_CLASS[tier] : UNTIERED_NAME_CLASS;
@@ -41,6 +47,7 @@ export function TierLegend({ className }: { className?: string }) {
       <span className="font-semibold text-ink-2">Great</span>
       <span className="font-semibold text-soft">Good</span>
       <span className="font-semibold text-faint">Weak</span>
+      <span className="font-semibold text-faint italic">Unrated</span>
     </div>
   );
 }
