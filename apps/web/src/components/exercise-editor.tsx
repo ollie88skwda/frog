@@ -49,6 +49,11 @@ import { cn } from "@/lib/utils";
 
 const TIERS: Tier[] = ["S", "A", "B", "C"];
 const MEDIA_MAX_DIM = 1280; // matches machine/progress photo precedent
+// Images are resized to a few hundred kB before they get here; a video is
+// uploaded byte-for-byte, so it is the only thing that can hit this. Matches
+// the exercise-media bucket's own file_size_limit — refuse it here, where the
+// sheet is still open to say so, rather than letting storage reject it after.
+const MEDIA_MAX_BYTES = 50 * 1024 * 1024;
 
 export type ExerciseEditorProps = {
   open: boolean;
@@ -82,13 +87,11 @@ export function ExerciseEditor({
   const uploadMedia = useUploadExerciseMedia();
   const clearMedia = useClearExerciseMedia();
   // The `exercise` prop comes from the narrow library-list row (LIST_COLUMNS,
-  // step 0) and never carries notes/instructions/imageUrls/media — fetch the
-  // full row so editing an exercise with existing how-to content or a demo
-  // clip doesn't silently blank it out on save. placeholderData from the
-  // list row keeps the sheet painting instantly either way.
-  const { data: fullExercise, isPlaceholderData } = useExercise(
-    exercise?.id ?? "",
-  );
+  // step 0), which carries every field this sheet writes but not
+  // mediaPath/mediaType — fetch the full row so the demo clip renders (and
+  // renders as the right element). placeholderData from the list row keeps
+  // the sheet painting instantly either way.
+  const { data: fullExercise } = useExercise(exercise?.id ?? "");
   const target = mode === "edit" ? (fullExercise ?? exercise) : undefined;
   const { data: mediaUrl } = useExerciseMediaUrl(target);
 
@@ -114,6 +117,7 @@ export function ExerciseEditor({
     blob: Blob;
     kind: "image" | "video";
   } | null>(null);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const [defaultsOpen, setDefaultsOpen] = useState(false);
   const [referenceOpen, setReferenceOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -121,11 +125,12 @@ export function ExerciseEditor({
   // Radix unmounts DialogContent while closed, but re-opening the *same*
   // mounted editor for a different exercise (or from create back to create)
   // must not show the previous target's draft — reset explicitly on open.
-  // Edit mode waits for the FULL row (not just the narrow list-row
-  // placeholder) so notes/instructions/media aren't blanked in the draft and
-  // then silently wiped out on save; appliedRef makes this a one-shot sync,
-  // not a live one, so a later background refetch mid-edit can't stomp what
-  // the user is typing.
+  // The draft is seeded from whatever row is on hand (list placeholder or
+  // full fetch): every field written back by `buildOpts` is in LIST_COLUMNS,
+  // so the placeholder is complete for editing purposes and the sheet paints
+  // filled in on the first frame. appliedRef makes this a one-shot sync, not
+  // a live one, so the full row landing (or any later background refetch)
+  // mid-edit can't stomp what the user is typing.
   const appliedRef = useRef(false);
   useEffect(() => {
     if (!open) {
@@ -133,7 +138,7 @@ export function ExerciseEditor({
       return;
     }
     if (appliedRef.current) return;
-    if (mode === "edit" && (!fullExercise || isPlaceholderData)) return;
+    if (mode === "edit" && !target) return;
     appliedRef.current = true;
     setName(target?.name ?? initialName ?? "");
     setDuplicateOf(null);
@@ -158,10 +163,11 @@ export function ExerciseEditor({
       ),
     );
     setPendingMedia(null);
+    setMediaError(null);
     setDefaultsOpen(false);
     setReferenceOpen(false);
     setAdvancedOpen(false);
-  }, [open, mode, target, fullExercise, isPlaceholderData, initialName]);
+  }, [open, mode, target, initialName]);
 
   const typeLocked = mode === "edit" && history.length > 0;
   const selectedMuscles = [...primary, ...secondary];
@@ -217,8 +223,23 @@ export function ExerciseEditor({
       : "image";
     const blob =
       kind === "image" ? await resizePhoto(file, MEDIA_MAX_DIM) : file;
+    if (blob.size > MEDIA_MAX_BYTES) {
+      setMediaError(
+        `That ${kind} is ${Math.round(blob.size / (1024 * 1024))} MB — the limit is 50 MB. Trim it and try again.`,
+      );
+      return;
+    }
+    setMediaError(null);
     if (mode === "edit" && exercise) {
-      uploadMedia.mutate({ exerciseId: exercise.id, file: blob, kind });
+      // The sheet stays open through an edit-mode upload, so a rejection
+      // (storage's own size ceiling, a dropped connection) has somewhere to
+      // land instead of leaving the user believing the clip attached.
+      uploadMedia.mutate(
+        { exerciseId: exercise.id, file: blob, kind },
+        {
+          onError: () => setMediaError("Couldn't upload that file. Try again."),
+        },
+      );
     } else {
       setPendingMedia({ blob, kind });
     }
@@ -245,20 +266,30 @@ export function ExerciseEditor({
   // Optimistic, like every other write in this app (AGENTS.md): the sheet
   // closes the instant Save is tapped, it never waits on the network. The id
   // is generated here (not left to the server) so a staged media file can be
-  // uploaded against it immediately, with no round trip to learn it.
+  // uploaded against it without a round trip to learn it — but the upload
+  // itself waits for the INSERT to land (pending-exercises.ts): it stamps
+  // media_path onto that row, and an UPDATE that overtakes the INSERT matches
+  // nothing and reports no error, orphaning the object in the bucket.
   function onSave() {
     const trimmed = name.trim();
     if (!trimmed) return;
     if (mode === "create") {
       const id = newId();
-      create.mutate({ name: trimmed, opts: { id, ...buildOpts() } });
-      if (pendingMedia) {
-        uploadMedia.mutate({
-          exerciseId: id,
-          file: pendingMedia.blob,
-          kind: pendingMedia.kind,
-        });
-      }
+      const staged = pendingMedia;
+      create
+        .mutateAsync({ name: trimmed, opts: { id, ...buildOpts() } })
+        .then(() => {
+          if (staged) {
+            uploadMedia.mutate({
+              exerciseId: id,
+              file: staged.blob,
+              kind: staged.kind,
+            });
+          }
+        })
+        // Rollback + the failure notice belong to useCreateExercise; this only
+        // keeps a failed create from surfacing as an unhandled rejection.
+        .catch(() => {});
       onCreated?.(id, trimmed);
     } else if (exercise) {
       update.mutate({
@@ -502,10 +533,11 @@ export function ExerciseEditor({
               mediaUrl={mediaUrl ?? null}
               mediaType={
                 mode === "edit"
-                  ? (exercise?.mediaType ?? null)
+                  ? (target?.mediaType ?? null)
                   : (pendingMedia?.kind ?? null)
               }
               hasPending={!!pendingMedia}
+              error={mediaError}
               onPick={onMediaPicked}
               onClear={
                 mode === "edit" && exercise
@@ -859,18 +891,28 @@ function MediaField({
   mediaUrl,
   mediaType,
   hasPending,
+  error,
   onPick,
   onClear,
 }: {
   mediaUrl: string | null;
   mediaType: string | null;
   hasPending: boolean;
+  error: string | null;
   onPick: (e: ChangeEvent<HTMLInputElement>) => void;
   onClear: () => void;
 }) {
   return (
     <div className="flex flex-col gap-2">
       <span className="text-2xs text-faint">Demo image or video</span>
+      {error && (
+        <p
+          className="text-2xs text-neg"
+          data-testid="exercise-editor-media-error"
+        >
+          {error}
+        </p>
+      )}
       {mediaUrl &&
         (mediaType === "video" ? (
           // biome-ignore lint/a11y/useMediaCaption: a silent self-recorded demo clip has no dialogue to caption.

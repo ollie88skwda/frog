@@ -3,9 +3,13 @@
 -- 20260715053951_parched_firedrake.sql for why auth.jwt()->>'sub', not
 -- auth.uid(): owner_id is the Clerk JWT sub claim as text, not a Postgres
 -- auth uuid.
-insert into storage.buckets (id, name, public)
-values ('exercise-media', 'exercise-media', false)
-on conflict (id) do nothing;
+-- A demo clip is uploaded byte-for-byte (only images are resized client-side),
+-- so the bucket carries the same 50 MB ceiling the editor refuses above —
+-- storage is the authority, the client check is only there to say so while
+-- the sheet is still open.
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('exercise-media', 'exercise-media', false, 52428800)
+on conflict (id) do update set file_size_limit = excluded.file_size_limit;
 
 create policy "exercise_media_storage_select" on storage.objects
   for select using (

@@ -270,5 +270,5 @@ Web-push endpoints for rest-timer/PR notifications (M12).
 
 ### Column additions (2026-07-30, custom exercise adder)
 - `exercises`: + `mechanic`, `movement_pattern`, `laterality`, `default_reps_min`, `default_reps_max`, `default_rest_sec`, `notes`, `aliases` (jsonb string[]), `media_path`, `media_type`. `muscle_targets` entries gained an optional `role` field (`"primary" | "secondary"`, back-compat absent = index-0-primary). All nullable, no default — a book row that never fills them behaves exactly as before.
-- New private storage bucket `exercise-media`, RLS-scoped to the owning user (same `(storage.foldername(name))[1] = (select auth.jwt()->>'sub')` pattern as `session-media`/machine photos), holding the file `media_path` points at.
+- New private storage bucket `exercise-media`, RLS-scoped to the owning user (same `(storage.foldername(name))[1] = (select auth.jwt()->>'sub')` pattern as `session-media`/machine photos), holding the file `media_path` points at. `file_size_limit` is 50 MB — images are resized client-side, a video is not, so the ceiling is enforced both in the editor (visible message, before upload) and by the bucket.
 - `GET /v1/exercises` (and the `exercises` field of `GET /v1/export`) now select the full row instead of a hand-picked column list — see docs/DECISIONS.md.

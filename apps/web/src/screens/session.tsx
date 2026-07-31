@@ -1834,7 +1834,9 @@ function ExercisePicker({
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center gap-3 px-4 py-6">
               <p className="text-center text-xs text-faint">
-                No exercises match your search.
+                {query.trim()
+                  ? "No exercises match your search."
+                  : "No exercises match these filters."}
               </p>
               <Button
                 variant="primary"
@@ -1844,7 +1846,7 @@ function ExercisePicker({
                 data-testid="picker-create-exercise-btn"
               >
                 <Plus className="size-4" />
-                Create "{query}"
+                {query.trim() ? `Create "${query.trim()}"` : "Create exercise"}
               </Button>
             </div>
           ) : (
@@ -1879,7 +1881,7 @@ function ExercisePicker({
         open={creatingNew}
         onOpenChange={setCreatingNew}
         mode="create"
-        initialName={query}
+        initialName={query.trim()}
         onCreated={(id, name) => setAwaitingPick({ id, name })}
       />
     </Dialog>
