@@ -233,11 +233,22 @@ export function ExerciseEditor({
     setDuplicateOf(hit ?? null);
   }
 
-  function addAlias() {
-    const alias = aliasDraft.trim().replace(/,+$/, "");
+  // Takes the raw text explicitly: the comma shortcut fires from inside the
+  // input's own `onChange`, where `aliasDraft` is still the pre-change value —
+  // a pasted "OHP," would otherwise commit nothing and clear the field. Commas
+  // separate, so a multi-alias paste lands as several chips.
+  function addAlias(raw: string = aliasDraft) {
+    const parts = raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     setAliasDraft("");
-    if (!alias || aliases.includes(alias)) return;
-    setAliases([...aliases, alias]);
+    if (parts.length === 0) return;
+    setAliases((prev) => {
+      const next = [...prev];
+      for (const p of parts) if (!next.includes(p)) next.push(p);
+      return next;
+    });
   }
 
   async function onMediaPicked(e: ChangeEvent<HTMLInputElement>) {
@@ -867,7 +878,7 @@ function AliasChips({
   aliases: string[];
   draft: string;
   onDraftChange: (v: string) => void;
-  onAdd: () => void;
+  onAdd: (raw?: string) => void;
   onRemove: (alias: string) => void;
 }) {
   return (
@@ -882,9 +893,8 @@ function AliasChips({
         <Input
           value={draft}
           onChange={(e) => {
-            if (e.target.value.endsWith(",")) {
-              onDraftChange(e.target.value);
-              onAdd();
+            if (e.target.value.includes(",")) {
+              onAdd(e.target.value);
             } else {
               onDraftChange(e.target.value);
             }
@@ -895,7 +905,7 @@ function AliasChips({
               onAdd();
             }
           }}
-          onBlur={onAdd}
+          onBlur={() => onAdd()}
           placeholder="+ add alias"
           className="h-10 w-32"
           data-testid="exercise-editor-alias-input"

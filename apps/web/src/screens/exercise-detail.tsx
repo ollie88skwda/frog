@@ -183,7 +183,9 @@ export default function ExerciseDetailScreen() {
             unit={unit}
           />
         )}
-        {tab === "howto" && <HowToTab exercise={exercise} />}
+        {tab === "howto" && (
+          <HowToTab exercise={exercise} partial={isPlaceholderData} />
+        )}
       </div>
     </div>
   );
@@ -551,7 +553,16 @@ function HistoryTab({
 }
 
 // ── How-to: frames + numbered steps + "why it's rated" science ───────────────
-function HowToTab({ exercise }: { exercise: Exercise }) {
+function HowToTab({
+  exercise,
+  partial,
+}: {
+  exercise: Exercise;
+  /** True while `exercise` is still the narrow list row (LIST_COLUMNS), which
+   * carries neither instructions nor imageUrls — absent ≠ empty until the full
+   * row lands, so the empty state must wait. */
+  partial: boolean;
+}) {
   const { t } = useVoice();
   const frames = exercise.imageUrls ?? [];
   const steps = exercise.instructions ?? [];
@@ -586,8 +597,12 @@ function HowToTab({ exercise }: { exercise: Exercise }) {
             </li>
           ))}
         </ol>
+      ) : partial ? (
+        <p className="text-xs text-faint" data-testid="howto-loading">
+          {t("Loading…", "The frog is thinking…")}
+        </p>
       ) : (
-        <p className="text-xs text-faint">
+        <p className="text-xs text-faint" data-testid="howto-empty">
           {t(
             "No instructions for this exercise yet.",
             "No instructions. The frog assumes you know what you are doing.",
@@ -656,8 +671,9 @@ function MoreMenu({
   const [editing, setEditing] = useState(false);
 
   // Clone into a fresh custom exercise with NO history (Hevy: the "reset an
-  // exercise's stats" mechanism). Carries the classification + type +
-  // equipment + how-to content.
+  // exercise's stats" mechanism). Same exercise design, fresh history: every
+  // field the editor writes is carried except `aliases` — two rows sharing an
+  // alias would make `matchExerciseName` ambiguous for voice/paste logging.
   async function duplicate() {
     setOpen(false);
     const copy = await create.mutateAsync({
@@ -667,6 +683,14 @@ function MoreMenu({
         jointActions: exercise.jointActions,
         exerciseType: exercise.exerciseType,
         equipment: exercise.equipment,
+        machineId: exercise.machineId,
+        mechanic: exercise.mechanic,
+        movementPattern: exercise.movementPattern,
+        laterality: exercise.laterality,
+        defaultRepsMin: exercise.defaultRepsMin,
+        defaultRepsMax: exercise.defaultRepsMax,
+        defaultRestSec: exercise.defaultRestSec,
+        notes: exercise.notes,
         instructions: exercise.instructions,
         imageUrls: exercise.imageUrls,
       },

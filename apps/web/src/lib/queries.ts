@@ -282,16 +282,32 @@ export function useUpdateExercise() {
   return useMutation({
     mutationFn: (input: { exerciseId: string; patch: ExercisePatch }) =>
       repo.updateExercise(input.exerciseId, input.patch),
+    // Both caches, not just the list: the detail screen reads `useExercise`,
+    // whose own entry holds real (non-placeholder) data once it has fetched,
+    // so patching only ["exercises"] leaves the header stale for a whole round
+    // trip. While the detail query has never resolved there is no entry to
+    // patch — the updater returns `old` (undefined), TanStack treats that as a
+    // no-op, and the placeholder it paints from is the list row above.
     onMutate: ({ exerciseId, patch }) => {
       void qc.cancelQueries({ queryKey: ["exercises"] });
+      void qc.cancelQueries({ queryKey: ["exercise", exerciseId] });
       const prev = qc.getQueryData<Exercise[]>(["exercises"]);
+      const prevDetail = qc.getQueryData<Exercise | null>([
+        "exercise",
+        exerciseId,
+      ]);
       updateExerciseRows(qc, (old) =>
         old.map((e) => (e.id === exerciseId ? { ...e, ...patch } : e)),
       );
-      return { prev };
+      qc.setQueryData<Exercise | null>(["exercise", exerciseId], (old) =>
+        old ? { ...old, ...patch } : old,
+      );
+      return { prev, prevDetail };
     },
-    onError: (_e, _v, ctx) => {
+    onError: (_e, { exerciseId }, ctx) => {
       if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
+      if (ctx?.prevDetail !== undefined)
+        qc.setQueryData(["exercise", exerciseId], ctx.prevDetail);
     },
     onSettled: (_d, _e, { exerciseId }) => {
       void qc.invalidateQueries({ queryKey: ["exercises"] });
