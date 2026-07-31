@@ -27,11 +27,12 @@ import {
   type FormEvent,
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import {
   ExerciseThumb,
   FavoriteButton,
@@ -170,6 +171,22 @@ export default function LibraryScreen() {
   const [editorTarget, setEditorTarget] = useState<
     { mode: "create" } | { mode: "edit"; exercise: Exercise } | null
   >(null);
+  // Deep-link from Home's "+ New" affordance: opens straight into the create
+  // sheet instead of landing on the list and requiring a second tap.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setEditorTarget({ mode: "create" });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("new");
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [searchParams, setSearchParams]);
 
   const setMetrics = useMemo(
     () => metrics.filter((m) => m.scope === "set" && m.ownerId !== null),

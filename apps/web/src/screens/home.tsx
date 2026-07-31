@@ -1,5 +1,5 @@
 import { FIRST_WEEKDAY, sevenDayMuscleSets } from "@frog/core";
-import { BarChart3, LibraryBig, Users } from "lucide-react";
+import { BarChart3, Dumbbell, Plus, Users } from "lucide-react";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { BodyHeatmap } from "@/components/charts/body-heatmap";
@@ -62,24 +62,39 @@ export default function HomeScreen() {
         </div>
       </Link>
 
-      <TrainFindingsCard />
-
-      {/* Library lives on Home. */}
-      <Link
-        to="/library"
-        className="mt-4 block rounded-lg border border-border bg-surface p-4 transition-colors duration-150 ease-(--ease-out-quad) hover:border-border-strong"
-      >
-        <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
-          <LibraryBig className="size-4" />
-          Library
+      {/* Exercises lives on Home — promoted above Findings and retitled so the
+          "+ New" affordance (a straight deep-link into the create sheet,
+          docs/DECISIONS.md) is reachable without a second navigation. */}
+      <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+        <div className="flex items-start justify-between gap-2">
+          <Link
+            to="/library"
+            className="min-w-0 flex-1"
+            data-testid="home-exercises"
+          >
+            <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
+              <Dumbbell className="size-4" />
+              Exercises
+            </div>
+            <p className="mt-2 text-sm text-soft">
+              {t(
+                "Browse exercises, machines, and tier ratings.",
+                "Exercises, machines, and tier ratings. The frog has catalogued everything.",
+              )}
+            </p>
+          </Link>
+          <Link
+            to="/library?new=1"
+            className="flex shrink-0 items-center gap-1 bg-accent-soft px-2 py-1 text-2xs text-accent transition-colors duration-150 ease-(--ease-out-quad) hover:bg-accent/20"
+            data-testid="home-exercises-new"
+          >
+            <Plus className="size-3.5" />
+            New
+          </Link>
         </div>
-        <p className="mt-2 text-sm text-soft">
-          {t(
-            "Browse exercises, machines, and tier ratings.",
-            "Exercises, machines, and tier ratings. The frog has catalogued everything.",
-          )}
-        </p>
-      </Link>
+      </div>
+
+      <TrainFindingsCard />
 
       {/* Social + graphs are a future phase — labeled, not faked. */}
       <div className="mt-4 rounded-lg border border-dashed border-border bg-surface p-4">
