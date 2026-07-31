@@ -50,24 +50,34 @@ export function PostSaveSummary({
 }) {
   const { t } = useVoice();
   const { unit } = useUnit();
-  const { data: session } = useSession(sessionId);
-  const { data: blocks = [] } = useSessionExercises(sessionId);
+  const { data: session, isPending: sessionPending } = useSession(sessionId);
+  const { data: blocks = [], isPending: blocksPending } =
+    useSessionExercises(sessionId);
   const { data: allSessions = [], isPending: sessionsPending } =
     useAllSessions();
-  const { data: recordsData } = useRecordsData();
+  const { data: recordsData, isLoading: recordsPending } = useRecordsData();
   const { data: exercises = [], isPending: exercisesPending } = useExercises();
   const { data: prefs, isPending: prefsPending } = useUserPrefs();
   const muscleMap = useMuscleMap();
   const { data: bodyweightKg = null, isPending: bodyweightPending } =
     useLatestBodyweightQuery();
 
-  // The finish flow lands here straight from a session, so `sessions-all` (only
-  // warmed by home/profile/calendar) can still be cold — and every one of these
-  // feeds a value a card states as fact: the ordinal, per-exercise volume, the
-  // identity handle. Hold the Share affordance, not the truth (the same gate
-  // history-detail.tsx's ShareWorkoutSheet applies to the same card).
+  // Every query a card reads, not just the ones that happen to be racy: the
+  // finish flow lands here straight from a session, so `sessions-all` (only
+  // warmed by home/profile/calendar) can be cold, `session-exercises` is
+  // guaranteed cold (gcTime 0, dropped when the session screen unmounts), and
+  // `records-data` is the heaviest fetch in the app. Each feeds a number a card
+  // states as fact — the ordinal, the date and duration, every set and its
+  // volume, the week's totals, the identity handle. Hold the Share affordance,
+  // not the truth (the same gate history-detail.tsx applies to the same card).
   const shareDataPending =
-    sessionsPending || exercisesPending || prefsPending || bodyweightPending;
+    sessionPending ||
+    blocksPending ||
+    sessionsPending ||
+    recordsPending ||
+    exercisesPending ||
+    prefsPending ||
+    bodyweightPending;
 
   const startedAt = session?.startedAt ?? Date.now();
   const identity = useMemo(
