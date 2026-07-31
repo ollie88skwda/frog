@@ -226,11 +226,14 @@ export interface Repo {
   addExerciseToSession(sessionId: string, exerciseId: string): Promise<string>;
   /** `id` is the caller's optimistic row id — also the write's idempotency
    * key, so a mutation retry (see `apps/web` QueryClient's `retry: 3`) upserts
-   * the same row instead of inserting a duplicate. */
+   * the same row instead of inserting a duplicate. `setNo` comes from the
+   * caller for the same reason: re-deriving it server-side makes a retry
+   * position-dependent on whatever was logged in between. */
   logSet(
     sessionExerciseId: string,
     set: NewSetInput,
     id: string,
+    setNo: number,
   ): Promise<string>;
   /** Partial update — only provided fields are written (others preserved). */
   updateSet(setId: string, patch: Partial<NewSetInput>): Promise<void>;

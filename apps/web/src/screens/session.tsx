@@ -241,12 +241,15 @@ function columnsFor(
 }
 
 // `2.5rem` set-number + optional PREVIOUS reference + one flexible column each +
-// `2.5rem` menu gutter, so the header / committed / active rows stay
-// pixel-aligned regardless of type. PREVIOUS only claims space when there's
-// prior/target data to show (blank column suppressed for a brand-new exercise).
+// a menu gutter floored at `2.5rem` (the icon-button size) so the header /
+// committed / active rows stay pixel-aligned regardless of type, and allowed to
+// grow past it for the rows that also carry a modifier preview (`@2 RPE 8`)
+// alongside the button — a fixed track would spill that text past the card edge.
+// PREVIOUS only claims space when there's prior/target data to show (blank
+// column suppressed for a brand-new exercise).
 function gridTemplate(cols: Column[], showPrevious: boolean): string {
   const prev = showPrevious ? "3.5rem " : "";
-  return `2.5rem ${prev}${cols.map(() => "1fr").join(" ")} 2.5rem`;
+  return `2.5rem ${prev}${cols.map(() => "1fr").join(" ")} minmax(2.5rem, auto)`;
 }
 
 // Compact previous-performance string for the PREVIOUS column: weight sans unit
@@ -874,8 +877,12 @@ export default function SessionScreen() {
   }, [blocks]);
 
   const logSet = useMutation({
-    mutationFn: (input: { seId: string; set: CommitInput; tempId: string }) =>
-      repo.logSet(input.seId, input.set, input.tempId),
+    mutationFn: (input: {
+      seId: string;
+      set: CommitInput;
+      tempId: string;
+      setNo: number;
+    }) => repo.logSet(input.seId, input.set, input.tempId, input.setNo),
     // Record the optimistic→real id mapping (edit/delete translate through it).
     // The committed row keeps its optimistic id, so it never remounts here.
     onSuccess: (realId, { tempId }) => {
@@ -925,25 +932,29 @@ export default function SessionScreen() {
       prevAt != null ? Math.round((Date.now() - prevAt) / 1000) : null;
     const withRest = { ...set, restSec };
     const tempId = newId();
+    const block = (blocks ?? []).find((b) => b.seId === seId);
+    // One number for both the optimistic row and the write, so a retry can't
+    // re-derive a different one. High-water mark rather than a count: removing
+    // a set leaves a gap (the row is only soft-deleted server-side), and
+    // reusing its number would collide with a live row.
+    const setNo = (block?.committed ?? []).reduce(
+      (next, s) => Math.max(next, s.setNo + 1),
+      0,
+    );
     setBlocks((prev) =>
       (prev ?? []).map((b) =>
         b.seId === seId
           ? {
               ...b,
-              committed: [
-                ...b.committed,
-                { ...withRest, id: tempId, setNo: b.committed.length },
-              ],
+              committed: [...b.committed, { ...withRest, id: tempId, setNo }],
             }
           : b,
       ),
     );
     setLastCommitByBlock((prev) => ({ ...prev, [seId]: Date.now() }));
-    logSet.mutate({ seId, set: withRest, tempId });
+    logSet.mutate({ seId, set: withRest, tempId, setNo });
     // The uncommitted row is now saved server-side — drop its local draft.
     clearDraft(seId);
-
-    const block = (blocks ?? []).find((b) => b.seId === seId);
 
     // Live PR check against the mount-time bests snapshot (session-scoped types
     // finalize at save; only set-scoped ones fire live).

@@ -90,8 +90,8 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     expect(session.startedAt).toBeGreaterThan(0);
 
     const se = await repoA.addExerciseToSession(session.id, ex.id);
-    await repoA.logSet(se, { weightKg: 100, reps: 5 }, newId());
-    await repoA.logSet(se, { weightKg: 102.5, reps: 3, rir: 1 }, newId());
+    await repoA.logSet(se, { weightKg: 100, reps: 5 }, newId(), 0);
+    await repoA.logSet(se, { weightKg: 102.5, reps: 3, rir: 1 }, newId(), 1);
 
     const { data } = await clientA
       .from("set_logs")
@@ -112,8 +112,8 @@ describe("SupabaseRepo (integration, local supabase)", () => {
 
     const s1 = await repoA.startSession();
     const se1 = await repoA.addExerciseToSession(s1.id, ex.id);
-    await repoA.logSet(se1, { weightKg: 140, reps: 5 }, newId());
-    await repoA.logSet(se1, { weightKg: 150, reps: 3 }, newId());
+    await repoA.logSet(se1, { weightKg: 140, reps: 5 }, newId(), 0);
+    await repoA.logSet(se1, { weightKg: 150, reps: 3 }, newId(), 1);
 
     const s2 = await repoA.startSession();
     const se2 = await repoA.addExerciseToSession(s2.id, ex.id);

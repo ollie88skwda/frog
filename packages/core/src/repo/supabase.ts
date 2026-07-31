@@ -638,22 +638,15 @@ export class SupabaseRepo implements Repo {
     sessionExerciseId: string,
     set: NewSetInput,
     id: string,
+    setNo: number,
   ): Promise<string> {
     const now = Date.now();
-    // Excludes `id` itself so a retry of this same write (upserted below)
-    // doesn't count its own prior attempt and drift its set_no.
-    const { count, error: countError } = await this.client
-      .from("set_logs")
-      .select("id", { count: "exact", head: true })
-      .eq("session_exercise_id", sessionExerciseId)
-      .neq("id", id);
-    throwIf(countError);
     const row = {
       id,
       created_at: now,
       updated_at: now,
       session_exercise_id: sessionExerciseId,
-      set_no: count ?? 0,
+      set_no: setNo,
       weight_kg: set.weightKg,
       reps: set.reps,
       rir: set.rir ?? null,
