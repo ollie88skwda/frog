@@ -42,6 +42,7 @@ export * from "./records/live";
 export * from "./records/records";
 export * from "./records/types";
 export * from "./repo/types";
+export * from "./share";
 export * from "./stats/aggregate";
 export * from "./stats/monthly-report";
 export * from "./stats/year-review";
