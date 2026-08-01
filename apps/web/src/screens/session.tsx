@@ -121,6 +121,7 @@ import {
   useSetExerciseWeightUnit,
 } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
+import { formatRirRange, parseRirFields, rirRange } from "@/lib/rir";
 import { useRoutineDetail } from "@/lib/routine-queries";
 import {
   clearDraft,
@@ -220,30 +221,6 @@ function formatRest(totalSec: number): string {
   const m = Math.floor(totalSec / 60);
   const s = String(totalSec % 60).padStart(2, "0");
   return `${m}:${s}`;
-}
-
-// Read-time RIR compat: a set logged before rir became a range carries only
-// the legacy scalar `rir` — reads back as a zero-width range (min=max), never
-// fabricating a spread that was never captured. New logging always writes
-// rirMin/rirMax (even for a single value) and leaves `rir` null going forward.
-function rirRange(s: {
-  rir?: number | null;
-  rirMin: number | null;
-  rirMax: number | null;
-}): { min: number; max: number } | null {
-  if (s.rirMin != null || s.rirMax != null) {
-    return { min: s.rirMin ?? s.rirMax, max: s.rirMax ?? s.rirMin } as {
-      min: number;
-      max: number;
-    };
-  }
-  if (s.rir != null) return { min: s.rir, max: s.rir };
-  return null;
-}
-
-function formatRirRange(r: { min: number; max: number } | null): string | null {
-  if (!r) return null;
-  return r.min === r.max ? `@${r.min}` : `@${r.min}-${r.max}`;
 }
 
 // ms epoch → "YYYY-MM-DDTHH:mm" (local) for a datetime-local input.
@@ -1031,7 +1008,28 @@ export default function SessionScreen() {
     const committedIsDrop = (set.setType ?? "normal") === "drop";
     const nextType = committedIsDrop ? "drop" : ctx.nextSetType;
     if (shouldStartRest(nextType)) {
-      setRestByBlock((prev) => ({ ...prev, [seId]: startRest(Date.now()) }));
+      // Only a superset sibling keeps ticking alongside the new one: inside a
+      // group you alternate between members, so both are genuinely resting.
+      // Moving to any other exercise (two solo blocks are not siblings) ends
+      // the old one, so Stop can never resurface a timer you left behind.
+      const group = block?.supersetGroup ?? null;
+      const siblings = new Set(
+        group == null
+          ? []
+          : (blocks ?? [])
+              .filter((b) => b.supersetGroup === group)
+              .map((b) => b.seId),
+      );
+      const startedAt = Date.now();
+      setRestByBlock((prev) => {
+        const next: Record<string, RestTimerState> = {
+          [seId]: startRest(startedAt),
+        };
+        for (const [id, state] of Object.entries(prev)) {
+          if (id !== seId && siblings.has(id)) next[id] = state;
+        }
+        return next;
+      });
     }
 
     // Smart superset scrolling: advance the view to the next member (wrapping).
@@ -2956,9 +2954,10 @@ function CommittedRow({
     if (effort) {
       // Writes always go through the range pair going forward — the legacy
       // scalar column is left null rather than kept alongside it.
+      const r = parseRirFields(rirMin, rirMax);
       patch.rir = null;
-      patch.rirMin = rirMin.trim() === "" ? null : Number.parseInt(rirMin, 10);
-      patch.rirMax = rirMax.trim() === "" ? null : Number.parseInt(rirMax, 10);
+      patch.rirMin = r.rirMin;
+      patch.rirMax = r.rirMax;
       patch.rpe = rpe.trim() === "" ? null : Number.parseFloat(rpe);
     }
     onSave(editingRow.id, patch);
@@ -2986,7 +2985,7 @@ function CommittedRow({
         reps.trim() === "" ? null : Number.parseInt(reps, 10),
         {
           // Estimate off the low end of the range — the harder-effort bound.
-          rir: rirMin.trim() === "" ? null : Number.parseInt(rirMin, 10),
+          rir: parseRirFields(rirMin, rirMax).rirMin,
           rpe: rpe.trim() === "" ? null : Number.parseFloat(rpe),
         },
       )
@@ -3184,22 +3183,19 @@ function CommittedRow({
 
             {effort && (
               <div className="flex flex-col gap-3">
-                {SET_MODIFIERS.map((m) => (
+                {modifierBindings({
+                  rirMin,
+                  rirMax,
+                  rpe,
+                  setRirMin,
+                  setRirMax,
+                  setRpe,
+                }).map((b) => (
                   <ModifierField
-                    key={m.key}
-                    config={m}
-                    value={m.key === "rir" ? { min: rirMin, max: rirMax } : rpe}
-                    onChange={
-                      m.key === "rir"
-                        ? (v) => {
-                            const r = v as RangeValue;
-                            setRirMin(r.min);
-                            setRirMax(r.max);
-                          }
-                        : (v) => setRpe(v as string)
-                    }
+                    key={b.config.key}
+                    {...b}
                     onKeyDown={onKeyDown}
-                    testId={`edit-${index}-${m.key}`}
+                    testId={`edit-${index}-${b.config.key}`}
                   />
                 ))}
               </div>
@@ -3316,26 +3312,54 @@ const SET_MODIFIERS: ModifierConfig[] = [
 // as the routine editor's rep-range fields.
 type RangeValue = { min: string; max: string };
 
+// A registry entry bound to the row state that backs it. Discriminated by
+// `kind`, so a modifier's value and its setter can't drift apart in the shape
+// they carry — handing a plain string to the range entry is a type error at
+// the binding, not a crash on `range.min` at render.
+type ModifierBinding = { config: ModifierConfig } & (
+  | { kind: "range"; value: RangeValue; onChange: (v: RangeValue) => void }
+  | { kind: "scalar"; value: string; onChange: (v: string) => void }
+);
+
+// Both row types (draft and committed) bind the same registry to the same
+// three pieces of state, so the wiring lives here once rather than as a
+// duplicated ternary at each call site.
+function modifierBindings(state: {
+  rirMin: string;
+  rirMax: string;
+  rpe: string;
+  setRirMin: (v: string) => void;
+  setRirMax: (v: string) => void;
+  setRpe: (v: string) => void;
+}): ModifierBinding[] {
+  return SET_MODIFIERS.map((config) =>
+    config.kind === "range"
+      ? {
+          config,
+          kind: "range",
+          value: { min: state.rirMin, max: state.rirMax },
+          onChange: (v: RangeValue) => {
+            state.setRirMin(v.min);
+            state.setRirMax(v.max);
+          },
+        }
+      : { config, kind: "scalar", value: state.rpe, onChange: state.setRpe },
+  );
+}
+
 // Shared field renderer for every modifier — the label row reserves a fixed
 // height (`min-h-6`) whether or not it carries an InfoTip icon, so RIR and RPE
 // (or a future third modifier) always sit flush in the same grid row instead
 // of drifting by the icon's height, and the select gets the exact classes as
 // the shared Input so its box never looks "elevated" next to a sibling field.
-function ModifierField({
-  config,
-  value,
-  onChange,
-  onKeyDown,
-  autoFocus,
-  testId,
-}: {
-  config: ModifierConfig;
-  value: string | RangeValue;
-  onChange: (v: string | RangeValue) => void;
-  onKeyDown?: (e: React.KeyboardEvent) => void;
-  autoFocus?: boolean;
-  testId: string;
-}) {
+function ModifierField(
+  props: ModifierBinding & {
+    onKeyDown?: (e: React.KeyboardEvent) => void;
+    autoFocus?: boolean;
+    testId: string;
+  },
+) {
+  const { config, onKeyDown, autoFocus, testId } = props;
   const label = (
     <span className="flex min-h-6 items-center gap-1 text-2xs font-medium tracking-wide text-faint uppercase">
       {config.label}
@@ -3343,9 +3367,9 @@ function ModifierField({
     </span>
   );
 
-  if (config.kind === "range") {
-    const range = value as RangeValue;
-    const onRangeChange = onChange as (v: RangeValue) => void;
+  if (props.kind === "range") {
+    const range = props.value;
+    const onRangeChange = props.onChange;
     return (
       <div className="flex flex-col gap-1">
         {label}
@@ -3375,12 +3399,13 @@ function ModifierField({
     );
   }
 
+  const { value, onChange } = props;
   return (
     <div className="flex flex-col gap-1">
       {label}
       {config.kind === "select" ? (
         <select
-          value={value as string}
+          value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           // biome-ignore lint/a11y/noAutofocus: focuses the just-added field
@@ -3399,7 +3424,7 @@ function ModifierField({
         <Input
           inputMode="numeric"
           placeholder="—"
-          value={value as string}
+          value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={onKeyDown}
           autoFocus={autoFocus}
@@ -3750,6 +3775,7 @@ function ActiveRow({
   function commit(adoptGhost: boolean) {
     if (done.current) return;
     const v = parseFields(adoptGhost);
+    const parsedRir = parseRirFields(rirMin, rirMax);
     const anyPresent =
       (f.weight && v.weightKg != null) ||
       (f.reps && v.reps != null) ||
@@ -3768,10 +3794,8 @@ function ActiveRow({
         distanceM: v.distanceM,
         // New logging always writes the range pair, never the legacy scalar.
         rir: null,
-        rirMin:
-          effort && rirMin.trim() !== "" ? Number.parseInt(rirMin, 10) : null,
-        rirMax:
-          effort && rirMax.trim() !== "" ? Number.parseInt(rirMax, 10) : null,
+        rirMin: effort ? parsedRir.rirMin : null,
+        rirMax: effort ? parsedRir.rirMax : null,
         rpe: effort && rpe.trim() !== "" ? Number.parseFloat(rpe) : null,
         note: note.trim() === "" ? null : note.trim(),
         metricValues: metricValues(),
@@ -3992,12 +4016,7 @@ function ActiveRow({
   // is visible without opening the sheet on either row type.
   const modifierPreview = effort
     ? [
-        formatRirRange(
-          rirRange({
-            rirMin: rirMin.trim() === "" ? null : Number.parseInt(rirMin, 10),
-            rirMax: rirMax.trim() === "" ? null : Number.parseInt(rirMax, 10),
-          }),
-        ),
+        formatRirRange(rirRange(parseRirFields(rirMin, rirMax))),
         rpe.trim() !== "" ? `RPE ${rpe}` : null,
       ]
         .filter(Boolean)
@@ -4078,22 +4097,19 @@ function ActiveRow({
           <div className="flex flex-col gap-4">
             {effort && (
               <div className="flex flex-col gap-3">
-                {SET_MODIFIERS.map((m) => (
+                {modifierBindings({
+                  rirMin,
+                  rirMax,
+                  rpe,
+                  setRirMin,
+                  setRirMax,
+                  setRpe,
+                }).map((b) => (
                   <ModifierField
-                    key={m.key}
-                    config={m}
-                    value={m.key === "rir" ? { min: rirMin, max: rirMax } : rpe}
-                    onChange={
-                      m.key === "rir"
-                        ? (v) => {
-                            const r = v as RangeValue;
-                            setRirMin(r.min);
-                            setRirMax(r.max);
-                          }
-                        : (v) => setRpe(v as string)
-                    }
-                    autoFocus={lastAdded === m.key}
-                    testId={`set-${index}-${m.key}`}
+                    key={b.config.key}
+                    {...b}
+                    autoFocus={lastAdded === b.config.key}
+                    testId={`set-${index}-${b.config.key}`}
                   />
                 ))}
               </div>

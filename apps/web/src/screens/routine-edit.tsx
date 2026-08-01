@@ -36,9 +36,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { formatMMSS, parseDuration } from "@/lib/format";
+import { formatMMSS, parseDuration, parseIntOrNull } from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import { useExercises } from "@/lib/queries";
+import { parseRirFields } from "@/lib/rir";
 import {
   useCreateRoutine,
   useRoutineDetail,
@@ -113,15 +114,6 @@ const NO_FOLDER = "__none__";
 // most working sets (RIR ≈ 10 − RPE; 1-2 RIR ≈ RPE 8-9). Editable per set.
 const DEFAULT_RIR_MIN = "1";
 const DEFAULT_RIR_MAX = "2";
-
-// The numeric fields are free-text inputs (inputMode only hints the mobile
-// keyboard), so a non-numeric entry must resolve to "no target" explicitly —
-// letting NaN through writes a silent null at the JSON boundary.
-function parseIntOrNull(raw: string): number | null {
-  if (raw.trim() === "") return null;
-  const v = Number.parseInt(raw, 10);
-  return Number.isFinite(v) ? v : null;
-}
 
 function emptySet(): DraftSet {
   return {
@@ -548,14 +540,10 @@ export default function RoutineEditScreen() {
         const fields = TYPE_FIELDS[d.exerciseType];
         const reps = parseIntOrNull(s.reps);
         const repsMax = parseIntOrNull(s.repsMax);
-        const rawRirMin = parseIntOrNull(s.rirMin);
-        const rawRirMax = parseIntOrNull(s.rirMax);
         // An inverted range is unreadable as a prescription — drop it rather
-        // than persist bounds the session UI would render backwards.
-        const inverted =
-          rawRirMin != null && rawRirMax != null && rawRirMin > rawRirMax;
-        const rirMin = inverted ? null : rawRirMin;
-        const rirMax = inverted ? null : rawRirMax;
+        // than persist bounds the session UI would render backwards. Shared
+        // with the session's own RIR write path so the rule has one owner.
+        const { rirMin, rirMax } = parseRirFields(s.rirMin, s.rirMax);
         return {
           setNo: si,
           setType: s.setType,
