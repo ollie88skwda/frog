@@ -536,7 +536,9 @@ export default function SessionScreen() {
   }, []);
 
   // The dock shows the most recently started stopwatch — the set you just
-  // finished. Any older one keeps ticking and takes the dock as it frees up.
+  // finished. Only a superset sibling of that block can still be running
+  // alongside it (every commit prunes the rest); it takes the dock as it
+  // frees up.
   const activeRest = useMemo(() => {
     let latest: { seId: string; state: RestTimerState } | null = null;
     for (const [seId, state] of Object.entries(restByBlock)) {
@@ -1002,35 +1004,34 @@ export default function SessionScreen() {
       }
     }
 
-    // Rest stopwatch: starts on every commit. Suppressed when a drop set is
-    // next — including the just-committed set being a drop (drops chain into
-    // the next reduction with no rest).
+    // Rest stopwatch: every commit prunes, then starts. Only a superset
+    // sibling of the committing block survives the prune — inside a group you
+    // alternate between members, so both are genuinely resting; moving to any
+    // other exercise (two solo blocks are not siblings) ends the old one, so
+    // Stop can never resurface a timer you left behind. The start is then
+    // suppressed when a drop set is next — including the just-committed set
+    // being a drop (drops chain into the next reduction with no rest), which
+    // leaves the committing block with no stopwatch rather than an old one.
     const committedIsDrop = (set.setType ?? "normal") === "drop";
     const nextType = committedIsDrop ? "drop" : ctx.nextSetType;
-    if (shouldStartRest(nextType)) {
-      // Only a superset sibling keeps ticking alongside the new one: inside a
-      // group you alternate between members, so both are genuinely resting.
-      // Moving to any other exercise (two solo blocks are not siblings) ends
-      // the old one, so Stop can never resurface a timer you left behind.
-      const group = block?.supersetGroup ?? null;
-      const siblings = new Set(
-        group == null
-          ? []
-          : (blocks ?? [])
-              .filter((b) => b.supersetGroup === group)
-              .map((b) => b.seId),
-      );
-      const startedAt = Date.now();
-      setRestByBlock((prev) => {
-        const next: Record<string, RestTimerState> = {
-          [seId]: startRest(startedAt),
-        };
-        for (const [id, state] of Object.entries(prev)) {
-          if (id !== seId && siblings.has(id)) next[id] = state;
-        }
-        return next;
-      });
-    }
+    const group = block?.supersetGroup ?? null;
+    const siblings = new Set(
+      group == null
+        ? []
+        : (blocks ?? [])
+            .filter((b) => b.supersetGroup === group)
+            .map((b) => b.seId),
+    );
+    const starting = shouldStartRest(nextType);
+    const startedAt = Date.now();
+    setRestByBlock((prev) => {
+      const next: Record<string, RestTimerState> = {};
+      for (const [id, state] of Object.entries(prev)) {
+        if (id !== seId && siblings.has(id)) next[id] = state;
+      }
+      if (starting) next[seId] = startRest(startedAt);
+      return next;
+    });
 
     // Smart superset scrolling: advance the view to the next member (wrapping).
     if (smartScroll && block?.supersetGroup != null) {
