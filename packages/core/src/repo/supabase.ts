@@ -869,7 +869,7 @@ export class SupabaseRepo implements Repo {
     const { data, error } = await this.client
       .from("session_exercises")
       .select(
-        "id, exercise_id, order_index, superset_group, rest_sec, note, routine_exercise_id, exercises(name), set_logs(id, set_no, set_type, weight_kg, reps, duration_sec, distance_m, rir, rpe, note, rest_sec, side, deleted_at)",
+        "id, exercise_id, order_index, superset_group, rest_sec, note, routine_exercise_id, exercises(name), set_logs(id, set_no, set_type, weight_kg, reps, duration_sec, distance_m, rir, rir_min, rir_max, rpe, note, rest_sec, side, deleted_at)",
       )
       .eq("session_id", sessionId)
       .is("deleted_at", null)
@@ -896,6 +896,8 @@ export class SupabaseRepo implements Repo {
           durationSec: (s.duration_sec as number | null) ?? null,
           distanceM: (s.distance_m as number | null) ?? null,
           rir: (s.rir as number | null) ?? null,
+          rirMin: (s.rir_min as number | null) ?? null,
+          rirMax: (s.rir_max as number | null) ?? null,
           rpe: (s.rpe as number | null) ?? null,
           note: (s.note as string | null) ?? null,
           restSec: (s.rest_sec as number | null) ?? null,

@@ -157,7 +157,9 @@ export type LoggedSet = {
   reps: number | null;
   durationSec: number | null;
   distanceM: number | null;
-  rir: number | null;
+  rir: number | null; // legacy scalar — read-compat fallback, see rirRange()
+  rirMin: number | null;
+  rirMax: number | null;
   rpe: number | null;
   note: string | null;
   restSec: number | null;

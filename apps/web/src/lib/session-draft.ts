@@ -12,7 +12,8 @@ export type DraftSnapshot = {
   reps: string;
   duration: string;
   distance: string;
-  rir: string;
+  rirMin: string;
+  rirMax: string;
   rpe: string;
   note: string;
   setType: SetType;
@@ -55,7 +56,8 @@ export function saveDraft(seId: string, snapshot: DraftSnapshot): void {
       snapshot.reps === "" &&
       snapshot.duration === "" &&
       snapshot.distance === "" &&
-      snapshot.rir === "" &&
+      snapshot.rirMin === "" &&
+      snapshot.rirMax === "" &&
       snapshot.rpe === "" &&
       snapshot.note === "" &&
       snapshot.setType === "normal" &&
