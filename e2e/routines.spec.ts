@@ -358,8 +358,7 @@ test("start routine materializes every configured set as a visible row, not just
   const ROUTINE = `Materialize routine ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   // 5 identical rep-range sets (6-8), matching the reported repro exactly.
