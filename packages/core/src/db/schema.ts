@@ -224,7 +224,9 @@ export const routineExercises = pgTable(
     orderIndex: integer("order_index").notNull(),
     // Same non-null int = same superset; color = group index. Null = none.
     supersetGroup: integer("superset_group"),
-    // Rest countdown target in seconds. Null = app default, 0 = explicitly off.
+    // Per-exercise rest seconds. Null = unset, 0 = off. No longer a timer
+    // target — rest is an untargeted stopwatch — and no UI authors it; the
+    // generator writes it and the Trainer's duration estimate reads it.
     restSec: integer("rest_sec"),
     // Persistent template note — re-renders under the exercise every session.
     note: text("note"),
@@ -328,7 +330,8 @@ export const sessionExercises = pgTable(
     orderIndex: integer("order_index").notNull(),
     // Same non-null int = same superset (color = group index). Null = none.
     supersetGroup: integer("superset_group"),
-    // Rest countdown target (seconds). Null = off/default; 0 = explicitly off.
+    // Dormant rest target (seconds) — retained and still round-tripped, but
+    // unread since rest became an up-counting stopwatch with no target.
     restSec: integer("rest_sec"),
     // Per-exercise session note — saved with the workout; prior session's
     // note ghosts (read-only) next time the exercise is logged.
@@ -456,7 +459,7 @@ export const userPrefs = pgTable(
     includeWarmupsInStats: boolean("include_warmups_in_stats")
       .notNull()
       .default(true),
-    defaultRestSec: integer("default_rest_sec"), // null = off
+    defaultRestSec: integer("default_rest_sec"), // dormant — no writer, no reader
     previousValuesScope: text("previous_values_scope").notNull().default("any"), // 'any' | 'routine'
     bodyDiagram: text("body_diagram").notNull().default("neutral"),
     plateConfig: jsonb("plate_config").$type<PlateConfig>(),
@@ -493,7 +496,8 @@ export const sessionMedia = pgTable(
   ],
 );
 
-// Web-push subscriptions for rest-timer/PR notifications (M12).
+// Web-push subscriptions for the Settings → Notifications toggle (M12). The
+// sender Edge Function went with the rest countdown; the table stays.
 export const pushSubscriptions = pgTable(
   "push_subscriptions",
   {

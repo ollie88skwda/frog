@@ -169,7 +169,7 @@ Reusable workout templates. Starting one pre-fills a live session.
 | exercise_id | uuid | FK → exercises |
 | order_index | integer | |
 | superset_group | integer? | same int = same superset; null = none |
-| rest_sec | integer? | countdown target; null = default, 0 = off |
+| rest_sec | integer? | per-exercise rest seconds; null = unset, 0 = off. No longer a timer target (rest is an untargeted stopwatch) and the routine builder no longer authors it — still written by the generator and read by the Trainer's duration estimate + the program routine preview |
 | note | text? | persistent template note (re-renders every session) |
 | owner_id | text | |
 
@@ -236,7 +236,7 @@ pure device behavior (theme, display unit, sounds…) stays in localStorage.
 | id | uuid | PK |
 | first_weekday | integer | 0=Sun … 6=Sat (streak/calendar semantics) |
 | include_warmups_in_stats | boolean | toggling recomputes records client-side |
-| default_rest_sec | integer? | null = off; applies to exercises added later |
+| default_rest_sec | integer? | dormant — retained, but the Settings row that set it is gone and nothing reads it since rest became an up-counting stopwatch with no target |
 | previous_values_scope | text | 'any' \| 'routine' |
 | body_diagram | text | heat-map figure variant |
 | plate_config | jsonb | `{barKg, platesKg[], barLb, platesLb[], dumbbellStepKg}` |
@@ -255,7 +255,9 @@ Workout photos attached at save (photos v1; ≤3 app-enforced).
 | owner_id | text | |
 
 ### push_subscriptions
-Web-push endpoints for rest-timer/PR notifications (M12).
+Web-push endpoints for the Settings → Notifications toggle (M12). The sender
+Edge Function (`send-rest-push`) was deleted with the rest countdown; the table
+and the subscribe path stay for any future push use.
 | column | type | notes |
 |---|---|---|
 | id | uuid | PK |
