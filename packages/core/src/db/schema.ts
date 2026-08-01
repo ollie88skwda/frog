@@ -80,6 +80,38 @@ export const exercises = pgTable(
     equipment: text("equipment"),
     instructions: jsonb("instructions").$type<string[]>(), // how-to steps
     imageUrls: jsonb("image_urls").$type<string[]>(), // how-to frames (detail screen)
+
+    // ── Custom-exercise-editor fields (all nullable, no default: a book row
+    // that never fills them behaves exactly as today) ──────────────────────
+    // Explicit compound/isolation. Replaces the muscleTargets.length>=2 proxy
+    // in generator/generate.ts — a one-primary custom exercise is no longer
+    // forced to "isolation" for having a short muscle list.
+    mechanic: text("mechanic"), // 'compound' | 'isolation' (domain/exercise-types)
+    // Movement pattern — the taxonomy the push/pull/legs day templates in
+    // generator/generate.ts reconstruct from muscle keys.
+    movementPattern: text("movement_pattern"),
+    // Bilateral vs unilateral vs alternating (domain/exercise-types).
+    laterality: text("laterality"),
+    // Per-exercise defaults — prefill only, consumed by the routine editor's
+    // "Add exercise" and the session's rest timer; never rewrites a logged
+    // or prescribed value.
+    defaultRepsMin: integer("default_reps_min"),
+    defaultRepsMax: integer("default_reps_max"),
+    defaultRestSec: integer("default_rest_sec"),
+    // The user's own note about the exercise itself (setup, cue, "left
+    // knee") — rendered read-only under the block header in a session.
+    notes: text("notes"),
+    // Alternate names the fuzzy matcher and search also accept. Stored as the
+    // user typed them (trimmed only) — normalizeExerciseName runs over every
+    // label at match time (domain/match-exercise), so anything reading this
+    // column directly must normalize before comparing.
+    aliases: jsonb("aliases").$type<string[]>(),
+    // User-uploaded demo image/video (captain's call: real storage, not a
+    // URL field) — path in the private exercise-media bucket, resized
+    // client-side before upload (lib/photo.ts), same shape as
+    // machines.photoPath. mediaType disambiguates the two content kinds.
+    mediaPath: text("media_path"),
+    mediaType: text("media_type"), // 'image' | 'video', null when no media
   },
   (t) => [index("exercises_owner_idx").on(t.ownerId)],
 );

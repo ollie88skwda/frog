@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // M3 live PR banner: a set that beats a stored record raises an in-workout
 // banner (naming the record type) and pins a medal to the winning row. The
@@ -31,8 +31,7 @@ test("beating a prior session raises the PR banner + medal; first log never PRs"
 }) => {
   const EX = `PR ${Date.now()}`;
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   // Session 1: first-ever log → no PR banner (baseline only).

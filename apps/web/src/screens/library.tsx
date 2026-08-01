@@ -1,22 +1,14 @@
 import {
-  EQUIPMENT_KINDS,
-  EQUIPMENT_LABELS,
-  EXERCISE_TYPE_LABELS,
-  EXERCISE_TYPES,
   type Exercise,
-  type ExerciseType,
   formatWeight,
   groupByPrimaryMuscle,
-  JOINT_ACTIONS,
   jointActionLabel,
   type Machine,
   type Metric,
-  MUSCLES,
   type MuscleTarget,
   muscleLabel,
   type NewMetricInput,
   ratingsForMuscle,
-  type Tier,
   tierRank,
 } from "@frog/core";
 import { Select } from "@radix-ui/themes";
@@ -28,17 +20,19 @@ import {
   Dumbbell,
   History,
   Info,
+  Plus,
 } from "lucide-react";
 import {
   type CSSProperties,
   type FormEvent,
   memo,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import {
   ExerciseThumb,
   FavoriteButton,
@@ -48,6 +42,7 @@ import {
   TierLegend,
   tierNameClass,
 } from "@/components/anatomy-ui";
+import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
   filterExercises,
@@ -75,19 +70,14 @@ import {
   useMachines,
   useMetrics,
   useSeedExercises,
-  useSetExerciseClassification,
   useSetExerciseFavorite,
-  useSetExerciseMachine,
-  useSetExerciseTags,
-  useSetExerciseTypeEquipment,
   useSetMetricExercises,
+  useUpdateExercise,
 } from "@/lib/queries";
 import { useUnit } from "@/lib/settings";
 import { useInView } from "@/lib/use-in-view";
 import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
-
-const TIERS: Tier[] = ["S", "A", "B", "C"];
 
 // One name per line, trimmed, blanks dropped, case-insensitive dedupe within
 // the paste (keeps the first occurrence's casing).
@@ -172,15 +162,31 @@ export default function LibraryScreen() {
     () => new Set(favorites.filter((f) => f.favorite).map((f) => f.exerciseId)),
     [favorites],
   );
-  const create = useCreateExercise();
-  const [name, setName] = useState("");
-  const [muscle, setMuscle] = useState("");
-  const [type, setType] = useState<ExerciseType>("weight_reps");
-  const [equipment, setEquipment] = useState("");
   const [query, setQuery] = useState("");
   const [filterMuscle, setFilterMuscle] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // One shared editor sheet for both "+ New exercise" and every row's "Edit"
+  // — mode/exercise together decide create vs. edit.
+  const [editorTarget, setEditorTarget] = useState<
+    { mode: "create" } | { mode: "edit"; exercise: Exercise } | null
+  >(null);
+  // Deep-link from Home's "+ New" affordance: opens straight into the create
+  // sheet instead of landing on the list and requiring a second tap.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setEditorTarget({ mode: "create" });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("new");
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [searchParams, setSearchParams]);
 
   const setMetrics = useMemo(
     () => metrics.filter((m) => m.scope === "set" && m.ownerId !== null),
@@ -206,24 +212,10 @@ export default function LibraryScreen() {
     (id: string) => setExpandedId((prev) => (prev === id ? null : id)),
     [],
   );
-
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    create.mutate({
-      name: trimmed,
-      opts: {
-        ...(muscle ? { muscleTargets: [{ muscle, tier: "S" }] } : {}),
-        exerciseType: type,
-        equipment: equipment || null,
-      },
-    });
-    setName("");
-    setMuscle("");
-    setType("weight_reps");
-    setEquipment("");
-  }
+  const onEdit = useCallback(
+    (exercise: Exercise) => setEditorTarget({ mode: "edit", exercise }),
+    [],
+  );
 
   function toggleGroup(key: string) {
     setCollapsed((old) => {
@@ -238,89 +230,34 @@ export default function LibraryScreen() {
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
       <h1 className="text-lg font-semibold tracking-tight">Library</h1>
 
-      <form onSubmit={onSubmit} className="mt-4 flex flex-col gap-2">
-        <div className="flex gap-2">
-          <Input
-            placeholder="New exercise name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            data-testid="exercise-name-input"
-          />
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={name.trim().length === 0}
-            data-testid="add-exercise-btn"
-          >
-            Add
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Select.Root
-            value={muscle || undefined}
-            onValueChange={setMuscle}
-            size="2"
-          >
-            <Select.Trigger
-              variant="surface"
-              placeholder="Muscle…"
-              className="flex-1 basis-28"
-              data-testid="exercise-muscle-select"
-            />
-            <Select.Content>
-              {MUSCLES.map((m) => (
-                <Select.Item key={m.key} value={m.key}>
-                  {m.label}
-                </Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Root>
-          <Select.Root
-            value={type}
-            onValueChange={(v) => setType(v as ExerciseType)}
-            size="2"
-          >
-            <Select.Trigger
-              variant="surface"
-              className="flex-1 basis-28"
-              data-testid="exercise-type-select"
-            />
-            <Select.Content>
-              {EXERCISE_TYPES.map((t) => (
-                <Select.Item key={t} value={t}>
-                  {EXERCISE_TYPE_LABELS[t]}
-                </Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Root>
-          <Select.Root
-            value={equipment || undefined}
-            onValueChange={setEquipment}
-            size="2"
-          >
-            <Select.Trigger
-              variant="surface"
-              placeholder="Equipment…"
-              className="flex-1 basis-28"
-              data-testid="exercise-equipment-select"
-            />
-            <Select.Content>
-              {EQUIPMENT_KINDS.map((k) => (
-                <Select.Item key={k} value={k}>
-                  {EQUIPMENT_LABELS[k]}
-                </Select.Item>
-              ))}
-            </Select.Content>
-          </Select.Root>
-        </div>
-      </form>
+      <div className="mt-4 flex items-center gap-2">
+        <Button
+          variant="primary"
+          className="flex-1"
+          onClick={() => setEditorTarget({ mode: "create" })}
+          data-testid="new-exercise-btn"
+        >
+          <Plus className="size-4" />
+          New exercise
+        </Button>
+        <BulkAddDialog
+          exercises={exercises}
+          libraryLoaded={libraryLoaded}
+          libraryFailed={isError && !libraryLoaded}
+          onRetryLibrary={() => void refetch()}
+        />
+      </div>
 
-      <BulkAddDialog
-        exercises={exercises}
-        libraryLoaded={libraryLoaded}
-        libraryFailed={isError && !libraryLoaded}
-        onRetryLibrary={() => void refetch()}
-      />
+      {editorTarget && (
+        <ExerciseEditor
+          open={!!editorTarget}
+          onOpenChange={(open) => !open && setEditorTarget(null)}
+          mode={editorTarget.mode}
+          exercise={
+            editorTarget.mode === "edit" ? editorTarget.exercise : undefined
+          }
+        />
+      )}
 
       <div className="mt-4">
         <ExerciseFilterBar
@@ -388,6 +325,7 @@ export default function LibraryScreen() {
                       pending={pendingExercises.has(ex.id)}
                       expanded={expandedId === ex.id}
                       onToggle={onToggleExpanded}
+                      onEdit={onEdit}
                     />
                   ))}
                 </ul>
@@ -443,7 +381,7 @@ function BulkAddDialog({
     setOpen(false);
     const runId = startBulkAddRun();
     // Every row lands now; only the inserts behind them are bounded.
-    const queued = seedExercises(toCreate);
+    const queued = seedExercises(toCreate.map((name) => ({ name })));
     void runBounded(queued, ({ id, name }) =>
       // A user change mid-run retires the run: the names belong to the account
       // that pasted them, and the pool would otherwise insert the rest into
@@ -677,6 +615,7 @@ const ExerciseRow = memo(function ExerciseRow({
   pending,
   expanded,
   onToggle,
+  onEdit,
 }: {
   exercise: Exercise;
   groupMuscle: string;
@@ -687,10 +626,11 @@ const ExerciseRow = memo(function ExerciseRow({
   pending: boolean;
   expanded: boolean;
   onToggle: (exerciseId: string) => void;
+  onEdit: (exercise: Exercise) => void;
 }) {
   const { t } = useVoice();
   const toggleMetric = useSetMetricExercises();
-  const setTags = useSetExerciseTags();
+  const update = useUpdateExercise();
   const deleteExercise = useDeleteExercise();
   const [confirmingArchive, setConfirmingArchive] = useState(false);
   // Gate the per-row last-set lookup on visibility — otherwise the seeded
@@ -723,8 +663,9 @@ const ExerciseRow = memo(function ExerciseRow({
             <button
               type="button"
               onClick={() => onToggle(exercise.id)}
-              // The panel behind this toggle edits tags, metrics, machine and
-              // archive state — every one of them keyed by an id Postgres
+              // The panel behind this toggle edits tags, metrics and archive
+              // state, and its Edit button opens the editor over machine and
+              // classification — every one of them keyed by an id Postgres
               // doesn't have yet while the create is queued.
               disabled={pending}
               className="flex min-w-0 items-center gap-1.5 text-left"
@@ -745,9 +686,9 @@ const ExerciseRow = memo(function ExerciseRow({
               )}
             </button>
             <span className="flex shrink-0 items-center gap-1">
-              {!exercise.isCustom && (
-                <span className="bg-translucent px-2 py-0.5 text-2xs text-faint">
-                  seed
+              {exercise.isCustom && (
+                <span className="bg-accent-soft px-2 py-0.5 text-2xs text-accent">
+                  yours
                 </span>
               )}
               <FavoriteButton
@@ -829,22 +770,29 @@ const ExerciseRow = memo(function ExerciseRow({
           )}
 
           {exercise.isCustom && (
-            <CustomExerciseEditor exercise={exercise} machines={machines} />
-          )}
-
-          {exercise.isCustom && (
             <div className="mt-3 border-t border-border pt-2">
-              <TagEditor exercise={exercise} setTags={setTags} />
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-2 text-soft"
-                onClick={() => setConfirmingArchive(true)}
-                data-testid={`archive-exercise-${exercise.name}`}
-              >
-                <Archive className="size-4" />
-                Archive exercise
-              </Button>
+              <TagEditor exercise={exercise} update={update} />
+              <div className="mt-2 flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-soft"
+                  onClick={() => onEdit(exercise)}
+                  data-testid={`edit-exercise-${exercise.name}`}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-soft"
+                  onClick={() => setConfirmingArchive(true)}
+                  data-testid={`archive-exercise-${exercise.name}`}
+                >
+                  <Archive className="size-4" />
+                  Archive exercise
+                </Button>
+              </div>
               <Dialog
                 open={confirmingArchive}
                 onOpenChange={setConfirmingArchive}
@@ -907,218 +855,12 @@ function LastSetSummary({ exerciseId }: { exerciseId: string }) {
   );
 }
 
-// Muscle targets (first = primary), joint-action labels, machine link —
-// custom exercises only (seed rows are read-only under RLS).
-function CustomExerciseEditor({
-  exercise,
-  machines,
-}: {
-  exercise: Exercise;
-  machines: Machine[];
-}) {
-  const classify = useSetExerciseClassification();
-  const setMachine = useSetExerciseMachine();
-  const setTypeEquip = useSetExerciseTypeEquipment();
-  const { data: history = [] } = useLastSets(exercise.id);
-  const [muscleDraft, setMuscleDraft] = useState("");
-  const [tierDraft, setTierDraft] = useState<Tier>("S");
-  const targets = exercise.muscleTargets ?? [];
-  const actions = exercise.jointActions ?? [];
-  // Measurement type is immutable once sets exist (volume/records depend on it);
-  // duplicate-as-custom is the reset path. Equipment stays editable.
-  const exType = (exercise.exerciseType as ExerciseType) ?? "weight_reps";
-  const typeLocked = history.length > 0;
-
-  function setTargets(next: MuscleTarget[]) {
-    classify.mutate({
-      exerciseId: exercise.id,
-      classification: { muscleTargets: next },
-    });
-  }
-  function setActions(next: string[]) {
-    classify.mutate({
-      exerciseId: exercise.id,
-      classification: { jointActions: next },
-    });
-  }
-
-  return (
-    <div className="mt-3 flex flex-col gap-2 border-t border-border pt-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-2xs text-faint">Type</span>
-        <select
-          value={exType}
-          disabled={typeLocked}
-          onChange={(e) =>
-            setTypeEquip.mutate({
-              exerciseId: exercise.id,
-              exerciseType: e.target.value,
-              equipment: exercise.equipment ?? null,
-            })
-          }
-          className="h-6 max-w-40 border border-border bg-surface px-1 text-2xs text-ink disabled:opacity-50"
-          data-testid={`exercise-type-select-${exercise.name}`}
-        >
-          {EXERCISE_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {EXERCISE_TYPE_LABELS[t]}
-            </option>
-          ))}
-        </select>
-        {typeLocked && (
-          <span className="text-2xs text-faint">locked — has logged sets</span>
-        )}
-        <span className="text-2xs text-faint">Equipment</span>
-        <select
-          value={exercise.equipment ?? ""}
-          onChange={(e) =>
-            setTypeEquip.mutate({
-              exerciseId: exercise.id,
-              exerciseType: exType,
-              equipment: e.target.value || null,
-            })
-          }
-          className="h-6 max-w-40 border border-border bg-surface px-1 text-2xs text-ink"
-          data-testid={`exercise-equipment-select-${exercise.name}`}
-        >
-          <option value="">No equipment</option>
-          {EQUIPMENT_KINDS.map((k) => (
-            <option key={k} value={k}>
-              {EQUIPMENT_LABELS[k]}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-2xs text-faint">Muscles</span>
-        {targets.map((t) => (
-          <span
-            key={t.muscle}
-            className="flex items-center gap-1 border border-border bg-surface px-1 py-0.5 text-2xs text-soft"
-          >
-            <TierBadge tier={t.tier} />
-            {muscleLabel(t.muscle)}
-            <button
-              type="button"
-              title={`Remove ${muscleLabel(t.muscle)}`}
-              onClick={() =>
-                setTargets(targets.filter((x) => x.muscle !== t.muscle))
-              }
-              className="text-faint hover:text-neg"
-            >
-              ×
-            </button>
-          </span>
-        ))}
-        <select
-          value={muscleDraft}
-          onChange={(e) => setMuscleDraft(e.target.value)}
-          className="h-6 border border-border bg-surface px-1 text-2xs text-ink"
-          data-testid={`muscle-select-${exercise.name}`}
-        >
-          <option value="">+ muscle</option>
-          {MUSCLES.filter((m) => !targets.some((t) => t.muscle === m.key)).map(
-            (m) => (
-              <option key={m.key} value={m.key}>
-                {m.label}
-              </option>
-            ),
-          )}
-        </select>
-        <select
-          value={tierDraft}
-          onChange={(e) => setTierDraft(e.target.value as Tier)}
-          className="h-6 border border-border bg-surface px-1 text-2xs text-ink"
-          title="Tier for this muscle"
-        >
-          {TIERS.map((t) => (
-            <option key={t} value={t}>
-              {t}
-            </option>
-          ))}
-        </select>
-        <Button
-          size="sm"
-          disabled={!muscleDraft}
-          onClick={() => {
-            if (!muscleDraft) return;
-            setTargets([...targets, { muscle: muscleDraft, tier: tierDraft }]);
-            setMuscleDraft("");
-            setTierDraft("S");
-          }}
-          data-testid={`add-muscle-${exercise.name}`}
-        >
-          Add
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-2xs text-faint">Joint actions</span>
-        {actions.map((a) => (
-          <span
-            key={a}
-            className="flex items-center gap-1 border border-border bg-surface px-1 py-0.5 text-2xs text-soft"
-          >
-            {jointActionLabel(a)}
-            <button
-              type="button"
-              title={`Remove ${jointActionLabel(a)}`}
-              onClick={() => setActions(actions.filter((x) => x !== a))}
-              className="text-faint hover:text-neg"
-            >
-              ×
-            </button>
-          </span>
-        ))}
-        <select
-          value=""
-          onChange={(e) => {
-            if (e.target.value) setActions([...actions, e.target.value]);
-          }}
-          className="h-6 border border-border bg-surface px-1 text-2xs text-ink"
-          data-testid={`joint-action-select-${exercise.name}`}
-        >
-          <option value="">+ action</option>
-          {JOINT_ACTIONS.filter((a) => !actions.includes(a.key)).map((a) => (
-            <option key={a.key} value={a.key}>
-              {a.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <span className="text-2xs text-faint">Machine</span>
-        <select
-          value={exercise.machineId ?? ""}
-          onChange={(e) =>
-            setMachine.mutate({
-              exerciseId: exercise.id,
-              machineId: e.target.value || null,
-            })
-          }
-          className="h-6 max-w-64 border border-border bg-surface px-1 text-2xs text-ink"
-          data-testid={`machine-select-${exercise.name}`}
-        >
-          <option value="">No machine</option>
-          {machines.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.brand ? `${m.brand} · ` : ""}
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-}
-
 function TagEditor({
   exercise,
-  setTags,
+  update,
 }: {
   exercise: Exercise;
-  setTags: ReturnType<typeof useSetExerciseTags>;
+  update: ReturnType<typeof useUpdateExercise>;
 }) {
   const [tagDraft, setTagDraft] = useState("");
   // Hold the latest tags so a rapid second add appends to the first instead of
@@ -1134,7 +876,7 @@ function TagEditor({
     if (current.includes(tag)) return;
     const nextTags = [...current, tag];
     tagsRef.current = nextTags;
-    setTags.mutate({ exerciseId: exercise.id, tags: nextTags });
+    update.mutate({ exerciseId: exercise.id, patch: { tags: nextTags } });
   }
 
   return (
@@ -1149,9 +891,9 @@ function TagEditor({
             type="button"
             title={`Remove tag ${t}`}
             onClick={() =>
-              setTags.mutate({
+              update.mutate({
                 exerciseId: exercise.id,
-                tags: (exercise.tags ?? []).filter((x) => x !== t),
+                patch: { tags: (exercise.tags ?? []).filter((x) => x !== t) },
               })
             }
             className="text-faint hover:text-neg"

@@ -84,6 +84,7 @@ import {
 import { useLocation, useNavigate, useParams } from "react-router";
 import { ExerciseRibbon, ExerciseThumb } from "@/components/anatomy-ui";
 import { ConditionsChip } from "@/components/conditions";
+import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
   filterExercises,
@@ -229,6 +230,7 @@ function columnsFor(
   type: ExerciseType,
   unit: Unit,
   distUnit: DistanceUnit,
+  laterality?: string | null,
 ): Column[] {
   const f = TYPE_FIELDS[type];
   const cols: Column[] = [];
@@ -236,7 +238,13 @@ function columnsFor(
     cols.push({ key: "weight", header: weightLabel(type, unitLabel(unit)) });
   if (f.distance) cols.push({ key: "distance", header: distUnit });
   if (f.duration) cols.push({ key: "duration", header: "time" });
-  if (f.reps) cols.push({ key: "reps", header: "reps" });
+  // Unilateral: one logged set is one side, so the reps column says so —
+  // matches muscleCredits' doubled per-side credit for the same exercises.
+  if (f.reps)
+    cols.push({
+      key: "reps",
+      header: laterality === "unilateral" ? "reps/side" : "reps",
+    });
   return cols;
 }
 
@@ -1762,12 +1770,35 @@ function ExercisePicker({
   const { data: exercises = [], isLoading } = useExercises();
   const { data: machines = [] } = useMachines();
   // A just-created exercise is in the list before its INSERT lands; adding it
-  // to the session would violate the session_exercises FK.
+  // to the session would violate the session_exercises FK. Leaving the
+  // registry says the create settled, not that it succeeded — the list itself
+  // is what separates the two (a rolled-back create takes its row with it).
   const pendingExercises = usePendingExercises();
   const [query, setQuery] = useState("");
   const [filterMuscle, setFilterMuscle] = useState("");
+  const [yoursOnly, setYoursOnly] = useState(false);
+  const [creatingNew, setCreatingNew] = useState(false);
+  // Set by the editor's onCreated; auto-picked the instant its INSERT lands
+  // (same FK wait pickExercise already does for any pending row) — the
+  // highest-value change in the custom-exercise-adder plan: discovering
+  // mid-workout that a lift isn't in the book no longer means abandoning
+  // the session to go add it in Library first.
+  const [awaitingPick, setAwaitingPick] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!awaitingPick) return;
+    if (pendingExercises.has(awaitingPick.id)) return;
+    if (!exercises.some((e) => e.id === awaitingPick.id)) return;
+    onPick(awaitingPick.id, awaitingPick.name);
+    setAwaitingPick(null);
+    onOpenChange(false);
+  }, [awaitingPick, pendingExercises, exercises, onPick, onOpenChange]);
   // Muscle-grouped, tier-sorted — same reading order as the Library ribbon.
-  const filtered = filterExercises(exercises, query, filterMuscle);
+  const filtered = filterExercises(exercises, query, filterMuscle).filter(
+    (ex) => !yoursOnly || ex.isCustom,
+  );
   const groups = groupByPrimaryMuscle(filtered);
 
   return (
@@ -1780,6 +1811,22 @@ function ExercisePicker({
             muscle={filterMuscle}
             onMuscle={setFilterMuscle}
             autoFocus
+            after={
+              <button
+                type="button"
+                onClick={() => setYoursOnly((v) => !v)}
+                aria-pressed={yoursOnly}
+                className={cn(
+                  "h-8 shrink-0 px-2.5 text-2xs transition-colors duration-150",
+                  yoursOnly
+                    ? "bg-accent-soft text-accent"
+                    : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
+                )}
+                data-testid="picker-filter-yours"
+              >
+                Yours
+              </button>
+            }
           />
           {isLoading ? (
             <p className="px-4 py-6 text-center text-xs text-faint">Loading…</p>
@@ -1788,9 +1835,23 @@ function ExercisePicker({
               No exercises yet — add one in Library.
             </p>
           ) : filtered.length === 0 ? (
-            <p className="px-4 py-6 text-center text-xs text-faint">
-              No exercises match your search.
-            </p>
+            <div className="flex flex-col items-center gap-3 px-4 py-6">
+              <p className="text-center text-xs text-faint">
+                {query.trim()
+                  ? "No exercises match your search."
+                  : "No exercises match these filters."}
+              </p>
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={() => setCreatingNew(true)}
+                data-testid="picker-create-exercise-btn"
+              >
+                <Plus className="size-4" />
+                {query.trim() ? `Create "${query.trim()}"` : "Create exercise"}
+              </Button>
+            </div>
           ) : (
             <div className="overflow-hidden border border-border bg-surface">
               {groups.map((group) => (
@@ -1819,6 +1880,13 @@ function ExercisePicker({
           )}
         </div>
       </DialogContent>
+      <ExerciseEditor
+        open={creatingNew}
+        onOpenChange={setCreatingNew}
+        mode="create"
+        initialName={query.trim()}
+        onCreated={(id, name) => setAwaitingPick({ id, name })}
+      />
     </Dialog>
   );
 }
@@ -2092,7 +2160,7 @@ function ExerciseBlock({
   const override = weightUnitOverrideFor(prefs, block.exerciseId);
   const blockUnit = blockUnitFor(prefs, block.exerciseId, unit);
   const distUnit = distanceUnitFor(blockUnit);
-  const columns = columnsFor(type, blockUnit, distUnit);
+  const columns = columnsFor(type, blockUnit, distUnit, exercise?.laterality);
   const barLoaded =
     TYPE_FIELDS[type].weight && isBarLoaded(exercise?.equipment);
   const warmupEligible = TYPE_FIELDS[type].weight;
@@ -2101,7 +2169,10 @@ function ExerciseBlock({
     (max, s) => (s.weightKg != null && s.weightKg > max ? s.weightKg : max),
     0,
   );
-  const effectiveRestSec = block.restSec ?? defaultRestSec;
+  // Block's own override > this exercise's own default rest > the global
+  // user_prefs default.
+  const effectiveRestSec =
+    block.restSec ?? exercise?.defaultRestSec ?? defaultRestSec;
 
   // PREVIOUS column: last performance per set index ('any workout' scope — the
   // existing ghost lookup). Only claims grid space when there's prior or seeded
@@ -2187,6 +2258,18 @@ function ExerciseBlock({
           </button>
         </span>
       </header>
+
+      {/* The exercise's own cue ("brace before you unrack") — set once in
+          the exercise editor, read-only here, distinct from this session's
+          own note below. */}
+      {exercise?.notes && (
+        <p
+          className="px-4 pb-1 text-2xs text-faint"
+          data-testid={`block-${block.name}-exercise-notes`}
+        >
+          {exercise.notes}
+        </p>
+      )}
 
       <SessionNoteField
         blockName={block.name}

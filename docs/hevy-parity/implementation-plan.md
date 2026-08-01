@@ -54,7 +54,7 @@ Research performed (this session): 48 Hevy feature articles + 86 help-center doc
 | Update Routine Values + structural-change prompt | ❌ | diff vs source routine at finish |
 | Post-save celebration + share cards | ❌ | summary overlay + canvas PNG renderer |
 | Exercise library 400+ w/ instructions | 🟡 | seed ~870 from free-exercise-db (public domain) + instructions; static frames, no animations |
-| Custom exercises (type/equipment) | 🟡 | add fields; duplicate-as-reset |
+| Custom exercises (type/equipment) | ✅ | shipped 2026-07-30 — full create/edit sheet (`exercise-editor.tsx`), all seed-library fields, uploaded demo media; see `docs/DECISIONS.md` "custom exercise adder" |
 | Exercise detail (charts/records/history/how-to) | ❌ | `/exercises/:id` + in-house SVG chart kit |
 | Per-exercise unit override | ❌ | `exercise_prefs` satellite (favorites pattern) |
 | Profile + dashboard | 🟡 | fill `profile.tsx` stub |

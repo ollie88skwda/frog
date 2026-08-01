@@ -19,8 +19,10 @@ const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date(2026, 6, 13, 12).getTime();
 const OPTS = { now: NOW, includeWarmups: true, firstWeekday: 1 };
 
-const bench = (targets: MuscleTarget[]): MuscleByExercise =>
-  new Map([["bench", targets]]);
+const bench = (
+  targets: MuscleTarget[],
+  laterality: string | null = null,
+): MuscleByExercise => new Map([["bench", { targets, laterality }]]);
 
 const MUSCLES = bench([
   { muscle: "pecs", tier: "S" },
@@ -66,6 +68,35 @@ describe("muscleCredits", () => {
       { muscle: "triceps", credit: 0.5 },
     ]);
     expect(muscleCredits(null)).toEqual([]);
+  });
+
+  it("reads role, not position, when both are explicit — two primaries", () => {
+    expect(
+      muscleCredits([
+        { muscle: "quads", tier: null, role: "primary" },
+        { muscle: "glutes", tier: null, role: "primary" },
+        { muscle: "erectors", tier: null, role: "secondary" },
+      ]),
+    ).toEqual([
+      { muscle: "quads", credit: 1 },
+      { muscle: "glutes", credit: 1 },
+      { muscle: "erectors", credit: 0.5 },
+    ]);
+  });
+
+  it("doubles credit for a unilateral exercise", () => {
+    expect(
+      muscleCredits([{ muscle: "quads", tier: null }], "unilateral"),
+    ).toEqual([{ muscle: "quads", credit: 2 }]);
+  });
+
+  it("does not double credit for alternating or bilateral", () => {
+    expect(
+      muscleCredits([{ muscle: "quads", tier: null }], "alternating"),
+    ).toEqual([{ muscle: "quads", credit: 1 }]);
+    expect(
+      muscleCredits([{ muscle: "quads", tier: null }], "bilateral"),
+    ).toEqual([{ muscle: "quads", credit: 1 }]);
   });
 });
 

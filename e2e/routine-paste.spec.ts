@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // "Paste workout" import path: freeform text -> fuzzy-matched draft rows,
 // with unmatched lines surfaced (never silently dropped or saved) and
@@ -22,8 +22,7 @@ test("parses a pasted routine into matched drafts and surfaces the unmatched lin
   // Two library exercises to fuzzy-match against.
   await page.goto("/library");
   for (const name of [EX1, EX2]) {
-    await page.getByTestId("exercise-name-input").fill(name);
-    await page.getByTestId("add-exercise-btn").click();
+    await createExercise(page, name);
     await waitForExercise(page, name);
   }
 
@@ -65,8 +64,11 @@ test("parses a pasted routine into matched drafts and surfaces the unmatched lin
   // import is never silent.
   await expect(page.getByTestId("routine-unparsed")).toContainText("Plank 60s");
 
-  // Resolve it via "Create exercise" — appends a third matched draft row.
+  // Resolve it via "Create exercise…" — opens the editor prefilled with the
+  // raw line; saving appends a third matched draft row.
   await unmatchedRow.getByRole("button", { name: "Create exercise" }).click();
+  await expect(page.getByTestId("exercise-name-input")).toHaveValue(UNKNOWN);
+  await page.getByTestId("add-exercise-btn").click();
   await expect(unmatchedRow).not.toBeVisible();
   await expect(page.getByTestId("routine-ex-2")).toContainText(UNKNOWN);
   await expect(page.getByTestId("routine-ex-2-set-0-reps")).toHaveValue("5");
@@ -83,8 +85,7 @@ test("caps an implausible set count into the unmatched list and resets the picke
   const EX = `PasteCapEx ${stamp}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   await page.goto("/train");
@@ -134,8 +135,7 @@ test("picking one exercise resolves every unmatched line naming the same lift", 
   const EX = `PasteTwinEx ${stamp}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   await page.goto("/train");

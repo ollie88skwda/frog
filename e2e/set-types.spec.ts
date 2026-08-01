@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // M1 set types: the set-number cell assigns Normal / Warm-up / Failure / Drop,
 // renders a W/F/D marker, persists via the log + update paths, and survives a
@@ -52,8 +52,7 @@ test("assign W/F/D markers on the draft row, edit a committed type, persist acro
   const EX = `SetType ${since}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   await page.goto("/train");
@@ -107,8 +106,7 @@ test("Delete Set in the set-details sheet requires confirmation before removing 
   const EX = `SetTypeRemove ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   await page.goto("/train");

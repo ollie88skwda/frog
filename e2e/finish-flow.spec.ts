@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // M2 finish flow: the End button opens a Save-Workout overlay (editable title /
 // notes / start-time with a computed duration, Discard). Plus the two history
@@ -20,8 +20,7 @@ async function logSet(page: Page, index: number, weight: string, reps: string) {
 
 async function newExercise(page: Page, name: string) {
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(name);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, name);
   await waitForExercise(page, name);
 }
 

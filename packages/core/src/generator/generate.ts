@@ -137,7 +137,8 @@ function prescription(
 }
 
 function isCompound(e: SelectableExercise): boolean {
-  return (e.muscleTargets?.length ?? 0) >= 2;
+  if (e.mechanic) return e.mechanic === "compound";
+  return (e.muscleTargets?.length ?? 0) >= 2; // legacy fallback for untyped rows
 }
 
 /**

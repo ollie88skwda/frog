@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // M5 exercise detail: log an exercise across two sessions, then the detail
 // screen (reached from the library) shows the Summary chart + records panel +
@@ -44,8 +44,7 @@ test("summary chart + records + set-records + history across two sessions", asyn
   const EX = `Detail ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   // Session 1 seeds the baselines (no PRs); session 2 lifts heavier → PR.
@@ -91,8 +90,7 @@ test("duplicate exercise creates a history-free copy", async ({ page }) => {
   const EX = `Dup ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   await logSessionWith(page, EX, [["80", "5"]]);

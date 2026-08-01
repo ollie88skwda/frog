@@ -29,7 +29,7 @@ import type { ImportedSession, ImportResult } from "../import/types";
 import type { RecordsSessionInput } from "../records/types";
 import type {
   CreatedApiToken,
-  ExerciseClassification,
+  ExercisePatch,
   ExportBundle,
   GhostSet,
   MachinePatch,
@@ -47,6 +47,23 @@ import type {
 } from "./types";
 
 type Row = Record<string, unknown>;
+
+// Library/picker list rows never render `instructions`/`image_urls` — those
+// are How-to-tab-only (exercise-detail.tsx) — yet `select()` downloaded them
+// on every cold load (734 kB of the ~1.17 MB payload on the seeded library).
+// getExercise()/useExercise() fetch the fat fields for one row on demand.
+// excluded: instructions, image_urls, media_path, media_type — detail screen
+// only (media_path/media_type also cost a signed-URL round trip; not worth
+// paying for on ~900 rows only to render a thumbnail nobody asked for).
+// `notes` stays IN this list, unlike those: it's a short string (not an
+// array of frames), and the session's block header renders it read-only for
+// every logged block — fat-fielding it would mean one extra fetch per block
+// on the logging hot path, exactly what LIST_COLUMNS exists to avoid.
+const LIST_COLUMNS =
+  "id, created_at, updated_at, deleted_at, owner_id, name, tags, is_custom, " +
+  "machine_id, joint_actions, muscle_targets, image_url, image_attribution, " +
+  "exercise_type, equipment, mechanic, movement_pattern, laterality, " +
+  "default_reps_min, default_reps_max, default_rest_sec, aliases, notes";
 
 // PostgREST speaks snake_case; the app speaks the schema's camelCase types.
 function toExercise(r: Row): Exercise {
@@ -68,6 +85,16 @@ function toExercise(r: Row): Exercise {
     equipment: (r.equipment as string | null) ?? null,
     instructions: (r.instructions as string[] | null) ?? null,
     imageUrls: (r.image_urls as string[] | null) ?? null,
+    mechanic: (r.mechanic as string | null) ?? null,
+    movementPattern: (r.movement_pattern as string | null) ?? null,
+    laterality: (r.laterality as string | null) ?? null,
+    defaultRepsMin: (r.default_reps_min as number | null) ?? null,
+    defaultRepsMax: (r.default_reps_max as number | null) ?? null,
+    defaultRestSec: (r.default_rest_sec as number | null) ?? null,
+    notes: (r.notes as string | null) ?? null,
+    aliases: (r.aliases as string[] | null) ?? null,
+    mediaPath: (r.media_path as string | null) ?? null,
+    mediaType: (r.media_type as string | null) ?? null,
   };
 }
 
@@ -334,6 +361,14 @@ export class SupabaseRepo implements Repo {
       equipment: opts?.equipment ?? null,
       instructions: opts?.instructions?.length ? opts.instructions : null,
       image_urls: opts?.imageUrls?.length ? opts.imageUrls : null,
+      mechanic: opts?.mechanic ?? null,
+      movement_pattern: opts?.movementPattern ?? null,
+      laterality: opts?.laterality ?? null,
+      default_reps_min: opts?.defaultRepsMin ?? null,
+      default_reps_max: opts?.defaultRepsMax ?? null,
+      default_rest_sec: opts?.defaultRestSec ?? null,
+      notes: opts?.notes ?? null,
+      aliases: opts?.aliases?.length ? opts.aliases : null,
     };
     const { data, error } = await this.client
       .from("exercises")
@@ -399,34 +434,47 @@ export class SupabaseRepo implements Repo {
     throwIf(error);
   }
 
-  async setExerciseMachine(
-    exerciseId: string,
-    machineId: string | null,
-  ): Promise<void> {
-    const { error } = await this.client
-      .from("exercises")
-      .update({ machine_id: machineId, updated_at: Date.now() })
-      .eq("id", exerciseId);
-    throwIf(error);
-  }
-
-  async setExerciseClassification(
-    exerciseId: string,
-    classification: ExerciseClassification,
-  ): Promise<void> {
+  // Replaces setExerciseMachine/setExerciseClassification/
+  // setExerciseTypeEquipment/setExerciseTags — one patch method instead of a
+  // narrow setter per editable field (RLS still restricts writes to the
+  // caller's own custom rows; this is the seam, not the security boundary).
+  async updateExercise(id: string, patch: ExercisePatch): Promise<void> {
     const row: Row = { updated_at: Date.now() };
-    if ("jointActions" in classification)
-      row.joint_actions = classification.jointActions?.length
-        ? classification.jointActions
+    if ("name" in patch && patch.name != null) row.name = patch.name;
+    if ("muscleTargets" in patch)
+      row.muscle_targets = patch.muscleTargets?.length
+        ? patch.muscleTargets
         : null;
-    if ("muscleTargets" in classification)
-      row.muscle_targets = classification.muscleTargets?.length
-        ? classification.muscleTargets
+    if ("jointActions" in patch)
+      row.joint_actions = patch.jointActions?.length
+        ? patch.jointActions
         : null;
+    if ("machineId" in patch) row.machine_id = patch.machineId ?? null;
+    if ("exerciseType" in patch && patch.exerciseType != null)
+      row.exercise_type = patch.exerciseType;
+    if ("equipment" in patch) row.equipment = patch.equipment ?? null;
+    if ("tags" in patch) row.tags = patch.tags?.length ? patch.tags : null;
+    if ("mechanic" in patch) row.mechanic = patch.mechanic ?? null;
+    if ("movementPattern" in patch)
+      row.movement_pattern = patch.movementPattern ?? null;
+    if ("laterality" in patch) row.laterality = patch.laterality ?? null;
+    if ("defaultRepsMin" in patch)
+      row.default_reps_min = patch.defaultRepsMin ?? null;
+    if ("defaultRepsMax" in patch)
+      row.default_reps_max = patch.defaultRepsMax ?? null;
+    if ("defaultRestSec" in patch)
+      row.default_rest_sec = patch.defaultRestSec ?? null;
+    if ("notes" in patch) row.notes = patch.notes ?? null;
+    if ("aliases" in patch)
+      row.aliases = patch.aliases?.length ? patch.aliases : null;
+    if ("instructions" in patch)
+      row.instructions = patch.instructions?.length ? patch.instructions : null;
+    if ("imageUrls" in patch)
+      row.image_urls = patch.imageUrls?.length ? patch.imageUrls : null;
     const { error } = await this.client
       .from("exercises")
       .update(row)
-      .eq("id", exerciseId);
+      .eq("id", id);
     throwIf(error);
   }
 
@@ -460,14 +508,95 @@ export class SupabaseRepo implements Repo {
     return data?.signedUrl ?? null;
   }
 
+  async uploadExerciseMedia(
+    exerciseId: string,
+    file: Blob,
+    kind: "image" | "video",
+  ): Promise<void> {
+    const uid = await this.ownerId();
+    // Image is always resized to JPEG client-side (lib/photo.ts); video is
+    // uploaded as-is, so keep its own content type for correct playback.
+    const path = `${uid}/${exerciseId}.${kind === "image" ? "jpg" : "mp4"}`;
+    // Swapping a demo image for a clip (or back) writes a different key, so
+    // `upsert` can't replace the old object and the row keeps only the new
+    // path — the previous file would sit in the bucket with nothing pointing
+    // at it. Read what it is replacing before the row moves on.
+    const previous = await this.exerciseMediaPath(exerciseId);
+    const { error: uploadError } = await this.client.storage
+      .from("exercise-media")
+      .upload(path, file, {
+        upsert: true,
+        contentType: kind === "image" ? "image/jpeg" : file.type || "video/mp4",
+      });
+    throwIf(uploadError);
+    const { error } = await this.client
+      .from("exercises")
+      .update({ media_path: path, media_type: kind, updated_at: Date.now() })
+      .eq("id", exerciseId);
+    throwIf(error);
+    if (previous && previous !== path) {
+      // Best-effort, same as clearExerciseMedia: the row already points at the
+      // new object, so a failed removal costs storage, not correctness.
+      await this.client.storage.from("exercise-media").remove([previous]);
+    }
+  }
+
+  private async exerciseMediaPath(exerciseId: string): Promise<string | null> {
+    const { data, error } = await this.client
+      .from("exercises")
+      .select("media_path")
+      .eq("id", exerciseId)
+      .limit(1);
+    throwIf(error);
+    return ((data as Row[] | null)?.[0]?.media_path as string | null) ?? null;
+  }
+
+  async clearExerciseMedia(exerciseId: string): Promise<void> {
+    const path = await this.exerciseMediaPath(exerciseId);
+    if (path) {
+      // Best-effort object removal; the row update is the source of truth.
+      await this.client.storage.from("exercise-media").remove([path]);
+    }
+    const { error } = await this.client
+      .from("exercises")
+      .update({ media_path: null, media_type: null, updated_at: Date.now() })
+      .eq("id", exerciseId);
+    throwIf(error);
+  }
+
+  async exerciseMediaUrl(exercise: Exercise): Promise<string | null> {
+    if (!exercise.mediaPath) return null;
+    const { data, error } = await this.client.storage
+      .from("exercise-media")
+      .createSignedUrl(exercise.mediaPath, 60 * 60);
+    throwIf(error);
+    return data?.signedUrl ?? null;
+  }
+
   async listExercises(): Promise<Exercise[]> {
     const { data, error } = await this.client
       .from("exercises")
-      .select()
+      .select(LIST_COLUMNS)
       .is("deleted_at", null)
       .order("name");
     throwIf(error);
-    return (data as Row[]).map(toExercise);
+    // The untyped column-list string can't be validated against a generated
+    // schema (this client has none), so supabase-js falls back to an error
+    // sentinel type here rather than Row[] — safe to cast, same as every
+    // other hand-written `.select("…")` in this file.
+    return (data as unknown as Row[]).map(toExercise);
+  }
+
+  /** Fat fields (instructions, imageUrls) for one exercise — see B2. */
+  async getExercise(id: string): Promise<Exercise | null> {
+    const { data, error } = await this.client
+      .from("exercises")
+      .select()
+      .eq("id", id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    throwIf(error);
+    return data ? toExercise(data as Row) : null;
   }
 
   async startSession(title?: string): Promise<Session> {
@@ -607,14 +736,6 @@ export class SupabaseRepo implements Repo {
       .from("set_logs")
       .update(row)
       .eq("id", setId);
-    throwIf(error);
-  }
-
-  async setExerciseTags(exerciseId: string, tags: string[]): Promise<void> {
-    const { error } = await this.client
-      .from("exercises")
-      .update({ tags: tags.length ? tags : null, updated_at: Date.now() })
-      .eq("id", exerciseId);
     throwIf(error);
   }
 
@@ -1368,22 +1489,6 @@ export class SupabaseRepo implements Repo {
       exercise_id: exerciseId,
       favorite,
     });
-    throwIf(error);
-  }
-
-  async setExerciseTypeEquipment(
-    exerciseId: string,
-    exerciseType: string,
-    equipment: string | null,
-  ): Promise<void> {
-    const { error } = await this.client
-      .from("exercises")
-      .update({
-        exercise_type: exerciseType,
-        equipment,
-        updated_at: Date.now(),
-      })
-      .eq("id", exerciseId);
     throwIf(error);
   }
 

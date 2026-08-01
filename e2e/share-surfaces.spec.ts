@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // The share surfaces share-summary.spec.ts doesn't reach:
 //
@@ -53,6 +53,7 @@ test("a reps-only exercise keeps a Records share card that paints", async ({
   const EX = `Pullup ${Date.now()}`;
 
   await page.goto("/library");
+  await page.getByTestId("new-exercise-btn").click();
   await page.getByTestId("exercise-name-input").fill(EX);
   await page.getByTestId("exercise-type-select").click();
   await page
@@ -144,8 +145,7 @@ test("one layout engine paints every frame × ground of a session card", async (
 }) => {
   const EX = `Matrix ${Date.now()}`;
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
 
   await page.goto("/train");

@@ -149,6 +149,55 @@ export function isBarLoaded(equipment: string | null | undefined): boolean {
   return equipment === "barbell" || equipment === "ez_bar";
 }
 
+// Compound vs isolation. Explicit field replacing the muscleTargets.length>=2
+// proxy in generator/generate.ts — a one-primary custom exercise is no longer
+// forced to "isolation" just for having a short muscle list.
+export const MECHANICS = ["compound", "isolation"] as const;
+export type Mechanic = (typeof MECHANICS)[number];
+export const MECHANIC_LABELS: Record<Mechanic, string> = {
+  compound: "Compound",
+  isolation: "Isolation",
+};
+
+// Movement pattern — the taxonomy the push/pull/legs day templates in
+// generator/generate.ts currently reconstruct from muscle keys. Chosen to
+// line up with those templates: every pattern maps cleanly to push/pull/legs.
+export const MOVEMENT_PATTERNS = [
+  "horizontal-push",
+  "vertical-push",
+  "horizontal-pull",
+  "vertical-pull",
+  "squat",
+  "hinge",
+  "lunge",
+  "carry",
+  "rotation",
+  "isolation",
+] as const;
+export type MovementPattern = (typeof MOVEMENT_PATTERNS)[number];
+export const MOVEMENT_PATTERN_LABELS: Record<MovementPattern, string> = {
+  "horizontal-push": "Horizontal push",
+  "vertical-push": "Vertical push",
+  "horizontal-pull": "Horizontal pull",
+  "vertical-pull": "Vertical pull",
+  squat: "Squat",
+  hinge: "Hinge",
+  lunge: "Lunge",
+  carry: "Carry",
+  rotation: "Rotation",
+  isolation: "Isolation",
+};
+
+// Bilateral vs unilateral vs alternating. Decides whether logged reps mean
+// per-side or total, and therefore per-side volume + PR comparability.
+export const LATERALITY = ["bilateral", "unilateral", "alternating"] as const;
+export type Laterality = (typeof LATERALITY)[number];
+export const LATERALITY_LABELS: Record<Laterality, string> = {
+  bilateral: "Both sides",
+  unilateral: "One side",
+  alternating: "Alternating",
+};
+
 export const SET_TYPES = ["normal", "warmup", "failure", "drop"] as const;
 export type SetType = (typeof SET_TYPES)[number];
 

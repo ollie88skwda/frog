@@ -23,15 +23,22 @@ import {
   toDisplayWeight,
   unitLabel,
 } from "@frog/core";
-import { ArrowLeft, ChevronDown, ChevronRight, Copy } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Pencil,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { ExerciseThumb, TierBadge } from "@/components/anatomy-ui";
 import { type ChartPoint, LineChart } from "@/components/charts/line";
+import { ExerciseEditor } from "@/components/exercise-editor";
 import { ShareButton } from "@/components/share-sheet";
 import { formatDate, formatDateTime, formatMMSS } from "@/lib/format";
 import { useUserPrefs } from "@/lib/profile-queries";
-import { useCreateExercise, useExercises } from "@/lib/queries";
+import { useCreateExercise, useExercise } from "@/lib/queries";
 import { type RecordsData, useRecordsData } from "@/lib/records-queries";
 import {
   type DistanceUnit,
@@ -59,12 +66,14 @@ export default function ExerciseDetailScreen() {
   const { t } = useVoice();
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const { data: exercises = [], isLoading: exLoading } = useExercises();
+  const {
+    data: exercise,
+    isLoading: exLoading,
+    isPlaceholderData,
+  } = useExercise(id);
   const { data: recordsData, isLoading: recLoading } = useRecordsData();
   const { unit } = useUnit();
   const [tab, setTab] = useState<Tab>("summary");
-
-  const exercise = exercises.find((e) => e.id === id);
 
   if (exLoading || recLoading) {
     return (
@@ -131,7 +140,7 @@ export default function ExerciseDetailScreen() {
             {primary && <span>· {muscleLabel(primary)}</span>}
           </p>
         </div>
-        <MoreMenu exercise={exercise} />
+        <MoreMenu exercise={exercise} partial={isPlaceholderData} />
       </div>
 
       <div className="mt-4 flex gap-1">
@@ -174,7 +183,9 @@ export default function ExerciseDetailScreen() {
             unit={unit}
           />
         )}
-        {tab === "howto" && <HowToTab exercise={exercise} />}
+        {tab === "howto" && (
+          <HowToTab exercise={exercise} partial={isPlaceholderData} />
+        )}
       </div>
     </div>
   );
@@ -542,7 +553,16 @@ function HistoryTab({
 }
 
 // ── How-to: frames + numbered steps + "why it's rated" science ───────────────
-function HowToTab({ exercise }: { exercise: Exercise }) {
+function HowToTab({
+  exercise,
+  partial,
+}: {
+  exercise: Exercise;
+  /** True while `exercise` is still the narrow list row (LIST_COLUMNS), which
+   * carries neither instructions nor imageUrls — absent ≠ empty until the full
+   * row lands, so the empty state must wait. */
+  partial: boolean;
+}) {
   const { t } = useVoice();
   const frames = exercise.imageUrls ?? [];
   const steps = exercise.instructions ?? [];
@@ -577,8 +597,12 @@ function HowToTab({ exercise }: { exercise: Exercise }) {
             </li>
           ))}
         </ol>
+      ) : partial ? (
+        <p className="text-xs text-faint" data-testid="howto-loading">
+          {t("Loading…", "The frog is thinking…")}
+        </p>
       ) : (
-        <p className="text-xs text-faint">
+        <p className="text-xs text-faint" data-testid="howto-empty">
           {t(
             "No instructions for this exercise yet.",
             "No instructions. The frog assumes you know what you are doing.",
@@ -630,16 +654,26 @@ function HowToTab({ exercise }: { exercise: Exercise }) {
   );
 }
 
-// ── ⋯ menu: duplicate exercise ───────────────────────────────────────────────
-function MoreMenu({ exercise }: { exercise: Exercise }) {
+// ── ⋯ menu: edit (custom) / duplicate exercise ──────────────────────────────
+function MoreMenu({
+  exercise,
+  partial,
+}: {
+  exercise: Exercise;
+  /** True while `exercise` is still the narrow list row (LIST_COLUMNS): the
+   * screen paints off that placeholder, and it has no instructions/imageUrls
+   * to copy. Edit is unaffected — the sheet fetches the full row itself. */
+  partial: boolean;
+}) {
   const create = useCreateExercise();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   // Clone into a fresh custom exercise with NO history (Hevy: the "reset an
-  // exercise's stats" mechanism). Carries the classification + type + equipment;
-  // instructions/images are not carried (createExercise doesn't persist them —
-  // reported as a core gap).
+  // exercise's stats" mechanism). Same exercise design, fresh history: every
+  // field the editor writes is carried except `aliases` — two rows sharing an
+  // alias would make `matchExerciseName` ambiguous for voice/paste logging.
   async function duplicate() {
     setOpen(false);
     const copy = await create.mutateAsync({
@@ -649,6 +683,16 @@ function MoreMenu({ exercise }: { exercise: Exercise }) {
         jointActions: exercise.jointActions,
         exerciseType: exercise.exerciseType,
         equipment: exercise.equipment,
+        machineId: exercise.machineId,
+        mechanic: exercise.mechanic,
+        movementPattern: exercise.movementPattern,
+        laterality: exercise.laterality,
+        defaultRepsMin: exercise.defaultRepsMin,
+        defaultRepsMax: exercise.defaultRepsMax,
+        defaultRestSec: exercise.defaultRestSec,
+        notes: exercise.notes,
+        instructions: exercise.instructions,
+        imageUrls: exercise.imageUrls,
       },
     });
     navigate(`/exercises/${copy.id}`);
@@ -675,18 +719,46 @@ function MoreMenu({ exercise }: { exercise: Exercise }) {
             className="fixed inset-0 z-10 cursor-default"
           />
           <div className="floating absolute top-full right-0 z-20 mt-1 min-w-40 py-1">
+            {exercise.isCustom && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setEditing(true);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+                data-testid="exercise-edit"
+              >
+                <Pencil className="size-3.5" />
+                Edit
+              </button>
+            )}
             <button
               type="button"
+              disabled={partial}
+              title={partial ? "Still loading this exercise" : undefined}
               onClick={() => void duplicate()}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
               data-testid="exercise-duplicate"
             >
               <Copy className="size-3.5" />
-              Duplicate exercise
+              {/* Seed rows are immutable book data — "duplicate" undersells
+                  that this is the only way to get an editable copy. Custom
+                  rows keep the literal label since they're also editable
+                  directly (see the Edit action above). */}
+              {exercise.isCustom
+                ? "Duplicate exercise"
+                : "Customise this exercise"}
             </button>
           </div>
         </>
       )}
+      <ExerciseEditor
+        open={editing}
+        onOpenChange={setEditing}
+        mode="edit"
+        exercise={exercise}
+      />
     </div>
   );
 }

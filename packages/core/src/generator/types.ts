@@ -36,4 +36,6 @@ export type SelectableExercise = {
   equipment: string | null;
   exerciseType: string;
   muscleTargets: Array<{ muscle: string; tier: string | null }> | null;
+  /** Explicit compound/isolation; null falls back to the muscle-count proxy. */
+  mechanic: string | null;
 };

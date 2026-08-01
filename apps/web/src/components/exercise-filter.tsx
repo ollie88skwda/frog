@@ -1,6 +1,7 @@
-import { MUSCLES, type MuscleTarget } from "@frog/core";
+import { EQUIPMENT_LABELS, MUSCLES, type MuscleTarget } from "@frog/core";
 import { Select } from "@radix-ui/themes";
 import { Search } from "lucide-react";
+import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 
 // Radix Select forbids an empty-string item value, so the "All muscles" option
@@ -19,12 +20,36 @@ export function primaryMuscleKey(e: {
   return primary && MUSCLE_KEYS.has(primary) ? primary : "other";
 }
 
+// Matches the name, any alias ("OHP" finds "Overhead Press"), or the
+// equipment label — one function, so the library, session picker, and
+// routine editor all pick up new match surfaces for free.
+function matchesQuery(
+  e: {
+    name: string;
+    aliases?: string[] | null;
+    equipment?: string | null;
+  },
+  q: string,
+): boolean {
+  if (e.name.toLowerCase().includes(q)) return true;
+  if (e.aliases?.some((a) => a.toLowerCase().includes(q))) return true;
+  const equipmentLabel = e.equipment
+    ? EQUIPMENT_LABELS[e.equipment as keyof typeof EQUIPMENT_LABELS]
+    : null;
+  return equipmentLabel?.toLowerCase().includes(q) ?? false;
+}
+
 export function filterExercises<
-  T extends { name: string; muscleTargets: MuscleTarget[] | null },
+  T extends {
+    name: string;
+    muscleTargets: MuscleTarget[] | null;
+    aliases?: string[] | null;
+    equipment?: string | null;
+  },
 >(items: T[], query: string, muscle: string): T[] {
   const q = query.trim().toLowerCase();
   return items.filter((e) => {
-    if (q && !e.name.toLowerCase().includes(q)) return false;
+    if (q && !matchesQuery(e, q)) return false;
     if (muscle && primaryMuscleKey(e) !== muscle) return false;
     return true;
   });
@@ -38,12 +63,15 @@ export function ExerciseFilterBar({
   muscle,
   onMuscle,
   autoFocus,
+  after,
 }: {
   query: string;
   onQuery: (v: string) => void;
   muscle: string;
   onMuscle: (v: string) => void;
   autoFocus?: boolean;
+  /** Extra control appended after the muscle select (e.g. a "Yours" toggle). */
+  after?: ReactNode;
 }) {
   return (
     <div className="flex gap-2">
@@ -78,6 +106,7 @@ export function ExerciseFilterBar({
           <Select.Item value="other">Other</Select.Item>
         </Select.Content>
       </Select.Root>
+      {after}
     </div>
   );
 }

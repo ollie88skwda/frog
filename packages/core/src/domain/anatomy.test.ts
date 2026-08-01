@@ -5,8 +5,11 @@ import {
   JOINT_ACTIONS,
   MUSCLES,
   type MuscleTarget,
+  primaryMuscles,
   ratingsForExercise,
   ratingsForMuscle,
+  roleAt,
+  secondaryMuscles,
 } from "./anatomy";
 
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -126,5 +129,55 @@ describe("groupByPrimaryMuscle", () => {
     ]);
     expect(groups).toHaveLength(1);
     expect(groups[0]?.key).toBe("other");
+  });
+});
+
+describe("roleAt", () => {
+  it("back-compat: absent role treats index 0 as primary, the rest secondary", () => {
+    const targets: MuscleTarget[] = [
+      { muscle: "quads", tier: "S" },
+      { muscle: "glutes", tier: "A" },
+      { muscle: "hamstrings", tier: "B" },
+    ];
+    expect(roleAt(targets, 0)).toBe("primary");
+    expect(roleAt(targets, 1)).toBe("secondary");
+    expect(roleAt(targets, 2)).toBe("secondary");
+  });
+
+  it("explicit role wins over position, including a second primary", () => {
+    const targets: MuscleTarget[] = [
+      { muscle: "quads", tier: "S", role: "primary" },
+      { muscle: "glutes", tier: "S", role: "primary" },
+      { muscle: "hamstrings", tier: "B", role: "secondary" },
+    ];
+    expect(roleAt(targets, 0)).toBe("primary");
+    expect(roleAt(targets, 1)).toBe("primary");
+    expect(roleAt(targets, 2)).toBe("secondary");
+  });
+});
+
+describe("primaryMuscles / secondaryMuscles", () => {
+  it("reads back-compat position when role is absent", () => {
+    const targets: MuscleTarget[] = [
+      { muscle: "quads", tier: "S" },
+      { muscle: "glutes", tier: "A" },
+    ];
+    expect(primaryMuscles(targets)).toEqual(["quads"]);
+    expect(secondaryMuscles(targets)).toEqual(["glutes"]);
+  });
+
+  it("supports two explicit primaries", () => {
+    const targets: MuscleTarget[] = [
+      { muscle: "quads", tier: "S", role: "primary" },
+      { muscle: "glutes", tier: "S", role: "primary" },
+      { muscle: "erectors", tier: "B", role: "secondary" },
+    ];
+    expect(primaryMuscles(targets)).toEqual(["quads", "glutes"]);
+    expect(secondaryMuscles(targets)).toEqual(["erectors"]);
+  });
+
+  it("handles null", () => {
+    expect(primaryMuscles(null)).toEqual([]);
+    expect(secondaryMuscles(null)).toEqual([]);
   });
 });

@@ -3,6 +3,7 @@ import {
   ChevronDown,
   ChevronRight,
   Compass,
+  Dumbbell,
   Folder,
   FolderPlus,
   MoreHorizontal,
@@ -153,8 +154,8 @@ export default function TrainScreen() {
         )}
       </div>
 
-      {/* Programs + Trainer entry points */}
-      <div className="mt-3 grid grid-cols-2 gap-2">
+      {/* Programs + Trainer + Exercises entry points */}
+      <div className="mt-3 grid grid-cols-3 gap-2">
         <Button
           variant="outline"
           className="w-full justify-start"
@@ -170,6 +171,14 @@ export default function TrainScreen() {
           data-testid="trainer-link"
         >
           <Sparkles className="size-4" /> Trainer
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full justify-start"
+          onClick={() => navigate("/library")}
+          data-testid="exercises-link"
+        >
+          <Dumbbell className="size-4" /> Exercises
         </Button>
       </div>
 

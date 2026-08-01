@@ -18,8 +18,19 @@ const TIER_NAME_CLASS: Record<Tier, string> = {
   C: "text-faint",
 };
 
+// Untiered (no rating for this muscle — 862 of 882 seed rows, and every
+// hand-added custom exercise) must never read as tier S ("Best"): it means
+// "unrated", not "top-rated". `text-faint` alone isn't enough — it's byte-
+// identical to tier C ("Weak"), so an unrated exercise read as *rated poorly*
+// rather than *not rated at all*. Italic is the distinguishing signal: same
+// faint brightness (still ranks visually below C, never above), but a
+// slant no real tier ever carries, so "unrated" and "Weak" don't collide.
+// No literal label — the module's own no-letters-on-the-reading-path rule
+// would put a word on ~862 of 882 rows.
+const UNTIERED_NAME_CLASS = "text-faint italic";
+
 export function tierNameClass(tier: Tier | null | undefined): string {
-  return tier ? TIER_NAME_CLASS[tier] : "text-ink";
+  return tier ? TIER_NAME_CLASS[tier] : UNTIERED_NAME_CLASS;
 }
 
 // Key explaining the name-brightness scale. Brighter = better exercise.
@@ -36,6 +47,7 @@ export function TierLegend({ className }: { className?: string }) {
       <span className="font-semibold text-ink-2">Great</span>
       <span className="font-semibold text-soft">Good</span>
       <span className="font-semibold text-faint">Weak</span>
+      <span className="font-semibold text-faint italic">Unrated</span>
     </div>
   );
 }
@@ -72,6 +84,13 @@ export function TierBadge({
 // line art and must stay legible on the dark theme. "sm" (24px) for dense
 // logging-path lists (session picker, block header); "lg" (64px) for the
 // library ribbon, where the image is the primary visual anchor.
+//
+// Custom exercises never have a reference diagram, so a bare `null` here read
+// as broken/missing rather than "no photo yet" — swap in a neutral dumbbell
+// glyph instead. Deliberately monochrome (no per-muscle hue): the app has a
+// single accent color (docs/brand/frog-brand-identity.html), so this reuses
+// the same faint/surface-2 treatment as an untiered exercise name rather than
+// inventing a color-coded palette.
 export function ExerciseThumb({
   imageUrl,
   name,
@@ -83,21 +102,28 @@ export function ExerciseThumb({
   size?: "sm" | "lg";
   className?: string;
 }) {
-  if (!imageUrl) return null;
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center border border-border bg-white",
+        "flex shrink-0 items-center justify-center border border-border",
+        imageUrl ? "bg-white" : "bg-surface-2",
         size === "sm" ? "size-6" : "size-16",
         className,
       )}
     >
-      <img
-        src={imageUrl}
-        alt={name}
-        loading="lazy"
-        className="size-full object-contain"
-      />
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={name}
+          loading="lazy"
+          className="size-full object-contain"
+        />
+      ) : (
+        <Dumbbell
+          className={cn("text-faint", size === "sm" ? "size-3.5" : "size-6")}
+          aria-hidden
+        />
+      )}
     </span>
   );
 }

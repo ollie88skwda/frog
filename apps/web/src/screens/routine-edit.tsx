@@ -3,6 +3,8 @@ import {
   type Exercise,
   type ExerciseType,
   groupByPrimaryMuscle,
+  isConfidentMatch,
+  matchExerciseName,
   type NewRoutineInput,
   type ParsedExercise,
   parseRoutineText,
@@ -11,18 +13,9 @@ import {
   SET_TYPE_MARKERS,
   SET_TYPES,
   type SetType,
+  sameExerciseName,
   TYPE_FIELDS,
 } from "@frog/core";
-// Imported by exact subpath, not the "@frog/core" barrel: a second, unrelated
-// matcher landed at packages/core/src/domain/match-exercise.ts (voice
-// logging) exporting the same names with a different shape, so the barrel
-// re-export is now ambiguous. This repo-wide dedupe is tracked separately
-// (see AGENTS.md's "Freeform-text → structured-data matching" note) — this
-// import just keeps this file unambiguously on its own matcher meanwhile.
-import {
-  matchExerciseName,
-  sameExerciseName,
-} from "@frog/core/generator/match-exercise";
 import { Select } from "@radix-ui/themes";
 import {
   ArrowDown,
@@ -33,8 +26,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
   filterExercises,
@@ -44,7 +38,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { formatMMSS, parseDuration } from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
-import { useCreateExercise, useExercises } from "@/lib/queries";
+import { useExercises } from "@/lib/queries";
 import {
   useCreateRoutine,
   useRoutineDetail,
@@ -178,10 +172,23 @@ function draftFromExercise(e: Exercise, sets: DraftSet[]): DraftExercise {
     name: e.name,
     exerciseType: exerciseTypeOf(e),
     supersetGroup: null,
-    restSec: null,
+    restSec: e.defaultRestSec ?? null,
     note: "",
     sets,
   };
+}
+
+// A fresh "Add exercise" pick (not resolving a parsed/pasted line, which
+// already carries its own reps) — prefills the exercise's own default rep
+// range instead of three blank sets.
+function defaultSetsFor(e: Exercise): DraftSet[] {
+  const reps = e.defaultRepsMin != null ? String(e.defaultRepsMin) : "";
+  const repsMax = e.defaultRepsMax != null ? String(e.defaultRepsMax) : "";
+  return [emptySet(), emptySet(), emptySet()].map((s) => ({
+    ...s,
+    reps,
+    repsMax,
+  }));
 }
 
 function setsFromParsed(p: ParsedExercise): DraftSet[] {
@@ -240,7 +247,6 @@ export default function RoutineEditScreen() {
   // Paste-workout import: raw text -> matched drafts + a resolvable
   // unmatched list. `pickFor` routes the (shared) exercise picker's
   // selection back into a specific unmatched line instead of a fresh add.
-  const createExercise = useCreateExercise();
   const [pasteOpen, setPasteOpen] = useState(false);
   const [pasteText, setPasteText] = useState("");
   const [pasteError, setPasteError] = useState<string | null>(null);
@@ -248,16 +254,14 @@ export default function RoutineEditScreen() {
   const [unparsed, setUnparsed] = useState<UnparsedLine[]>([]);
   const [overflowCount, setOverflowCount] = useState(0);
   const [pickFor, setPickFor] = useState<UnmatchedLine | null>(null);
-  // In-flight creates are tracked by raw name (compared via sameExerciseName),
-  // not line key: two lines naming the same lift share one library row, so
-  // both their buttons must disable together or a double click makes two
-  // identical exercises.
-  const [creatingNames, setCreatingNames] = useState<ReadonlySet<string>>(
-    () => new Set(),
-  );
-  const [createError, setCreateError] = useState<{
-    key: string;
-    message: string;
+  // "Create exercise…" opens the shared editor prefilled with the raw line;
+  // pendingTwinCreate resolves every unmatched line sharing that name once
+  // the new row lands in `exercises` (the editor itself is optimistic and
+  // closes instantly, but the twin draft rows need the real exerciseType).
+  const [creatingFor, setCreatingFor] = useState<UnmatchedLine | null>(null);
+  const [pendingTwinCreate, setPendingTwinCreate] = useState<{
+    id: string;
+    forRawName: string;
   } | null>(null);
 
   const byId = useMemo(
@@ -432,10 +436,19 @@ export default function RoutineEditScreen() {
       // An implausible set count (likely a misread, not a real prescription)
       // always goes to the unmatched list for manual review, even if the
       // name matched cleanly — never auto-add a hundreds-of-sets draft row.
-      const match =
+      const raw =
         p.sets <= MAX_PARSED_SETS
           ? matchExerciseName(p.rawName, exercises)
           : null;
+      // Same confidence bar as voice logging (isConfidentMatch's default):
+      // the merged matcher's scoring is more generous than this file's old
+      // Jaccard formula was, so reusing that formula's old looser threshold
+      // here would silently accept shorthand it used to reject (a bare
+      // "row" against a library that also has "Barbell Bent Over Row").
+      // A tie (two candidates scoring equally) is never auto-picked either;
+      // it falls to "Pick manually" same as a low-confidence miss.
+      const match =
+        raw && raw.tied.length === 1 && isConfidentMatch(raw) ? raw : null;
       if (match)
         matchedDrafts.push(draftFromExercise(match, setsFromParsed(p)));
       else misses.push({ ...p, key: crypto.randomUUID() });
@@ -459,43 +472,41 @@ export default function RoutineEditScreen() {
     setPicking(true);
   }
 
-  async function createFromUnmatched(u: UnmatchedLine) {
-    if ([...creatingNames].some((n) => sameExerciseName(n, u.rawName))) return;
-    setCreatingNames((prev) => new Set(prev).add(u.rawName));
-    setCreateError(null);
-    try {
-      const created = await createExercise.mutateAsync({ name: u.rawName });
-      // A routine can name the same lift twice (main sets + a backoff line),
-      // possibly with a plural mismatch ("Tricep Pushdowns" / "Tricep
-      // Pushdown") — sameExerciseName is the matcher's own equality, so twin
-      // detection can't drift from what matchExerciseName itself considers
-      // one exercise. Resolve every unmatched line sharing this name against
-      // the row we just created rather than leaving a button that
-      // duplicates it.
-      const twins = unmatchedRef.current.filter((x) =>
-        sameExerciseName(x.rawName, u.rawName),
-      );
-      setDrafts((prev) => [
-        ...(prev ?? []),
-        ...twins.map((x) => draftFromExercise(created, setsFromParsed(x))),
-      ]);
-      setUnmatched((prev) =>
-        prev.filter((x) => !sameExerciseName(x.rawName, u.rawName)),
-      );
-    } catch (e) {
-      // Left in the unmatched list so the user can retry or pick manually.
-      setCreateError({
-        key: u.key,
-        message: e instanceof Error ? e.message : "Unknown error",
-      });
-    } finally {
-      setCreatingNames((prev) => {
-        const next = new Set(prev);
-        next.delete(u.rawName);
-        return next;
-      });
-    }
+  // Opens the shared editor prefilled with the raw line, instead of a bare
+  // one-tap create — the primary action now produces a real record (report
+  // §5.3), not a metadata-free row (mechanic/equipment/muscles all null).
+  function createFromUnmatched(u: UnmatchedLine) {
+    setCreatingFor(u);
   }
+
+  // The editor's onCreated fires the instant Save is tapped (optimistic —
+  // it doesn't wait on the network), so the new row lands in `exercises` on
+  // the very next render; this resolves once it does.
+  useEffect(() => {
+    if (!pendingTwinCreate) return;
+    const created = exercises.find((e) => e.id === pendingTwinCreate.id);
+    if (!created) return;
+    // A routine can name the same lift twice (main sets + a backoff line),
+    // possibly with a plural mismatch ("Tricep Pushdowns" / "Tricep
+    // Pushdown") — sameExerciseName is the matcher's own equality, so twin
+    // detection can't drift from what matchExerciseName itself considers
+    // one exercise. Resolve every unmatched line sharing this name against
+    // the row we just created rather than leaving a button that
+    // duplicates it.
+    const twins = unmatchedRef.current.filter((x) =>
+      sameExerciseName(x.rawName, pendingTwinCreate.forRawName),
+    );
+    setDrafts((prev) => [
+      ...(prev ?? []),
+      ...twins.map((x) => draftFromExercise(created, setsFromParsed(x))),
+    ]);
+    setUnmatched((prev) =>
+      prev.filter(
+        (x) => !sameExerciseName(x.rawName, pendingTwinCreate.forRawName),
+      ),
+    );
+    setPendingTwinCreate(null);
+  }, [pendingTwinCreate, exercises]);
 
   function selectFromPicker(e: Exercise) {
     if (pickFor) {
@@ -518,7 +529,7 @@ export default function RoutineEditScreen() {
     } else {
       setDrafts((prev) => [
         ...(prev ?? []),
-        draftFromExercise(e, [emptySet(), emptySet(), emptySet()]),
+        draftFromExercise(e, defaultSetsFor(e)),
       ]);
     }
     setPicking(false);
@@ -922,73 +933,55 @@ export default function RoutineEditScreen() {
               `The frog couldn't place ${unmatched.length} line${unmatched.length === 1 ? "" : "s"}. Pick one or teach it a name.`,
             )}
           </p>
-          {unmatched.map((u) => {
-            const creating = [...creatingNames].some((n) =>
-              sameExerciseName(n, u.rawName),
-            );
-            return (
-              <div
-                key={u.key}
-                className="rounded-lg border border-border border-l-2 border-l-warn bg-surface p-3"
-                data-testid={`routine-unmatched-${u.key}`}
-              >
-                {/* Stacked on phones: the name is what the user is resolving,
-                  and three actions on one row leave it unreadable at 375px. */}
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <span className="min-w-0 flex-1 truncate text-sm">
-                    {u.rawName}{" "}
-                    <span className="num text-2xs text-faint">
-                      {u.sets}×{u.reps ?? "?"}
-                      {u.repsMax ? `–${u.repsMax}` : ""}
-                    </span>
+          {unmatched.map((u) => (
+            <div
+              key={u.key}
+              className="rounded-lg border border-border border-l-2 border-l-warn bg-surface p-3"
+              data-testid={`routine-unmatched-${u.key}`}
+            >
+              {/* Stacked on phones: the name is what the user is resolving,
+                and three actions on one row leave it unreadable at 375px. */}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <span className="min-w-0 flex-1 truncate text-sm">
+                  {u.rawName}{" "}
+                  <span className="num text-2xs text-faint">
+                    {u.sets}×{u.reps ?? "?"}
+                    {u.repsMax ? `–${u.repsMax}` : ""}
                   </span>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => pickManually(u)}
-                      data-testid={`routine-unmatched-${u.key}-pick`}
-                    >
-                      Pick manually
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void createFromUnmatched(u)}
-                      disabled={creating}
-                      data-testid={`routine-unmatched-${u.key}-create`}
-                    >
-                      {creating ? "Creating…" : "Create exercise"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Dismiss"
-                      onClick={() =>
-                        setUnmatched((prev) =>
-                          prev.filter((x) => x.key !== u.key),
-                        )
-                      }
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-                {createError?.key === u.key && (
-                  <p
-                    className="mt-2 text-xs text-neg"
-                    data-testid={`routine-unmatched-${u.key}-error`}
+                </span>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => pickManually(u)}
+                    data-testid={`routine-unmatched-${u.key}-pick`}
                   >
-                    {t(
-                      "Couldn't create the exercise.",
-                      "The frog dropped it (the line is still here).",
-                    )}{" "}
-                    {createError.message}
-                  </p>
-                )}
+                    Pick manually
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => createFromUnmatched(u)}
+                    data-testid={`routine-unmatched-${u.key}-create`}
+                  >
+                    Create exercise…
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Dismiss"
+                    onClick={() =>
+                      setUnmatched((prev) =>
+                        prev.filter((x) => x.key !== u.key),
+                      )
+                    }
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
 
@@ -1131,6 +1124,20 @@ export default function RoutineEditScreen() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ExerciseEditor
+        open={!!creatingFor}
+        onOpenChange={(o) => !o && setCreatingFor(null)}
+        mode="create"
+        initialName={creatingFor?.rawName ?? ""}
+        onCreated={(id) => {
+          // The pasted line, not the name the user saved: the unmatched list
+          // is keyed by raw line, so a corrected spelling in the sheet would
+          // match none of it and silently resolve nothing.
+          if (creatingFor)
+            setPendingTwinCreate({ id, forRawName: creatingFor.rawName });
+        }}
+      />
 
       <Dialog
         open={pasteOpen}

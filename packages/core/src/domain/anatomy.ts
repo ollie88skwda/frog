@@ -529,7 +529,47 @@ export const ACTION_RATINGS: readonly ActionRating[] = [
 
 // tier null = unclassified (the free-exercise-db seed batch ships untiered;
 // classification is incremental). Untiered sorts below C in library grouping.
-export type MuscleTarget = { muscle: string; tier: Tier | null };
+// role is optional for back-compat with every jsonb value written before it
+// existed — see roleAt, the one place that resolves the absent case.
+export type MuscleRole = "primary" | "secondary";
+export type MuscleTarget = {
+  muscle: string;
+  tier: Tier | null;
+  role?: MuscleRole;
+};
+
+/**
+ * Role of the i-th target. Back-compat rule: an absent `role` means index 0
+ * is primary and everything after it is secondary (the pre-role convention
+ * every existing row was written under) — this is the only place that rule
+ * should be read, so a future second primary never has to duplicate it.
+ */
+export function roleAt(
+  targets: readonly MuscleTarget[],
+  i: number,
+): MuscleRole {
+  return targets[i].role ?? (i === 0 ? "primary" : "secondary");
+}
+
+/** Muscle keys with role "primary" (explicit, or index 0 under back-compat). */
+export function primaryMuscles(
+  targets: readonly MuscleTarget[] | null,
+): string[] {
+  const list = targets ?? [];
+  return list
+    .filter((_, i) => roleAt(list, i) === "primary")
+    .map((t) => t.muscle);
+}
+
+/** Muscle keys with role "secondary" (explicit, or index > 0 under back-compat). */
+export function secondaryMuscles(
+  targets: readonly MuscleTarget[] | null,
+): string[] {
+  const list = targets ?? [];
+  return list
+    .filter((_, i) => roleAt(list, i) === "secondary")
+    .map((t) => t.muscle);
+}
 
 const MUSCLE_BY_KEY = new Map(MUSCLES.map((m) => [m.key, m]));
 export const JOINT_ACTION_BY_KEY: ReadonlyMap<string, JointAction> = new Map(
@@ -595,6 +635,13 @@ export type MuscleGroup<T> = { key: string; label: string; items: T[] };
  * Group items by their primary muscle (first entry of muscleTargets).
  * Groups follow MUSCLES order; items without targets land in "Other" (last).
  * Within a group, items sort by that muscle's tier (S first), then name-stable.
+ *
+ * Deliberately keyed on index 0, not on `role`: an exercise can declare two
+ * primaries (roleAt), but grouping stays single-home so the library remains a
+ * partition — group counts, the filter bar, and this list must all agree on
+ * one bucket per exercise. Writers must put primaries first in the array
+ * (roleAt's back-compat rule already assumes this), so `[0]` is always *a*
+ * primary even when there are two.
  */
 export function groupByPrimaryMuscle<
   T extends { muscleTargets: MuscleTarget[] | null },

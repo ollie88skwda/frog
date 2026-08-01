@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
 
 // Parity port of the legacy Expo E2E (archived at tag expo-final,
 // e2e/web.spec.ts): add exercise → session → log sets → ghost prefill →
@@ -21,8 +21,7 @@ test("core loop: add exercise, pick in session, persistence", async ({ page }) =
 
   // 1) Library: add an exercise -> appears in the list and lands on the server.
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 
@@ -47,8 +46,7 @@ test("log sets persists to set_logs, and ghost prefill shows the prior session",
   const EX = `Log ${Date.now()}`;
 
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 

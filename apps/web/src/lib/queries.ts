@@ -1,7 +1,7 @@
 import {
   type Exercise,
-  type ExerciseClassification,
   type ExerciseFavorite,
+  type ExercisePatch,
   type ExercisePref,
   type Machine,
   type MachinePatch,
@@ -58,6 +58,22 @@ export function useExercises() {
   });
 }
 
+// Full row (instructions/imageUrls included) for exercise-detail — the
+// cached list row (already loaded for every screen behind this one) is the
+// placeholder, so the header paints instantly while the fat fields arrive.
+export function useExercise(id: string) {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: ["exercise", id],
+    queryFn: () => repo.getExercise(id),
+    placeholderData: () =>
+      qc.getQueryData<Exercise[]>(["exercises"])?.find((e) => e.id === id) ??
+      undefined,
+    enabled: !!id,
+  });
+}
+
 // Bulk add fires one create per name, so creates run concurrently. Counted
 // here rather than read back off the mutation cache: a mutation is still
 // `pending` while its own `onSettled` runs, so two creates settling in the
@@ -94,6 +110,16 @@ function optimisticExercise(
     equipment: opts?.equipment ?? null,
     instructions: null,
     imageUrls: null,
+    mechanic: opts?.mechanic ?? null,
+    movementPattern: opts?.movementPattern ?? null,
+    laterality: opts?.laterality ?? null,
+    defaultRepsMin: opts?.defaultRepsMin ?? null,
+    defaultRepsMax: opts?.defaultRepsMax ?? null,
+    defaultRestSec: opts?.defaultRestSec ?? null,
+    notes: opts?.notes ?? null,
+    aliases: opts?.aliases ?? null,
+    mediaPath: null,
+    mediaType: null,
   };
 }
 
@@ -125,10 +151,20 @@ function addExerciseRows(qc: QueryClient, rows: Exercise[]) {
 // Puts every name on screen in one write, before any insert is dispatched —
 // bulk add bounds its network fan-out, and the user must not watch their paste
 // trickle in one worker slot at a time. Returns the ids to create under.
+//
+// Also the only way to register a row as pending *synchronously*: TanStack
+// awaits `onMutate`, so a create dispatched from a click is not in the pending
+// registry until a microtask later — one render too late for the FK guards
+// that read it (the session picker's auto-pick). Any create whose id is handed
+// straight to a consumer must seed here first; `useCreateExercise.onMutate` is
+// idempotent by id, so the two together write the row exactly once. Pass the
+// same `opts` the create gets, or the optimistic row loses them.
 export function useSeedExercises() {
   const qc = useQueryClient();
-  return (names: string[]) => {
-    const rows = names.map((name) => optimisticExercise(newId(), name));
+  return (items: { name: string; opts?: NewExerciseOpts }[]) => {
+    const rows = items.map(({ name, opts }) =>
+      optimisticExercise(opts?.id ?? newId(), name, opts),
+    );
     addExerciseRows(qc, rows);
     markExercisesPending(rows);
     return rows.map(({ id, name }) => ({ id, name }));
@@ -236,116 +272,47 @@ export function useDeleteMetric() {
   });
 }
 
-export function useSetExerciseTags() {
+// Replaces useSetExerciseClassification/useSetExerciseTypeEquipment/
+// useSetExerciseTags/useSetExerciseMachine — one optimistic patch mutation
+// instead of a narrow hook per editable field. Patch keys match Exercise's
+// own field shape, so the optimistic write is a plain spread.
+export function useUpdateExercise() {
   const repo = useRepo();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: { exerciseId: string; tags: string[] }) =>
-      repo.setExerciseTags(input.exerciseId, input.tags),
-    onMutate: ({ exerciseId, tags }) => {
+    mutationFn: (input: { exerciseId: string; patch: ExercisePatch }) =>
+      repo.updateExercise(input.exerciseId, input.patch),
+    // Both caches, not just the list: the detail screen reads `useExercise`,
+    // whose own entry holds real (non-placeholder) data once it has fetched,
+    // so patching only ["exercises"] leaves the header stale for a whole round
+    // trip. While the detail query has never resolved there is no entry to
+    // patch — the updater returns `old` (undefined), TanStack treats that as a
+    // no-op, and the placeholder it paints from is the list row above.
+    onMutate: ({ exerciseId, patch }) => {
       void qc.cancelQueries({ queryKey: ["exercises"] });
+      void qc.cancelQueries({ queryKey: ["exercise", exerciseId] });
       const prev = qc.getQueryData<Exercise[]>(["exercises"]);
+      const prevDetail = qc.getQueryData<Exercise | null>([
+        "exercise",
+        exerciseId,
+      ]);
       updateExerciseRows(qc, (old) =>
-        old.map((e) =>
-          e.id === exerciseId ? { ...e, tags: tags.length ? tags : null } : e,
-        ),
+        old.map((e) => (e.id === exerciseId ? { ...e, ...patch } : e)),
       );
-      return { prev };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
-  });
-}
-
-export function useSetExerciseClassification() {
-  const repo = useRepo();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      exerciseId: string;
-      classification: ExerciseClassification;
-    }) =>
-      repo.setExerciseClassification(input.exerciseId, input.classification),
-    onMutate: ({ exerciseId, classification }) => {
-      void qc.cancelQueries({ queryKey: ["exercises"] });
-      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      updateExerciseRows(qc, (old) =>
-        old.map((e) =>
-          e.id === exerciseId
-            ? {
-                ...e,
-                ...("jointActions" in classification
-                  ? { jointActions: classification.jointActions ?? null }
-                  : {}),
-                ...("muscleTargets" in classification
-                  ? { muscleTargets: classification.muscleTargets ?? null }
-                  : {}),
-              }
-            : e,
-        ),
+      qc.setQueryData<Exercise | null>(["exercise", exerciseId], (old) =>
+        old ? { ...old, ...patch } : old,
       );
-      return { prev };
+      return { prev, prevDetail };
     },
-    onError: (_e, _v, ctx) => {
+    onError: (_e, { exerciseId }, ctx) => {
       if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
+      if (ctx?.prevDetail !== undefined)
+        qc.setQueryData(["exercise", exerciseId], ctx.prevDetail);
     },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
-  });
-}
-
-// Measurement type + equipment (custom exercises only). Type is app-enforced
-// immutable once the exercise has logged sets — the caller disables the control.
-export function useSetExerciseTypeEquipment() {
-  const repo = useRepo();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: {
-      exerciseId: string;
-      exerciseType: string;
-      equipment: string | null;
-    }) =>
-      repo.setExerciseTypeEquipment(
-        input.exerciseId,
-        input.exerciseType,
-        input.equipment,
-      ),
-    onMutate: ({ exerciseId, exerciseType, equipment }) => {
-      void qc.cancelQueries({ queryKey: ["exercises"] });
-      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      updateExerciseRows(qc, (old) =>
-        old.map((e) =>
-          e.id === exerciseId ? { ...e, exerciseType, equipment } : e,
-        ),
-      );
-      return { prev };
+    onSettled: (_d, _e, { exerciseId }) => {
+      void qc.invalidateQueries({ queryKey: ["exercises"] });
+      void qc.invalidateQueries({ queryKey: ["exercise", exerciseId] });
     },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
-  });
-}
-
-export function useSetExerciseMachine() {
-  const repo = useRepo();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { exerciseId: string; machineId: string | null }) =>
-      repo.setExerciseMachine(input.exerciseId, input.machineId),
-    onMutate: ({ exerciseId, machineId }) => {
-      void qc.cancelQueries({ queryKey: ["exercises"] });
-      const prev = qc.getQueryData<Exercise[]>(["exercises"]);
-      updateExerciseRows(qc, (old) =>
-        old.map((e) => (e.id === exerciseId ? { ...e, machineId } : e)),
-      );
-      return { prev };
-    },
-    onError: (_e, _v, ctx) => {
-      if (ctx?.prev) qc.setQueryData(["exercises"], ctx.prev);
-    },
-    onSettled: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
   });
 }
 
@@ -475,6 +442,45 @@ export function useMachinePhotoUrl(machine: Machine | null | undefined) {
     queryKey: ["machine-photo", machine?.id, machine?.photoPath],
     queryFn: () => (machine ? repo.machinePhotoUrl(machine) : null),
     enabled: !!machine?.photoPath,
+    staleTime: 45 * 60_000, // signed URLs live an hour
+  });
+}
+
+export function useUploadExerciseMedia() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      exerciseId: string;
+      file: Blob;
+      kind: "image" | "video";
+    }) => repo.uploadExerciseMedia(input.exerciseId, input.file, input.kind),
+    // Off the logging hot path — no optimistic write; thumbnail appears on settle.
+    onSettled: (_d, _e, { exerciseId }) => {
+      void qc.invalidateQueries({ queryKey: ["exercise", exerciseId] });
+      void qc.invalidateQueries({ queryKey: ["exercise-media", exerciseId] });
+    },
+  });
+}
+
+export function useClearExerciseMedia() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (exerciseId: string) => repo.clearExerciseMedia(exerciseId),
+    onSettled: (_d, _e, exerciseId) => {
+      void qc.invalidateQueries({ queryKey: ["exercise", exerciseId] });
+      void qc.invalidateQueries({ queryKey: ["exercise-media", exerciseId] });
+    },
+  });
+}
+
+export function useExerciseMediaUrl(exercise: Exercise | null | undefined) {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["exercise-media", exercise?.id, exercise?.mediaPath],
+    queryFn: () => (exercise ? repo.exerciseMediaUrl(exercise) : null),
+    enabled: !!exercise?.mediaPath,
     staleTime: 45 * 60_000, // signed URLs live an hour
   });
 }
@@ -863,5 +869,6 @@ export function useLastSets(exerciseId: string) {
     queryKey: ["last-sets", exerciseId],
     queryFn: () => repo.lastSetsForExercise(exerciseId),
     staleTime: 60_000,
+    enabled: !!exerciseId,
   });
 }

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // P6: PAT lifecycle — create in Settings, read through the Edge Function
 // under the token, revoke, get rejected. The function runs inside local
@@ -18,8 +18,7 @@ test("create token, read own data via PAT API, revoke → 401", async ({ page, r
 
   // Own a distinctive exercise to look for through the API.
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   // The row is optimistic; wait for the insert to land before the full-page
   // nav (page.goto tears down the document and aborts the in-flight write, or

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import {
+  createExercise,
   EMAIL,
   PASSWORD,
   signIn,
@@ -185,8 +186,7 @@ test("custom set metric: create, enable on an exercise, log a value", async ({
 
   // Create exercise + metric, enable the metric for the exercise.
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, EX);
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 

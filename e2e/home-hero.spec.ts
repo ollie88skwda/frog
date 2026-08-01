@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // Home hero — "today's plan". The hero is the primary way to start training:
 // it names the routine you're about to run, previews what's in it, and starts
@@ -75,8 +75,7 @@ test("the hero names today's routine, previews it, and starts it in one tap", as
 
   await page.goto("/library");
   for (const name of [EX_A, EX_B]) {
-    await page.getByTestId("exercise-name-input").fill(name);
-    await page.getByTestId("add-exercise-btn").click();
+    await createExercise(page, name);
     await waitForExercise(page, name);
   }
 

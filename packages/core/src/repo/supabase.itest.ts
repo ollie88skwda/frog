@@ -285,6 +285,75 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     expect(crossSign?.signedUrl ?? null).toBeNull();
   });
 
+  it("exercise editor fields round-trip through createExercise", async () => {
+    const ex = await repoA.createExercise(
+      `Zercher Squat ${newId().slice(0, 8)}`,
+      {
+        mechanic: "compound",
+        movementPattern: "squat",
+        laterality: "bilateral",
+        defaultRepsMin: 6,
+        defaultRepsMax: 10,
+        defaultRestSec: 150,
+        notes: "brace before you unrack",
+        aliases: ["Zercher squats"],
+      },
+    );
+    expect(ex.mechanic).toBe("compound");
+    expect(ex.movementPattern).toBe("squat");
+    expect(ex.laterality).toBe("bilateral");
+    expect(ex.defaultRepsMin).toBe(6);
+    expect(ex.defaultRepsMax).toBe(10);
+    expect(ex.defaultRestSec).toBe(150);
+    expect(ex.notes).toBe("brace before you unrack");
+    expect(ex.aliases).toEqual(["Zercher squats"]);
+
+    const fetched = await repoA.getExercise(ex.id);
+    expect(fetched?.notes).toBe("brace before you unrack");
+  });
+
+  it("listExercises omits the fat fields getExercise includes, but not notes", async () => {
+    const ex = await repoA.createExercise(
+      `Fat Field Test ${newId().slice(0, 8)}`,
+      { instructions: ["Step one"], notes: "a note" },
+    );
+    const listed = (await repoA.listExercises()).find((e) => e.id === ex.id);
+    expect(listed?.instructions).toBeNull();
+    // notes is cheap (short text, not an array of frames) and renders on the
+    // session logging hot path for every block — it stays in the list select.
+    expect(listed?.notes).toBe("a note");
+
+    const full = await repoA.getExercise(ex.id);
+    expect(full?.instructions).toEqual(["Step one"]);
+    expect(full?.notes).toBe("a note");
+  });
+
+  it("exercise media: owner can upload/clear, others cannot read", async () => {
+    const ex = await repoA.createExercise(`Media Test ${newId().slice(0, 8)}`);
+    const pixel = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], {
+      type: "image/jpeg",
+    });
+    await repoA.uploadExerciseMedia(ex.id, pixel, "image");
+
+    const updated = await repoA.getExercise(ex.id);
+    expect(updated?.mediaPath).toContain(ex.id);
+    expect(updated?.mediaType).toBe("image");
+
+    const url = await repoA.exerciseMediaUrl(updated!);
+    expect(url).toContain("exercise-media");
+
+    // Another user cannot sign a URL for A's object path.
+    const { data: crossSign } = await clientB.storage
+      .from("exercise-media")
+      .createSignedUrl(updated?.mediaPath as string, 60);
+    expect(crossSign?.signedUrl ?? null).toBeNull();
+
+    await repoA.clearExerciseMedia(ex.id);
+    const cleared = await repoA.getExercise(ex.id);
+    expect(cleared?.mediaPath).toBeNull();
+    expect(cleared?.mediaType).toBeNull();
+  });
+
   it("RLS: users cannot see or write each other's data", async () => {
     const exA = await repoA.createExercise(
       `Private Curl ${newId().slice(0, 8)}`,

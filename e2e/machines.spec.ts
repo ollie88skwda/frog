@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // Machines: catalog search → "my gym", settings memory in the session setup
 // strip, muscle-grouped library, and the RIR lesson InfoTip.
@@ -50,13 +50,16 @@ test("machine from catalog: settings remembered into the session setup strip", a
     .getByTestId(`setting-value-${MACHINE}-Seat height`)
     .fill("4");
 
-  // Custom exercise linked to the machine.
-  await page.getByTestId("exercise-name-input").fill(EX);
-  await page.getByTestId("add-exercise-btn").click();
+  // Custom exercise linked to the machine, via the row's Edit sheet.
+  await createExercise(page, EX);
   await waitForExercise(page, EX);
   await page.getByTestId(`exercise-row-toggle-${EX}`).click();
-  const machineSelect = page.getByTestId(`machine-select-${EX}`);
-  await machineSelect.selectOption({ label: `Matrix · ${MACHINE}` });
+  await page.getByTestId(`edit-exercise-${EX}`).click();
+  await page.getByTestId("exercise-editor-machine").click();
+  await page
+    .getByRole("option", { name: `Matrix · ${MACHINE}`, exact: true })
+    .click();
+  await page.getByTestId("add-exercise-btn").click();
 
   // The link is a background write; wait for it to land before the full-page
   // nav below (page.goto tears down the document and aborts in-flight fetches).
