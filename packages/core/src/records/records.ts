@@ -56,18 +56,9 @@ export function topRecordValue(
   exerciseType: string,
   set: RecordsSetInput,
 ): number | null {
-  switch (TOP_RECORD_PR_TYPE[exerciseType]) {
-    case "best_set_reps":
-      return set.reps != null && set.reps >= 1 ? set.reps : null;
-    case "best_time":
-      return set.durationSec != null && set.durationSec > 0
-        ? set.durationSec
-        : null;
-    case "longest_distance":
-      return set.distanceM != null && set.distanceM > 0 ? set.distanceM : null;
-    default:
-      return null;
-  }
+  const prType = TOP_RECORD_PR_TYPE[exerciseType];
+  if (!prType) return null;
+  return setPrCandidates(exerciseType, set)[prType] ?? null;
 }
 
 // Per-SET candidate values for each applicable PR type (session-scoped types
@@ -187,7 +178,7 @@ export function computeRecords(
             });
         } else if (!hasSetRecords(block.exerciseType)) {
           const v = topRecordValue(block.exerciseType, s);
-          if (v != null) {
+          if (v != null && !rec.topRecords.some((t) => t.value === v)) {
             rec.topRecords.push({
               value: v,
               sessionId: session.sessionId,

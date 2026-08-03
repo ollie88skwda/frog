@@ -472,11 +472,47 @@ describe("buildExerciseRecordsCard", () => {
       sparkline: [],
       identity: IDENTITY,
     });
+    expect(card?.hero.value).toBe("12 reps");
     expect(card?.support).toEqual([
-      { label: "Best", value: "12 reps" },
       { label: "2nd best", value: "10 reps" },
       { label: "3rd best", value: "8 reps" },
     ]);
+  });
+
+  it("drops support rows that would restate the hero for straight sets", () => {
+    const plank = (id: string, startedAt: number, secs: number[]) => ({
+      sessionId: id,
+      startedAt,
+      exercises: [
+        {
+          exerciseId: "plank",
+          exerciseType: "duration",
+          sets: secs.map((durationSec) => ({
+            setType: "normal",
+            weightKg: null,
+            reps: null,
+            durationSec,
+            distanceM: null,
+          })),
+        },
+      ],
+    });
+    const { byExercise } = computeRecords([plank("a", 0, [60, 60, 60])], {
+      includeWarmups: true,
+    });
+    const records = byExercise.get("plank");
+    if (!records) throw new Error("expected records");
+    const card = buildExerciseRecordsCard({
+      exerciseName: "Plank",
+      type: "duration",
+      records,
+      unit: "kg",
+      distUnit: "km",
+      sparkline: [],
+      identity: IDENTITY,
+    });
+    expect(card?.hero.value).toBe("1:00");
+    expect(card?.support).toEqual([]);
   });
 
   it("fills the support row from top all-time distances for a distance/duration exercise", () => {

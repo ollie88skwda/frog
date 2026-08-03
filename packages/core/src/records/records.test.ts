@@ -170,6 +170,31 @@ describe("computeRecords", () => {
     const top = r.byExercise.get("ex1")?.topRecords;
     expect(top?.map((t) => t.value)).toEqual([120, 90, 60]);
   });
+
+  it("top records keep distinct values, so straight sets don't fill the list", () => {
+    const dur = (sec: number) => ({
+      setType: "normal",
+      weightKg: null,
+      reps: null,
+      durationSec: sec,
+      distanceM: null,
+    });
+    const r = computeRecords([
+      {
+        sessionId: "s1",
+        startedAt: 1,
+        exercises: [
+          {
+            exerciseId: "ex1",
+            exerciseType: "duration",
+            sets: [dur(60), dur(60), dur(60), dur(50), dur(40)],
+          },
+        ],
+      },
+    ]);
+    const top = r.byExercise.get("ex1")?.topRecords;
+    expect(top?.map((t) => t.value)).toEqual([60, 50, 40]);
+  });
 });
 
 describe("checkSetForPR", () => {

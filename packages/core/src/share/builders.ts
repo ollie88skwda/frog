@@ -479,7 +479,14 @@ export function buildExerciseRecordsCard(input: {
           label: `${reps}RM`,
           value: formatWeight(r.weightKg, unit),
         }))
-    : topRecordSupportStats(input.type, records, unit, distUnit);
+    : topRecordSupportStats(
+        input.type,
+        records,
+        heroPrType,
+        heroEntry.value,
+        unit,
+        distUnit,
+      );
 
   return {
     kind: "records",
@@ -496,20 +503,32 @@ export function buildExerciseRecordsCard(input: {
   };
 }
 
-const TOP_RECORD_RANK_LABELS = ["Best", "2nd best", "3rd best"];
+const TOP_RECORD_RANK_LABELS = ["Best", "2nd best", "3rd best", "4th best"];
 
 /** Support-stat rows for exercise types without a weight-keyed set-records
- * table (reps-only, duration, distance) — the top 3 all-time set values. */
+ * table (reps-only, duration, distance) — the top all-time set values. When
+ * the hero headlines this same metric (reps-only and duration types), rows at
+ * or above it would just restate it, so only strictly-lower values qualify and
+ * the ranks shift down accordingly. Types whose hero is a different metric
+ * (weight vs time/distance) can't be compared numerically, so they list the
+ * raw top 3. Fewer than 3 rows is fine. */
 function topRecordSupportStats(
   type: ExerciseType,
   records: ExerciseRecords,
+  heroPrType: PrType,
+  heroValue: number,
   unit: Unit,
   distUnit: DistUnit,
 ): ShareStat[] {
   const prType = TOP_RECORD_PR_TYPE[type];
   if (!prType) return [];
-  return records.topRecords.slice(0, 3).map((r, i) => ({
-    label: TOP_RECORD_RANK_LABELS[i] ?? `#${i + 1}`,
+  const rows =
+    heroPrType === prType
+      ? records.topRecords.filter((r) => r.value < heroValue)
+      : records.topRecords;
+  const rankOffset = records.topRecords.length - rows.length;
+  return rows.slice(0, 3).map((r, i) => ({
+    label: TOP_RECORD_RANK_LABELS[i + rankOffset] ?? `#${i + rankOffset + 1}`,
     value: formatPrValue(prType, r.value, unit, distUnit),
   }));
 }
