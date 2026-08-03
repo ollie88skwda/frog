@@ -30,3 +30,6 @@ supabase/.branches/
 *.p12
 .lavish/
 .vercel
+
+# local tooling config
+treehouse.toml
