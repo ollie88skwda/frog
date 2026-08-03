@@ -4,11 +4,11 @@ import { createRoot } from "react-dom/client";
 import { FrogMark } from "@/components/frog-mark";
 
 // Rasterizes the SAME component the rest of the app uses for its brand mark
-// — never a third hand-copy of the path geometry (AGENTS.md already flags
-// two). Mounted into a detached host via the app's own react-dom/client
-// (already loaded; react-dom/server would double the bundle for this one
-// icon — AGENTS.md:83, ~61 kB gz measured) and read back with the native
-// XMLSerializer. FrogMark's outline is `currentColor` and its body is
+// — never another hand-copy of the path geometry (AGENTS.md "Brand mark"
+// tracks the copies that do exist). Mounted into a detached host via the
+// app's own react-dom/client (already loaded; react-dom/server would double
+// the bundle for this one icon — ~61 kB gz measured) and read back with the
+// native XMLSerializer. FrogMark's outline is `currentColor` and its body is
 // `var(--accent)`; set both via inline style/custom-property so the
 // serialized SVG (no access to the page's live CSS once standalone) resolves
 // the requested palette. Moved verbatim from the pre-redesign share-card.tsx.

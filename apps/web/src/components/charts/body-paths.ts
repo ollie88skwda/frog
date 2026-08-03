@@ -3,9 +3,9 @@ import { type MuscleRegion, regionOf } from "@frog/core";
 // Shared front/back figure geometry — the ONE copy of these path strings.
 // `body-heatmap.tsx` (interactive SVG) and `lib/share/graphics.ts` (canvas
 // signature graphic on the share card) both draw the same figure from this
-// module rather than hand-copying path data a second time (AGENTS.md already
-// flags two other hand-copy situations in this repo; this one doesn't get a
-// third). Local coordinates: x 0–72, y 0–152 per figure.
+// module rather than hand-copying path data a second time (AGENTS.md "Brand
+// mark" tracks the repo's other hand-copy situations; this one doesn't join
+// them). Local coordinates: x 0–72, y 0–152 per figure.
 
 export const PART: Record<string, string> = {
   leftDelt: "M20,24 L28,25 L27,33 L18,33 Q16,28 20,24 Z",
