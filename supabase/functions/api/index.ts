@@ -30,6 +30,42 @@ async function sha256hex(s: string): Promise<string> {
 
 const ENDPOINTS = ["/v1/exercises", "/v1/sessions", "/v1/sets", "/v1/export"];
 
+// PostgREST caps every `select()` at 1000 rows, so an unbounded select on a
+// table that can grow past that silently truncates instead of erroring. Loop
+// `.range()` until the rows collected so far cover the total PostgREST reports,
+// so the common single-page case costs exactly one request; `page` must ask for
+// that total with `.select(cols, { count: "exact" })`, and a page that doesn't
+// falls back to the empty-page stop rule (still correct, one request slower).
+// Advance by the rows actually returned so a server whose `max_rows` is
+// configured below PAGE_SIZE still paginates. `page` must apply a deterministic
+// order (the callers below order by `created_at` with an `id` tiebreak, since
+// ids are random uuid v4) so rows aren't skipped or repeated across pages.
+// Mirrors `SupabaseRepo.selectAll` in packages/core — this function is Deno and
+// can't import it.
+const PAGE_SIZE = 1000;
+
+async function selectAll(
+  page: (
+    from: number,
+    to: number,
+  ) => PromiseLike<{
+    data: unknown[] | null;
+    error: { message: string } | null;
+    count: number | null;
+  }>,
+): Promise<unknown[]> {
+  const rows: unknown[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error, count } = await page(from, from + PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const batch = data ?? [];
+    rows.push(...batch);
+    if (batch.length === 0 || (count != null && rows.length >= count)) return rows;
+    from += batch.length;
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "GET") return json({ error: "this API is read-only" }, 405);
 
@@ -57,10 +93,12 @@ Deno.serve(async (req) => {
 
   // Full row, like every other resource below — a hand-written column list
   // here silently drops new exercise columns from the API (docs/DECISIONS.md).
-  const ownExercises = () =>
+  // `opts` carries `{ count: "exact" }` for the paginating export path only —
+  // the single-page endpoints below don't need the row count.
+  const ownExercises = (opts?: { count: "exact" }) =>
     admin
       .from("exercises")
-      .select()
+      .select("*", opts)
       .or(`owner_id.eq.${owner},owner_id.is.null`)
       .is("deleted_at", null);
 
@@ -92,30 +130,53 @@ Deno.serve(async (req) => {
       return error ? json({ error: error.message }, 500) : json({ sets: data });
     }
     case "/v1/export": {
-      const [exercises, metrics, sessions, sessionExercises, setLogs] = await Promise.all([
-        ownExercises(),
-        admin
-          .from("metrics")
-          .select()
-          .or(`owner_id.eq.${owner},owner_id.is.null`)
-          .is("deleted_at", null),
-        admin.from("sessions").select().eq("owner_id", owner).is("deleted_at", null),
-        admin.from("session_exercises").select().eq("owner_id", owner).is("deleted_at", null),
-        admin.from("set_logs").select().eq("owner_id", owner).is("deleted_at", null),
-      ]);
-      const firstError = [exercises, metrics, sessions, sessionExercises, setLogs].find(
-        (r) => r.error,
-      )?.error;
-      if (firstError) return json({ error: firstError.message }, 500);
-      return json({
-        schema_version: 1,
-        exported_at: Date.now(),
-        exercises: exercises.data,
-        metrics: metrics.data,
-        sessions: sessions.data,
-        session_exercises: sessionExercises.data,
-        set_logs: setLogs.data,
-      });
+      // Every table here can grow past PostgREST's 1000-row cap, so each one
+      // paginates rather than returning a silently truncated export.
+      const ownedRows = (table: string) =>
+        selectAll((from, to) =>
+          admin
+            .from(table)
+            .select("*", { count: "exact" })
+            .eq("owner_id", owner)
+            .is("deleted_at", null)
+            .order("created_at")
+            .order("id")
+            .range(from, to),
+        );
+      try {
+        const [exercises, metrics, sessions, sessionExercises, setLogs] = await Promise.all([
+          selectAll((from, to) =>
+            ownExercises({ count: "exact" })
+              .order("created_at")
+              .order("id")
+              .range(from, to),
+          ),
+          selectAll((from, to) =>
+            admin
+              .from("metrics")
+              .select("*", { count: "exact" })
+              .or(`owner_id.eq.${owner},owner_id.is.null`)
+              .is("deleted_at", null)
+              .order("created_at")
+              .order("id")
+              .range(from, to),
+          ),
+          ownedRows("sessions"),
+          ownedRows("session_exercises"),
+          ownedRows("set_logs"),
+        ]);
+        return json({
+          schema_version: 1,
+          exported_at: Date.now(),
+          exercises,
+          metrics,
+          sessions,
+          session_exercises: sessionExercises,
+          set_logs: setLogs,
+        });
+      } catch (e) {
+        return json({ error: e instanceof Error ? e.message : String(e) }, 500);
+      }
     }
     default:
       return json({ error: "not found", endpoints: ENDPOINTS }, 404);

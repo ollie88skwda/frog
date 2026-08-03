@@ -17,10 +17,27 @@ const text = (value: unknown) => ({
   content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
 });
 
+// The API clamps `limit` at 1000, so a single request silently truncates the
+// library — the seed set alone is ~900 rows, and custom exercises push past the
+// cap. Page until a short page ends it (the endpoint reports no total).
+const EXERCISE_PAGE_SIZE = 1000;
+
+async function listAllExercises(): Promise<{ exercises: unknown[] }> {
+  const exercises: unknown[] = [];
+  for (let offset = 0; ; offset += EXERCISE_PAGE_SIZE) {
+    const page = await api<{ exercises: unknown[] | null }>(
+      `/v1/exercises?limit=${EXERCISE_PAGE_SIZE}&offset=${offset}`,
+    );
+    const batch = page.exercises ?? [];
+    exercises.push(...batch);
+    if (batch.length < EXERCISE_PAGE_SIZE) return { exercises };
+  }
+}
+
 server.registerTool(
   "list_exercises",
   { description: "List the user's exercises (seeded + custom)." },
-  async () => text(await api("/v1/exercises?limit=1000")),
+  async () => text(await listAllExercises()),
 );
 
 server.registerTool(

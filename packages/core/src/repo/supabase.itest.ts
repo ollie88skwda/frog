@@ -25,7 +25,12 @@ function localStatus(): { url: string; anonKey: string; serviceKey: string } {
   return { url, anonKey, serviceKey };
 }
 
-async function makeUser(url: string, anonKey: string, serviceKey: string) {
+async function makeUser(
+  url: string,
+  anonKey: string,
+  serviceKey: string,
+  fetchImpl?: typeof fetch,
+) {
   const admin = createClient(url, serviceKey, {
     auth: { persistSession: false },
   });
@@ -39,6 +44,7 @@ async function makeUser(url: string, anonKey: string, serviceKey: string) {
   if (error) throw new Error(error.message);
   const client = createClient(url, anonKey, {
     auth: { persistSession: false },
+    ...(fetchImpl ? { global: { fetch: fetchImpl } } : {}),
   });
   const { error: signInError } = await client.auth.signInWithPassword({
     email,
@@ -64,9 +70,12 @@ describe("SupabaseRepo (integration, local supabase)", () => {
   let clientB: SupabaseClient;
   let repoA: SupabaseRepo;
   let repoB: SupabaseRepo;
+  let url: string;
+  let anonKey: string;
+  let serviceKey: string;
 
   beforeAll(async () => {
-    const { url, anonKey, serviceKey } = localStatus();
+    ({ url, anonKey, serviceKey } = localStatus());
     clientA = await makeUser(url, anonKey, serviceKey);
     clientB = await makeUser(url, anonKey, serviceKey);
     repoA = new SupabaseRepo(clientA);
@@ -327,6 +336,111 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     expect(full?.instructions).toEqual(["Step one"]);
     expect(full?.notes).toBe("a note");
   });
+
+  it("listExercises and exportAll return every row past PostgREST's 1000-row page cap", async () => {
+    const TOTAL = 1100;
+    const marker = `Page Cap Test ${newId().slice(0, 8)}`;
+    const now = Date.now();
+    const rows = Array.from({ length: TOTAL }, (_, i) => ({
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      name: `${marker} ${i.toString().padStart(4, "0")}`,
+      is_custom: true,
+      exercise_type: "weight_reps",
+    }));
+    const BATCH = 200;
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const { error } = await clientA
+        .from("exercises")
+        .insert(rows.slice(i, i + BATCH));
+      if (error) throw new Error(error.message);
+    }
+
+    const listed = await repoA.listExercises();
+    expect(listed.filter((e) => e.name.startsWith(marker))).toHaveLength(TOTAL);
+
+    const bundle = await repoA.exportAll();
+    expect(
+      bundle.exercises.filter((e) => e.name.startsWith(marker)),
+    ).toHaveLength(TOTAL);
+  }, 30_000);
+
+  it("paginating costs no request beyond the pages it needs, at any server max_rows", async () => {
+    // Counts only PostgREST calls to /rest/v1/exercises (auth calls are noise).
+    const makeCounter = (cap?: number) => {
+      const calls: string[] = [];
+      const impl: typeof fetch = (input, init) => {
+        const target =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+        if (target.includes("/rest/v1/exercises")) calls.push(target);
+        if (cap == null) return fetch(input, init);
+        // Emulate a server whose `max_rows` is configured below PAGE_SIZE: it
+        // answers every window with at most `cap` rows. supabase-js's
+        // `.range(from, to)` compiles to `?offset=from&limit=to-from+1`.
+        const capped = new URL(target);
+        const limit = Number(capped.searchParams.get("limit"));
+        if (limit > cap) capped.searchParams.set("limit", `${cap}`);
+        return fetch(capped.toString(), init);
+      };
+      return { calls, impl };
+    };
+
+    // A fresh user sees only the seed library — comfortably under one page, the
+    // overwhelmingly common case. It must cost exactly one round trip.
+    const plain = makeCounter();
+    const repoC = new SupabaseRepo(
+      await makeUser(url, anonKey, serviceKey, plain.impl),
+    );
+    const listed = await repoC.listExercises();
+    expect(listed.length).toBeGreaterThan(0);
+    expect(listed.length).toBeLessThan(1000);
+    expect(plain.calls).toHaveLength(1);
+
+    // Same rows against a 100-row server: ceil(n/100) requests, no trailing
+    // empty-page probe.
+    const CAP = 100;
+    const capped = makeCounter(CAP);
+    const repoD = new SupabaseRepo(
+      await makeUser(url, anonKey, serviceKey, capped.impl),
+    );
+    const paged = await repoD.listExercises();
+    expect(paged.map((e) => e.id)).toEqual(listed.map((e) => e.id));
+    expect(capped.calls).toHaveLength(Math.ceil(listed.length / CAP));
+  }, 30_000);
+
+  it("listMeasurements returns every row past PostgREST's 1000-row page cap", async () => {
+    // One row per calendar day (upsertMeasurement dedupes on measured_on), so
+    // daily bodyweight logging crosses the cap after ~3 years — and the
+    // measured_on-descending order means truncation drops the oldest history.
+    const TOTAL = 1100;
+    const now = Date.now();
+    const rows = Array.from({ length: TOTAL }, (_, i) => ({
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      measured_on: new Date(Date.UTC(2000, 0, 1 + i))
+        .toISOString()
+        .slice(0, 10),
+      bodyweight_kg: 70 + i / 100,
+    }));
+    const BATCH = 200;
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const { error } = await clientB
+        .from("measurements")
+        .insert(rows.slice(i, i + BATCH));
+      if (error) throw new Error(error.message);
+    }
+
+    const listed = await repoB.listMeasurements();
+    expect(listed).toHaveLength(TOTAL);
+    expect(listed[0]?.measuredOn).toBe(rows[TOTAL - 1]?.measured_on);
+    expect(listed[TOTAL - 1]?.measuredOn).toBe(rows[0]?.measured_on);
+  }, 30_000);
 
   it("exercise media: owner can upload/clear, others cannot read", async () => {
     const ex = await repoA.createExercise(`Media Test ${newId().slice(0, 8)}`);

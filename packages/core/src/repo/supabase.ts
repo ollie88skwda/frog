@@ -343,6 +343,50 @@ export class SupabaseRepo implements Repo {
     private opts: { getOwnerId?: () => Promise<string> } = {},
   ) {}
 
+  private static readonly PAGE_SIZE = 1000;
+
+  // PostgREST caps every `select()` at 1000 rows by default; a flat select on
+  // a table that can grow past that (exercise library, set logs, …) silently
+  // truncates instead of erroring. Loop `.range()` until the rows collected so
+  // far cover the total PostgREST reports, so the common single-page case costs
+  // exactly one request. `page` must therefore ask for that total with
+  // `.select(cols, { count: "exact" })`; a page that doesn't falls back to the
+  // empty-page stop rule, which is still correct, just one request slower.
+  // Advance by the rows actually returned, not by the requested page size, so a
+  // server whose `max_rows` is configured below PAGE_SIZE still paginates
+  // instead of stopping at the first short page. `page` must apply a
+  // deterministic order (e.g. `id`) so rows aren't skipped or repeated across
+  // pages.
+  private async selectAll<T>(
+    // `data` is typed `unknown` because a hand-written `.select("col, list")`
+    // string makes supabase-js fall back to an error-sentinel type (same
+    // reason other `.select("…")` calls in this file cast their result).
+    page: (
+      from: number,
+      to: number,
+    ) => PromiseLike<{
+      data: unknown;
+      error: { message: string } | null;
+      count: number | null;
+    }>,
+  ): Promise<T[]> {
+    const rows: T[] = [];
+    let from = 0;
+    for (;;) {
+      const { data, error, count } = await page(
+        from,
+        from + SupabaseRepo.PAGE_SIZE - 1,
+      );
+      throwIf(error);
+      const batch = (data as T[] | null) ?? [];
+      rows.push(...batch);
+      if (batch.length === 0 || (count != null && rows.length >= count)) {
+        return rows;
+      }
+      from += batch.length;
+    }
+  }
+
   async createExercise(
     name: string,
     opts?: NewExerciseOpts,
@@ -574,17 +618,18 @@ export class SupabaseRepo implements Repo {
   }
 
   async listExercises(): Promise<Exercise[]> {
-    const { data, error } = await this.client
-      .from("exercises")
-      .select(LIST_COLUMNS)
-      .is("deleted_at", null)
-      .order("name");
-    throwIf(error);
-    // The untyped column-list string can't be validated against a generated
-    // schema (this client has none), so supabase-js falls back to an error
-    // sentinel type here rather than Row[] — safe to cast, same as every
-    // other hand-written `.select("…")` in this file.
-    return (data as unknown as Row[]).map(toExercise);
+    // `.order("id")` tie-breaks `name` so pagination is deterministic even
+    // when two exercises share a name (see `selectAll`).
+    const rows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("exercises")
+        .select(LIST_COLUMNS, { count: "exact" })
+        .is("deleted_at", null)
+        .order("name")
+        .order("id")
+        .range(from, to),
+    );
+    return rows.map(toExercise);
   }
 
   /** Fat fields (instructions, imageUrls) for one exercise — see B2. */
@@ -888,15 +933,19 @@ export class SupabaseRepo implements Repo {
   }
 
   async findingsData(): Promise<FindingsSessionInput[]> {
-    const { data, error } = await this.client
-      .from("sessions")
-      .select(
-        "id, started_at, condition_values, deleted_at, session_exercises(exercise_id, deleted_at, exercises(name), set_logs(weight_kg, reps, deleted_at))",
-      )
-      .is("deleted_at", null)
-      .order("started_at", { ascending: true });
-    throwIf(error);
-    return ((data as Row[]) ?? []).map((s) => ({
+    const rows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("sessions")
+        .select(
+          "id, started_at, condition_values, deleted_at, session_exercises(exercise_id, deleted_at, exercises(name), set_logs(weight_kg, reps, deleted_at))",
+          { count: "exact" },
+        )
+        .is("deleted_at", null)
+        .order("started_at", { ascending: true })
+        .order("id")
+        .range(from, to),
+    );
+    return rows.map((s) => ({
       sessionId: s.id as string,
       startedAt: s.started_at as number,
       conditionValues:
@@ -972,15 +1021,19 @@ export class SupabaseRepo implements Repo {
   }
 
   async recordsData(): Promise<RecordsSessionInput[]> {
-    const { data, error } = await this.client
-      .from("sessions")
-      .select(
-        "id, started_at, ended_at, paused_ms, deleted_at, session_exercises(exercise_id, deleted_at, exercises(exercise_type), set_logs(set_type, weight_kg, reps, duration_sec, distance_m, rir, rir_min, rir_max, rpe, deleted_at))",
-      )
-      .is("deleted_at", null)
-      .order("started_at", { ascending: true });
-    throwIf(error);
-    return ((data as Row[]) ?? []).map((s) => ({
+    const rows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("sessions")
+        .select(
+          "id, started_at, ended_at, paused_ms, deleted_at, session_exercises(exercise_id, deleted_at, exercises(exercise_type), set_logs(set_type, weight_kg, reps, duration_sec, distance_m, rir, rir_min, rir_max, rpe, deleted_at))",
+          { count: "exact" },
+        )
+        .is("deleted_at", null)
+        .order("started_at", { ascending: true })
+        .order("id")
+        .range(from, to),
+    );
+    return rows.map((s) => ({
       sessionId: s.id as string,
       startedAt: s.started_at as number,
       endedAt: (s.ended_at as number | null) ?? null,
@@ -1092,14 +1145,17 @@ export class SupabaseRepo implements Repo {
   }
 
   async importSessions(sessions: ImportedSession[]): Promise<ImportResult> {
-    // Idempotency: a session is identified by its started_at timestamp.
-    const { data: existingRows, error: existingError } = await this.client
-      .from("sessions")
-      .select("started_at");
-    throwIf(existingError);
-    const existing = new Set(
-      ((existingRows as Row[]) ?? []).map((r) => r.started_at as number),
+    // Idempotency: a session is identified by its started_at timestamp. This
+    // must see *every* session — a truncated set would re-import already
+    // imported sessions as duplicates.
+    const existingRows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("sessions")
+        .select("started_at, id", { count: "exact" })
+        .order("id")
+        .range(from, to),
     );
+    const existing = new Set(existingRows.map((r) => r.started_at as number));
 
     const fresh = sessions.filter((s) => !existing.has(s.startedAt));
     const skipped = sessions.length - fresh.length;
@@ -1186,12 +1242,14 @@ export class SupabaseRepo implements Repo {
   }
 
   async applySleep(sleepHoursByDate: Map<string, number>): Promise<number> {
-    const { data, error } = await this.client
-      .from("sessions")
-      .select("id, started_at, condition_values")
-      .is("deleted_at", null);
-    throwIf(error);
-    const rows = (data as Row[]) ?? [];
+    const rows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("sessions")
+        .select("id, started_at, condition_values", { count: "exact" })
+        .is("deleted_at", null)
+        .order("id")
+        .range(from, to),
+    );
 
     const updates: { id: string; merged: Record<string, unknown> }[] = [];
     for (const r of rows) {
@@ -1219,6 +1277,22 @@ export class SupabaseRepo implements Repo {
     return updates.length;
   }
 
+  // Ordered by `created_at` (not just `id`) so the CSV/JSON export stays
+  // roughly chronological — ids are random uuid v4, so an id-only order would
+  // shuffle every exported table. `id` is the tiebreak that keeps pagination
+  // deterministic.
+  private selectAllFrom(table: string): Promise<Row[]> {
+    return this.selectAll<Row>((from, to) =>
+      this.client
+        .from(table)
+        .select("*", { count: "exact" })
+        .is("deleted_at", null)
+        .order("created_at")
+        .order("id")
+        .range(from, to),
+    );
+  }
+
   async exportAll(): Promise<ExportBundle> {
     const [
       exercises,
@@ -1233,45 +1307,31 @@ export class SupabaseRepo implements Repo {
       routineExercises,
       routineSets,
     ] = await Promise.all([
-      this.client.from("exercises").select().is("deleted_at", null),
-      this.client.from("machines").select().is("deleted_at", null),
-      this.client.from("metrics").select().is("deleted_at", null),
-      this.client.from("sessions").select().is("deleted_at", null),
-      this.client.from("session_exercises").select().is("deleted_at", null),
-      this.client.from("set_logs").select().is("deleted_at", null),
-      this.client.from("measurements").select().is("deleted_at", null),
-      this.client.from("routine_folders").select().is("deleted_at", null),
-      this.client.from("routines").select().is("deleted_at", null),
-      this.client.from("routine_exercises").select().is("deleted_at", null),
-      this.client.from("routine_sets").select().is("deleted_at", null),
+      this.selectAllFrom("exercises"),
+      this.selectAllFrom("machines"),
+      this.selectAllFrom("metrics"),
+      this.selectAllFrom("sessions"),
+      this.selectAllFrom("session_exercises"),
+      this.selectAllFrom("set_logs"),
+      this.selectAllFrom("measurements"),
+      this.selectAllFrom("routine_folders"),
+      this.selectAllFrom("routines"),
+      this.selectAllFrom("routine_exercises"),
+      this.selectAllFrom("routine_sets"),
     ]);
-    for (const r of [
-      exercises,
-      machines,
-      metrics,
-      sessions,
-      sessionExercises,
-      setLogs,
-      measurements,
-      routineFolders,
-      routines,
-      routineExercises,
-      routineSets,
-    ])
-      throwIf(r.error);
     return {
       schemaVersion: 3,
       exportedAt: Date.now(),
-      exercises: (exercises.data as Row[]).map(toExercise),
-      machines: (machines.data as Row[]).map(toMachine),
-      metrics: (metrics.data as Row[]).map(toMetric),
-      sessions: (sessions.data as Row[]).map(toSession),
-      sessionExercises: (sessionExercises.data as Row[]).map(toSessionExercise),
-      setLogs: (setLogs.data as Row[]).map(toSetLog),
-      measurements: (measurements.data as Row[]).map(toMeasurement),
-      routineFolders: (routineFolders.data as Row[]).map(toRoutineFolder),
-      routines: (routines.data as Row[]).map(toRoutine),
-      routineExercises: ((routineExercises.data as Row[]) ?? []).map((r) => ({
+      exercises: exercises.map(toExercise),
+      machines: machines.map(toMachine),
+      metrics: metrics.map(toMetric),
+      sessions: sessions.map(toSession),
+      sessionExercises: sessionExercises.map(toSessionExercise),
+      setLogs: setLogs.map(toSetLog),
+      measurements: measurements.map(toMeasurement),
+      routineFolders: routineFolders.map(toRoutineFolder),
+      routines: routines.map(toRoutine),
+      routineExercises: routineExercises.map((r) => ({
         id: r.id as string,
         createdAt: r.created_at as number,
         updatedAt: r.updated_at as number,
@@ -1284,7 +1344,7 @@ export class SupabaseRepo implements Repo {
         restSec: (r.rest_sec as number | null) ?? null,
         note: (r.note as string | null) ?? null,
       })),
-      routineSets: ((routineSets.data as Row[]) ?? []).map(toRoutineSet),
+      routineSets: routineSets.map(toRoutineSet),
     };
   }
 
@@ -1738,13 +1798,19 @@ export class SupabaseRepo implements Repo {
   // ── Body measurements ─────────────────────────────────────────────────
 
   async listMeasurements(): Promise<Measurement[]> {
-    const { data, error } = await this.client
-      .from("measurements")
-      .select()
-      .is("deleted_at", null)
-      .order("measured_on", { ascending: false });
-    throwIf(error);
-    return ((data as Row[]) ?? []).map(toMeasurement);
+    // One row per calendar day, so daily logging crosses PostgREST's 1000-row
+    // cap after ~2.7 years; `.order("id")` tie-breaks `measured_on` so
+    // pagination is deterministic (see `selectAll`).
+    const rows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("measurements")
+        .select("*", { count: "exact" })
+        .is("deleted_at", null)
+        .order("measured_on", { ascending: false })
+        .order("id")
+        .range(from, to),
+    );
+    return rows.map(toMeasurement);
   }
 
   async upsertMeasurement(
