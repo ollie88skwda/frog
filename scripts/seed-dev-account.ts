@@ -33,7 +33,7 @@ const CONFIRM_RESET = arg("confirm-reset");
 const WEEKS = Number(arg("weeks") ?? 24);
 if (!OWNER) {
   console.error(
-    "usage: --owner <clerk-user-id|uuid> [--confirm-reset <same>] [--weeks 16]",
+    "usage: --owner <clerk-user-id|uuid> [--confirm-reset <same>] [--weeks <n>, default 24]",
   );
   process.exit(1);
 }
