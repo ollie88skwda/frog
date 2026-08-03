@@ -366,7 +366,12 @@ function DistributionSection({
     ],
   }));
 
-  const totals: Array<{ label: string; cur: string; delta: number }> = [
+  const totals: Array<{
+    label: string;
+    cur: string;
+    delta: number;
+    formatDelta?: (n: number) => string;
+  }> = [
     {
       label: "Workouts",
       cur: String(current.totals.workouts),
@@ -376,6 +381,7 @@ function DistributionSection({
       label: "Duration",
       cur: formatDuration(current.totals.durationMs),
       delta: current.totals.durationMs - previous.totals.durationMs,
+      formatDelta: formatDuration,
     },
     {
       label: "Volume",
@@ -425,11 +431,12 @@ function DistributionSection({
           <li
             key={t.label}
             className="flex items-center justify-between px-3 py-2"
+            data-testid={`dist-total-${t.label.toLowerCase()}`}
           >
             <span className="text-xs text-soft">{t.label}</span>
             <span className="flex items-baseline gap-2">
               <span className="num text-sm">{t.cur}</span>
-              <Delta value={t.delta} />
+              <Delta value={t.delta} format={t.formatDelta} />
             </span>
           </li>
         ))}
@@ -438,12 +445,18 @@ function DistributionSection({
   );
 }
 
-function Delta({ value }: { value: number }) {
+function Delta({
+  value,
+  format = formatCount,
+}: {
+  value: number;
+  format?: (n: number) => string;
+}) {
   if (value === 0) return <span className="num text-2xs text-faint">±0</span>;
   const up = value > 0;
   return (
     <span className={cn("num text-2xs", up ? "text-pos" : "text-neg")}>
-      {up ? "▲" : "▼"} {formatCount(Math.abs(value))}
+      {up ? "▲" : "▼"} {format(Math.abs(value))}
     </span>
   );
 }
