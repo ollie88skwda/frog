@@ -21,6 +21,7 @@ import {
   ratingsForExercise,
   toDisplayDistance,
   toDisplayWeight,
+  topRecordValue,
   unitLabel,
 } from "@frog/core";
 import {
@@ -232,23 +233,24 @@ function SummaryTab({
 
   const latest = points.length ? points[points.length - 1].y : null;
 
-  // e1RM sparkline for the share card's records graphic — independent of the
-  // metric chip above (always e1RM), last 12 sessions containing this exercise.
-  const e1rmSparkline = useMemo(() => {
+  // Records sparkline for the share card's graphic — independent of the
+  // metric chip above (always the type's headline PR metric: e1RM for
+  // weighted types, reps/time/distance otherwise), last 12 sessions
+  // containing this exercise.
+  const recordsSparkline = useMemo(() => {
     const out: Array<{ at: number; value: number }> = [];
     for (const s of sessions) {
       const sets = setsFor(s, exercise.id, includeWarmups);
       if (!sets) continue;
       let best: number | null = null;
       for (const set of sets) {
-        if (set.weightKg == null || set.reps == null || set.reps < 1) continue;
-        const e = epley(set.weightKg, set.reps);
-        if (e != null && (best == null || e > best)) best = e;
+        const v = sparklineSetValue(type, set);
+        if (v != null && (best == null || v > best)) best = v;
       }
       if (best != null) out.push({ at: s.startedAt, value: best });
     }
     return out.slice(-12);
-  }, [sessions, exercise.id, includeWarmups]);
+  }, [sessions, exercise.id, includeWarmups, type]);
 
   return (
     <div>
@@ -319,7 +321,7 @@ function SummaryTab({
         records={records}
         unit={unit}
         distUnit={distUnit}
-        sparkline={e1rmSparkline}
+        sparkline={recordsSparkline}
       />
       {hasSetRecords(type) && <SetRecordsTable records={records} unit={unit} />}
     </div>
@@ -1020,4 +1022,18 @@ function setsFor(
   return includeWarmups
     ? block.sets
     : block.sets.filter((s) => s.setType !== "warmup");
+}
+
+/** The records sparkline's per-set scalar: e1RM for weighted types (weight +
+ * reps), else whatever raw metric backs that type's top records (reps / time
+ * / distance — see `topRecordValue`). */
+function sparklineSetValue(
+  type: ExerciseType,
+  set: RecordsSetInput,
+): number | null {
+  if (hasSetRecords(type)) {
+    if (set.weightKg == null || set.reps == null || set.reps < 1) return null;
+    return epley(set.weightKg, set.reps);
+  }
+  return topRecordValue(type, set);
 }

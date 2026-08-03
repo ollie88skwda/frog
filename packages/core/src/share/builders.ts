@@ -15,6 +15,7 @@ import {
   unitLabel,
 } from "../domain/units";
 import { countsForStats, setVolumeKg } from "../domain/volume";
+import { hasSetRecords, TOP_RECORD_PR_TYPE } from "../records/records";
 import type { ExerciseRecords, PrEvent, PrType } from "../records/types";
 import type { MuscleByExercise } from "../stats/aggregate";
 import { muscleCredits } from "../stats/aggregate";
@@ -470,9 +471,15 @@ export function buildExerciseRecordsCard(input: {
   const heroEntry = heroPrType ? records.bests[heroPrType] : undefined;
   if (!heroEntry || !heroPrType) return null;
 
-  const setRecordRows = [...records.setRecords.entries()]
-    .sort((a, b) => a[0] - b[0])
-    .slice(0, 3);
+  const support: ShareStat[] = hasSetRecords(input.type)
+    ? [...records.setRecords.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .slice(0, 3)
+        .map(([reps, r]) => ({
+          label: `${reps}RM`,
+          value: formatWeight(r.weightKg, unit),
+        }))
+    : topRecordSupportStats(input.type, records, unit, distUnit);
 
   return {
     kind: "records",
@@ -483,13 +490,28 @@ export function buildExerciseRecordsCard(input: {
       unit: "",
     },
     heroPrType,
-    support: setRecordRows.map(([reps, r]) => ({
-      label: `${reps}RM`,
-      value: formatWeight(r.weightKg, unit),
-    })),
+    support,
     sparkline: input.sparkline,
     identity: input.identity,
   };
+}
+
+const TOP_RECORD_RANK_LABELS = ["Best", "2nd best", "3rd best"];
+
+/** Support-stat rows for exercise types without a weight-keyed set-records
+ * table (reps-only, duration, distance) — the top 3 all-time set values. */
+function topRecordSupportStats(
+  type: ExerciseType,
+  records: ExerciseRecords,
+  unit: Unit,
+  distUnit: DistUnit,
+): ShareStat[] {
+  const prType = TOP_RECORD_PR_TYPE[type];
+  if (!prType) return [];
+  return records.topRecords.slice(0, 3).map((r, i) => ({
+    label: TOP_RECORD_RANK_LABELS[i] ?? `#${i + 1}`,
+    value: formatPrValue(prType, r.value, unit, distUnit),
+  }));
 }
 
 // ── Measurement (gated, report §5.2/§7.2) ─────────────────────────────────

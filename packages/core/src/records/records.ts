@@ -38,6 +38,38 @@ export function hasSetRecords(exerciseType: string): boolean {
   );
 }
 
+/** Which PR type's value/formatting backs `ExerciseRecords.topRecords` for
+ * types that don't get a weight-keyed set-records table. */
+export const TOP_RECORD_PR_TYPE: Partial<Record<string, PrType>> = {
+  bodyweight_reps: "best_set_reps",
+  assisted_bodyweight: "best_set_reps",
+  duration: "best_time",
+  weight_duration: "best_time",
+  distance_duration: "longest_distance",
+  weight_distance: "longest_distance",
+};
+
+/** The raw per-set scalar backing a `topRecords` row (reps / seconds /
+ * meters — matched to TOP_RECORD_PR_TYPE), or null if this set doesn't
+ * qualify. */
+export function topRecordValue(
+  exerciseType: string,
+  set: RecordsSetInput,
+): number | null {
+  switch (TOP_RECORD_PR_TYPE[exerciseType]) {
+    case "best_set_reps":
+      return set.reps != null && set.reps >= 1 ? set.reps : null;
+    case "best_time":
+      return set.durationSec != null && set.durationSec > 0
+        ? set.durationSec
+        : null;
+    case "longest_distance":
+      return set.distanceM != null && set.distanceM > 0 ? set.distanceM : null;
+    default:
+      return null;
+  }
+}
+
 // Per-SET candidate values for each applicable PR type (session-scoped types
 // are computed by the caller across the session).
 export function setPrCandidates(
@@ -123,6 +155,7 @@ export function computeRecords(
           exerciseId: block.exerciseId,
           bests: {},
           setRecords: new Map(),
+          topRecords: [],
         };
         byExercise.set(block.exerciseId, rec);
       }
@@ -152,6 +185,17 @@ export function computeRecords(
               sessionId: session.sessionId,
               at: session.startedAt,
             });
+        } else if (!hasSetRecords(block.exerciseType)) {
+          const v = topRecordValue(block.exerciseType, s);
+          if (v != null) {
+            rec.topRecords.push({
+              value: v,
+              sessionId: session.sessionId,
+              at: session.startedAt,
+            });
+            rec.topRecords.sort((a, b) => b.value - a.value);
+            if (rec.topRecords.length > 3) rec.topRecords.length = 3;
+          }
         }
       }
 

@@ -41,6 +41,10 @@ export type ExerciseRecords = {
   bests: Partial<Record<PrType, RecordEntry>>;
   /** Set records: heaviest weight per exact rep count (weighted types only). */
   setRecords: Map<number, { weightKg: number; sessionId: string; at: number }>;
+  /** Top 3 all-time set values, for types with no weight-keyed set-records
+   * table (reps-only, duration, distance) — e.g. best pull-up sets, plank
+   * holds, or run distances, ranked descending. */
+  topRecords: Array<{ value: number; sessionId: string; at: number }>;
 };
 
 export type RecordsSetInput = {
