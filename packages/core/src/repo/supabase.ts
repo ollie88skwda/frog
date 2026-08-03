@@ -347,12 +347,16 @@ export class SupabaseRepo implements Repo {
 
   // PostgREST caps every `select()` at 1000 rows by default; a flat select on
   // a table that can grow past that (exercise library, set logs, …) silently
-  // truncates instead of erroring. Loop `.range()` until an empty page proves
-  // there's nothing left — advancing by the rows actually returned, not by the
-  // requested page size, so a server whose `max_rows` is configured below
-  // PAGE_SIZE still paginates instead of stopping at the first short page.
-  // `page` must apply a deterministic order (e.g. `id`) so rows aren't skipped
-  // or repeated across pages.
+  // truncates instead of erroring. Loop `.range()` until the rows collected so
+  // far cover the total PostgREST reports, so the common single-page case costs
+  // exactly one request. `page` must therefore ask for that total with
+  // `.select(cols, { count: "exact" })`; a page that doesn't falls back to the
+  // empty-page stop rule, which is still correct, just one request slower.
+  // Advance by the rows actually returned, not by the requested page size, so a
+  // server whose `max_rows` is configured below PAGE_SIZE still paginates
+  // instead of stopping at the first short page. `page` must apply a
+  // deterministic order (e.g. `id`) so rows aren't skipped or repeated across
+  // pages.
   private async selectAll<T>(
     // `data` is typed `unknown` because a hand-written `.select("col, list")`
     // string makes supabase-js fall back to an error-sentinel type (same
@@ -360,19 +364,25 @@ export class SupabaseRepo implements Repo {
     page: (
       from: number,
       to: number,
-    ) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+    ) => PromiseLike<{
+      data: unknown;
+      error: { message: string } | null;
+      count: number | null;
+    }>,
   ): Promise<T[]> {
     const rows: T[] = [];
     let from = 0;
     for (;;) {
-      const { data, error } = await page(
+      const { data, error, count } = await page(
         from,
         from + SupabaseRepo.PAGE_SIZE - 1,
       );
       throwIf(error);
       const batch = (data as T[] | null) ?? [];
-      if (batch.length === 0) return rows;
       rows.push(...batch);
+      if (batch.length === 0 || (count != null && rows.length >= count)) {
+        return rows;
+      }
       from += batch.length;
     }
   }
@@ -613,7 +623,7 @@ export class SupabaseRepo implements Repo {
     const rows = await this.selectAll<Row>((from, to) =>
       this.client
         .from("exercises")
-        .select(LIST_COLUMNS)
+        .select(LIST_COLUMNS, { count: "exact" })
         .is("deleted_at", null)
         .order("name")
         .order("id")
@@ -928,6 +938,7 @@ export class SupabaseRepo implements Repo {
         .from("sessions")
         .select(
           "id, started_at, condition_values, deleted_at, session_exercises(exercise_id, deleted_at, exercises(name), set_logs(weight_kg, reps, deleted_at))",
+          { count: "exact" },
         )
         .is("deleted_at", null)
         .order("started_at", { ascending: true })
@@ -1015,6 +1026,7 @@ export class SupabaseRepo implements Repo {
         .from("sessions")
         .select(
           "id, started_at, ended_at, paused_ms, deleted_at, session_exercises(exercise_id, deleted_at, exercises(exercise_type), set_logs(set_type, weight_kg, reps, duration_sec, distance_m, rir, rir_min, rir_max, rpe, deleted_at))",
+          { count: "exact" },
         )
         .is("deleted_at", null)
         .order("started_at", { ascending: true })
@@ -1139,7 +1151,7 @@ export class SupabaseRepo implements Repo {
     const existingRows = await this.selectAll<Row>((from, to) =>
       this.client
         .from("sessions")
-        .select("started_at, id")
+        .select("started_at, id", { count: "exact" })
         .order("id")
         .range(from, to),
     );
@@ -1233,7 +1245,7 @@ export class SupabaseRepo implements Repo {
     const rows = await this.selectAll<Row>((from, to) =>
       this.client
         .from("sessions")
-        .select("id, started_at, condition_values")
+        .select("id, started_at, condition_values", { count: "exact" })
         .is("deleted_at", null)
         .order("id")
         .range(from, to),
@@ -1273,7 +1285,7 @@ export class SupabaseRepo implements Repo {
     return this.selectAll<Row>((from, to) =>
       this.client
         .from(table)
-        .select()
+        .select("*", { count: "exact" })
         .is("deleted_at", null)
         .order("created_at")
         .order("id")
@@ -1786,13 +1798,19 @@ export class SupabaseRepo implements Repo {
   // ── Body measurements ─────────────────────────────────────────────────
 
   async listMeasurements(): Promise<Measurement[]> {
-    const { data, error } = await this.client
-      .from("measurements")
-      .select()
-      .is("deleted_at", null)
-      .order("measured_on", { ascending: false });
-    throwIf(error);
-    return ((data as Row[]) ?? []).map(toMeasurement);
+    // One row per calendar day, so daily logging crosses PostgREST's 1000-row
+    // cap after ~2.7 years; `.order("id")` tie-breaks `measured_on` so
+    // pagination is deterministic (see `selectAll`).
+    const rows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("measurements")
+        .select("*", { count: "exact" })
+        .is("deleted_at", null)
+        .order("measured_on", { ascending: false })
+        .order("id")
+        .range(from, to),
+    );
+    return rows.map(toMeasurement);
   }
 
   async upsertMeasurement(

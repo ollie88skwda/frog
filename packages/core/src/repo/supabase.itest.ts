@@ -357,6 +357,35 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     ).toHaveLength(TOTAL);
   }, 30_000);
 
+  it("listMeasurements returns every row past PostgREST's 1000-row page cap", async () => {
+    // One row per calendar day (upsertMeasurement dedupes on measured_on), so
+    // daily bodyweight logging crosses the cap after ~3 years — and the
+    // measured_on-descending order means truncation drops the oldest history.
+    const TOTAL = 1100;
+    const now = Date.now();
+    const rows = Array.from({ length: TOTAL }, (_, i) => ({
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      measured_on: new Date(Date.UTC(2000, 0, 1 + i))
+        .toISOString()
+        .slice(0, 10),
+      bodyweight_kg: 70 + i / 100,
+    }));
+    const BATCH = 200;
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const { error } = await clientB
+        .from("measurements")
+        .insert(rows.slice(i, i + BATCH));
+      if (error) throw new Error(error.message);
+    }
+
+    const listed = await repoB.listMeasurements();
+    expect(listed).toHaveLength(TOTAL);
+    expect(listed[0]?.measuredOn).toBe(rows[TOTAL - 1]?.measured_on);
+    expect(listed[TOTAL - 1]?.measuredOn).toBe(rows[0]?.measured_on);
+  }, 30_000);
+
   it("exercise media: owner can upload/clear, others cannot read", async () => {
     const ex = await repoA.createExercise(`Media Test ${newId().slice(0, 8)}`);
     const pixel = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], {

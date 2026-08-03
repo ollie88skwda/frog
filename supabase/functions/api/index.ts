@@ -32,29 +32,36 @@ const ENDPOINTS = ["/v1/exercises", "/v1/sessions", "/v1/sets", "/v1/export"];
 
 // PostgREST caps every `select()` at 1000 rows, so an unbounded select on a
 // table that can grow past that silently truncates instead of erroring. Loop
-// `.range()` until an empty page proves there's nothing left, advancing by the
-// rows actually returned so a server whose `max_rows` is configured below
-// PAGE_SIZE still paginates. `page` must apply a deterministic order (the
-// callers below order by `created_at` with an `id` tiebreak, since ids are
-// random uuid v4) so rows aren't skipped or repeated across pages. Mirrors
-// `SupabaseRepo.selectAll` in packages/core — this function is Deno and can't
-// import it.
+// `.range()` until the rows collected so far cover the total PostgREST reports,
+// so the common single-page case costs exactly one request; `page` must ask for
+// that total with `.select(cols, { count: "exact" })`, and a page that doesn't
+// falls back to the empty-page stop rule (still correct, one request slower).
+// Advance by the rows actually returned so a server whose `max_rows` is
+// configured below PAGE_SIZE still paginates. `page` must apply a deterministic
+// order (the callers below order by `created_at` with an `id` tiebreak, since
+// ids are random uuid v4) so rows aren't skipped or repeated across pages.
+// Mirrors `SupabaseRepo.selectAll` in packages/core — this function is Deno and
+// can't import it.
 const PAGE_SIZE = 1000;
 
 async function selectAll(
   page: (
     from: number,
     to: number,
-  ) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>,
+  ) => PromiseLike<{
+    data: unknown[] | null;
+    error: { message: string } | null;
+    count: number | null;
+  }>,
 ): Promise<unknown[]> {
   const rows: unknown[] = [];
   let from = 0;
   for (;;) {
-    const { data, error } = await page(from, from + PAGE_SIZE - 1);
+    const { data, error, count } = await page(from, from + PAGE_SIZE - 1);
     if (error) throw new Error(error.message);
     const batch = data ?? [];
-    if (batch.length === 0) return rows;
     rows.push(...batch);
+    if (batch.length === 0 || (count != null && rows.length >= count)) return rows;
     from += batch.length;
   }
 }
@@ -86,10 +93,12 @@ Deno.serve(async (req) => {
 
   // Full row, like every other resource below — a hand-written column list
   // here silently drops new exercise columns from the API (docs/DECISIONS.md).
-  const ownExercises = () =>
+  // `opts` carries `{ count: "exact" }` for the paginating export path only —
+  // the single-page endpoints below don't need the row count.
+  const ownExercises = (opts?: { count: "exact" }) =>
     admin
       .from("exercises")
-      .select()
+      .select("*", opts)
       .or(`owner_id.eq.${owner},owner_id.is.null`)
       .is("deleted_at", null);
 
@@ -127,7 +136,7 @@ Deno.serve(async (req) => {
         selectAll((from, to) =>
           admin
             .from(table)
-            .select()
+            .select("*", { count: "exact" })
             .eq("owner_id", owner)
             .is("deleted_at", null)
             .order("created_at")
@@ -137,12 +146,15 @@ Deno.serve(async (req) => {
       try {
         const [exercises, metrics, sessions, sessionExercises, setLogs] = await Promise.all([
           selectAll((from, to) =>
-            ownExercises().order("created_at").order("id").range(from, to),
+            ownExercises({ count: "exact" })
+              .order("created_at")
+              .order("id")
+              .range(from, to),
           ),
           selectAll((from, to) =>
             admin
               .from("metrics")
-              .select()
+              .select("*", { count: "exact" })
               .or(`owner_id.eq.${owner},owner_id.is.null`)
               .is("deleted_at", null)
               .order("created_at")
