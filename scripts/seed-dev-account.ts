@@ -9,13 +9,19 @@
 //   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… bun scripts/seed-dev-account.ts \
 //     --owner user_xxx --confirm-reset user_xxx                      # hosted
 //
-// Without --confirm-reset the script refuses to run against an owner that
-// already has sessions, so it can never silently double-seed (or touch a real
-// account). Reset is a HARD delete scoped to one owner_id — deliberate: this
-// is a disposable account, and soft-deleted rows would keep skewing counts.
+// Without --confirm-reset the script refuses to run against an owner that owns
+// ANY row in the tables it writes, so it can never silently double-seed (or
+// touch a real account). Reset is a HARD delete scoped to one owner_id —
+// deliberate: this is a disposable account, and soft-deleted rows would keep
+// skewing counts.
 
 import { execSync } from "node:child_process";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { SEED_CONDITIONS as C } from "../packages/core/src/db/seed-ids";
+import {
+  type ExerciseType,
+  TYPE_FIELDS,
+} from "../packages/core/src/domain/exercise-types";
 
 // ── args ────────────────────────────────────────────────────────────────────
 function arg(name: string): string | undefined {
@@ -35,8 +41,16 @@ if (!OWNER) {
 // ── connection ──────────────────────────────────────────────────────────────
 function local(): { url: string; key: string } {
   const raw = execSync("supabase status -o json", { encoding: "utf8" });
+  // The CLI may print warnings (e.g. "Stopped services: ...") before the JSON.
   const s = JSON.parse(raw.slice(raw.indexOf("{")));
-  return { url: s.API_URL, key: s.SERVICE_ROLE_KEY };
+  const url: string = s.API_URL ?? s.api_url;
+  const key: string = s.SERVICE_ROLE_KEY ?? s.service_role_key;
+  if (!url || !key) {
+    throw new Error(
+      `unexpected supabase status output: ${Object.keys(s).join(", ")}`,
+    );
+  }
+  return { url, key };
 }
 const conn =
   process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -63,17 +77,6 @@ const jitter = (spread: number) => (rnd() - 0.5) * 2 * spread;
 const pick = <T>(xs: T[]): T => xs[Math.floor(rnd() * xs.length)];
 const round = (v: number, step: number) => Math.round(v / step) * step;
 const uuid = () => crypto.randomUUID();
-
-// ── seeded condition metric ids (packages/core/src/db/seed-ids.ts) ──────────
-const C = {
-  sleepH: "00000000-0000-4000-8000-0000000000a1",
-  bodyweight: "00000000-0000-4000-8000-0000000000a2",
-  preCarbsG: "00000000-0000-4000-8000-0000000000a3",
-  caffeineMg: "00000000-0000-4000-8000-0000000000a4",
-  stress: "00000000-0000-4000-8000-0000000000a5",
-  lastMealH: "00000000-0000-4000-8000-0000000000a6",
-  mealNote: "00000000-0000-4000-8000-0000000000a7",
-};
 
 // ── the program ─────────────────────────────────────────────────────────────
 // Weight is the week-1 working weight in kg; gain is kg added per week.
@@ -171,7 +174,7 @@ const ROUTINES: { name: string; slots: Slot[] }[] = [
   {
     name: "Upper B — Pull",
     slots: [
-      { name: "Pullups", sets: 4, reps: 8, kg: 0, gain: 0.6, rest: 150 },
+      { name: "Pullups", sets: 4, reps: 8, kg: 0, gain: 0, rest: 150 },
       {
         name: "Incline Dumbbell Press",
         sets: 4,
@@ -237,6 +240,7 @@ const ROUTINES: { name: string; slots: Slot[] }[] = [
         gain: 0.4,
         rest: 120,
       },
+      // The library types Plank as bodyweight_reps, so a set is one hold.
       { name: "Plank", sets: 3, reps: 1, kg: 0, gain: 0, rest: 60 },
     ],
   },
@@ -304,38 +308,49 @@ function dateKey(ms: number): string {
 }
 
 // ── main ────────────────────────────────────────────────────────────────────
-const { count, error: probeErr } = await db
-  .from("sessions")
-  .select("id", { count: "exact", head: true })
-  .eq("owner_id", OWNER);
-if (probeErr) throw new Error(probeErr.message);
+// Every owner-scoped table this script touches, children before parents (FKs
+// are not ON DELETE CASCADE). One list drives both the pre-flight probe and
+// the reset delete, so the guard can never be narrower than the write: four of
+// these carry owner-scoped UNIQUE indexes (user_prefs, tracked_conditions,
+// exercise_favorites, measurements), and a plain insert over a pre-existing
+// row would otherwise abort mid-run and leave the account half-seeded.
+const OWNED_TABLES = [
+  "set_logs",
+  "session_exercises",
+  "session_media",
+  "sessions",
+  "routine_sets",
+  "routine_exercises",
+  "programs",
+  "routines",
+  "routine_folders",
+  "measurements",
+  "tracked_conditions",
+  "exercise_favorites",
+  "exercise_prefs",
+  "user_prefs",
+];
 
-if ((count ?? 0) > 0) {
+const existing: string[] = [];
+for (const table of OWNED_TABLES) {
+  const { count, error } = await db
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .eq("owner_id", OWNER);
+  if (error) throw new Error(`${table}: ${error.message}`);
+  if ((count ?? 0) > 0) existing.push(`${table} ${count}`);
+}
+
+if (existing.length) {
   if (CONFIRM_RESET !== OWNER) {
     console.error(
-      `Owner ${OWNER} already has ${count} sessions.\n` +
+      `Owner ${OWNER} already has data: ${existing.join(", ")}.\n` +
         `Re-run with --confirm-reset ${OWNER} to wipe and reseed (HARD delete, dev accounts only).`,
     );
     process.exit(1);
   }
-  console.log(`Resetting ${count} existing sessions for ${OWNER}…`);
-  // Children before parents (FKs are not ON DELETE CASCADE).
-  for (const table of [
-    "set_logs",
-    "session_exercises",
-    "session_media",
-    "sessions",
-    "routine_sets",
-    "routine_exercises",
-    "programs",
-    "routines",
-    "routine_folders",
-    "measurements",
-    "tracked_conditions",
-    "exercise_favorites",
-    "exercise_prefs",
-    "user_prefs",
-  ]) {
+  console.log(`Resetting existing rows for ${OWNER}: ${existing.join(", ")}…`);
+  for (const table of OWNED_TABLES) {
     const { error } = await db.from(table).delete().eq("owner_id", OWNER);
     if (error) throw new Error(`${table}: ${error.message}`);
   }
@@ -347,7 +362,7 @@ const wanted = [
 ];
 const { data: exRows, error: lookupErr } = await db
   .from("exercises")
-  .select("id,name")
+  .select("id,name,exercise_type")
   .is("owner_id", null)
   .in("name", wanted);
 if (lookupErr) throw new Error(lookupErr.message);
@@ -357,6 +372,23 @@ const exId = new Map(
 const missing = wanted.filter((n) => !exId.has(n));
 if (missing.length)
   throw new Error(`library exercises not found: ${missing.join(", ")}`);
+
+// The library row's exercise_type — not the slot — decides which set columns
+// carry a value. Writing a shape the type doesn't use (a duration on a
+// bodyweight_reps lift, say) logs rows the app renders as blank, excludes from
+// volume, and never counts for records.
+const exType = new Map(
+  (exRows ?? []).map((r) => [r.name as string, r.exercise_type as ExerciseType]),
+);
+for (const [name, type] of exType) {
+  if (!TYPE_FIELDS[type]) throw new Error(`${name}: unknown type ${type}`);
+}
+for (const s of ROUTINES.flatMap((r) => r.slots)) {
+  const f = TYPE_FIELDS[exType.get(s.name)!];
+  if (!f.reps) throw new Error(`${s.name}: rep-based slot on a non-rep type`);
+  if (!f.weight && s.kg !== 0)
+    throw new Error(`${s.name}: weight on a type that carries none`);
+}
 
 const now = Date.now();
 const rows = {
@@ -426,8 +458,9 @@ ROUTINES.forEach((r, i) => {
         routine_exercise_id: reId,
         set_no: n,
         set_type: "normal",
-        target_weight_kg:
-          s.kg === 0 ? null : round(s.kg + s.gain * WEEKS * 0.6, 2.5),
+        target_weight_kg: TYPE_FIELDS[exType.get(s.name)!].weight
+          ? round(s.kg + s.gain * WEEKS * 0.6, 2.5)
+          : null,
         target_reps: s.reps,
         target_reps_max: s.repsMax ?? null,
       });
@@ -594,9 +627,11 @@ for (const plan of planned) {
       note: j === 0 && rnd() < 0.15 ? "Pause on the chest, no bounce." : null,
     });
 
+    const fields = TYPE_FIELDS[exType.get(s.name)!];
     const base = s.kg + s.gain * weekIdx;
-    const working =
-      s.kg === 0 ? 0 : round(base * form * (deload ? 0.9 : 1), 2.5);
+    const working = fields.weight
+      ? round(base * form * (deload ? 0.9 : 1), 2.5)
+      : 0;
     let setNo = 0;
     // Warm-ups on the main lift only.
     for (let w = 0; w < (s.warmups ?? 0); w++) {
@@ -606,7 +641,7 @@ for (const plan of planned) {
         session_exercise_id: seId,
         set_no: setNo++,
         set_type: "warmup",
-        weight_kg: round(working * (0.5 + 0.15 * w), 2.5),
+        weight_kg: fields.weight ? round(working * (0.5 + 0.15 * w), 2.5) : null,
         reps: 5,
         rir: null,
         rest_sec: 60,
@@ -632,14 +667,12 @@ for (const plan of planned) {
           rir === 0 && n === workSets - 1 && rnd() < 0.25
             ? "failure"
             : "normal",
-        weight_kg:
-          s.kg === 0
-            ? null
-            : n === 0
-              ? working
-              : round(working * (1 - 0.02 * n), 2.5),
-        reps: s.name === "Plank" ? null : reps,
-        duration_sec: s.name === "Plank" ? 45 + Math.round(rnd() * 30) : null,
+        weight_kg: !fields.weight
+          ? null
+          : n === 0
+            ? working
+            : round(working * (1 - 0.02 * n), 2.5),
+        reps,
         rir,
         rest_sec: s.rest,
         note: null,
@@ -673,8 +706,9 @@ for (let week = WEEKS; week >= 1; week--) {
   });
 }
 
-// Tracked conditions: all five numeric ones on, so Findings has something to
-// correlate the moment the account is opened.
+// Tracked conditions: the four numeric ones written onto sessions above
+// (Bodyweight is deliberately not one of them — see the note there), so
+// Findings has something to correlate the moment the account is opened.
 [C.sleepH, C.stress, C.preCarbsG, C.caffeineMg].forEach((metricId, i) => {
   rows.tracked_conditions.push({
     id: uuid(),
