@@ -194,6 +194,34 @@ describe("muscleDistribution", () => {
     expect(previous.totals.workouts).toBe(1);
     expect(previous.totals.sets).toBe(2);
   });
+
+  it("a unilateral pair counts as one set but both limbs' tonnage", () => {
+    const sets = [0, 1].flatMap((setNo) =>
+      (["left", "right"] as const).map((side, i) => ({
+        setType: "normal",
+        weightKg: 30 - i * 2,
+        reps: 10,
+        durationSec: null,
+        distanceM: null,
+        setNo,
+        side,
+      })),
+    );
+    const h: RecordsSessionInput[] = [
+      {
+        ...session("uni", NOW - DAY, 0),
+        exercises: [{ exerciseId: "bench", exerciseType: "weight_reps", sets }],
+      },
+    ];
+    const { current } = muscleDistribution(h, MUSCLES, "30d", OPTS);
+    expect(current.totals.sets).toBe(2);
+    expect(current.regionSets.chest).toBe(2);
+    expect(current.regionSets.shoulders).toBe(1);
+    expect(current.muscleSets.pecs).toBe(2);
+    // 2 × (30 × 10 + 28 × 10) — the sibling row's tonnage still counts.
+    expect(current.totals.volumeKg).toBe(1160);
+    expect(current.regionVolumeKg.chest).toBe(1160);
+  });
 });
 
 describe("mainExercises / consistency / 7-day muscles", () => {

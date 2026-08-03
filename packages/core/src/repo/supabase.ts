@@ -24,6 +24,7 @@ import { SEED_CONDITIONS } from "../db/seed-ids";
 import type { MuscleTarget } from "../domain/anatomy";
 import { newId } from "../domain/ids";
 import { generateToken, hashToken } from "../domain/tokens";
+import { groupSetsBySetNo } from "../domain/volume";
 import type { FindingsSessionInput } from "../findings/types";
 import type { ImportedSession, ImportResult } from "../import/types";
 import type { RecordsSessionInput } from "../records/types";
@@ -1438,33 +1439,26 @@ export class SupabaseRepo implements Repo {
         (a, b) =>
           (a.set_no as number) - (b.set_no as number) ||
           sideRank(a.side as string | null) - sideRank(b.side as string | null),
-      );
-    const groups: Row[][] = [];
-    const bySetNo = new Map<number, Row[]>();
-    for (const r of rows) {
-      if (r.side == null) {
-        groups.push([r]);
-        continue;
-      }
-      let g = bySetNo.get(r.set_no as number);
-      if (!g) {
-        g = [];
-        bySetNo.set(r.set_no as number, g);
-        groups.push(g);
-      }
-      g.push(r);
-    }
-    return groups.map(([left, right]) => ({
-      weightKg: (left.weight_kg as number | null) ?? null,
-      reps: (left.reps as number | null) ?? null,
-      durationSec: (left.duration_sec as number | null) ?? null,
-      distanceM: (left.distance_m as number | null) ?? null,
+      )
+      .map((r) => ({
+        setNo: r.set_no as number,
+        side: r.side as string | null,
+        weightKg: (r.weight_kg as number | null) ?? null,
+        reps: (r.reps as number | null) ?? null,
+        durationSec: (r.duration_sec as number | null) ?? null,
+        distanceM: (r.distance_m as number | null) ?? null,
+      }));
+    return groupSetsBySetNo(rows).map(([left, right]) => ({
+      weightKg: left.weightKg,
+      reps: left.reps,
+      durationSec: left.durationSec,
+      distanceM: left.distanceM,
       otherSide: right
         ? {
-            weightKg: (right.weight_kg as number | null) ?? null,
-            reps: (right.reps as number | null) ?? null,
-            durationSec: (right.duration_sec as number | null) ?? null,
-            distanceM: (right.distance_m as number | null) ?? null,
+            weightKg: right.weightKg,
+            reps: right.reps,
+            durationSec: right.durationSec,
+            distanceM: right.distanceM,
           }
         : null,
     }));

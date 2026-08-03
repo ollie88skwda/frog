@@ -165,14 +165,18 @@ function distributionWindow(
       const info = muscles.get(ex.exerciseId);
       const credits = muscleCredits(info?.targets);
       // A unilateral pair (two rows sharing set_no) counts and credits once,
-      // on the first side seen — the sibling row still contributes its own
-      // volume below, since that tonnage was actually lifted.
-      const seenPairs = new Set<number>();
+      // via countSets — the sibling row still contributes its own volume
+      // below, since that tonnage was actually lifted.
+      const n = countSets(ex.sets, opts);
+      totals.sets += n;
+      if (n)
+        for (const { muscle, credit } of credits) {
+          muscleSets[muscle] = (muscleSets[muscle] ?? 0) + n * credit;
+          const region = regionOf(muscle);
+          if (region) regionSets[region] += n * credit;
+        }
       for (const set of ex.sets) {
         if (!countsForStats(set, opts)) continue;
-        const isNewPhysicalSet = set.side == null || !seenPairs.has(set.setNo);
-        if (set.side != null) seenPairs.add(set.setNo);
-        if (isNewPhysicalSet) totals.sets += 1;
         const vol = setVolumeKg(
           ex.exerciseType as ExerciseType,
           set as RecordsSetInput,
@@ -180,13 +184,8 @@ function distributionWindow(
         );
         totals.volumeKg += vol;
         for (const { muscle, credit } of credits) {
-          if (isNewPhysicalSet)
-            muscleSets[muscle] = (muscleSets[muscle] ?? 0) + credit;
           const region = regionOf(muscle);
-          if (region) {
-            if (isNewPhysicalSet) regionSets[region] += credit;
-            regionVolumeKg[region] += vol * credit;
-          }
+          if (region) regionVolumeKg[region] += vol * credit;
         }
       }
     }

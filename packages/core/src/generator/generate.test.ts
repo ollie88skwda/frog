@@ -256,6 +256,22 @@ describe("nextPrescription", () => {
     );
     expect(bothTop.advance).toBe(true);
     expect(bothTop.status).toBe("progressing");
+
+    // Uneven pair: the left hit the target weight and reps, the right made up
+    // for lighter weight with extra reps. Neither row alone can carry the set
+    // — the right never reached 30 kg, so the weight has to be repeated, and
+    // the suggestion keys off the lighter side.
+    const rightLighter = nextPrescription(
+      oneSet,
+      [
+        { setNo: 0, weightKg: 30, reps: 12 },
+        { setNo: 0, weightKg: 25, reps: 15 },
+      ],
+      "dumbbell",
+    );
+    expect(rightLighter.advance).toBe(false);
+    expect(rightLighter.status).toBe("maintaining");
+    expect(rightLighter.nextWeightKg).toEqual([25]);
   });
 
   it("dumbbell step is 2 kg", () => {
