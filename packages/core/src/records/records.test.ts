@@ -129,6 +129,72 @@ describe("computeRecords", () => {
     expect(bests?.best_pace?.value).toBe(4); // 4000/1000 m/s beats 5000/1500
     expect(r.events.some((e) => e.prType === "best_pace")).toBe(true);
   });
+
+  it("top records: reps-only, duration, and distance types keep an all-time list", () => {
+    const reps = (n: number) => ({
+      setType: "normal",
+      weightKg: null,
+      reps: n,
+      durationSec: null,
+      distanceM: null,
+    });
+    const r = computeRecords([
+      session("s1", 1, [reps(8), reps(12)], "bodyweight_reps"),
+      session("s2", 2, [reps(10)], "bodyweight_reps"),
+    ]);
+    const top = r.byExercise.get("ex1")?.topRecords;
+    expect(top?.map((t) => t.value)).toEqual([12, 10, 8]);
+  });
+
+  it("top records cap at 4, keeping only the highest values", () => {
+    const dur = (sec: number) => ({
+      setType: "normal",
+      weightKg: null,
+      reps: null,
+      durationSec: sec,
+      distanceM: null,
+    });
+    const r = computeRecords([
+      {
+        sessionId: "s1",
+        startedAt: 1,
+        exercises: [
+          {
+            exerciseId: "ex1",
+            exerciseType: "duration",
+            sets: [dur(60), dur(90), dur(30), dur(120), dur(45)],
+          },
+        ],
+      },
+    ]);
+    const top = r.byExercise.get("ex1")?.topRecords;
+    expect(top?.map((t) => t.value)).toEqual([120, 90, 60, 45]);
+  });
+
+  it("top records keep distinct values, so straight sets don't fill the list", () => {
+    const dur = (sec: number) => ({
+      setType: "normal",
+      weightKg: null,
+      reps: null,
+      durationSec: sec,
+      distanceM: null,
+    });
+    const r = computeRecords([
+      {
+        sessionId: "s1",
+        startedAt: 1,
+        exercises: [
+          {
+            exerciseId: "ex1",
+            exerciseType: "duration",
+            sets: [dur(60), dur(60), dur(60), dur(50), dur(40)],
+          },
+        ],
+      },
+    ]);
+    const top = r.byExercise.get("ex1")?.topRecords;
+    expect(top?.map((t) => t.value)).toEqual([60, 50, 40]);
+  });
 });
 
 describe("checkSetForPR", () => {
