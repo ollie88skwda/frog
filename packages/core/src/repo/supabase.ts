@@ -343,6 +343,37 @@ export class SupabaseRepo implements Repo {
     private opts: { getOwnerId?: () => Promise<string> } = {},
   ) {}
 
+  private static readonly PAGE_SIZE = 1000;
+
+  // PostgREST caps every `select()` at 1000 rows by default; a flat select on
+  // a table that can grow past that (exercise library, set logs, …) silently
+  // truncates instead of erroring. Loop `.range()` until a short page proves
+  // there's nothing left. `page` must apply a deterministic order (e.g. `id`)
+  // so rows aren't skipped or repeated across pages.
+  private async selectAll<T>(
+    // `data` is typed `unknown` because a hand-written `.select("col, list")`
+    // string makes supabase-js fall back to an error-sentinel type (same
+    // reason other `.select("…")` calls in this file cast their result).
+    page: (
+      from: number,
+      to: number,
+    ) => PromiseLike<{ data: unknown; error: { message: string } | null }>,
+  ): Promise<T[]> {
+    const rows: T[] = [];
+    let from = 0;
+    for (;;) {
+      const { data, error } = await page(
+        from,
+        from + SupabaseRepo.PAGE_SIZE - 1,
+      );
+      throwIf(error);
+      const batch = (data as T[] | null) ?? [];
+      rows.push(...batch);
+      if (batch.length < SupabaseRepo.PAGE_SIZE) return rows;
+      from += SupabaseRepo.PAGE_SIZE;
+    }
+  }
+
   async createExercise(
     name: string,
     opts?: NewExerciseOpts,
@@ -574,17 +605,18 @@ export class SupabaseRepo implements Repo {
   }
 
   async listExercises(): Promise<Exercise[]> {
-    const { data, error } = await this.client
-      .from("exercises")
-      .select(LIST_COLUMNS)
-      .is("deleted_at", null)
-      .order("name");
-    throwIf(error);
-    // The untyped column-list string can't be validated against a generated
-    // schema (this client has none), so supabase-js falls back to an error
-    // sentinel type here rather than Row[] — safe to cast, same as every
-    // other hand-written `.select("…")` in this file.
-    return (data as unknown as Row[]).map(toExercise);
+    // `.order("id")` tie-breaks `name` so pagination is deterministic even
+    // when two exercises share a name (see `selectAll`).
+    const rows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("exercises")
+        .select(LIST_COLUMNS)
+        .is("deleted_at", null)
+        .order("name")
+        .order("id")
+        .range(from, to),
+    );
+    return rows.map(toExercise);
   }
 
   /** Fat fields (instructions, imageUrls) for one exercise — see B2. */
@@ -1219,6 +1251,17 @@ export class SupabaseRepo implements Repo {
     return updates.length;
   }
 
+  private selectAllFrom(table: string): Promise<Row[]> {
+    return this.selectAll<Row>((from, to) =>
+      this.client
+        .from(table)
+        .select()
+        .is("deleted_at", null)
+        .order("id")
+        .range(from, to),
+    );
+  }
+
   async exportAll(): Promise<ExportBundle> {
     const [
       exercises,
@@ -1233,45 +1276,31 @@ export class SupabaseRepo implements Repo {
       routineExercises,
       routineSets,
     ] = await Promise.all([
-      this.client.from("exercises").select().is("deleted_at", null),
-      this.client.from("machines").select().is("deleted_at", null),
-      this.client.from("metrics").select().is("deleted_at", null),
-      this.client.from("sessions").select().is("deleted_at", null),
-      this.client.from("session_exercises").select().is("deleted_at", null),
-      this.client.from("set_logs").select().is("deleted_at", null),
-      this.client.from("measurements").select().is("deleted_at", null),
-      this.client.from("routine_folders").select().is("deleted_at", null),
-      this.client.from("routines").select().is("deleted_at", null),
-      this.client.from("routine_exercises").select().is("deleted_at", null),
-      this.client.from("routine_sets").select().is("deleted_at", null),
+      this.selectAllFrom("exercises"),
+      this.selectAllFrom("machines"),
+      this.selectAllFrom("metrics"),
+      this.selectAllFrom("sessions"),
+      this.selectAllFrom("session_exercises"),
+      this.selectAllFrom("set_logs"),
+      this.selectAllFrom("measurements"),
+      this.selectAllFrom("routine_folders"),
+      this.selectAllFrom("routines"),
+      this.selectAllFrom("routine_exercises"),
+      this.selectAllFrom("routine_sets"),
     ]);
-    for (const r of [
-      exercises,
-      machines,
-      metrics,
-      sessions,
-      sessionExercises,
-      setLogs,
-      measurements,
-      routineFolders,
-      routines,
-      routineExercises,
-      routineSets,
-    ])
-      throwIf(r.error);
     return {
       schemaVersion: 3,
       exportedAt: Date.now(),
-      exercises: (exercises.data as Row[]).map(toExercise),
-      machines: (machines.data as Row[]).map(toMachine),
-      metrics: (metrics.data as Row[]).map(toMetric),
-      sessions: (sessions.data as Row[]).map(toSession),
-      sessionExercises: (sessionExercises.data as Row[]).map(toSessionExercise),
-      setLogs: (setLogs.data as Row[]).map(toSetLog),
-      measurements: (measurements.data as Row[]).map(toMeasurement),
-      routineFolders: (routineFolders.data as Row[]).map(toRoutineFolder),
-      routines: (routines.data as Row[]).map(toRoutine),
-      routineExercises: ((routineExercises.data as Row[]) ?? []).map((r) => ({
+      exercises: exercises.map(toExercise),
+      machines: machines.map(toMachine),
+      metrics: metrics.map(toMetric),
+      sessions: sessions.map(toSession),
+      sessionExercises: sessionExercises.map(toSessionExercise),
+      setLogs: setLogs.map(toSetLog),
+      measurements: measurements.map(toMeasurement),
+      routineFolders: routineFolders.map(toRoutineFolder),
+      routines: routines.map(toRoutine),
+      routineExercises: routineExercises.map((r) => ({
         id: r.id as string,
         createdAt: r.created_at as number,
         updatedAt: r.updated_at as number,
@@ -1284,7 +1313,7 @@ export class SupabaseRepo implements Repo {
         restSec: (r.rest_sec as number | null) ?? null,
         note: (r.note as string | null) ?? null,
       })),
-      routineSets: ((routineSets.data as Row[]) ?? []).map(toRoutineSet),
+      routineSets: routineSets.map(toRoutineSet),
     };
   }
 

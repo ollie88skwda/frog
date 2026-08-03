@@ -328,6 +328,35 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     expect(full?.notes).toBe("a note");
   });
 
+  it("listExercises and exportAll return every row past PostgREST's 1000-row page cap", async () => {
+    const TOTAL = 1100;
+    const marker = `Page Cap Test ${newId().slice(0, 8)}`;
+    const now = Date.now();
+    const rows = Array.from({ length: TOTAL }, (_, i) => ({
+      id: newId(),
+      created_at: now,
+      updated_at: now,
+      name: `${marker} ${i.toString().padStart(4, "0")}`,
+      is_custom: true,
+      exercise_type: "weight_reps",
+    }));
+    const BATCH = 200;
+    for (let i = 0; i < rows.length; i += BATCH) {
+      const { error } = await clientA
+        .from("exercises")
+        .insert(rows.slice(i, i + BATCH));
+      if (error) throw new Error(error.message);
+    }
+
+    const listed = await repoA.listExercises();
+    expect(listed.filter((e) => e.name.startsWith(marker))).toHaveLength(TOTAL);
+
+    const bundle = await repoA.exportAll();
+    expect(
+      bundle.exercises.filter((e) => e.name.startsWith(marker)),
+    ).toHaveLength(TOTAL);
+  }, 30_000);
+
   it("exercise media: owner can upload/clear, others cannot read", async () => {
     const ex = await repoA.createExercise(`Media Test ${newId().slice(0, 8)}`);
     const pixel = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], {
