@@ -479,6 +479,47 @@ describe("buildExerciseRecordsCard", () => {
     ]);
   });
 
+  it("still fills three support rows once the hero-restating row is dropped", () => {
+    const pullup = (id: string, startedAt: number, reps: number[]) => ({
+      sessionId: id,
+      startedAt,
+      exercises: [
+        {
+          exerciseId: "pullup",
+          exerciseType: "bodyweight_reps",
+          sets: reps.map((r) => ({
+            setType: "normal",
+            weightKg: null,
+            reps: r,
+            durationSec: null,
+            distanceM: null,
+          })),
+        },
+      ],
+    });
+    const { byExercise } = computeRecords(
+      [pullup("a", 0, [8, 12, 10]), pullup("b", 86_400_000, [14, 6])],
+      { includeWarmups: true },
+    );
+    const records = byExercise.get("pullup");
+    if (!records) throw new Error("expected records");
+    const card = buildExerciseRecordsCard({
+      exerciseName: "Pull-up",
+      type: "bodyweight_reps",
+      records,
+      unit: "kg",
+      distUnit: "km",
+      sparkline: [],
+      identity: IDENTITY,
+    });
+    expect(card?.hero.value).toBe("14 reps");
+    expect(card?.support).toEqual([
+      { label: "2nd best", value: "12 reps" },
+      { label: "3rd best", value: "10 reps" },
+      { label: "4th best", value: "8 reps" },
+    ]);
+  });
+
   it("drops support rows that would restate the hero for straight sets", () => {
     const plank = (id: string, startedAt: number, secs: number[]) => ({
       sessionId: id,

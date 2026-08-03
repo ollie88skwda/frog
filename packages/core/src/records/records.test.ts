@@ -130,7 +130,7 @@ describe("computeRecords", () => {
     expect(r.events.some((e) => e.prType === "best_pace")).toBe(true);
   });
 
-  it("top records: reps-only, duration, and distance types keep a top-3 all-time list", () => {
+  it("top records: reps-only, duration, and distance types keep an all-time list", () => {
     const reps = (n: number) => ({
       setType: "normal",
       weightKg: null,
@@ -146,7 +146,7 @@ describe("computeRecords", () => {
     expect(top?.map((t) => t.value)).toEqual([12, 10, 8]);
   });
 
-  it("top records cap at 3, keeping only the highest values", () => {
+  it("top records cap at 4, keeping only the highest values", () => {
     const dur = (sec: number) => ({
       setType: "normal",
       weightKg: null,
@@ -162,13 +162,13 @@ describe("computeRecords", () => {
           {
             exerciseId: "ex1",
             exerciseType: "duration",
-            sets: [dur(60), dur(90), dur(30), dur(120)],
+            sets: [dur(60), dur(90), dur(30), dur(120), dur(45)],
           },
         ],
       },
     ]);
     const top = r.byExercise.get("ex1")?.topRecords;
-    expect(top?.map((t) => t.value)).toEqual([120, 90, 60]);
+    expect(top?.map((t) => t.value)).toEqual([120, 90, 60, 45]);
   });
 
   it("top records keep distinct values, so straight sets don't fill the list", () => {

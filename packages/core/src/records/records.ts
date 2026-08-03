@@ -49,6 +49,11 @@ export const TOP_RECORD_PR_TYPE: Partial<Record<string, PrType>> = {
   weight_distance: "longest_distance",
 };
 
+/** How many all-time set values `ExerciseRecords.topRecords` keeps — one more
+ * than the 3 support rows a share card shows, since the row equal to the hero
+ * is dropped when both headline the same metric. */
+export const TOP_RECORDS_MAX = 4;
+
 /** The raw per-set scalar backing a `topRecords` row (reps / seconds /
  * meters — matched to TOP_RECORD_PR_TYPE), or null if this set doesn't
  * qualify. */
@@ -177,7 +182,8 @@ export function computeRecords(
               at: session.startedAt,
             });
         } else if (!hasSetRecords(block.exerciseType)) {
-          const v = topRecordValue(block.exerciseType, s);
+          const prType = TOP_RECORD_PR_TYPE[block.exerciseType];
+          const v = prType ? (cand[prType] ?? null) : null;
           if (v != null && !rec.topRecords.some((t) => t.value === v)) {
             rec.topRecords.push({
               value: v,
@@ -185,7 +191,8 @@ export function computeRecords(
               at: session.startedAt,
             });
             rec.topRecords.sort((a, b) => b.value - a.value);
-            if (rec.topRecords.length > 3) rec.topRecords.length = 3;
+            if (rec.topRecords.length > TOP_RECORDS_MAX)
+              rec.topRecords.length = TOP_RECORDS_MAX;
           }
         }
       }
