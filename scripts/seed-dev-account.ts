@@ -378,7 +378,10 @@ if (missing.length)
 // bodyweight_reps lift, say) logs rows the app renders as blank, excludes from
 // volume, and never counts for records.
 const exType = new Map(
-  (exRows ?? []).map((r) => [r.name as string, r.exercise_type as ExerciseType]),
+  (exRows ?? []).map((r) => [
+    r.name as string,
+    r.exercise_type as ExerciseType,
+  ]),
 );
 for (const [name, type] of exType) {
   if (!TYPE_FIELDS[type]) throw new Error(`${name}: unknown type ${type}`);
@@ -641,7 +644,9 @@ for (const plan of planned) {
         session_exercise_id: seId,
         set_no: setNo++,
         set_type: "warmup",
-        weight_kg: fields.weight ? round(working * (0.5 + 0.15 * w), 2.5) : null,
+        weight_kg: fields.weight
+          ? round(working * (0.5 + 0.15 * w), 2.5)
+          : null,
         reps: 5,
         rir: null,
         rest_sec: 60,
