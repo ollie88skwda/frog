@@ -81,48 +81,16 @@ export type CountableSet = {
 };
 
 /**
- * How many *physical* sets a list of set rows represents. A unilateral set is
- * two rows sharing one set_no and counts once. Rows with side == null are
- * whole sets and always count. Grouping by set_no (not "count only the left
- * rows") means a set logged for one side only still counts as one set
- * instead of zero.
- */
-export function countSets(
-  sets: CountableSet[],
-  opts: VolumeOptions = { includeWarmups: true },
-): number {
-  const seenPairs = new Set<number>();
-  let n = 0;
-  for (const s of sets) {
-    if (!countsForStats(s, opts)) continue;
-    if (s.side == null) {
-      n += 1;
-      continue;
-    }
-    if (seenPairs.has(s.setNo)) continue; // sibling already counted
-    seenPairs.add(s.setNo);
-    n += 1;
-  }
-  return n;
-}
-
-export function sessionSetCount(
-  blocks: Array<{ sets: CountableSet[] }>,
-  opts: VolumeOptions = { includeWarmups: true },
-): number {
-  let n = 0;
-  for (const b of blocks) n += countSets(b.sets, opts);
-  return n;
-}
-
-/**
- * Groups set rows into *physical* sets — the projection counterpart of
- * countSets. A unilateral pair is two rows sharing one set_no and yields one
- * group; every row with side == null is its own singleton group. Input order
- * is preserved, so with the repo's left-before-right ordering `group[0]` is
- * the left side and serves as the template for one-value-per-set projections
+ * Groups set rows into *physical* sets — the single definition of the
+ * set_no pairing rule. A unilateral pair is two rows sharing one set_no and
+ * yields one group; every row with side == null is its own singleton group.
+ * Grouping by set_no (not "keep only the left rows") means a set logged for
+ * one side only still yields one group instead of none. Input order is
+ * preserved, so with the repo's left-before-right ordering `group[0]` is the
+ * left side and serves as the template for one-value-per-set projections
  * (routine write-back, copy-workout seeds, committed-row rendering). Anything
- * projecting sets outward must emit one output per group, never one per row.
+ * projecting sets outward must emit one output per group, never one per row;
+ * anything counting them goes through countSets.
  */
 export function groupSetsBySetNo<
   T extends { setNo: number; side?: string | null },
@@ -143,4 +111,24 @@ export function groupSetsBySetNo<
     g.push(s);
   }
   return groups;
+}
+
+/**
+ * How many *physical* sets a list of set rows represents, after dropping the
+ * rows that don't count for stats (uncompleted, or warm-ups when excluded).
+ */
+export function countSets(
+  sets: CountableSet[],
+  opts: VolumeOptions = { includeWarmups: true },
+): number {
+  return groupSetsBySetNo(sets.filter((s) => countsForStats(s, opts))).length;
+}
+
+export function sessionSetCount(
+  blocks: Array<{ sets: CountableSet[] }>,
+  opts: VolumeOptions = { includeWarmups: true },
+): number {
+  let n = 0;
+  for (const b of blocks) n += countSets(b.sets, opts);
+  return n;
 }
