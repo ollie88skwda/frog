@@ -13,6 +13,8 @@ const set = (
   reps,
   durationSec: null,
   distanceM: null,
+  setNo: 0,
+  side: null,
 });
 
 function session(
@@ -98,6 +100,8 @@ describe("computeRecords", () => {
       reps: null,
       durationSec: sec,
       distanceM: m,
+      setNo: 0,
+      side: null,
     });
     const r = computeRecords([
       {
@@ -137,6 +141,8 @@ describe("computeRecords", () => {
       reps: n,
       durationSec: null,
       distanceM: null,
+      setNo: 0,
+      side: null,
     });
     const r = computeRecords([
       session("s1", 1, [reps(8), reps(12)], "bodyweight_reps"),
@@ -153,6 +159,8 @@ describe("computeRecords", () => {
       reps: null,
       durationSec: sec,
       distanceM: null,
+      setNo: 0,
+      side: null,
     });
     const r = computeRecords([
       {
@@ -178,6 +186,8 @@ describe("computeRecords", () => {
       reps: null,
       durationSec: sec,
       distanceM: null,
+      setNo: 0,
+      side: null,
     });
     const r = computeRecords([
       {

@@ -118,13 +118,14 @@ One exercise performed within one session, ordered.
 |---|---|---|
 | id | uuid | PK |
 | session_exercise_id | uuid | FK → session_exercises |
-| set_no | integer | 0-based within the exercise block |
+| set_no | integer | Physical set number within the exercise block. NOT unique per row: a unilateral set is TWO rows sharing one set_no, one per `side` — see DECISIONS.md. |
+| side | text? | `'left' \| 'right' \| null`. Null = the whole set (bilateral, alternating, and every row logged before this column existed). |
 | weight_kg | real? | canonical kg |
 | reps | integer? | |
 | rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null |
 | rir_min / rir_max | integer? | logged RIR range; round-tripped by the repo, the API and the export today, but no app surface writes them yet (range logging lands with the session-logging follow-up) |
 | rpe | real? | 1–10 perceived exertion (halves allowed) |
-| rest_sec | integer? | seconds rested before this set (null = first/unknown) |
+| rest_sec | integer? | seconds rested before this set (null = first/unknown). On a unilateral pair, only the left row carries it — one commit, one rest countdown. |
 | note | text? | |
 | metric_values | jsonb | {metric_id: value} for enabled set metrics |
 | completed | boolean | |

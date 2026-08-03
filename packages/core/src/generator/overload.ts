@@ -20,6 +20,19 @@ export type OverloadResult = {
   status: "progressing" | "maintaining" | "no_data";
 };
 
+// A unilateral set advances only when BOTH sides hit the target, so when two
+// performed rows share a set_no (a unilateral pair), the weaker side is the
+// one the rule reads: lower reps, tie-broken by lower weight. Missing reps
+// (null) sort as weaker than any recorded performance.
+function weaker(a: PerformedSet, b: PerformedSet): PerformedSet {
+  const repsA = a.reps ?? Number.NEGATIVE_INFINITY;
+  const repsB = b.reps ?? Number.NEGATIVE_INFINITY;
+  if (repsA !== repsB) return repsA < repsB ? a : b;
+  const weightA = a.weightKg ?? Number.NEGATIVE_INFINITY;
+  const weightB = b.weightKg ?? Number.NEGATIVE_INFINITY;
+  return weightA <= weightB ? a : b;
+}
+
 export function overloadStepKg(equipment: string | null | undefined): number {
   switch (equipment) {
     case "dumbbell":
@@ -53,7 +66,11 @@ export function nextPrescription(
       status: "no_data",
     };
 
-  const byNo = new Map(performed.map((p) => [p.setNo, p]));
+  const byNo = new Map<number, PerformedSet>();
+  for (const p of performed) {
+    const prev = byNo.get(p.setNo);
+    byNo.set(p.setNo, prev == null ? p : weaker(prev, p));
+  }
   let all = true;
   let any = false;
   for (const t of working) {

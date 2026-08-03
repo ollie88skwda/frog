@@ -1,5 +1,6 @@
 import {
   buildSessionCard,
+  countSets,
   type ExerciseType,
   type NewRoutineInput,
   type SessionExerciseDetail,
@@ -435,7 +436,8 @@ export default function HistoryDetailScreen() {
             <header className="flex items-center justify-between border-b border-border px-4 py-2">
               <h2 className="text-sm font-medium">{block.exerciseName}</h2>
               <span className="num text-2xs text-faint">
-                {block.sets.length} {block.sets.length === 1 ? "set" : "sets"}
+                {countSets(block.sets)}{" "}
+                {countSets(block.sets) === 1 ? "set" : "sets"}
                 {avgRestLabel(block.sets) &&
                   ` · rest ${avgRestLabel(block.sets)} avg`}
               </span>
@@ -451,7 +453,10 @@ export default function HistoryDetailScreen() {
                 key={set.id}
                 className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-4 py-2"
               >
-                <span className="num text-xs text-faint">{set.setNo + 1}</span>
+                <span className="num text-xs text-faint">
+                  {set.setNo + 1}
+                  {set.side === "left" ? "ᴸ" : set.side === "right" ? "ᴿ" : ""}
+                </span>
                 <span className="num text-sm">
                   {set.weightKg != null
                     ? toDisplayWeight(set.weightKg, unit)

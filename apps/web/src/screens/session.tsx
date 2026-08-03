@@ -2,6 +2,7 @@ import {
   adjustRest,
   checkSetForPR,
   computeRecords,
+  countSets,
   type Exercise,
   type ExercisePref,
   type ExerciseRecords,
@@ -27,6 +28,7 @@ import {
   newId,
   type ParsedSetUtterance,
   type PlateConfig,
+  type PrType,
   parseSetUtterance,
   previousCells,
   type RestTimerState,
@@ -181,7 +183,39 @@ const SUPERSET_COLORS = [
 type CommitInput = Omit<LoggedSet, "id" | "setNo" | "restSec"> & {
   metricValues?: Record<string, unknown> | null;
   restSec?: number | null;
+  /** Present only for a unilateral pair: the right side's own values,
+   * written as a second row sharing this commit's set_no. Set type, RIR/RPE,
+   * note and metrics fan out from the left side — they're properties of the
+   * physical set, not the limb. */
+  otherSide?: {
+    weightKg: number | null;
+    reps: number | null;
+    durationSec: number | null;
+    distanceM: number | null;
+  } | null;
 };
+
+// Groups committed rows into physical sets: a unilateral pair is two rows
+// sharing one set_no (rendered as one CommittedRow, two lines); every other
+// row (side: null) is its own singleton group. Preserves render order.
+function groupCommittedSets(sets: LoggedSet[]): LoggedSet[][] {
+  const groups: LoggedSet[][] = [];
+  const bySetNo = new Map<number, LoggedSet[]>();
+  for (const s of sets) {
+    if (s.side == null) {
+      groups.push([s]);
+      continue;
+    }
+    let g = bySetNo.get(s.setNo);
+    if (!g) {
+      g = [];
+      bySetNo.set(s.setNo, g);
+      groups.push(g);
+    }
+    g.push(s);
+  }
+  return groups;
+}
 
 export type SetPatch = {
   weightKg?: number | null;
@@ -238,12 +272,14 @@ function columnsFor(
     cols.push({ key: "weight", header: weightLabel(type, unitLabel(unit)) });
   if (f.distance) cols.push({ key: "distance", header: distUnit });
   if (f.duration) cols.push({ key: "duration", header: "time" });
-  // Unilateral: one logged set is one side, so the reps column says so —
-  // matches muscleCredits' doubled per-side credit for the same exercises.
+  // Unilateral: the ᴸ/ᴿ line markers already say "per side", so the header
+  // stays "reps". Alternating logs as one row whose reps are a total across
+  // both sides (L-R-L-R within the set) — the header says so since there's
+  // no per-line marker to carry that meaning.
   if (f.reps)
     cols.push({
       key: "reps",
-      header: laterality === "unilateral" ? "reps/side" : "reps",
+      header: laterality === "alternating" ? "total reps" : "reps",
     });
   return cols;
 }
@@ -337,12 +373,15 @@ function SetTypeCell({
   ringState,
   onChange,
   testId,
+  sideLabel,
 }: {
   index: number;
   setType: SetType;
   ringState: "done" | "empty";
   onChange: (t: SetType) => void;
   testId: string;
+  /** "L" on a unilateral pair's top line — renders "Nᴸ" instead of "N". */
+  sideLabel?: "L";
 }) {
   const [open, setOpen] = useState(false);
   const marker = SET_TYPE_MARKERS[setType];
@@ -363,7 +402,7 @@ function SetTypeCell({
         )}
         data-testid={testId}
       >
-        {marker || index + 1}
+        {marker || (sideLabel ? `${index + 1}ᴸ` : index + 1)}
       </button>
       {open && (
         <>
@@ -938,57 +977,96 @@ export default function SessionScreen() {
     const prevAt = lastCommitByBlock[seId];
     const restSec =
       prevAt != null ? Math.round((Date.now() - prevAt) / 1000) : null;
-    const withRest = { ...set, restSec };
-    const tempId = newId();
     const block = (blocks ?? []).find((b) => b.seId === seId);
     // One number for both the optimistic row and the write, so a retry can't
     // re-derive a different one. High-water mark rather than a count: removing
     // a set leaves a gap (the row is only soft-deleted server-side), and
-    // reusing its number would collide with a live row.
+    // reusing its number would collide with a live row. A unilateral pair
+    // shares this one set_no across its two rows.
     const setNo = (block?.committed ?? []).reduce(
       (next, s) => Math.max(next, s.setNo + 1),
       0,
     );
+    const leftTempId = newId();
+    const { otherSide, ...leftFields } = set;
+    const leftRow = { ...leftFields, restSec, id: leftTempId, setNo };
+    // The right side writes rest_sec: null — one commit per physical set means
+    // one countdown (below), and the header average already filters nulls.
+    // Set type / RIR / RPE / note / metrics fan out from the left side: they
+    // describe the physical set, not the limb.
+    const rightTempId = otherSide ? newId() : null;
+    const rightRow =
+      otherSide && rightTempId
+        ? {
+            weightKg: otherSide.weightKg,
+            reps: otherSide.reps,
+            durationSec: otherSide.durationSec,
+            distanceM: otherSide.distanceM,
+            setType: set.setType,
+            rir: set.rir,
+            rpe: set.rpe,
+            note: set.note,
+            metricValues: set.metricValues,
+            side: "right" as const,
+            restSec: null,
+            id: rightTempId,
+            setNo,
+          }
+        : null;
     setBlocks((prev) =>
       (prev ?? []).map((b) =>
         b.seId === seId
           ? {
               ...b,
-              committed: [...b.committed, { ...withRest, id: tempId, setNo }],
+              committed: [
+                ...b.committed,
+                leftRow,
+                ...(rightRow ? [rightRow] : []),
+              ],
             }
           : b,
       ),
     );
     setLastCommitByBlock((prev) => ({ ...prev, [seId]: Date.now() }));
-    logSet.mutate({ seId, set: withRest, tempId, setNo });
+    logSet.mutate({ seId, set: leftRow, tempId: leftTempId, setNo });
+    if (rightRow)
+      logSet.mutate({ seId, set: rightRow, tempId: rightRow.id, setNo });
     // The uncommitted row is now saved server-side — drop its local draft.
     clearDraft(seId);
 
     // Live PR check against the mount-time bests snapshot (session-scoped types
-    // finalize at save; only set-scoped ones fire live).
+    // finalize at save; only set-scoped ones fire live) — once per side row,
+    // since either side of a unilateral pair can PR independently.
     if (block && prSnapshot) {
-      const hits = checkSetForPR(
-        prSnapshot.get(block.exerciseId),
-        ctx.exerciseType,
-        {
-          setType: set.setType ?? "normal",
-          weightKg: set.weightKg,
-          reps: set.reps,
-          durationSec: set.durationSec,
-          distanceM: set.distanceM,
-        },
-      );
-      if (hits.length) {
-        // The banner is opt-out (default on); the row medal always pins.
-        if (livePrEnabled) {
-          prIdRef.current += 1;
-          setPrBanner({
-            id: prIdRef.current,
-            exerciseName: block.name,
-            prTypes: hits.map((h) => h.prType),
-          });
+      const rows = rightRow ? [leftRow, rightRow] : [leftRow];
+      const hitTypes = new Set<PrType>();
+      for (const row of rows) {
+        const hits = checkSetForPR(
+          prSnapshot.get(block.exerciseId),
+          ctx.exerciseType,
+          {
+            setType: row.setType ?? "normal",
+            weightKg: row.weightKg,
+            reps: row.reps,
+            durationSec: row.durationSec,
+            distanceM: row.distanceM,
+            setNo: row.setNo,
+            side: row.side ?? null,
+          },
+        );
+        if (hits.length) {
+          for (const h of hits) hitTypes.add(h.prType);
+          setPrSetIds((prev) => new Set(prev).add(row.id));
         }
-        setPrSetIds((prev) => new Set(prev).add(tempId));
+      }
+      // The banner is opt-out (default on); the row medal always pins.
+      if (hitTypes.size && livePrEnabled) {
+        prIdRef.current += 1;
+        setPrBanner({
+          id: prIdRef.current,
+          exerciseName: block.name,
+          prTypes: [...hitTypes],
+        });
       }
     }
 
@@ -1184,7 +1262,7 @@ export default function SessionScreen() {
     for (const b of blocks) {
       if (!b.routineExerciseId) continue;
       const t = routineByReId.get(b.routineExerciseId);
-      if (t && b.committed.length > t.sets.length) return true;
+      if (t && countSets(b.committed) > t.sets.length) return true;
     }
     return false;
   }, [session?.routineId, routineDetail, blocks, routineByReId]);
@@ -1312,7 +1390,7 @@ export default function SessionScreen() {
 
   if (blocks === null) return null;
 
-  const setCount = blocks.reduce((n, b) => n + b.committed.length, 0);
+  const setCount = blocks.reduce((n, b) => n + countSets(b.committed), 0);
   const volumeKg = blocks.reduce(
     (sum, b) =>
       sum +
@@ -2148,7 +2226,7 @@ function ExerciseBlock({
   const navigate = useNavigate();
   const [plateTarget, setPlateTarget] = useState<number | null>(null);
   const [plateOpen, setPlateOpen] = useState(false);
-  const activeIndex = block.committed.length;
+  const activeIndex = countSets(block.committed);
   const enabledMetrics = metrics.filter(
     (m) => m.scope === "set" && m.exerciseIds?.includes(block.exerciseId),
   );
@@ -2305,10 +2383,10 @@ function ExerciseBlock({
         <span />
       </div>
 
-      {block.committed.map((set, i) => (
+      {groupCommittedSets(block.committed).map((rows, i) => (
         <CommittedRow
-          key={set.id}
-          set={set}
+          key={rows[0].id}
+          rows={rows}
           index={i}
           unit={blockUnit}
           distUnit={distUnit}
@@ -2317,9 +2395,14 @@ function ExerciseBlock({
           template={template}
           showPrevious={showPrevious}
           previous={cells[i]?.previous ?? null}
-          isPr={prSetIds.has(set.id)}
-          onSave={(patch) => onSaveSet(set.id, patch)}
-          onDelete={() => onRemoveSet(set.id)}
+          prSetIds={prSetIds}
+          onSave={(setId, patch) => onSaveSet(setId, patch)}
+          onSaveType={(patch) => {
+            for (const r of rows) onSaveSet(r.id, patch);
+          }}
+          onDelete={() => {
+            for (const r of rows) onRemoveSet(r.id);
+          }}
         />
       ))}
 
@@ -2342,6 +2425,7 @@ function ExerciseBlock({
         enabledMetrics={enabledMetrics}
         autoFocusWeight={activeIndex > 0}
         barLoaded={barLoaded}
+        laterality={exercise?.laterality ?? null}
         onOpenPlates={(target) => {
           setPlateTarget(target);
           setPlateOpen(true);
@@ -2847,7 +2931,7 @@ function PreviousCell({
 }
 
 function CommittedRow({
-  set,
+  rows,
   index,
   unit,
   distUnit,
@@ -2856,11 +2940,12 @@ function CommittedRow({
   template,
   showPrevious,
   previous,
-  isPr,
+  prSetIds,
   onSave,
+  onSaveType,
   onDelete,
 }: {
-  set: LoggedSet;
+  rows: LoggedSet[];
   index: number;
   unit: Unit;
   distUnit: DistanceUnit;
@@ -2869,11 +2954,16 @@ function CommittedRow({
   template: string;
   showPrevious: boolean;
   previous: GhostSet | null;
-  isPr: boolean;
-  onSave: (patch: SetPatch) => void;
+  prSetIds: Set<string>;
+  onSave: (setId: string, patch: SetPatch) => void;
+  onSaveType: (patch: Pick<SetPatch, "setType">) => void;
   onDelete: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const primary = rows[0];
+  const secondary = rows[1] ?? null;
+  const isPaired = secondary != null;
+
+  const [editingRow, setEditingRow] = useState<LoggedSet | null>(null);
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [duration, setDuration] = useState("");
@@ -2885,9 +2975,9 @@ function CommittedRow({
 
   const has = (k: ColKey) => columns.some((c) => c.key === k);
   const effort = supportsEffort(type);
-  const setType = (set.setType as SetType) ?? "normal";
+  const setType = (primary.setType as SetType) ?? "normal";
 
-  function openDetails() {
+  function openDetails(set: LoggedSet) {
     setWeight(
       set.weightKg != null ? String(toDisplayWeight(set.weightKg, unit)) : "",
     );
@@ -2902,10 +2992,11 @@ function CommittedRow({
     setRpe(set.rpe != null ? String(set.rpe) : "");
     setNote(set.note ?? "");
     setConfirmDelete(false);
-    setOpen(true);
+    setEditingRow(set);
   }
 
   function save() {
+    if (!editingRow) return;
     const patch: SetPatch = {
       note: note.trim() === "" ? null : note.trim(),
     };
@@ -2932,8 +3023,8 @@ function CommittedRow({
       patch.rir = rir.trim() === "" ? null : Number.parseInt(rir, 10);
       patch.rpe = rpe.trim() === "" ? null : Number.parseFloat(rpe);
     }
-    onSave(patch);
-    setOpen(false);
+    onSave(editingRow.id, patch);
+    setEditingRow(null);
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -2962,13 +3053,18 @@ function CommittedRow({
       )
     : null;
   const restLabel =
-    set.restSec != null ? formatDurationSeconds(set.restSec * 1000) : null;
+    primary.restSec != null
+      ? formatDurationSeconds(primary.restSec * 1000)
+      : null;
   const labelCls = "text-2xs font-medium tracking-wide text-faint uppercase";
 
   return (
     <div className="relative border-t border-border">
       <div
-        className="group commit-flash grid h-11 items-center gap-x-2 bg-surface px-4 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-8"
+        className={cn(
+          "group commit-flash grid h-11 items-center gap-x-2 bg-surface px-4 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-8",
+          isPaired && "pb-0.5 md:pb-0",
+        )}
         style={{ gridTemplateColumns: template }}
         data-testid={`committed-${index}`}
       >
@@ -2976,8 +3072,9 @@ function CommittedRow({
           index={index}
           setType={setType}
           ringState="done"
-          onChange={(t) => onSave({ setType: t })}
+          onChange={(t) => onSaveType({ setType: t })}
           testId={`committed-${index}-type`}
+          sideLabel={isPaired ? "L" : undefined}
         />
         {showPrevious && (
           <PreviousCell
@@ -2990,20 +3087,20 @@ function CommittedRow({
           <button
             key={c.key}
             type="button"
-            onClick={openDetails}
+            onClick={() => openDetails(primary)}
             className="num cursor-pointer text-left text-sm"
             title="Set details"
             data-testid={`committed-${index}-${c.key}`}
           >
-            {committedText(c.key, set, unit, distUnit)}
+            {committedText(c.key, primary, unit, distUnit)}
           </button>
         ))}
         <span className="flex items-center justify-center gap-1">
           {effort && (
             <span className="num text-2xs text-faint max-md:hidden md:group-hover:hidden">
               {[
-                set.rir != null ? `@${set.rir}` : null,
-                set.rpe != null ? `RPE ${set.rpe}` : null,
+                primary.rir != null ? `@${primary.rir}` : null,
+                primary.rpe != null ? `RPE ${primary.rpe}` : null,
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -3015,7 +3112,7 @@ function CommittedRow({
           <Button
             variant="outline"
             size="icon-lg"
-            onClick={openDetails}
+            onClick={() => openDetails(primary)}
             title="Set details"
             className="md:hidden md:group-hover:inline-flex"
             data-testid={`set-menu-${index}`}
@@ -3025,7 +3122,7 @@ function CommittedRow({
         </span>
       </div>
 
-      {isPr && (
+      {prSetIds.has(primary.id) && (
         <span
           className="pointer-events-none absolute top-0.5 right-1.5 text-accent"
           title="Personal record"
@@ -3035,9 +3132,56 @@ function CommittedRow({
         </span>
       )}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      {/* Right side of a unilateral pair: no ring, no set-type/⋯ control —
+          those are properties of the physical set, controlled from the ᴸ
+          line above. Tapping a value still opens that limb's own details. */}
+      {isPaired && (
+        <div className="relative">
+          <div
+            className="grid items-center gap-x-2 bg-surface px-4 pb-1.5 md:pb-1"
+            style={{ gridTemplateColumns: template }}
+            data-testid={`committed-${index}-right`}
+          >
+            <span className="num pl-6 text-2xs tabular-nums text-faint md:pl-5">
+              {index + 1}ᴿ
+            </span>
+            {showPrevious && <span />}
+            {columns.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => openDetails(secondary)}
+                className="num cursor-pointer text-left text-sm text-soft"
+                title="Set details"
+                data-testid={`committed-${index}-right-${c.key}`}
+              >
+                {committedText(c.key, secondary, unit, distUnit)}
+              </button>
+            ))}
+            <span />
+          </div>
+          {prSetIds.has(secondary.id) && (
+            <span
+              className="pointer-events-none absolute top-0.5 right-1.5 text-accent"
+              title="Personal record"
+              data-testid={`committed-${index}-right-medal`}
+            >
+              <Medal className="size-3.5" />
+            </span>
+          )}
+        </div>
+      )}
+
+      <Dialog
+        open={editingRow != null}
+        onOpenChange={(o) => !o && setEditingRow(null)}
+      >
         <DialogContent
-          title={`Set ${index + 1} details`}
+          title={
+            isPaired
+              ? `Set ${index + 1} (${editingRow === secondary ? "right" : "left"}) details`
+              : `Set ${index + 1} details`
+          }
           className="md:max-w-sm"
         >
           <div className="flex flex-col gap-4">
@@ -3156,7 +3300,7 @@ function CommittedRow({
                     variant="danger"
                     size="sm"
                     onClick={() => {
-                      setOpen(false);
+                      setEditingRow(null);
                       onDelete();
                     }}
                     data-testid={`set-menu-${index}-delete-confirm`}
@@ -3311,6 +3455,7 @@ function ActiveRow({
   enabledMetrics,
   autoFocusWeight,
   barLoaded,
+  laterality,
   onOpenPlates,
   timerRunning,
   timerStartedAt,
@@ -3334,6 +3479,7 @@ function ActiveRow({
   enabledMetrics: Metric[];
   autoFocusWeight: boolean;
   barLoaded: boolean;
+  laterality?: string | null;
   onOpenPlates: (target: number | null) => void;
   timerRunning: boolean;
   timerStartedAt: number | null;
@@ -3341,6 +3487,7 @@ function ActiveRow({
   onCommit: (set: CommitInput, ctx: CommitCtx) => void;
   ref: Ref<ActiveRowHandle>;
 }) {
+  const isUnilateral = laterality === "unilateral";
   // Restore any uncommitted keystrokes persisted for this block (draft wins over
   // the routine/copy seed once the user has started typing).
   const [draft] = useState<Partial<DraftSnapshot> | null>(() =>
@@ -3377,6 +3524,12 @@ function ActiveRow({
   const [rir, setRir] = useState(() => draft?.rir ?? "");
   const [rpe, setRpe] = useState(() => draft?.rpe ?? "");
   const [note, setNote] = useState(() => draft?.note ?? "");
+  // Right side of a unilateral pair. Blank means "mirror the left value" —
+  // the input shows it as a faint placeholder; typing here overrides it.
+  const [rWeight, setRWeight] = useState(() => draft?.rWeight ?? "");
+  const [rReps, setRReps] = useState(() => draft?.rReps ?? "");
+  const [rDuration, setRDuration] = useState(() => draft?.rDuration ?? "");
+  const [rDistance, setRDistance] = useState(() => draft?.rDistance ?? "");
   const [setType, setSetType] = useState<SetType>(
     () => draft?.setType ?? seed?.setType ?? "normal",
   );
@@ -3391,6 +3544,7 @@ function ActiveRow({
   const [lastAdded, setLastAdded] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const done = useRef(false);
+  const rowRef = useRef<HTMLDivElement>(null);
   const [, tick] = useReducer((n: number) => n + 1, 0);
 
   // Mirror uncommitted keystrokes to localStorage so a reload restores them.
@@ -3406,6 +3560,10 @@ function ActiveRow({
       setType,
       extras: [...extras],
       metricDraft,
+      rWeight,
+      rReps,
+      rDuration,
+      rDistance,
     });
   }, [
     seId,
@@ -3419,6 +3577,10 @@ function ActiveRow({
     setType,
     extras,
     metricDraft,
+    rWeight,
+    rReps,
+    rDuration,
+    rDistance,
   ]);
 
   function openPlates() {
@@ -3504,6 +3666,18 @@ function ActiveRow({
       setDuration(formatMMSS(previous.durationSec));
     if (f.distance && previous.distanceM != null)
       setDistance(String(toDisplayDistance(previous.distanceM, distUnit)));
+    // An uneven pair last time restores uneven — otherwise the left fill
+    // above already mirrors across as a placeholder.
+    const other = previous.otherSide;
+    if (isUnilateral && other) {
+      if (f.weight && other.weightKg != null)
+        setRWeight(String(toDisplayWeight(other.weightKg, unit)));
+      if (f.reps && other.reps != null) setRReps(String(other.reps));
+      if (f.duration && other.durationSec != null)
+        setRDuration(formatMMSS(other.durationSec));
+      if (f.distance && other.distanceM != null)
+        setRDistance(String(toDisplayDistance(other.distanceM, distUnit)));
+    }
   }
 
   function metricValues(): Record<string, unknown> | null {
@@ -3555,6 +3729,36 @@ function ActiveRow({
     return { weightKg, reps: repsN, durationSec, distanceM };
   }
 
+  // Right side of a unilateral pair: defaults to the left's own resolved
+  // values (symmetric by default) — only a field actually typed into here
+  // overrides its left counterpart.
+  function parseRightFields(left: ReturnType<typeof parseFields>) {
+    let weightKg = left.weightKg;
+    let repsN = left.reps;
+    let durationSec = left.durationSec;
+    let distanceM = left.distanceM;
+    if (f.weight && rWeight.trim() !== "") {
+      const d = Number.parseFloat(rWeight);
+      weightKg = Number.isNaN(d) ? null : unit === "lb" ? lbToKg(d) : d;
+    }
+    if (f.reps && rReps.trim() !== "") {
+      const r = Number.parseInt(rReps, 10);
+      repsN = Number.isNaN(r) ? null : r;
+    }
+    if (f.duration && rDuration.trim() !== "")
+      durationSec = parseDuration(rDuration);
+    if (f.distance && rDistance.trim() !== "") {
+      const d = Number.parseFloat(rDistance);
+      distanceM =
+        d == null || Number.isNaN(d)
+          ? null
+          : distUnit === "km"
+            ? kmToM(d)
+            : miToM(d);
+    }
+    return { weightKg, reps: repsN, durationSec, distanceM };
+  }
+
   function commit(adoptGhost: boolean) {
     if (done.current) return;
     const v = parseFields(adoptGhost);
@@ -3578,6 +3782,8 @@ function ActiveRow({
         rpe: effort && rpe.trim() !== "" ? Number.parseFloat(rpe) : null,
         note: note.trim() === "" ? null : note.trim(),
         metricValues: metricValues(),
+        side: isUnilateral ? "left" : null,
+        otherSide: isUnilateral ? parseRightFields(v) : null,
       },
       { exerciseType: type, nextSetType: nextSeedType },
     );
@@ -3597,7 +3803,23 @@ function ActiveRow({
   // either field commits the set — no separate confirm tap required. Doesn't
   // adopt ghost values (unlike Enter's tap-to-accept), so it never silently
   // pulls in an untyped duration/distance alongside it.
+  //
+  // Paired (unilateral) rows re-scope this: blurring a ᴸ field never commits
+  // — only leaving the ᴿ line does, and only once the ᴸ line is complete.
+  // Otherwise the moment you tab off "weight" into "reps" would half-log the
+  // set before the right side ever gets a chance to mirror or override.
   function onFieldBlur() {
+    if (isUnilateral) return;
+    if (weight.trim() !== "" && reps.trim() !== "") commit(false);
+  }
+
+  // Guards against committing mid-override: tabbing from the ᴿ weight field
+  // to the ᴿ reps field blurs the former while the ᴸ line is already
+  // complete, which would otherwise auto-commit before the reps override is
+  // even typed. Only fires once focus actually leaves this row.
+  function onRightFieldBlur(e: React.FocusEvent<HTMLInputElement>) {
+    const next = e.relatedTarget as Node | null;
+    if (next && rowRef.current?.contains(next)) return;
     if (weight.trim() !== "" && reps.trim() !== "") commit(false);
   }
 
@@ -3698,6 +3920,80 @@ function ActiveRow({
     );
   }
 
+  // Right-side input for a unilateral pair. Placeholder mirrors the left
+  // line's own typed value (live, as faint text) so the pair reads as
+  // symmetric until overridden — typing here just makes the row uneven.
+  function rDataCell(key: ColKey) {
+    if (key === "weight")
+      return (
+        <Input
+          key={key}
+          inputMode="decimal"
+          placeholder={
+            weight.trim() !== ""
+              ? weight
+              : ghostWeight != null
+                ? String(ghostWeight)
+                : unitLabel(unit)
+          }
+          value={rWeight}
+          onChange={(e) => setRWeight(e.target.value)}
+          onKeyDown={onKeyDown}
+          onBlur={onRightFieldBlur}
+          className="num h-10 md:h-8"
+          data-testid={`set-${index}-right-weight`}
+        />
+      );
+    if (key === "reps")
+      return (
+        <Input
+          key={key}
+          inputMode="numeric"
+          placeholder={
+            reps.trim() !== ""
+              ? reps
+              : (repRangePlaceholder ?? ghostReps ?? "reps")
+          }
+          value={rReps}
+          onChange={(e) => setRReps(e.target.value)}
+          onKeyDown={onKeyDown}
+          onBlur={onRightFieldBlur}
+          className="num h-10 md:h-8"
+          data-testid={`set-${index}-right-reps`}
+        />
+      );
+    if (key === "distance")
+      return (
+        <Input
+          key={key}
+          inputMode="decimal"
+          placeholder={
+            distance.trim() !== "" ? distance : (ghostDistance ?? distUnit)
+          }
+          value={rDistance}
+          onChange={(e) => setRDistance(e.target.value)}
+          onKeyDown={onKeyDown}
+          className="num h-10 md:h-8"
+          data-testid={`set-${index}-right-distance`}
+        />
+      );
+    // duration — no second timer button: one physical set has one clock.
+    return (
+      <Input
+        key={key}
+        inputMode="text"
+        placeholder={
+          duration.trim() !== "" ? duration : (ghostDuration ?? "m:ss")
+        }
+        value={rDuration}
+        onChange={(e) => setRDuration(e.target.value)}
+        onKeyDown={onKeyDown}
+        className="num h-10 md:h-8"
+        data-testid={`set-${index}-right-duration`}
+      />
+    );
+  }
+
   // Compact preview of what's filled in next to the details-sheet trigger —
   // mirrors CommittedRow's collapsed RIR/RPE readout, so the same information
   // is visible without opening the sheet on either row type.
@@ -3711,7 +4007,7 @@ function ActiveRow({
     : "";
 
   return (
-    <div className="border-t border-border px-4 py-2">
+    <div ref={rowRef} className="border-t border-border px-4 py-2">
       <div
         className="grid items-center gap-x-2"
         style={{ gridTemplateColumns: template }}
@@ -3722,6 +4018,7 @@ function ActiveRow({
           ringState="empty"
           onChange={setSetType}
           testId={`set-${index}-type`}
+          sideLabel={isUnilateral ? "L" : undefined}
         />
         {showPrevious && (
           <button
@@ -3758,6 +4055,22 @@ function ActiveRow({
           </Button>
         </span>
       </div>
+
+      {/* Right side of a unilateral pair: no ring, no ⋯ — set type/RIR/RPE/
+          note are properties of the physical set, entered once above. */}
+      {isUnilateral && (
+        <div
+          className="mt-1 grid items-center gap-x-2"
+          style={{ gridTemplateColumns: template }}
+        >
+          <span className="num pl-6 text-2xs tabular-nums text-faint">
+            {index + 1}ᴿ
+          </span>
+          {showPrevious && <span />}
+          {columns.map((c) => rDataCell(c.key))}
+          <span />
+        </div>
+      )}
 
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent

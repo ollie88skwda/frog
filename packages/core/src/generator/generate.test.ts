@@ -223,6 +223,41 @@ describe("nextPrescription", () => {
     ).toBe("no_data");
   });
 
+  it("a unilateral pair (two performed rows sharing one set_no) keys on the weaker side", () => {
+    // One-arm row, 1 prescribed set. Both sides logged as set_no 0 — the
+    // right side hit the top of the range, the left fell one short.
+    const oneSet = [
+      {
+        setNo: 0,
+        setType: "normal",
+        targetWeightKg: 30,
+        targetReps: 8,
+        targetRepsMax: 12,
+      },
+    ];
+    const leftShort = nextPrescription(
+      oneSet,
+      [
+        { setNo: 0, weightKg: 30, reps: 11 }, // left: one short
+        { setNo: 0, weightKg: 30, reps: 12 }, // right: hit the top
+      ],
+      "dumbbell",
+    );
+    expect(leftShort.advance).toBe(false);
+    expect(leftShort.status).toBe("maintaining");
+
+    const bothTop = nextPrescription(
+      oneSet,
+      [
+        { setNo: 0, weightKg: 30, reps: 12 },
+        { setNo: 0, weightKg: 30, reps: 12 },
+      ],
+      "dumbbell",
+    );
+    expect(bothTop.advance).toBe(true);
+    expect(bothTop.status).toBe("progressing");
+  });
+
   it("dumbbell step is 2 kg", () => {
     const r = nextPrescription(
       targets,

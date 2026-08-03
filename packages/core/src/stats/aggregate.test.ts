@@ -44,12 +44,14 @@ function session(
       {
         exerciseId: "bench",
         exerciseType: "weight_reps",
-        sets: Array.from({ length: sets }, () => ({
+        sets: Array.from({ length: sets }, (_, i) => ({
           setType: "normal",
           weightKg,
           reps: 5,
           durationSec: null,
           distanceM: null,
+          setNo: i,
+          side: null,
         })),
       },
     ],
@@ -83,21 +85,6 @@ describe("muscleCredits", () => {
       { muscle: "erectors", credit: 0.5 },
     ]);
   });
-
-  it("doubles credit for a unilateral exercise", () => {
-    expect(
-      muscleCredits([{ muscle: "quads", tier: null }], "unilateral"),
-    ).toEqual([{ muscle: "quads", credit: 2 }]);
-  });
-
-  it("does not double credit for alternating or bilateral", () => {
-    expect(
-      muscleCredits([{ muscle: "quads", tier: null }], "alternating"),
-    ).toEqual([{ muscle: "quads", credit: 1 }]);
-    expect(
-      muscleCredits([{ muscle: "quads", tier: null }], "bilateral"),
-    ).toEqual([{ muscle: "quads", credit: 1 }]);
-  });
 });
 
 describe("setsPerMuscle", () => {
@@ -128,6 +115,8 @@ describe("setsPerMuscle", () => {
                 reps: 5,
                 durationSec: null,
                 distanceM: null,
+                setNo: 0,
+                side: null,
               },
               {
                 setType: "normal",
@@ -135,6 +124,8 @@ describe("setsPerMuscle", () => {
                 reps: 5,
                 durationSec: null,
                 distanceM: null,
+                setNo: 1,
+                side: null,
               },
             ],
           },
@@ -146,6 +137,41 @@ describe("setsPerMuscle", () => {
       includeWarmups: false,
     });
     expect(buckets[0].counts.pecs).toBe(1);
+  });
+
+  it("a unilateral pair (two rows sharing set_no) credits as one set, not two", () => {
+    const rows = [0, 1, 2].flatMap((setNo) => [
+      {
+        setType: "normal",
+        weightKg: 30,
+        reps: 10,
+        durationSec: null,
+        distanceM: null,
+        setNo,
+        side: "left" as const,
+      },
+      {
+        setType: "normal",
+        weightKg: 28,
+        reps: 8,
+        durationSec: null,
+        distanceM: null,
+        setNo,
+        side: "right" as const,
+      },
+    ]);
+    const h: RecordsSessionInput[] = [
+      {
+        ...session("a", NOW - DAY, 0),
+        exercises: [
+          { exerciseId: "bench", exerciseType: "weight_reps", sets: rows },
+        ],
+      },
+    ];
+    const buckets = setsPerMuscle(h, MUSCLES, "30d", "week", OPTS);
+    // 3 physical sets, not 6 rows: primary muscle gets 3.0 credit.
+    expect(buckets[0].counts.pecs).toBe(3);
+    expect(buckets[0].counts["front-delts"]).toBe(1.5);
   });
 });
 

@@ -43,10 +43,16 @@ import type {
   RoutineDetail,
   RoutineExerciseInput,
   SessionExerciseDetail,
+  SetSide,
   UserPrefsPatch,
 } from "./types";
 
 type Row = Record<string, unknown>;
+
+// Left before right within a shared set_no, for stable pair ordering.
+function sideRank(side: string | null): number {
+  return side === "right" ? 1 : 0;
+}
 
 // Library/picker list rows never render `instructions`/`image_urls` — those
 // are How-to-tab-only (exercise-detail.tsx) — yet `select()` downloaded them
@@ -212,6 +218,7 @@ function toSetLog(r: Row): SetLog {
     restSec: (r.rest_sec as number | null) ?? null,
     metricValues: (r.metric_values as Record<string, unknown> | null) ?? null,
     completed: r.completed as boolean,
+    side: (r.side as SetSide | null) ?? null,
   };
 }
 
@@ -833,6 +840,7 @@ export class SupabaseRepo implements Repo {
       duration_sec: set.durationSec ?? null,
       distance_m: set.distanceM ?? null,
       completed: true,
+      side: set.side ?? null,
     };
     // Upsert (not insert): a mutation retry after a lost response replays
     // this with the same `id`, and must overwrite the same row rather than
@@ -850,7 +858,7 @@ export class SupabaseRepo implements Repo {
     const { data, error } = await this.client
       .from("session_exercises")
       .select(
-        "id, exercise_id, order_index, superset_group, rest_sec, note, routine_exercise_id, exercises(name), set_logs(id, set_no, set_type, weight_kg, reps, duration_sec, distance_m, rir, rpe, note, rest_sec, deleted_at)",
+        "id, exercise_id, order_index, superset_group, rest_sec, note, routine_exercise_id, exercises(name), set_logs(id, set_no, set_type, weight_kg, reps, duration_sec, distance_m, rir, rpe, note, rest_sec, side, deleted_at)",
       )
       .eq("session_id", sessionId)
       .is("deleted_at", null)
@@ -867,7 +875,14 @@ export class SupabaseRepo implements Repo {
       routineExerciseId: (r.routine_exercise_id as string | null) ?? null,
       sets: ((r.set_logs as Row[]) ?? [])
         .filter((s) => s.deleted_at == null)
-        .sort((a, b) => (a.set_no as number) - (b.set_no as number))
+        // Left before right within a shared set_no, so a unilateral pair
+        // always renders ᴸ above ᴿ regardless of insert order.
+        .sort(
+          (a, b) =>
+            (a.set_no as number) - (b.set_no as number) ||
+            sideRank(a.side as string | null) -
+              sideRank(b.side as string | null),
+        )
         .map((s) => ({
           id: s.id as string,
           setNo: s.set_no as number,
@@ -880,6 +895,7 @@ export class SupabaseRepo implements Repo {
           rpe: (s.rpe as number | null) ?? null,
           note: (s.note as string | null) ?? null,
           restSec: (s.rest_sec as number | null) ?? null,
+          side: (s.side as SetSide | null) ?? null,
         })),
     }));
   }
@@ -1025,7 +1041,7 @@ export class SupabaseRepo implements Repo {
       this.client
         .from("sessions")
         .select(
-          "id, started_at, ended_at, paused_ms, deleted_at, session_exercises(exercise_id, deleted_at, exercises(exercise_type), set_logs(set_type, weight_kg, reps, duration_sec, distance_m, rir, rir_min, rir_max, rpe, deleted_at))",
+          "id, started_at, ended_at, paused_ms, deleted_at, session_exercises(exercise_id, deleted_at, exercises(exercise_type), set_logs(set_no, side, set_type, weight_kg, reps, duration_sec, distance_m, rir, rir_min, rir_max, rpe, deleted_at))",
           { count: "exact" },
         )
         .is("deleted_at", null)
@@ -1048,6 +1064,8 @@ export class SupabaseRepo implements Repo {
           sets: ((se.set_logs as Row[]) ?? [])
             .filter((sl) => sl.deleted_at == null)
             .map((sl) => ({
+              setNo: sl.set_no as number,
+              side: (sl.side as SetSide | null) ?? null,
               setType: (sl.set_type as string) ?? "normal",
               weightKg: (sl.weight_kg as number | null) ?? null,
               reps: (sl.reps as number | null) ?? null,
@@ -1393,8 +1411,8 @@ export class SupabaseRepo implements Repo {
       .from("session_exercises")
       .select(
         routineId
-          ? "id, sessions!inner(routine_id), set_logs(weight_kg, reps, duration_sec, distance_m, set_no, deleted_at)"
-          : "id, set_logs(weight_kg, reps, duration_sec, distance_m, set_no, deleted_at)",
+          ? "id, sessions!inner(routine_id), set_logs(weight_kg, reps, duration_sec, distance_m, set_no, side, deleted_at)"
+          : "id, set_logs(weight_kg, reps, duration_sec, distance_m, set_no, side, deleted_at)",
       )
       .eq("exercise_id", exerciseId)
       .is("deleted_at", null)
@@ -1411,15 +1429,45 @@ export class SupabaseRepo implements Repo {
     const latest = (data as Row[] | null)?.[0];
     if (!latest) return [];
     const sets = (latest.set_logs as Row[]) ?? [];
-    return sets
+    // Group into physical sets (a unilateral pair is two rows sharing one
+    // set_no) so the PREVIOUS column ghosts the whole set, uneven pairs
+    // included, at the same index the active row commits at.
+    const rows = sets
       .filter((s) => s.deleted_at == null)
-      .sort((a, b) => (a.set_no as number) - (b.set_no as number))
-      .map((s) => ({
-        weightKg: (s.weight_kg as number | null) ?? null,
-        reps: (s.reps as number | null) ?? null,
-        durationSec: (s.duration_sec as number | null) ?? null,
-        distanceM: (s.distance_m as number | null) ?? null,
-      }));
+      .sort(
+        (a, b) =>
+          (a.set_no as number) - (b.set_no as number) ||
+          sideRank(a.side as string | null) - sideRank(b.side as string | null),
+      );
+    const groups: Row[][] = [];
+    const bySetNo = new Map<number, Row[]>();
+    for (const r of rows) {
+      if (r.side == null) {
+        groups.push([r]);
+        continue;
+      }
+      let g = bySetNo.get(r.set_no as number);
+      if (!g) {
+        g = [];
+        bySetNo.set(r.set_no as number, g);
+        groups.push(g);
+      }
+      g.push(r);
+    }
+    return groups.map(([left, right]) => ({
+      weightKg: (left.weight_kg as number | null) ?? null,
+      reps: (left.reps as number | null) ?? null,
+      durationSec: (left.duration_sec as number | null) ?? null,
+      distanceM: (left.distance_m as number | null) ?? null,
+      otherSide: right
+        ? {
+            weightKg: (right.weight_kg as number | null) ?? null,
+            reps: (right.reps as number | null) ?? null,
+            durationSec: (right.duration_sec as number | null) ?? null,
+            distanceM: (right.distance_m as number | null) ?? null,
+          }
+        : null,
+    }));
   }
 
   async lastNoteForExercise(

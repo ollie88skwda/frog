@@ -18,6 +18,12 @@ export type DraftSnapshot = {
   setType: SetType;
   extras: string[];
   metricDraft: Record<string, string>;
+  // Right-side keystrokes for a unilateral pair (blank until overridden — the
+  // left values mirror across as placeholders, not draft state).
+  rWeight?: string;
+  rReps?: string;
+  rDuration?: string;
+  rDistance?: string;
 };
 
 const PREFIX = "frog.sdraft.";
@@ -54,7 +60,11 @@ export function saveDraft(seId: string, snapshot: DraftSnapshot): void {
       snapshot.note === "" &&
       snapshot.setType === "normal" &&
       snapshot.extras.length === 0 &&
-      Object.keys(snapshot.metricDraft).length === 0;
+      Object.keys(snapshot.metricDraft).length === 0 &&
+      !snapshot.rWeight &&
+      !snapshot.rReps &&
+      !snapshot.rDuration &&
+      !snapshot.rDistance;
     if (empty) {
       clearDraft(seId);
       return;

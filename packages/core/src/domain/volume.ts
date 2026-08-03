@@ -73,12 +73,44 @@ export function sessionVolumeKg(
   return total;
 }
 
+export type CountableSet = {
+  setNo: number;
+  side?: string | null;
+  setType?: string;
+  completed?: boolean;
+};
+
+/**
+ * How many *physical* sets a list of set rows represents. A unilateral set is
+ * two rows sharing one set_no and counts once. Rows with side == null are
+ * whole sets and always count. Grouping by set_no (not "count only the left
+ * rows") means a set logged for one side only still counts as one set
+ * instead of zero.
+ */
+export function countSets(
+  sets: CountableSet[],
+  opts: VolumeOptions = { includeWarmups: true },
+): number {
+  const seenPairs = new Set<number>();
+  let n = 0;
+  for (const s of sets) {
+    if (!countsForStats(s, opts)) continue;
+    if (s.side == null) {
+      n += 1;
+      continue;
+    }
+    if (seenPairs.has(s.setNo)) continue; // sibling already counted
+    seenPairs.add(s.setNo);
+    n += 1;
+  }
+  return n;
+}
+
 export function sessionSetCount(
-  blocks: Array<{ sets: Array<{ setType?: string; completed?: boolean }> }>,
+  blocks: Array<{ sets: CountableSet[] }>,
   opts: VolumeOptions = { includeWarmups: true },
 ): number {
   let n = 0;
-  for (const b of blocks)
-    for (const s of b.sets) if (countsForStats(s, opts)) n += 1;
+  for (const b of blocks) n += countSets(b.sets, opts);
   return n;
 }
