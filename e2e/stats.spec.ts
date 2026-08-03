@@ -115,3 +115,51 @@ test("range and granularity controls re-bucket the sets-per-muscle chart", async
   await page.getByTestId("dist-range-all").click();
   await expect(page.getByTestId("distribution-chart")).toBeVisible();
 });
+
+const DAY = 86_400_000;
+
+// Insert a bare completed session with an explicit duration, straight through
+// the signed-in client (owner_id defaults from the JWT sub under RLS) — the
+// Workouts/Duration totals only need the session row itself, no exercises
+// (see distributionWindow in packages/core/src/stats/aggregate.ts).
+async function seedTimedSession(page: Page, startedAt: number, durationMs: number) {
+  await page.evaluate(
+    async ({ startedAt, durationMs }) => {
+      const sb = window.__frog.supabase;
+      const t = Date.now();
+      const { error } = await sb.from("sessions").insert({
+        id: crypto.randomUUID(),
+        created_at: t,
+        updated_at: t,
+        started_at: startedAt,
+        ended_at: startedAt + durationMs,
+      });
+      if (error) throw new Error(error.message);
+    },
+    { startedAt, durationMs },
+  );
+}
+
+test("muscle distribution Duration delta renders as a human-readable duration, not raw ms", async ({
+  page,
+}) => {
+  const now = Date.now();
+
+  // A large current-period session (30d range's default window) makes the
+  // delta unambiguously positive — dominates any incidental session duration
+  // other specs seed on this shared E2E account.
+  await seedTimedSession(page, now - DAY, 300 * 60_000); // 5h
+
+  await page.goto("/stats");
+  const durationRow = page.getByTestId("dist-total-duration");
+  await expect(durationRow).toBeVisible();
+  await expect(durationRow).toContainText(/▲ \d+h \d+m/);
+  // Regression guard: the delta must never render as a bare ms count.
+  await expect(durationRow).not.toContainText(/▲ \d{5,}\s*$/);
+
+  // An even larger previous-period session flips the sign — the negative
+  // delta must format the same way, not as a bare negative/raw number.
+  await seedTimedSession(page, now - 40 * DAY, 3000 * 60_000); // 50h
+  await page.reload();
+  await expect(durationRow).toContainText(/▼ \d+h \d+m/);
+});
