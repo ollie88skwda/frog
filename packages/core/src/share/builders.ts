@@ -510,8 +510,8 @@ const TOP_RECORD_RANK_LABELS = ["Best", "2nd best", "3rd best", "4th best"];
  * the hero headlines this same metric (reps-only and duration types), rows at
  * or above it would just restate it, so only strictly-lower values qualify and
  * the ranks shift down accordingly. Types whose hero is a different metric
- * (weight vs time/distance) can't be compared numerically, so they list the
- * raw top 3. Fewer than 3 rows is fine. */
+ * (weight or time against the listed reps/time/distance) can't be compared
+ * numerically, so they list the raw top 3. Fewer than 3 rows is fine. */
 function topRecordSupportStats(
   type: ExerciseType,
   records: ExerciseRecords,

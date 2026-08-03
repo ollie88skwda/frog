@@ -47,26 +47,29 @@ async function saveCard(page: Page, name: string) {
   await download.saveAs(evidence(name));
 }
 
-test("a reps-only exercise keeps a Records share card that paints", async ({
-  page,
-}) => {
-  const EX = `Pullup ${Date.now()}`;
-
+async function createTypedExercise(page: Page, name: string, label: string) {
   await page.goto("/library");
   await page.getByTestId("new-exercise-btn").click();
-  await page.getByTestId("exercise-name-input").fill(EX);
+  await page.getByTestId("exercise-name-input").fill(name);
   await page.getByTestId("exercise-type-select").click();
-  await page
-    .getByRole("option", { name: "Bodyweight reps", exact: true })
-    .click();
+  await page.getByRole("option", { name: label, exact: true }).click();
   await page.getByTestId("add-exercise-btn").click();
-  await waitForExercise(page, EX);
+  await waitForExercise(page, name);
+}
 
+/** Logs one session of this exercise, one set per value, into the field
+ * `field` ("reps" / "duration"), and saves it. */
+async function logSession(
+  page: Page,
+  name: string,
+  field: string,
+  values: string[],
+) {
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
-  await page.getByTestId(`pick-exercise-${EX}`).click();
-  for (const [i, reps] of ["12", "10"].entries()) {
-    await page.getByTestId(`set-${i}-reps`).fill(reps);
+  await page.getByTestId(`pick-exercise-${name}`).click();
+  for (const [i, value] of values.entries()) {
+    await page.getByTestId(`set-${i}-${field}`).fill(value);
     await page.getByTestId(`set-${i}-add`).click();
     await expect(page.getByTestId(`committed-${i}-type`)).toBeVisible();
   }
@@ -74,13 +77,25 @@ test("a reps-only exercise keeps a Records share card that paints", async ({
   await page.getByTestId("finish-save").click();
   await expect(page.getByTestId("post-save-summary")).toBeVisible();
   await page.getByTestId("summary-dismiss").click();
+}
+
+test("a reps-only exercise keeps a Records share card that paints", async ({
+  page,
+}) => {
+  const EX = `Pullup ${Date.now()}`;
+
+  await createTypedExercise(page, EX, "Bodyweight reps");
+  // Two sessions, four distinct rep counts: the card's hero takes the best
+  // (14) and the support row is fed by the rest, with a two-point sparkline.
+  await logSession(page, EX, "reps", ["12", "10"]);
+  await logSession(page, EX, "reps", ["14", "8"]);
 
   await page.goto("/library");
   await page.getByTestId(`open-exercise-${EX}`).click();
   await expect(page.getByTestId("exercise-detail-name")).toHaveText(EX);
 
   // Records exist for this type — reps records only, no weight-based PR.
-  await expect(page.getByTestId("record-best_set_reps")).toContainText("12");
+  await expect(page.getByTestId("record-best_set_reps")).toContainText("14");
   await expect(page.getByTestId("record-heaviest_weight")).toHaveCount(0);
   await expect(page.getByTestId("record-best_e1rm")).toHaveCount(0);
 
@@ -94,6 +109,32 @@ test("a reps-only exercise keeps a Records share card that paints", async ({
       .getByTestId("share-sheet")
       .screenshot({ path: evidence("records-bodyweight-sheet.png") });
     await saveCard(page, "records-bodyweight-card.png");
+  }
+});
+
+test("a duration exercise's Records card paints a time support row", async ({
+  page,
+}) => {
+  const EX = `Plank ${Date.now()}`;
+
+  await createTypedExercise(page, EX, "Duration");
+  await logSession(page, EX, "duration", ["1:00", "0:45"]);
+  await logSession(page, EX, "duration", ["1:30", "0:30"]);
+
+  await page.goto("/library");
+  await page.getByTestId(`open-exercise-${EX}`).click();
+  await expect(page.getByTestId("exercise-detail-name")).toHaveText(EX);
+  await expect(page.getByTestId("record-best_time")).toContainText("1:30");
+
+  await page.getByTestId("records-share-btn").click();
+  await expect(page.getByTestId("share-sheet")).toBeVisible();
+  await expect.poll(() => paintedSize(page)).toBe("1080x1920");
+
+  if (evidenceDir) {
+    await page
+      .getByTestId("share-sheet")
+      .screenshot({ path: evidence("records-duration-sheet.png") });
+    await saveCard(page, "records-duration-card.png");
   }
 });
 
