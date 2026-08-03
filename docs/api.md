@@ -8,7 +8,7 @@ token can be revoked at any time.
 - Base URL: `<SUPABASE_PROJECT_URL>/functions/v1/api` (local dev: `http://127.0.0.1:54321/functions/v1/api`)
 - Auth header: `Authorization: Bearer frog_...`
 - All endpoints are `GET`; anything else returns `405`.
-- Pagination: `?limit=` (default 100, max 1000) and `?offset=`.
+- Pagination: `?limit=` (default 100, max 1000) and `?offset=`, on the list endpoints.
 - Soft-deleted rows are never returned.
 
 ## Endpoints
@@ -50,7 +50,8 @@ curl -H "Authorization: Bearer $FROG_TOKEN" "$FROG_API_URL/v1/sets?limit=50"
 
 ### `GET /v1/export`
 
-Everything in one payload — the same bundle as the in-app JSON export:
+Everything in one payload — the same bundle as the in-app JSON export. Takes
+no `limit`/`offset`: every row is returned, however large the account.
 
 ```json
 {
