@@ -66,31 +66,35 @@ test("logs a unilateral set as two rows sharing one set_no, and counts it once",
   await expect(page.getByTestId("committed-0-right-weight")).toContainText("30");
   await expect(page.getByTestId("committed-0-right-reps")).toContainText("10");
 
-  // Both rows share one set_no.
-  const rows = await page.evaluate(async (n) => {
-    const { data: ex } = await window.__frog.supabase
-      .from("exercises")
-      .select("id")
-      .eq("name", n)
-      .single();
-    const { data, error } = await window.__frog.supabase
-      .from("set_logs")
-      .select("set_no, side, weight_kg, reps, rest_sec")
-      .eq(
-        "session_exercise_id",
-        (
-          await window.__frog.supabase
-            .from("session_exercises")
-            .select("id")
-            .eq("exercise_id", ex.id)
-            .single()
-        ).data.id,
-      )
-      .order("side");
-    if (error) throw new Error(error.message);
-    return data;
-  }, EX);
-  expect(rows).toHaveLength(2);
+  // Both rows share one set_no. The two upserts run in the background behind
+  // the optimistic UI, so poll until they land instead of reading once.
+  const readRows = () =>
+    page.evaluate(async (n) => {
+      const { data: ex } = await window.__frog.supabase
+        .from("exercises")
+        .select("id")
+        .eq("name", n)
+        .single();
+      const { data, error } = await window.__frog.supabase
+        .from("set_logs")
+        .select("set_no, side, weight_kg, reps, rest_sec")
+        .eq(
+          "session_exercise_id",
+          (
+            await window.__frog.supabase
+              .from("session_exercises")
+              .select("id")
+              .eq("exercise_id", ex.id)
+              .single()
+          ).data.id,
+        )
+        .order("side");
+      if (error) throw new Error(error.message);
+      return data;
+    }, EX);
+
+  await expect.poll(async () => (await readRows()).length).toBe(2);
+  const rows = await readRows();
   // Both share set_no 0; an untouched ᴿ line mirrors the ᴸ values exactly.
   expect(rows[0].set_no).toBe(0);
   expect(rows[1].set_no).toBe(0);

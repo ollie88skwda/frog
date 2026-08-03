@@ -114,3 +114,33 @@ export function sessionSetCount(
   for (const b of blocks) n += countSets(b.sets, opts);
   return n;
 }
+
+/**
+ * Groups set rows into *physical* sets — the projection counterpart of
+ * countSets. A unilateral pair is two rows sharing one set_no and yields one
+ * group; every row with side == null is its own singleton group. Input order
+ * is preserved, so with the repo's left-before-right ordering `group[0]` is
+ * the left side and serves as the template for one-value-per-set projections
+ * (routine write-back, copy-workout seeds, committed-row rendering). Anything
+ * projecting sets outward must emit one output per group, never one per row.
+ */
+export function groupSetsBySetNo<
+  T extends { setNo: number; side?: string | null },
+>(sets: T[]): T[][] {
+  const groups: T[][] = [];
+  const bySetNo = new Map<number, T[]>();
+  for (const s of sets) {
+    if (s.side == null) {
+      groups.push([s]);
+      continue;
+    }
+    let g = bySetNo.get(s.setNo);
+    if (!g) {
+      g = [];
+      bySetNo.set(s.setNo, g);
+      groups.push(g);
+    }
+    g.push(s);
+  }
+  return groups;
+}

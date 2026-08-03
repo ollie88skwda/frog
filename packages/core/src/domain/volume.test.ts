@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   countSets,
+  groupSetsBySetNo,
   sessionSetCount,
   sessionVolumeKg,
   setVolumeKg,
@@ -130,5 +131,41 @@ describe("countSets", () => {
       30 * 10 + 28 * 8,
     );
     expect(countSets(sets)).toBe(1);
+  });
+});
+
+describe("groupSetsBySetNo", () => {
+  test("a unilateral pair becomes one group, left first", () => {
+    const groups = groupSetsBySetNo([
+      { setNo: 0, side: "left", reps: 10 },
+      { setNo: 0, side: "right", reps: 8 },
+      { setNo: 1, side: "left", reps: 9 },
+      { setNo: 1, side: "right", reps: 7 },
+    ]);
+    expect(groups).toHaveLength(2);
+    expect(groups.map((g) => g[0].reps)).toEqual([10, 9]);
+    expect(groups[0][1].reps).toBe(8);
+  });
+
+  test("bilateral rows are singleton groups, in order", () => {
+    const groups = groupSetsBySetNo([
+      { setNo: 0, side: null, reps: 5 },
+      { setNo: 1, side: null, reps: 6 },
+    ]);
+    expect(groups.map((g) => g.map((s) => s.reps))).toEqual([[5], [6]]);
+  });
+
+  test("a one-side-only row is still its own group", () => {
+    expect(groupSetsBySetNo([{ setNo: 0, side: "left" }])).toHaveLength(1);
+  });
+
+  test("group count matches countSets", () => {
+    const sets = [
+      { setNo: 0, side: "left" },
+      { setNo: 0, side: "right" },
+      { setNo: 1, side: null },
+      { setNo: 2, side: "left" },
+    ];
+    expect(groupSetsBySetNo(sets)).toHaveLength(countSets(sets));
   });
 });

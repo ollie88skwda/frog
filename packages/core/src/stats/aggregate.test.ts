@@ -19,10 +19,8 @@ const DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date(2026, 6, 13, 12).getTime();
 const OPTS = { now: NOW, includeWarmups: true, firstWeekday: 1 };
 
-const bench = (
-  targets: MuscleTarget[],
-  laterality: string | null = null,
-): MuscleByExercise => new Map([["bench", { targets, laterality }]]);
+const bench = (targets: MuscleTarget[]): MuscleByExercise =>
+  new Map([["bench", { targets }]]);
 
 const MUSCLES = bench([
   { muscle: "pecs", tier: "S" },

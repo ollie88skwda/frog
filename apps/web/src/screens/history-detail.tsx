@@ -2,6 +2,7 @@ import {
   buildSessionCard,
   countSets,
   type ExerciseType,
+  groupSetsBySetNo,
   type NewRoutineInput,
   type SessionExerciseDetail,
   type SetType,
@@ -220,7 +221,9 @@ export default function HistoryDetailScreen() {
         supersetGroup: b.supersetGroup,
         restSec: b.restSec,
         note: b.note,
-        sets: b.sets.map((s, si) => ({
+        // One routine set per *physical* set — a unilateral pair is two rows
+        // sharing one set_no, and the left row is the target's template.
+        sets: groupSetsBySetNo(b.sets).map(([s], si) => ({
           setNo: si,
           setType: s.setType,
           targetWeightKg: s.weightKg,
@@ -246,7 +249,9 @@ export default function HistoryDetailScreen() {
       const seed: Record<string, SeedSet[]> = {};
       for (const b of blocks) {
         const seId = await repo.addExerciseToSession(s.id, b.exerciseId);
-        seed[seId] = b.sets.map((x) => ({
+        // One draft row per physical set — the copied grid must ask for the
+        // same number of sets the source session actually performed.
+        seed[seId] = groupSetsBySetNo(b.sets).map(([x]) => ({
           setType: (x.setType as SetType) ?? "normal",
           weightKg: x.weightKg,
           reps: x.reps,

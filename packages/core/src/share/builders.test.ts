@@ -298,7 +298,7 @@ describe("buildStreakCard", () => {
 });
 
 const bench = (targets: MuscleTarget[]): MuscleByExercise =>
-  new Map([["bench", { targets, laterality: null }]]);
+  new Map([["bench", { targets }]]);
 
 function session(
   id: string,

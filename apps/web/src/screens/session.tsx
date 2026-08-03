@@ -13,6 +13,7 @@ import {
   type GhostSet,
   ghostFor,
   groupByPrimaryMuscle,
+  groupSetsBySetNo,
   isBarLoaded,
   isConfidentMatch,
   kgToLb,
@@ -194,28 +195,6 @@ type CommitInput = Omit<LoggedSet, "id" | "setNo" | "restSec"> & {
     distanceM: number | null;
   } | null;
 };
-
-// Groups committed rows into physical sets: a unilateral pair is two rows
-// sharing one set_no (rendered as one CommittedRow, two lines); every other
-// row (side: null) is its own singleton group. Preserves render order.
-function groupCommittedSets(sets: LoggedSet[]): LoggedSet[][] {
-  const groups: LoggedSet[][] = [];
-  const bySetNo = new Map<number, LoggedSet[]>();
-  for (const s of sets) {
-    if (s.side == null) {
-      groups.push([s]);
-      continue;
-    }
-    let g = bySetNo.get(s.setNo);
-    if (!g) {
-      g = [];
-      bySetNo.set(s.setNo, g);
-      groups.push(g);
-    }
-    g.push(s);
-  }
-  return groups;
-}
 
 export type SetPatch = {
   weightKg?: number | null;
@@ -1284,7 +1263,10 @@ export default function SessionScreen() {
           supersetGroup: t?.supersetGroup ?? null,
           restSec: t?.restSec ?? null,
           note: t?.note ?? null,
-          sets: b.committed.map((s, si) => ({
+          // One routine set per *physical* set: a unilateral pair is two
+          // committed rows sharing one set_no, and the left row is the
+          // template for the target.
+          sets: groupSetsBySetNo(b.committed).map(([s], si) => ({
             setNo: si,
             setType: (s.setType as string) ?? "normal",
             targetWeightKg: s.weightKg,
@@ -1318,7 +1300,9 @@ export default function SessionScreen() {
         .filter((b) => b.routineExerciseId)
         .map((b) => ({
           routineExerciseId: b.routineExerciseId as string,
-          sets: b.committed.map((s, i) => ({
+          // One target per physical set (see structureInput) — mapping rows
+          // positionally would shift every target after a unilateral pair.
+          sets: groupSetsBySetNo(b.committed).map(([s], i) => ({
             setNo: i,
             weightKg: s.weightKg,
             reps: s.reps,
@@ -2383,7 +2367,7 @@ function ExerciseBlock({
         <span />
       </div>
 
-      {groupCommittedSets(block.committed).map((rows, i) => (
+      {groupSetsBySetNo(block.committed).map((rows, i) => (
         <CommittedRow
           key={rows[0].id}
           rows={rows}

@@ -55,7 +55,6 @@ export function muscleCredits(
 
 export type MuscleInfo = {
   targets: MuscleTarget[] | null;
-  laterality: string | null;
 };
 export type MuscleByExercise = Map<string, MuscleInfo>;
 
