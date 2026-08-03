@@ -223,7 +223,7 @@ describe("nextPrescription", () => {
     ).toBe("no_data");
   });
 
-  it("a unilateral pair (two performed rows sharing one set_no) keys on the weaker side", () => {
+  it("a unilateral pair (two performed rows sharing one set_no) advances only when both sides clear the target", () => {
     // One-arm row, 1 prescribed set. Both sides logged as set_no 0 — the
     // right side hit the top of the range, the left fell one short.
     const oneSet = [
