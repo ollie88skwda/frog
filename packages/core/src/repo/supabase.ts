@@ -347,9 +347,12 @@ export class SupabaseRepo implements Repo {
 
   // PostgREST caps every `select()` at 1000 rows by default; a flat select on
   // a table that can grow past that (exercise library, set logs, …) silently
-  // truncates instead of erroring. Loop `.range()` until a short page proves
-  // there's nothing left. `page` must apply a deterministic order (e.g. `id`)
-  // so rows aren't skipped or repeated across pages.
+  // truncates instead of erroring. Loop `.range()` until an empty page proves
+  // there's nothing left — advancing by the rows actually returned, not by the
+  // requested page size, so a server whose `max_rows` is configured below
+  // PAGE_SIZE still paginates instead of stopping at the first short page.
+  // `page` must apply a deterministic order (e.g. `id`) so rows aren't skipped
+  // or repeated across pages.
   private async selectAll<T>(
     // `data` is typed `unknown` because a hand-written `.select("col, list")`
     // string makes supabase-js fall back to an error-sentinel type (same
@@ -368,9 +371,9 @@ export class SupabaseRepo implements Repo {
       );
       throwIf(error);
       const batch = (data as T[] | null) ?? [];
+      if (batch.length === 0) return rows;
       rows.push(...batch);
-      if (batch.length < SupabaseRepo.PAGE_SIZE) return rows;
-      from += SupabaseRepo.PAGE_SIZE;
+      from += batch.length;
     }
   }
 
@@ -920,15 +923,18 @@ export class SupabaseRepo implements Repo {
   }
 
   async findingsData(): Promise<FindingsSessionInput[]> {
-    const { data, error } = await this.client
-      .from("sessions")
-      .select(
-        "id, started_at, condition_values, deleted_at, session_exercises(exercise_id, deleted_at, exercises(name), set_logs(weight_kg, reps, deleted_at))",
-      )
-      .is("deleted_at", null)
-      .order("started_at", { ascending: true });
-    throwIf(error);
-    return ((data as Row[]) ?? []).map((s) => ({
+    const rows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("sessions")
+        .select(
+          "id, started_at, condition_values, deleted_at, session_exercises(exercise_id, deleted_at, exercises(name), set_logs(weight_kg, reps, deleted_at))",
+        )
+        .is("deleted_at", null)
+        .order("started_at", { ascending: true })
+        .order("id")
+        .range(from, to),
+    );
+    return rows.map((s) => ({
       sessionId: s.id as string,
       startedAt: s.started_at as number,
       conditionValues:
@@ -1004,15 +1010,18 @@ export class SupabaseRepo implements Repo {
   }
 
   async recordsData(): Promise<RecordsSessionInput[]> {
-    const { data, error } = await this.client
-      .from("sessions")
-      .select(
-        "id, started_at, ended_at, paused_ms, deleted_at, session_exercises(exercise_id, deleted_at, exercises(exercise_type), set_logs(set_type, weight_kg, reps, duration_sec, distance_m, rir, rir_min, rir_max, rpe, deleted_at))",
-      )
-      .is("deleted_at", null)
-      .order("started_at", { ascending: true });
-    throwIf(error);
-    return ((data as Row[]) ?? []).map((s) => ({
+    const rows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("sessions")
+        .select(
+          "id, started_at, ended_at, paused_ms, deleted_at, session_exercises(exercise_id, deleted_at, exercises(exercise_type), set_logs(set_type, weight_kg, reps, duration_sec, distance_m, rir, rir_min, rir_max, rpe, deleted_at))",
+        )
+        .is("deleted_at", null)
+        .order("started_at", { ascending: true })
+        .order("id")
+        .range(from, to),
+    );
+    return rows.map((s) => ({
       sessionId: s.id as string,
       startedAt: s.started_at as number,
       endedAt: (s.ended_at as number | null) ?? null,
@@ -1124,14 +1133,17 @@ export class SupabaseRepo implements Repo {
   }
 
   async importSessions(sessions: ImportedSession[]): Promise<ImportResult> {
-    // Idempotency: a session is identified by its started_at timestamp.
-    const { data: existingRows, error: existingError } = await this.client
-      .from("sessions")
-      .select("started_at");
-    throwIf(existingError);
-    const existing = new Set(
-      ((existingRows as Row[]) ?? []).map((r) => r.started_at as number),
+    // Idempotency: a session is identified by its started_at timestamp. This
+    // must see *every* session — a truncated set would re-import already
+    // imported sessions as duplicates.
+    const existingRows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("sessions")
+        .select("started_at, id")
+        .order("id")
+        .range(from, to),
     );
+    const existing = new Set(existingRows.map((r) => r.started_at as number));
 
     const fresh = sessions.filter((s) => !existing.has(s.startedAt));
     const skipped = sessions.length - fresh.length;
@@ -1218,12 +1230,14 @@ export class SupabaseRepo implements Repo {
   }
 
   async applySleep(sleepHoursByDate: Map<string, number>): Promise<number> {
-    const { data, error } = await this.client
-      .from("sessions")
-      .select("id, started_at, condition_values")
-      .is("deleted_at", null);
-    throwIf(error);
-    const rows = (data as Row[]) ?? [];
+    const rows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("sessions")
+        .select("id, started_at, condition_values")
+        .is("deleted_at", null)
+        .order("id")
+        .range(from, to),
+    );
 
     const updates: { id: string; merged: Record<string, unknown> }[] = [];
     for (const r of rows) {
@@ -1251,12 +1265,17 @@ export class SupabaseRepo implements Repo {
     return updates.length;
   }
 
+  // Ordered by `created_at` (not just `id`) so the CSV/JSON export stays
+  // roughly chronological — ids are random uuid v4, so an id-only order would
+  // shuffle every exported table. `id` is the tiebreak that keeps pagination
+  // deterministic.
   private selectAllFrom(table: string): Promise<Row[]> {
     return this.selectAll<Row>((from, to) =>
       this.client
         .from(table)
         .select()
         .is("deleted_at", null)
+        .order("created_at")
         .order("id")
         .range(from, to),
     );
