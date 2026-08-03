@@ -16,6 +16,7 @@ jobs:
       - run: bun run typecheck
       - run: bun run test
       - run: bun scripts/check-docs.ts
+      - run: bun scripts/check-mark-drift.ts
       - run: bun scripts/gen-og-image.ts --check
 
   integration-e2e:
