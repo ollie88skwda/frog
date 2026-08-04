@@ -932,7 +932,7 @@ export default function SessionScreen() {
     const { otherSide, ...leftFields } = set;
     const leftRow = { ...leftFields, restSec, id: leftTempId, setNo };
     // The right side writes rest_sec: null — one commit per physical set means
-    // one countdown (below), and the header average already filters nulls.
+    // one rest stopwatch (below), and the header average already filters nulls.
     // Set type / RIR / RPE / note / metrics fan out from the left side: they
     // describe the physical set, not the limb.
     const rightTempId = otherSide ? newId() : null;
@@ -945,6 +945,8 @@ export default function SessionScreen() {
             distanceM: otherSide.distanceM,
             setType: set.setType,
             rir: set.rir,
+            rirMin: set.rirMin,
+            rirMax: set.rirMax,
             rpe: set.rpe,
             note: set.note,
             metricValues: set.metricValues,

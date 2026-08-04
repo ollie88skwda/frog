@@ -125,7 +125,7 @@ One exercise performed within one session, ordered.
 | rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null. Session logging leaves it null now (it writes the range pair instead); the Strong/Hevy CSV importers are the only remaining writers |
 | rir_min / rir_max | integer? | logged RIR range; the session-screen modifier field (`ActiveRow`/`CommittedRow` in `session.tsx`) always writes both going forward, even for a single value (`min === max`) |
 | rpe | real? | 1–10 perceived exertion (halves allowed) |
-| rest_sec | integer? | seconds rested before this set (null = first/unknown). On a unilateral pair, only the left row carries it — one commit, one rest countdown. |
+| rest_sec | integer? | seconds rested before this set (null = first/unknown). On a unilateral pair, only the left row carries it — one commit, one rest stopwatch. |
 | note | text? | |
 | metric_values | jsonb | {metric_id: value} for enabled set metrics |
 | completed | boolean | |
