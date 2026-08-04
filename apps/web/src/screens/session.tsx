@@ -1019,8 +1019,9 @@ export default function SessionScreen() {
     // other exercise (two solo blocks are not siblings) ends the old one, so
     // Stop can never resurface a timer you left behind. The start is then
     // suppressed when a drop set is next — including the just-committed set
-    // being a drop (drops chain into the next reduction with no rest), which
-    // leaves the committing block with no stopwatch rather than an old one.
+    // being a drop (drops chain into the next reduction with no rest) — when
+    // the just-committed set was a warm-up, or on duration/distance-type
+    // exercises where "resting between sets" isn't meaningful.
     const committedIsDrop = (set.setType ?? "normal") === "drop";
     const nextType = committedIsDrop ? "drop" : ctx.nextSetType;
     const group = block?.supersetGroup ?? null;
@@ -1031,7 +1032,11 @@ export default function SessionScreen() {
             .filter((b) => b.supersetGroup === group)
             .map((b) => b.seId),
     );
-    const starting = shouldStartRest(nextType);
+    const starting = shouldStartRest(
+      nextType,
+      set.setType,
+      ctx.exerciseType as ExerciseType,
+    );
     const startedAt = Date.now();
     setRestByBlock((prev) => {
       const next: Record<string, RestTimerState> = {};
