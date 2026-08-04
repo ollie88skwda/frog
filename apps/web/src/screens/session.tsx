@@ -3537,6 +3537,7 @@ function ActiveRow({
   // sheet closes without one (e.g. it opened while neither field was
   // focused).
   const suppressCheckoffRef = useRef(false);
+  const moreCellRef = useRef<HTMLSpanElement>(null);
   const [, tick] = useReducer((n: number) => n + 1, 0);
 
   // Mirror uncommitted keystrokes to localStorage so a reload restores them.
@@ -3808,11 +3809,13 @@ function ActiveRow({
   // — only leaving the ᴿ line does, and only once the ᴸ line is complete.
   // Otherwise the moment you tab off "weight" into "reps" would half-log the
   // set before the right side ever gets a chance to mirror or override.
-  function onFieldBlur() {
+  function onFieldBlur(e: React.FocusEvent<HTMLInputElement>) {
     if (suppressCheckoffRef.current) {
       suppressCheckoffRef.current = false;
       return;
     }
+    const next = e.relatedTarget as Node | null;
+    if (next && moreCellRef.current?.contains(next)) return;
     if (isUnilateral) return;
     if (weight.trim() !== "" && reps.trim() !== "") commit(false);
   }
@@ -4045,7 +4048,10 @@ function ActiveRow({
         {columns.map((c, i) =>
           dataCell(c.key, autoFocusWeight && i === 0, i === columns.length - 1),
         )}
-        <span className="flex items-center justify-center gap-1">
+        <span
+          ref={moreCellRef}
+          className="flex items-center justify-center gap-1"
+        >
           {modifierPreview && (
             <span className="num text-2xs text-faint">{modifierPreview}</span>
           )}

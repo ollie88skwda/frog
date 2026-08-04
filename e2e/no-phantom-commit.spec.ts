@@ -130,6 +130,134 @@ test("opening the set-details sheet does not auto-check the set off", async ({
   expect(await rowCount(page, "set_logs")).toBe(before);
 });
 
+test("tapping the set-details sheet open on a touch device does not auto-check the set off", async ({
+  page,
+}) => {
+  // Touch twin of the click test above: this whole guard rests on the tap
+  // routing through mousedown-preventDefault before the dialog's autofocus
+  // blurs the input, and touch doesn't route through mousedown the same way
+  // a mouse does — so the primary mobile surface needs its own proof.
+  const EX = `DetailsTap ${Date.now()}`;
+
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
+  await waitForExercise(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  const before = await rowCount(page, "set_logs");
+  await page.getByTestId("set-0-weight").fill("100");
+  await page.getByTestId("set-0-reps").fill("5");
+  await page.getByTestId("set-0-more").tap();
+
+  await expect(page.getByTestId("set-0-note")).toBeVisible();
+  await expect(page.getByTestId("committed-0")).not.toBeVisible();
+  expect(await rowCount(page, "set_logs")).toBe(before);
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("set-0-weight")).toHaveValue("100");
+  await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
+  expect(await rowCount(page, "set_logs")).toBe(before);
+});
+
+test("tabbing to the set-details trigger does not auto-check the set off", async ({
+  page,
+}) => {
+  // Keyboard route into the same trigger: Tab really does move focus onto the
+  // "…" button (mousedown-preventDefault only covers pointers), and that blur
+  // lands before any click can arm the guard. Committing there would unmount
+  // the button mid-Tab, so set details would be unreachable by keyboard on a
+  // complete-but-uncommitted row.
+  const EX = `DetailsTab ${Date.now()}`;
+
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
+  await waitForExercise(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  const before = await rowCount(page, "set_logs");
+  await page.getByTestId("set-0-weight").fill("100");
+  await page.getByTestId("set-0-reps").fill("5");
+  await page.keyboard.press("Tab");
+
+  await expect(page.getByTestId("set-0-more")).toBeFocused();
+  await expect(page.getByTestId("committed-0")).not.toBeVisible();
+  expect(await rowCount(page, "set_logs")).toBe(before);
+
+  // …and the trigger still opens the sheet from there.
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("set-0-note")).toBeVisible();
+  expect(await rowCount(page, "set_logs")).toBe(before);
+});
+
+test("a set-details sheet opened with no field focused still allows a later checkoff", async ({
+  page,
+}) => {
+  // The guard is armed when the sheet opens, but nothing blurs to consume it
+  // when the sheet opens from an unfocused row — closing the sheet has to
+  // clear it, or the next genuine tap-away is swallowed and the set never
+  // checks off.
+  const EX = `DetailsIdle ${Date.now()}`;
+
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
+  await waitForExercise(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  const before = await rowCount(page, "set_logs");
+  await page.getByTestId("set-0-weight").fill("100");
+  // Leave the row first: reps is empty, so this can't commit — it just drops
+  // focus, so opening the sheet next arms the guard with no blur to spend it.
+  await page.getByRole("heading", { level: 1 }).click();
+  await page.getByTestId("set-0-more").tap();
+  await expect(page.getByTestId("set-0-note")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("set-0-note")).not.toBeVisible();
+
+  await page.getByTestId("set-0-reps").fill("5");
+  await page.getByRole("heading", { level: 1 }).click();
+
+  await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
+  await expect(page.getByTestId("committed-0")).toBeVisible();
+  await expect(page.getByTestId("set-1-weight")).toBeVisible();
+});
+
+test("closing the set-details sheet from inside it still allows a later checkoff", async ({
+  page,
+}) => {
+  // "Plate calculator" closes the sheet with setDetailsOpen(false) directly,
+  // so the dialog's onOpenChange never runs — only reacting to the closed
+  // state itself disarms the guard on this path.
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await page.getByTestId("pick-exercise-Barbell Squat").click();
+
+  const before = await rowCount(page, "set_logs");
+  await page.getByTestId("set-0-weight").fill("100");
+  await page.getByRole("heading", { level: 1 }).click();
+  await page.getByTestId("set-0-more").tap();
+  await page.getByTestId("set-0-plates").tap();
+  await expect(page.getByTestId("plates-Barbell Squat")).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.getByTestId("set-0-reps").fill("5");
+  await page.getByRole("heading", { level: 1 }).click();
+
+  await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
+  await expect(page.getByTestId("committed-0")).toBeVisible();
+});
+
 test("tapping the checkmark on a touch device commits exactly one set", async ({
   page,
 }) => {
