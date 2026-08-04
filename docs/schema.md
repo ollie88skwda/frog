@@ -46,7 +46,7 @@ The user's gym equipment — settings entered once, recalled in every session.
 | image_urls | jsonb? | string[], how-to frames (detail screen only) |
 | mechanic | text? | `compound` \| `isolation`; explicit, overrides the muscle-count proxy in `generator/generate.ts` |
 | movement_pattern | text? | `horizontal-push` \| `vertical-push` \| `horizontal-pull` \| `vertical-pull` \| `squat` \| `hinge` \| `lunge` \| `carry` \| `rotation` \| `isolation` |
-| laterality | text? | `bilateral` \| `unilateral` \| `alternating`; unilateral doubles muscle-credit and labels the reps column "reps/side" in-session |
+| laterality | text? | `bilateral` \| `unilateral` \| `alternating`; unilateral logs each set as a ᴸ/ᴿ pair of `set_logs` rows sharing one `set_no` (see [set_logs](#set_logs)), alternating labels the reps column "total reps" in-session. Muscle credit is per physical set, the same for all three. |
 | default_reps_min / default_reps_max | integer? | prefill only — routine editor "Add exercise" + generator; never rewrites a logged/prescribed value |
 | default_rest_sec | integer? | prefill only — session rest timer default when a block has no explicit `rest_sec` |
 | notes | text? | the user's own note about the exercise (setup, cue); shown read-only under the block header in a session |
@@ -118,13 +118,14 @@ One exercise performed within one session, ordered.
 |---|---|---|
 | id | uuid | PK |
 | session_exercise_id | uuid | FK → session_exercises |
-| set_no | integer | 0-based within the exercise block |
+| set_no | integer | Physical set number within the exercise block. NOT unique per row: a unilateral set is TWO rows sharing one set_no, one per `side` — see DECISIONS.md. |
+| side | text? | `'left' \| 'right' \| null`. Null = the whole set (bilateral, alternating, and every row logged before this column existed). |
 | weight_kg | real? | canonical kg |
 | reps | integer? | |
 | rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null |
 | rir_min / rir_max | integer? | logged RIR range; round-tripped by the repo, the API and the export today, but no app surface writes them yet (range logging lands with the session-logging follow-up) |
 | rpe | real? | 1–10 perceived exertion (halves allowed) |
-| rest_sec | integer? | seconds rested before this set (null = first/unknown) |
+| rest_sec | integer? | seconds rested before this set (null = first/unknown). On a unilateral pair, only the left row carries it — one commit, one rest countdown. |
 | note | text? | |
 | metric_values | jsonb | {metric_id: value} for enabled set metrics |
 | completed | boolean | |

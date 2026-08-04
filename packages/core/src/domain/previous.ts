@@ -37,9 +37,8 @@ export function previousCells(
   return cells;
 }
 
-/** Formats a previous performance as the reference string ("100 kg × 8"). */
-export function formatPrevious(
-  g: GhostSet,
+function formatOneSide(
+  g: Omit<GhostSet, "otherSide">,
   formatWeight: (kg: number) => string,
 ): string | null {
   if (g.durationSec != null) {
@@ -50,4 +49,21 @@ export function formatPrevious(
   if (g.weightKg == null && g.reps == null) return null;
   if (g.weightKg == null) return `${g.reps ?? 0} reps`;
   return `${formatWeight(g.weightKg)} × ${g.reps ?? 0}`;
+}
+
+/**
+ * Formats a previous performance as the reference string ("100 kg × 8"). A
+ * unilateral pair collapses to one string when both sides matched last time;
+ * an uneven pair (an injury, a strength imbalance) shows both ("100 × 8 /
+ * 90 × 6") rather than silently picking one side to represent the set.
+ */
+export function formatPrevious(
+  g: GhostSet,
+  formatWeight: (kg: number) => string,
+): string | null {
+  const left = formatOneSide(g, formatWeight);
+  if (!g.otherSide) return left;
+  const right = formatOneSide(g.otherSide, formatWeight);
+  if (right == null || right === left) return left;
+  return left == null ? right : `${left} / ${right}`;
 }

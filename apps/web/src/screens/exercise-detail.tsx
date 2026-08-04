@@ -541,7 +541,14 @@ function HistoryTab({
                     key={rowKey}
                     className="num flex items-center gap-2 py-0.5 text-xs text-soft"
                   >
-                    <span className="w-4 text-faint">{i + 1}</span>
+                    <span className="w-5 text-faint">
+                      {set.setNo + 1}
+                      {set.side === "left"
+                        ? "ᴸ"
+                        : set.side === "right"
+                          ? "ᴿ"
+                          : ""}
+                    </span>
                     <span>{formatSet(type, set, unit, distUnit)}</span>
                   </li>
                 );

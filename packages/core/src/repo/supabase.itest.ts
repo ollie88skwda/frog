@@ -113,6 +113,35 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     ]);
   });
 
+  it("logs a unilateral pair as two rows sharing one set_no", async () => {
+    const ex = await repoA.createExercise(`One-Arm Row ${newId().slice(0, 8)}`);
+    const session = await repoA.startSession();
+    const se = await repoA.addExerciseToSession(session.id, ex.id);
+
+    await repoA.logSet(
+      se,
+      { weightKg: 30, reps: 10, side: "left" },
+      newId(),
+      0,
+    );
+    await repoA.logSet(
+      se,
+      { weightKg: 28, reps: 8, side: "right" },
+      newId(),
+      0,
+    );
+
+    const { data } = await clientA
+      .from("set_logs")
+      .select("set_no, side, weight_kg, reps")
+      .eq("session_exercise_id", se)
+      .order("side");
+    expect(data).toEqual([
+      { set_no: 0, side: "left", weight_kg: 30, reps: 10 },
+      { set_no: 0, side: "right", weight_kg: 28, reps: 8 },
+    ]);
+  });
+
   it("ghost-prefills from the most recent prior session", async () => {
     const ex = await repoA.createExercise(`Deadlift ${newId().slice(0, 8)}`);
 
@@ -130,8 +159,56 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     // excluding the just-created (empty) session-exercise returns s1's sets in order
     const ghost = await repoA.lastSetsForExercise(ex.id, se2);
     expect(ghost).toEqual([
-      { weightKg: 140, reps: 5, durationSec: null, distanceM: null },
-      { weightKg: 150, reps: 3, durationSec: null, distanceM: null },
+      {
+        weightKg: 140,
+        reps: 5,
+        durationSec: null,
+        distanceM: null,
+        otherSide: null,
+      },
+      {
+        weightKg: 150,
+        reps: 3,
+        durationSec: null,
+        distanceM: null,
+        otherSide: null,
+      },
+    ]);
+  });
+
+  it("ghost-prefills a unilateral pair as one grouped ghost with otherSide", async () => {
+    const ex = await repoA.createExercise(`One-Arm Row ${newId().slice(0, 8)}`);
+    const s1 = await repoA.startSession();
+    const se1 = await repoA.addExerciseToSession(s1.id, ex.id);
+    await repoA.logSet(
+      se1,
+      { weightKg: 30, reps: 10, side: "left" },
+      newId(),
+      0,
+    );
+    await repoA.logSet(
+      se1,
+      { weightKg: 28, reps: 8, side: "right" },
+      newId(),
+      0,
+    );
+
+    const s2 = await repoA.startSession();
+    const se2 = await repoA.addExerciseToSession(s2.id, ex.id);
+    const ghost = await repoA.lastSetsForExercise(ex.id, se2);
+    expect(ghost).toEqual([
+      {
+        weightKg: 30,
+        reps: 10,
+        durationSec: null,
+        distanceM: null,
+        otherSide: {
+          weightKg: 28,
+          reps: 8,
+          durationSec: null,
+          distanceM: null,
+        },
+      },
     ]);
   });
 
@@ -270,6 +347,13 @@ describe("SupabaseRepo (integration, local supabase)", () => {
       .eq("id", squat?.id as string)
       .select();
     expect(updatedRows ?? []).toHaveLength(0);
+
+    // The name-heuristic backfill migration (docs/DECISIONS.md 2026-08-01)
+    // tags exactly 67 seed rows unilateral and 16 alternating.
+    expect(seeds.filter((e) => e.laterality === "unilateral")).toHaveLength(67);
+    expect(seeds.filter((e) => e.laterality === "alternating")).toHaveLength(
+      16,
+    );
   });
 
   it("machine photos: owner can upload, others cannot read", async () => {

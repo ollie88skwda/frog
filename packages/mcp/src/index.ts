@@ -85,7 +85,7 @@ server.registerTool(
   "get_sets",
   {
     description:
-      "Raw set logs, newest first (weight_kg, reps, RIR, notes, custom metric values).",
+      "Raw set logs, newest first (set_no, side, weight_kg, reps, RIR, notes, custom metric values). A unilateral set is two rows sharing one set_no, distinguished by side ('left'|'right'|null).",
     inputSchema: {
       limit: z.number().int().min(1).max(1000).optional(),
       offset: z.number().int().min(0).optional(),

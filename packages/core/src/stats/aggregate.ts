@@ -8,7 +8,7 @@ import type { MuscleRegion, MuscleTarget } from "../domain/anatomy";
 import { regionOf, roleAt } from "../domain/anatomy";
 import type { ExerciseType } from "../domain/exercise-types";
 import { weekStart } from "../domain/streak";
-import { setVolumeKg } from "../domain/volume";
+import { countSets, countsForStats, setVolumeKg } from "../domain/volume";
 import type { RecordsSessionInput, RecordsSetInput } from "../records/types";
 
 export type StatsRange = "30d" | "3m" | "1y" | "all";
@@ -35,32 +35,26 @@ export function rangeStart(range: StatsRange, now: number): number {
   }
 }
 
-function counts(set: { setType: string }, includeWarmups: boolean): boolean {
-  return includeWarmups || set.setType !== "warmup";
-}
-
 /**
  * Set credit per muscle for one set: primary muscle 1.0, secondaries 0.5
  * (matches Hevy's fractional per-muscle set counts, e.g. "Shoulders 4.5").
- * A unilateral exercise doubles credit — one logged set is one side, and the
- * other side's identical work never gets its own row (alternating already
- * counts both sides within the logged set, so it doesn't double).
+ * A unilateral set is two rows sharing one set_no (see countSets); credit is
+ * applied once per physical set by the caller, so no per-row multiplier is
+ * needed here — 3 unilateral sets give the primary muscle 3.0 credit, same
+ * as 3 bilateral sets.
  */
 export function muscleCredits(
   targets: MuscleTarget[] | null | undefined,
-  laterality?: string | null,
 ): Array<{ muscle: string; credit: number }> {
   if (!targets?.length) return [];
-  const sideMultiplier = laterality === "unilateral" ? 2 : 1;
   return targets.map((t, i) => ({
     muscle: t.muscle,
-    credit: (roleAt(targets, i) === "primary" ? 1 : 0.5) * sideMultiplier,
+    credit: roleAt(targets, i) === "primary" ? 1 : 0.5,
   }));
 }
 
 export type MuscleInfo = {
   targets: MuscleTarget[] | null;
-  laterality: string | null;
 };
 export type MuscleByExercise = Map<string, MuscleInfo>;
 
@@ -102,10 +96,9 @@ export function setsPerMuscle(
     }
     for (const ex of s.exercises) {
       const info = muscles.get(ex.exerciseId);
-      const credits = muscleCredits(info?.targets, info?.laterality);
+      const credits = muscleCredits(info?.targets);
       if (!credits.length) continue;
-      let n = 0;
-      for (const set of ex.sets) if (counts(set, opts.includeWarmups)) n += 1;
+      const n = countSets(ex.sets, opts);
       if (n === 0) continue;
       for (const { muscle, credit } of credits) {
         bucket[muscle] = (bucket[muscle] ?? 0) + n * credit;
@@ -170,10 +163,20 @@ function distributionWindow(
       );
     for (const ex of s.exercises) {
       const info = muscles.get(ex.exerciseId);
-      const credits = muscleCredits(info?.targets, info?.laterality);
+      const credits = muscleCredits(info?.targets);
+      // A unilateral pair (two rows sharing set_no) counts and credits once,
+      // via countSets — the sibling row still contributes its own volume
+      // below, since that tonnage was actually lifted.
+      const n = countSets(ex.sets, opts);
+      totals.sets += n;
+      if (n)
+        for (const { muscle, credit } of credits) {
+          muscleSets[muscle] = (muscleSets[muscle] ?? 0) + n * credit;
+          const region = regionOf(muscle);
+          if (region) regionSets[region] += n * credit;
+        }
       for (const set of ex.sets) {
-        if (!counts(set, opts.includeWarmups)) continue;
-        totals.sets += 1;
+        if (!countsForStats(set, opts)) continue;
         const vol = setVolumeKg(
           ex.exerciseType as ExerciseType,
           set as RecordsSetInput,
@@ -181,12 +184,8 @@ function distributionWindow(
         );
         totals.volumeKg += vol;
         for (const { muscle, credit } of credits) {
-          muscleSets[muscle] = (muscleSets[muscle] ?? 0) + credit;
           const region = regionOf(muscle);
-          if (region) {
-            regionSets[region] += credit;
-            regionVolumeKg[region] += vol * credit;
-          }
+          if (region) regionVolumeKg[region] += vol * credit;
         }
       }
     }

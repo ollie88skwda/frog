@@ -7,6 +7,7 @@
 import type { MuscleRegion } from "../domain/anatomy";
 import type { ExerciseType } from "../domain/exercise-types";
 import type { PrType } from "../records/types";
+import type { SetSide } from "../repo/types";
 
 /** A single labeled number, already formatted for display. */
 export type ShareStat = { label: string; value: string };
@@ -28,6 +29,7 @@ export type SessionCardSet = {
   reps: number | null;
   durationSec: number | null;
   distanceM: number | null;
+  side: SetSide | null;
 };
 
 export type SessionCardBlock = {

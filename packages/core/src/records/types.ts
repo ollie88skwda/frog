@@ -58,6 +58,8 @@ export type RecordsSetInput = {
   rirMin?: number | null;
   rirMax?: number | null;
   rpe?: number | null;
+  setNo: number;
+  side: "left" | "right" | null;
 };
 
 export type RecordsSessionInput = {

@@ -39,10 +39,13 @@ curl -H "Authorization: Bearer $FROG_TOKEN" "$FROG_API_URL/v1/sessions?limit=10"
 
 ### `GET /v1/sets`
 
-Flat set logs, newest first: `weight_kg` (canonical kg), `reps`, `rir`,
-`rir_min` / `rir_max`, `note`, `metric_values` (custom set metrics keyed by
-metric id). `rir` is the legacy scalar; read it as the fallback when both
-range columns are null (see [schema.md](./schema.md#set_logs)).
+Flat set logs, newest first: `set_no`, `side`, `weight_kg` (canonical kg),
+`reps`, `rir`, `rir_min` / `rir_max`, `note`, `metric_values` (custom set
+metrics keyed by metric id). `rir` is the legacy scalar; read it as the
+fallback when both range columns are null. A unilateral set is two rows
+sharing one `set_no`, distinguished by `side` (`'left' | 'right' | null`) —
+group by `set_no` to reconstruct the physical set (see
+[schema.md](./schema.md#set_logs)).
 
 ```sh
 curl -H "Authorization: Bearer $FROG_TOKEN" "$FROG_API_URL/v1/sets?limit=50"

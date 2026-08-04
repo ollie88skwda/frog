@@ -14,7 +14,7 @@ import {
   toDisplayWeight,
   unitLabel,
 } from "../domain/units";
-import { countsForStats, setVolumeKg } from "../domain/volume";
+import { countSets, countsForStats, setVolumeKg } from "../domain/volume";
 import { hasSetRecords, TOP_RECORD_PR_TYPE } from "../records/records";
 import type { ExerciseRecords, PrEvent, PrType } from "../records/types";
 import type { MuscleByExercise } from "../stats/aggregate";
@@ -52,10 +52,11 @@ export function sessionMuscleSets(
   const out: Record<string, number> = {};
   for (const b of blocks) {
     const info = muscles.get(b.exerciseId);
-    const credits = muscleCredits(info?.targets, info?.laterality);
-    if (!credits.length || b.sets.length === 0) continue;
+    const credits = muscleCredits(info?.targets);
+    const n = countSets(b.sets);
+    if (!credits.length || n === 0) continue;
     for (const { muscle, credit } of credits) {
-      out[muscle] = (out[muscle] ?? 0) + b.sets.length * credit;
+      out[muscle] = (out[muscle] ?? 0) + n * credit;
     }
   }
   return out;
@@ -182,7 +183,7 @@ export function buildSessionCard(input: {
       ),
     0,
   );
-  const setCount = countedBlocks.reduce((n, b) => n + b.sets.length, 0);
+  const setCount = countedBlocks.reduce((n, b) => n + countSets(b.sets), 0);
 
   const picked = input.heroSet ? findHeroSet(blocks, input.heroSet) : null;
   const auto = picked ?? pickAutoHeroSet(blocks);

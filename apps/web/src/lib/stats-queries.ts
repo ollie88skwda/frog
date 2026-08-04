@@ -13,8 +13,7 @@ export function useMuscleMap(): MuscleByExercise {
   const { data: exercises = [] } = useExercises();
   return useMemo(() => {
     const map: MuscleByExercise = new Map();
-    for (const e of exercises)
-      map.set(e.id, { targets: e.muscleTargets, laterality: e.laterality });
+    for (const e of exercises) map.set(e.id, { targets: e.muscleTargets });
     return map;
   }, [exercises]);
 }

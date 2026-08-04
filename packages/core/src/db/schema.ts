@@ -358,6 +358,8 @@ export const setLogs = pgTable(
     sessionExerciseId: uuid("session_exercise_id")
       .notNull()
       .references(() => sessionExercises.id),
+    // Physical set number within the exercise. NOT unique per row: a
+    // unilateral set has one 'left' and one 'right' row at the same set_no.
     setNo: integer("set_no").notNull(),
     setType: text("set_type").notNull().default("normal"), // 'normal'|'warmup'|'failure'|'drop'
     // Canonical kg; kg/lb is a display setting. Reinterpreted per exercise
@@ -374,6 +376,11 @@ export const setLogs = pgTable(
     restSec: integer("rest_sec"), // seconds rested before this set (null = first/unknown)
     metricValues: jsonb("metric_values").$type<Record<string, unknown>>(), // {metricId: value}
     completed: boolean("completed").notNull().default(false),
+    // Which limb this row records. Null = the whole set (bilateral,
+    // alternating, and every row logged before this feature existed). A
+    // unilateral set is TWO rows sharing (session_exercise_id, set_no): one
+    // 'left', one 'right' — see docs/DECISIONS.md.
+    side: text("side"), // 'left' | 'right' | null
   },
   (t) => [
     index("set_logs_owner_idx").on(t.ownerId),

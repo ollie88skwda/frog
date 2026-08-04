@@ -121,7 +121,7 @@ Deno.serve(async (req) => {
       const { data, error } = await admin
         .from("set_logs")
         .select(
-          "id, session_exercise_id, set_no, weight_kg, reps, rir, rir_min, rir_max, note, metric_values, created_at",
+          "id, session_exercise_id, set_no, side, weight_kg, reps, rir, rir_min, rir_max, note, metric_values, created_at",
         )
         .eq("owner_id", owner)
         .is("deleted_at", null)

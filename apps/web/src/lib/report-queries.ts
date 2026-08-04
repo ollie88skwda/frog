@@ -36,10 +36,7 @@ export function useReportData(): {
   const data = useMemo<ReportData | undefined>(() => {
     if (!records) return undefined;
     const muscles: MuscleByExercise = new Map(
-      exercises.map((e) => [
-        e.id,
-        { targets: e.muscleTargets ?? null, laterality: e.laterality },
-      ]),
+      exercises.map((e) => [e.id, { targets: e.muscleTargets ?? null }]),
     );
     const names = new Map(exercises.map((e) => [e.id, e.name]));
     // measurements arrive newest-first → the first non-null is the latest.

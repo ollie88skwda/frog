@@ -33,6 +33,7 @@ describe("buildSessionCard", () => {
           reps: 5,
           durationSec: null,
           distanceM: null,
+          side: null,
         },
         {
           id: "s2",
@@ -42,6 +43,7 @@ describe("buildSessionCard", () => {
           reps: 3,
           durationSec: null,
           distanceM: null,
+          side: null,
         },
       ],
     },
@@ -58,6 +60,7 @@ describe("buildSessionCard", () => {
           reps: 10,
           durationSec: null,
           distanceM: null,
+          side: null,
         },
       ],
     },
@@ -117,6 +120,7 @@ describe("buildSessionCard", () => {
             reps: 15,
             durationSec: null,
             distanceM: null,
+            side: null,
           },
         ],
       },
@@ -154,6 +158,7 @@ describe("buildSessionCard", () => {
             reps: 10,
             durationSec: null,
             distanceM: null,
+            side: null,
           },
           {
             id: "s1",
@@ -163,6 +168,7 @@ describe("buildSessionCard", () => {
             reps: 5,
             durationSec: null,
             distanceM: null,
+            side: null,
           },
           {
             id: "s2",
@@ -172,6 +178,7 @@ describe("buildSessionCard", () => {
             reps: 5,
             durationSec: null,
             distanceM: null,
+            side: null,
           },
         ],
       },
@@ -291,7 +298,7 @@ describe("buildStreakCard", () => {
 });
 
 const bench = (targets: MuscleTarget[]): MuscleByExercise =>
-  new Map([["bench", { targets, laterality: null }]]);
+  new Map([["bench", { targets }]]);
 
 function session(
   id: string,
@@ -314,6 +321,8 @@ function session(
             reps: 5,
             durationSec: null,
             distanceM: null,
+            setNo: 0,
+            side: null,
           },
         ],
       },
@@ -409,6 +418,8 @@ describe("buildExerciseRecordsCard", () => {
               reps,
               durationSec: null,
               distanceM: null,
+              setNo: 0,
+              side: null,
             },
           ],
         },
@@ -448,6 +459,8 @@ describe("buildExerciseRecordsCard", () => {
               reps,
               durationSec: null,
               distanceM: null,
+              setNo: 0,
+              side: null,
             },
           ],
         },
@@ -487,12 +500,14 @@ describe("buildExerciseRecordsCard", () => {
         {
           exerciseId: "pullup",
           exerciseType: "bodyweight_reps",
-          sets: reps.map((r) => ({
+          sets: reps.map((r, i) => ({
             setType: "normal",
             weightKg: null,
             reps: r,
             durationSec: null,
             distanceM: null,
+            setNo: i,
+            side: null,
           })),
         },
       ],
@@ -528,12 +543,14 @@ describe("buildExerciseRecordsCard", () => {
         {
           exerciseId: "plank",
           exerciseType: "duration",
-          sets: secs.map((durationSec) => ({
+          sets: secs.map((durationSec, i) => ({
             setType: "normal",
             weightKg: null,
             reps: null,
             durationSec,
             distanceM: null,
+            setNo: i,
+            side: null,
           })),
         },
       ],
@@ -571,6 +588,8 @@ describe("buildExerciseRecordsCard", () => {
               reps: null,
               durationSec: sec,
               distanceM: m,
+              setNo: 0,
+              side: null,
             },
           ],
         },

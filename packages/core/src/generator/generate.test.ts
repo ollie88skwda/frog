@@ -223,6 +223,57 @@ describe("nextPrescription", () => {
     ).toBe("no_data");
   });
 
+  it("a unilateral pair (two performed rows sharing one set_no) advances only when both sides clear the target", () => {
+    // One-arm row, 1 prescribed set. Both sides logged as set_no 0 — the
+    // right side hit the top of the range, the left fell one short.
+    const oneSet = [
+      {
+        setNo: 0,
+        setType: "normal",
+        targetWeightKg: 30,
+        targetReps: 8,
+        targetRepsMax: 12,
+      },
+    ];
+    const leftShort = nextPrescription(
+      oneSet,
+      [
+        { setNo: 0, weightKg: 30, reps: 11 }, // left: one short
+        { setNo: 0, weightKg: 30, reps: 12 }, // right: hit the top
+      ],
+      "dumbbell",
+    );
+    expect(leftShort.advance).toBe(false);
+    expect(leftShort.status).toBe("maintaining");
+
+    const bothTop = nextPrescription(
+      oneSet,
+      [
+        { setNo: 0, weightKg: 30, reps: 12 },
+        { setNo: 0, weightKg: 30, reps: 12 },
+      ],
+      "dumbbell",
+    );
+    expect(bothTop.advance).toBe(true);
+    expect(bothTop.status).toBe("progressing");
+
+    // Uneven pair: the left hit the target weight and reps, the right made up
+    // for lighter weight with extra reps. Neither row alone can carry the set
+    // — the right never reached 30 kg, so the weight has to be repeated, and
+    // the suggestion keys off the lighter side.
+    const rightLighter = nextPrescription(
+      oneSet,
+      [
+        { setNo: 0, weightKg: 30, reps: 12 },
+        { setNo: 0, weightKg: 25, reps: 15 },
+      ],
+      "dumbbell",
+    );
+    expect(rightLighter.advance).toBe(false);
+    expect(rightLighter.status).toBe("maintaining");
+    expect(rightLighter.nextWeightKg).toEqual([25]);
+  });
+
   it("dumbbell step is 2 kg", () => {
     const r = nextPrescription(
       targets,

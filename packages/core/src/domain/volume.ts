@@ -73,12 +73,62 @@ export function sessionVolumeKg(
   return total;
 }
 
+export type CountableSet = {
+  setNo: number;
+  side?: string | null;
+  setType?: string;
+  completed?: boolean;
+};
+
+/**
+ * Groups set rows into *physical* sets — the single definition of the
+ * set_no pairing rule. A unilateral pair is two rows sharing one set_no and
+ * yields one group; every row with side == null is its own singleton group.
+ * Grouping by set_no (not "keep only the left rows") means a set logged for
+ * one side only still yields one group instead of none. Input order is
+ * preserved, so with the repo's left-before-right ordering `group[0]` is the
+ * left side and serves as the template for one-value-per-set projections
+ * (routine write-back, copy-workout seeds, committed-row rendering). Anything
+ * projecting sets outward must emit one output per group, never one per row;
+ * anything counting them goes through countSets.
+ */
+export function groupSetsBySetNo<
+  T extends { setNo: number; side?: string | null },
+>(sets: T[]): T[][] {
+  const groups: T[][] = [];
+  const bySetNo = new Map<number, T[]>();
+  for (const s of sets) {
+    if (s.side == null) {
+      groups.push([s]);
+      continue;
+    }
+    let g = bySetNo.get(s.setNo);
+    if (!g) {
+      g = [];
+      bySetNo.set(s.setNo, g);
+      groups.push(g);
+    }
+    g.push(s);
+  }
+  return groups;
+}
+
+/**
+ * How many *physical* sets a list of set rows represents, after dropping the
+ * rows that don't count for stats (uncompleted, or warm-ups when excluded).
+ */
+export function countSets(
+  sets: CountableSet[],
+  opts: VolumeOptions = { includeWarmups: true },
+): number {
+  return groupSetsBySetNo(sets.filter((s) => countsForStats(s, opts))).length;
+}
+
 export function sessionSetCount(
-  blocks: Array<{ sets: Array<{ setType?: string; completed?: boolean }> }>,
+  blocks: Array<{ sets: CountableSet[] }>,
   opts: VolumeOptions = { includeWarmups: true },
 ): number {
   let n = 0;
-  for (const b of blocks)
-    for (const s of b.sets) if (countsForStats(s, opts)) n += 1;
+  for (const b of blocks) n += countSets(b.sets, opts);
   return n;
 }

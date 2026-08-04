@@ -1,6 +1,8 @@
 import {
   buildSessionCard,
+  countSets,
   type ExerciseType,
+  groupSetsBySetNo,
   type NewRoutineInput,
   type SessionExerciseDetail,
   type SetType,
@@ -219,7 +221,9 @@ export default function HistoryDetailScreen() {
         supersetGroup: b.supersetGroup,
         restSec: b.restSec,
         note: b.note,
-        sets: b.sets.map((s, si) => ({
+        // One routine set per *physical* set — a unilateral pair is two rows
+        // sharing one set_no, and the left row is the target's template.
+        sets: groupSetsBySetNo(b.sets).map(([s], si) => ({
           setNo: si,
           setType: s.setType,
           targetWeightKg: s.weightKg,
@@ -245,7 +249,9 @@ export default function HistoryDetailScreen() {
       const seed: Record<string, SeedSet[]> = {};
       for (const b of blocks) {
         const seId = await repo.addExerciseToSession(s.id, b.exerciseId);
-        seed[seId] = b.sets.map((x) => ({
+        // One draft row per physical set — the copied grid must ask for the
+        // same number of sets the source session actually performed.
+        seed[seId] = groupSetsBySetNo(b.sets).map(([x]) => ({
           setType: (x.setType as SetType) ?? "normal",
           weightKg: x.weightKg,
           reps: x.reps,
@@ -435,7 +441,8 @@ export default function HistoryDetailScreen() {
             <header className="flex items-center justify-between border-b border-border px-4 py-2">
               <h2 className="text-sm font-medium">{block.exerciseName}</h2>
               <span className="num text-2xs text-faint">
-                {block.sets.length} {block.sets.length === 1 ? "set" : "sets"}
+                {countSets(block.sets)}{" "}
+                {countSets(block.sets) === 1 ? "set" : "sets"}
                 {avgRestLabel(block.sets) &&
                   ` · rest ${avgRestLabel(block.sets)} avg`}
               </span>
@@ -451,7 +458,10 @@ export default function HistoryDetailScreen() {
                 key={set.id}
                 className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-4 py-2"
               >
-                <span className="num text-xs text-faint">{set.setNo + 1}</span>
+                <span className="num text-xs text-faint">
+                  {set.setNo + 1}
+                  {set.side === "left" ? "ᴸ" : set.side === "right" ? "ᴿ" : ""}
+                </span>
                 <span className="num text-sm">
                   {set.weightKg != null
                     ? toDisplayWeight(set.weightKg, unit)

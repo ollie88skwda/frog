@@ -45,6 +45,8 @@ export type ExportBundle = {
 
 export type CreatedApiToken = { token: string; row: ApiToken };
 
+export type SetSide = "left" | "right";
+
 export type NewSetInput = {
   weightKg: number | null;
   reps: number | null;
@@ -62,6 +64,8 @@ export type NewSetInput = {
   durationSec?: number | null;
   /** Distance-type exercises (canonical meters). */
   distanceM?: number | null;
+  /** Limb for a unilateral exercise; omit/null for bilateral + alternating. */
+  side?: SetSide | null;
 };
 
 export type MetricType = "number" | "scale" | "text" | "checkbox";
@@ -79,6 +83,8 @@ export type GhostSet = {
   reps: number | null;
   durationSec?: number | null;
   distanceM?: number | null;
+  /** The other limb's values when the previous set was unilateral. */
+  otherSide?: Omit<GhostSet, "otherSide"> | null;
 };
 
 export type NewMachineInput = {
@@ -155,6 +161,7 @@ export type LoggedSet = {
   rpe: number | null;
   note: string | null;
   restSec: number | null;
+  side: SetSide | null;
 };
 
 export type SessionExerciseDetail = {

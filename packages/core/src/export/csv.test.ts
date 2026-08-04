@@ -108,6 +108,7 @@ const bundle: ExportBundle = {
       note: 'felt "heavy"',
       metricValues: null,
       completed: true,
+      side: null,
     },
   ],
 };
@@ -117,10 +118,33 @@ describe("setsCsv", () => {
     const csv = setsCsv(bundle);
     const [header, row] = csv.split("\n");
     expect(header).toBe(
-      "session_started_at,session_title,exercise,set_no,set_type,weight_kg,reps,duration_sec,distance_m,rir,rir_min,rir_max,rpe,rest_sec,note,Sleep (h)",
+      "session_started_at,session_title,exercise,set_no,side,set_type,weight_kg,reps,duration_sec,distance_m,rir,rir_min,rir_max,rpe,rest_sec,note,Sleep (h)",
     );
     expect(row).toBe(
-      '2026-01-02T10:00:00.000Z,,"Bench, Press",0,normal,100,5,,,2,,,8,90,"felt ""heavy""",7.5',
+      '2026-01-02T10:00:00.000Z,,"Bench, Press",0,,normal,100,5,,,2,,,8,90,"felt ""heavy""",7.5',
+    );
+  });
+
+  it("includes the side column for a unilateral pair", () => {
+    const withSide: ExportBundle = {
+      ...bundle,
+      setLogs: [
+        { ...bundle.setLogs[0], side: "left" },
+        {
+          ...bundle.setLogs[0],
+          id: "sl2",
+          side: "right",
+          weightKg: 28,
+          reps: 8,
+        },
+      ],
+    };
+    const [, left, right] = setsCsv(withSide).split("\n");
+    expect(left).toBe(
+      '2026-01-02T10:00:00.000Z,,"Bench, Press",0,left,normal,100,5,,,2,,,8,90,"felt ""heavy""",7.5',
+    );
+    expect(right).toBe(
+      '2026-01-02T10:00:00.000Z,,"Bench, Press",0,right,normal,28,8,,,2,,,8,90,"felt ""heavy""",7.5',
     );
   });
 
@@ -139,7 +163,7 @@ describe("setsCsv", () => {
     };
     const [, row] = setsCsv(withRange).split("\n");
     expect(row).toBe(
-      '2026-01-02T10:00:00.000Z,,"Bench, Press",0,normal,100,5,,,,1,2,8,90,"felt ""heavy""",7.5',
+      '2026-01-02T10:00:00.000Z,,"Bench, Press",0,,normal,100,5,,,,1,2,8,90,"felt ""heavy""",7.5',
     );
   });
 });
