@@ -94,6 +94,42 @@ test("the checkmark commits the filled draft row", async ({ page }) => {
   await expect(page.getByTestId("set-1-weight")).toBeVisible();
 });
 
+test("opening the set-details sheet does not auto-check the set off", async ({
+  page,
+}) => {
+  // Regression: the "…" (set details) button has a mousedown-preventDefault
+  // guard meant to keep the weight/reps input focused so tapping it doesn't
+  // trigger auto-checkoff. That guard only stops the button itself from
+  // stealing focus — it doesn't account for the details dialog grabbing
+  // focus once it opens, which fires the same blur auto-checkoff a beat
+  // later.
+  const EX = `Details ${Date.now()}`;
+
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
+  await waitForExercise(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  const before = await rowCount(page, "set_logs");
+  await page.getByTestId("set-0-weight").fill("100");
+  await page.getByTestId("set-0-reps").fill("5");
+  await page.getByTestId("set-0-more").click();
+
+  // The sheet opened — the row must not have committed in the process.
+  await expect(page.getByTestId("set-0-note")).toBeVisible();
+  await expect(page.getByTestId("committed-0")).not.toBeVisible();
+  expect(await rowCount(page, "set_logs")).toBe(before);
+
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("set-0-weight")).toHaveValue("100");
+  await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
+  expect(await rowCount(page, "set_logs")).toBe(before);
+});
+
 test("tapping the checkmark on a touch device commits exactly one set", async ({
   page,
 }) => {

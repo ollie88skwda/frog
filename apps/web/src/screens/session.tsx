@@ -3529,6 +3529,14 @@ function ActiveRow({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const done = useRef(false);
   const rowRef = useRef<HTMLDivElement>(null);
+  // Set when the "…" button opens the details sheet: Radix moves focus into
+  // the dialog once it mounts, blurring whichever weight/reps input was
+  // focused. That blur reaches onFieldBlur/onRightFieldBlur just like a
+  // real tap-away would, so without this it auto-checks the set off the
+  // moment the sheet opens. Consumed by the next blur, or cleared when the
+  // sheet closes without one (e.g. it opened while neither field was
+  // focused).
+  const suppressCheckoffRef = useRef(false);
   const [, tick] = useReducer((n: number) => n + 1, 0);
 
   // Mirror uncommitted keystrokes to localStorage so a reload restores them.
@@ -3793,6 +3801,10 @@ function ActiveRow({
   // Otherwise the moment you tab off "weight" into "reps" would half-log the
   // set before the right side ever gets a chance to mirror or override.
   function onFieldBlur() {
+    if (suppressCheckoffRef.current) {
+      suppressCheckoffRef.current = false;
+      return;
+    }
     if (isUnilateral) return;
     if (weight.trim() !== "" && reps.trim() !== "") commit(false);
   }
@@ -3802,6 +3814,10 @@ function ActiveRow({
   // complete, which would otherwise auto-commit before the reps override is
   // even typed. Only fires once focus actually leaves this row.
   function onRightFieldBlur(e: React.FocusEvent<HTMLInputElement>) {
+    if (suppressCheckoffRef.current) {
+      suppressCheckoffRef.current = false;
+      return;
+    }
     const next = e.relatedTarget as Node | null;
     if (next && rowRef.current?.contains(next)) return;
     if (weight.trim() !== "" && reps.trim() !== "") commit(false);
@@ -4028,7 +4044,13 @@ function ActiveRow({
           <Button
             variant="outline"
             size="icon-lg"
-            onClick={() => setDetailsOpen(true)}
+            onClick={() => {
+              // Opening the sheet is about to steal focus from weight/reps
+              // via Radix's own auto-focus — arm the guard so that blur
+              // doesn't read as "done with this row" and check it off.
+              suppressCheckoffRef.current = true;
+              setDetailsOpen(true);
+            }}
             // Keep the weight/reps input focused so tapping doesn't blur it
             // — Safari doesn't focus buttons on tap.
             onMouseDown={(e) => e.preventDefault()}
@@ -4056,7 +4078,16 @@ function ActiveRow({
         </div>
       )}
 
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+      <Dialog
+        open={detailsOpen}
+        onOpenChange={(open) => {
+          setDetailsOpen(open);
+          // Closing without a field blur ever landing (e.g. the sheet opened
+          // while neither weight nor reps had focus) leaves the guard armed
+          // — clear it so a later, genuine tap-away isn't swallowed too.
+          if (!open) suppressCheckoffRef.current = false;
+        }}
+      >
         <DialogContent
           title={`Set ${index + 1} details`}
           className="md:max-w-sm"
