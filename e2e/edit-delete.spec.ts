@@ -16,7 +16,9 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-test("edit a committed set; delete a set; both survive reload", async ({ page }) => {
+test("edit a committed set; delete a set; both survive reload", async ({
+  page,
+}) => {
   const EX = `EditLift ${Date.now()}`;
 
   await page.goto("/library");
@@ -68,7 +70,9 @@ test("edit a committed set; delete a set; both survive reload", async ({ page })
   await expect(page.getByTestId("committed-1")).not.toBeVisible();
 });
 
-test("delete a custom exercise removes it from the picker; tags round-trip", async ({ page }) => {
+test("delete a custom exercise removes it from the picker; tags round-trip", async ({
+  page,
+}) => {
   const EX = `Tagged ${Date.now()}`;
 
   await page.goto("/library");

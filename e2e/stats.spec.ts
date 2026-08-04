@@ -88,9 +88,10 @@ test("stats hub aggregates two sessions across muscle groups", async ({
   await expect(mainRows.first()).toBeVisible();
 
   // Tapping a main exercise deep-links to its detail screen.
-  const firstId = (
-    await mainRows.first().getAttribute("data-testid")
-  )?.replace("main-exercise-", "");
+  const firstId = (await mainRows.first().getAttribute("data-testid"))?.replace(
+    "main-exercise-",
+    "",
+  );
   await mainRows.first().click();
   await expect(page).toHaveURL(new RegExp(`/exercises/${firstId}`));
 });
@@ -122,7 +123,11 @@ const DAY = 86_400_000;
 // the signed-in client (owner_id defaults from the JWT sub under RLS) — the
 // Workouts/Duration totals only need the session row itself, no exercises
 // (see distributionWindow in packages/core/src/stats/aggregate.ts).
-async function seedTimedSession(page: Page, startedAt: number, durationMs: number) {
+async function seedTimedSession(
+  page: Page,
+  startedAt: number,
+  durationMs: number,
+) {
   await page.evaluate(
     async ({ startedAt, durationMs }) => {
       const sb = window.__frog.supabase;

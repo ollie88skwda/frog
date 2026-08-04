@@ -70,7 +70,9 @@ test("/tips lists lessons and browsing clears the InfoTip dot", async ({
   await shot(page, "4-session-infotip-dot-cleared");
 });
 
-test("/tips is reachable from Settings without a keyboard", async ({ page }) => {
+test("/tips is reachable from Settings without a keyboard", async ({
+  page,
+}) => {
   await page.goto("/settings");
   const link = page.getByTestId("tips-link");
   await link.scrollIntoViewIfNeeded();

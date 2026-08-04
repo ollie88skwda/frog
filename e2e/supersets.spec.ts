@@ -1,5 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // M3 supersets: the exercise ⋯ menu links two blocks into a superset (color
 // bar + data-superset marker), persists the grouping server-side, dissolves a
@@ -160,7 +166,9 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
     };
   });
   await blockA2.getByTestId("set-1-add").click();
-  await expect(page.getByTestId(`block-${A}`).getByTestId("committed-1")).toBeVisible();
+  await expect(
+    page.getByTestId(`block-${A}`).getByTestId("committed-1"),
+  ).toBeVisible();
   const scrolled = await page.evaluate(
     () => (window as unknown as { __scrolled: (string | null)[] }).__scrolled,
   );

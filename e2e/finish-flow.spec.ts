@@ -1,5 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // M2 finish flow: the End button opens a Save-Workout overlay (editable title /
 // notes / start-time with a computed duration, Discard). Plus the two history

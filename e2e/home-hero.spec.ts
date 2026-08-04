@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // Home hero — "today's plan". The hero is the primary way to start training:
 // it names the routine you're about to run, previews what's in it, and starts

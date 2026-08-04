@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // B1: tierNameClass(null) used to alias the tier-S ("Best") brightness class,
 // so every untiered exercise — 862 of 882 seed rows, and every hand-added

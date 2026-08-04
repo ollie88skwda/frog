@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  rowCount,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // The web app's QueryClient retries every mutation up to 3x (apps/web/src/app.tsx).
 // If the FIRST attempt's write actually lands server-side but its response is

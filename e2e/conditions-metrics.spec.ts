@@ -138,10 +138,7 @@ test("create a custom number condition with a unit; value round-trips", async ({
           .eq("id", sessionId)
           .single();
         if (error) throw new Error(error.message);
-        const values = data?.condition_values as Record<
-          string,
-          unknown
-        > | null;
+        const values = data?.condition_values as Record<string, unknown> | null;
         return values?.[metricId] ?? null;
       }, id),
     )

@@ -24,7 +24,10 @@ function measurement(page: Page, date: string) {
       .is("deleted_at", null)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    return data as { bodyweight_kg: number | null; photo_path: string | null } | null;
+    return data as {
+      bodyweight_kg: number | null;
+      photo_path: string | null;
+    } | null;
   }, date);
 }
 
@@ -46,7 +49,9 @@ test("log body weight: entry persists, trend + list update, backdating adds a po
   await page.getByTestId("measure-field-bodyweightKg").fill("80");
   await page.getByTestId("measure-field-bodyweightKg").blur();
   await expect
-    .poll(() => measurement(page, "2021-03-10").then((m) => m?.bodyweight_kg ?? null))
+    .poll(() =>
+      measurement(page, "2021-03-10").then((m) => m?.bodyweight_kg ?? null),
+    )
     .toBe(80);
 
   // Row + latest reflect it immediately.
@@ -58,18 +63,28 @@ test("log body weight: entry persists, trend + list update, backdating adds a po
   await page.getByTestId("measure-field-bodyweightKg").fill("75");
   await page.getByTestId("measure-field-bodyweightKg").blur();
   await expect
-    .poll(() => measurement(page, "2021-03-01").then((m) => m?.bodyweight_kg ?? null))
+    .poll(() =>
+      measurement(page, "2021-03-01").then((m) => m?.bodyweight_kg ?? null),
+    )
     .toBe(75);
   await expect(page.getByTestId("measure-row-2021-03-01")).toBeVisible();
-  await expect(page.getByTestId("trend-chart").locator("polyline")).toBeVisible();
+  await expect(
+    page.getByTestId("trend-chart").locator("polyline"),
+  ).toBeVisible();
 
   // Latest stays the most recent day, not the last-edited one.
   await expect(page.getByTestId("trend-latest")).toContainText("80");
 
   // Tapping a list row loads that day back into the editor for editing.
-  await page.getByTestId("measure-row-2021-03-10").getByRole("button").first().click();
+  await page
+    .getByTestId("measure-row-2021-03-10")
+    .getByRole("button")
+    .first()
+    .click();
   await expect(page.getByTestId("measure-date")).toHaveValue("2021-03-10");
-  await expect(page.getByTestId("measure-field-bodyweightKg")).toHaveValue("80");
+  await expect(page.getByTestId("measure-field-bodyweightKg")).toHaveValue(
+    "80",
+  );
 });
 
 test("edit a value in place, then delete an entry with confirm", async ({
@@ -112,13 +127,17 @@ test("progress photos: upload, compare, replace, and the two delete paths", asyn
     buffer: PNG,
   });
   await expect
-    .poll(() => measurement(page, "2021-07-01").then((m) => m?.photo_path ?? null))
+    .poll(() =>
+      measurement(page, "2021-07-01").then((m) => m?.photo_path ?? null),
+    )
     .not.toBeNull();
   await expect(page.getByTestId("photo-thumb-2021-07-01")).toBeVisible();
   await page.getByTestId("measure-field-bodyweightKg").fill("78");
   await page.getByTestId("measure-field-bodyweightKg").blur();
   await expect
-    .poll(() => measurement(page, "2021-07-01").then((m) => m?.bodyweight_kg ?? null))
+    .poll(() =>
+      measurement(page, "2021-07-01").then((m) => m?.bodyweight_kg ?? null),
+    )
     .toBe(78);
 
   // Day B is photo-only (no measurements).
@@ -129,7 +148,9 @@ test("progress photos: upload, compare, replace, and the two delete paths", asyn
     buffer: PNG,
   });
   await expect
-    .poll(() => measurement(page, "2021-06-01").then((m) => m?.photo_path ?? null))
+    .poll(() =>
+      measurement(page, "2021-06-01").then((m) => m?.photo_path ?? null),
+    )
     .not.toBeNull();
   await expect(page.getByTestId("photo-thumb-2021-06-01")).toBeVisible();
 
@@ -149,7 +170,9 @@ test("progress photos: upload, compare, replace, and the two delete paths", asyn
     buffer: PNG,
   });
   await expect
-    .poll(() => measurement(page, "2021-07-01").then((m) => m?.photo_path ?? null))
+    .poll(() =>
+      measurement(page, "2021-07-01").then((m) => m?.photo_path ?? null),
+    )
     .not.toBeNull();
 
   // Delete A's photo: A has data, so the copy says measurements are kept and the
@@ -159,7 +182,9 @@ test("progress photos: upload, compare, replace, and the two delete paths", asyn
   await page.getByTestId("photo-delete-confirm").click();
   await expect(page.getByTestId("photo-thumb-2021-07-01")).toHaveCount(0);
   await expect
-    .poll(() => measurement(page, "2021-07-01").then((m) => m?.photo_path ?? null))
+    .poll(() =>
+      measurement(page, "2021-07-01").then((m) => m?.photo_path ?? null),
+    )
     .toBeNull();
   // The row itself survives, measurements intact.
   await expect(

@@ -1,5 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  rowCount,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // The 2026-07-28 sbl → frog identifier rename kept exactly one read-old/
 // write-new fallback on the browser side: an in-progress set draft. A user
@@ -83,7 +90,9 @@ test("exports download under the frog name", async ({ page }, testInfo) => {
     page.waitForEvent("download"),
     page.getByTestId("export-json-btn").click(),
   ]);
-  expect(json.suggestedFilename()).toMatch(/^frog-export-\d{4}-\d{2}-\d{2}\.json$/);
+  expect(json.suggestedFilename()).toMatch(
+    /^frog-export-\d{4}-\d{2}-\d{2}\.json$/,
+  );
 
   const [csv] = await Promise.all([
     page.waitForEvent("download"),

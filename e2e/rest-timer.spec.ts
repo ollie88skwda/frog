@@ -1,5 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // M3 rest countdown: a per-exercise target (set from the block header's own
 // rest-timer control, left of the ⋯ menu) starts the docked countdown when a
