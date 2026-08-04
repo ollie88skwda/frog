@@ -161,3 +161,40 @@ test("alternating exercises log as a single row with a total-reps header", async
   // No paired ᴿ line for alternating — it logs identically to bilateral.
   await expect(page.getByTestId("set-0-right-weight")).toHaveCount(0);
 });
+
+test("library last-set summary shows both sides of an uneven unilateral pair", async ({
+  page,
+}) => {
+  // Display kg so the assertion below is unit-independent of the app's lb default.
+  await page.evaluate(() => localStorage.setItem("unit", "kg"));
+
+  const EX = `Lat Pulldown ${Date.now()}`;
+
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await waitForExercise(page, EX);
+  await markUnilateral(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await expect(page).toHaveURL(/\/session\//);
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  await page.getByTestId("set-0-weight").fill("40");
+  await page.getByTestId("set-0-reps").fill("8");
+  await page.getByTestId("set-0-right-weight").fill("35");
+  await page.getByTestId("set-0-right-reps").fill("8");
+  await page.getByTestId("set-0-done").click();
+  await expect(page.getByTestId("committed-0-right-weight")).toContainText(
+    "35",
+  );
+
+  // The library card's "Last:" ghost preview shares formatPrevious's uneven-
+  // pair convention ("X × r / Y × r") with the session PREVIOUS column — it
+  // must show the ᴿ side too, not silently drop it.
+  await page.goto("/library");
+  await page.getByTestId("exercise-search-input").fill(EX);
+  await expect(page.getByTestId(`exercise-row-${EX}`)).toContainText(
+    "Last: 40 kg × 8 / 35 kg × 8",
+  );
+});
