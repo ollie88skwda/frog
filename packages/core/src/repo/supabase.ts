@@ -55,6 +55,16 @@ function sideRank(side: string | null): number {
   return side === "right" ? 1 : 0;
 }
 
+// PostgREST does not guarantee the order of an embedded resource, so every
+// read of set_logs sorts rows into the set_no → left-before-right order that
+// groupSetsBySetNo and the ᴸ/ᴿ renderers assume.
+function bySetNoThenSide(a: Row, b: Row): number {
+  return (
+    (a.set_no as number) - (b.set_no as number) ||
+    sideRank(a.side as string | null) - sideRank(b.side as string | null)
+  );
+}
+
 // Library/picker list rows never render `instructions`/`image_urls` — those
 // are How-to-tab-only (exercise-detail.tsx) — yet `select()` downloaded them
 // on every cold load (734 kB of the ~1.17 MB payload on the seeded library).
@@ -876,14 +886,7 @@ export class SupabaseRepo implements Repo {
       routineExerciseId: (r.routine_exercise_id as string | null) ?? null,
       sets: ((r.set_logs as Row[]) ?? [])
         .filter((s) => s.deleted_at == null)
-        // Left before right within a shared set_no, so a unilateral pair
-        // always renders ᴸ above ᴿ regardless of insert order.
-        .sort(
-          (a, b) =>
-            (a.set_no as number) - (b.set_no as number) ||
-            sideRank(a.side as string | null) -
-              sideRank(b.side as string | null),
-        )
+        .sort(bySetNoThenSide)
         .map((s) => ({
           id: s.id as string,
           setNo: s.set_no as number,
@@ -1064,6 +1067,7 @@ export class SupabaseRepo implements Repo {
             "weight_reps",
           sets: ((se.set_logs as Row[]) ?? [])
             .filter((sl) => sl.deleted_at == null)
+            .sort(bySetNoThenSide)
             .map((sl) => ({
               setNo: sl.set_no as number,
               side: (sl.side as SetSide | null) ?? null,
@@ -1435,11 +1439,7 @@ export class SupabaseRepo implements Repo {
     // included, at the same index the active row commits at.
     const rows = sets
       .filter((s) => s.deleted_at == null)
-      .sort(
-        (a, b) =>
-          (a.set_no as number) - (b.set_no as number) ||
-          sideRank(a.side as string | null) - sideRank(b.side as string | null),
-      )
+      .sort(bySetNoThenSide)
       .map((r) => ({
         setNo: r.set_no as number,
         side: r.side as string | null,
