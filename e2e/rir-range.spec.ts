@@ -1,5 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // RIR-as-range (report §3.4): the RIR modifier is two bounded numeric inputs
 // (min/max), not a single number — mirrored on both the draft row (mid-
@@ -14,8 +20,7 @@ test.beforeEach(async ({ page }) => {
 
 async function makeExercise(page: Page, name: string) {
   await page.goto("/library");
-  await page.getByTestId("exercise-name-input").fill(name);
-  await page.getByTestId("add-exercise-btn").click();
+  await createExercise(page, name);
   await waitForExercise(page, name);
 }
 
