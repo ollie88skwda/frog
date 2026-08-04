@@ -47,6 +47,9 @@ function formatOneSide(
     return `${m}:${String(s).padStart(2, "0")}`;
   }
   if (g.weightKg == null && g.reps == null) return null;
+  // Null is "never logged", not zero — a weight-only set reads "40", not a
+  // fabricated "40 × 0". Don't coalesce these back to `?? 0`; a real logged
+  // 0 still prints.
   if (g.weightKg == null) return `${g.reps} reps`;
   if (g.reps == null) return formatWeight(g.weightKg);
   return `${formatWeight(g.weightKg)} × ${g.reps}`;
