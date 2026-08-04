@@ -189,6 +189,8 @@ already took.
 
 ## Bundle size
 
-Eager JS unchanged at 208.2 kB gz — the entire new share system (painter,
-six builders, graphics, mobile sheet) lands in the lazy `share-sheet`
-chunk.
+The entire share system (painter, six builders, graphics, mobile sheet)
+lands in the lazy `share-sheet` chunk, so the redesign left eager JS
+unchanged. The live eager total and its budget are measured and gated by
+`scripts/check-bundle.ts` (CI) — read the number from there rather than
+hand-copying one into this doc.
