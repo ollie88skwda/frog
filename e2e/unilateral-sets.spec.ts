@@ -5,6 +5,7 @@ import {
   PASSWORD,
   signIn,
   waitForExercise,
+  waitForSetLogs,
 } from "./helpers";
 
 // Unilateral set logging: a set_logs.side column pairs two rows under one
@@ -188,6 +189,7 @@ test("library last-set summary shows both sides of an uneven unilateral pair", a
   await expect(page.getByTestId("committed-0-right-weight")).toContainText(
     "35",
   );
+  await waitForSetLogs(page, EX, 2);
 
   // The library card's "Last:" ghost preview shares formatPrevious's uneven-
   // pair convention ("X × r / Y × r") with the session PREVIOUS column — it

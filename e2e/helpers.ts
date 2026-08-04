@@ -51,6 +51,43 @@ export async function waitForExercise(page: Page, name: string) {
     .toBe(1);
 }
 
+/** Poll until this exercise has `expected` set_logs rows server-side (each
+ * commit fires its inserts behind the optimistic row; a full-page goto would
+ * abort them). A unilateral set is two rows. */
+export async function waitForSetLogs(
+  page: Page,
+  exerciseName: string,
+  expected: number,
+) {
+  await expect
+    .poll(() =>
+      page.evaluate(async (n) => {
+        const { data: ex, error: exError } = await window.__frog.supabase
+          .from("exercises")
+          .select("id")
+          .eq("name", n)
+          .single();
+        if (exError) throw new Error(exError.message);
+        const { data: ses, error: sesError } = await window.__frog.supabase
+          .from("session_exercises")
+          .select("id")
+          .eq("exercise_id", ex.id);
+        if (sesError) throw new Error(sesError.message);
+        if (!ses.length) return 0;
+        const { count, error } = await window.__frog.supabase
+          .from("set_logs")
+          .select("id", { count: "exact", head: true })
+          .in(
+            "session_exercise_id",
+            ses.map((s) => s.id),
+          );
+        if (error) throw new Error(error.message);
+        return count ?? 0;
+      }, exerciseName),
+    )
+    .toBe(expected);
+}
+
 /** Poll until the session notes have landed server-side (the notes mutation is
  * debounced + optimistic; a reload before it lands would abort the PATCH). */
 export async function waitForSessionNotes(page: Page, notes: string) {
