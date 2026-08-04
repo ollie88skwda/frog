@@ -3814,6 +3814,10 @@ function ActiveRow({
       suppressCheckoffRef.current = false;
       return;
     }
+    // Tab out of reps lands on the "…" trigger — mousedown-preventDefault
+    // only covers pointers, so nothing has armed the guard above. Committing
+    // here unmounts that trigger mid-Tab, putting set details out of reach of
+    // the keyboard on a complete-but-uncommitted row.
     const next = e.relatedTarget as Node | null;
     if (next && moreCellRef.current?.contains(next)) return;
     if (isUnilateral) return;
