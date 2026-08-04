@@ -121,7 +121,12 @@ import {
   useSetExerciseWeightUnit,
 } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
-import { formatRirRange, parseRirFields, rirRange } from "@/lib/rir";
+import {
+  formatRirRange,
+  parseLoggedRirFields,
+  rirEditFields,
+  rirRange,
+} from "@/lib/rir";
 import { useRoutineDetail } from "@/lib/routine-queries";
 import {
   clearDraft,
@@ -538,17 +543,19 @@ export default function SessionScreen() {
   // The dock shows the most recently started stopwatch — the set you just
   // finished. Only a superset sibling of that block can still be running
   // alongside it (every commit prunes the rest); it takes the dock as it
-  // frees up.
+  // frees up. Blocks removed mid-rest are skipped rather than blanking the
+  // dock, so a still-running sibling keeps its Stop affordance.
   const activeRest = useMemo(() => {
-    let latest: { seId: string; state: RestTimerState } | null = null;
+    let latest: { seId: string; state: RestTimerState; name: string } | null =
+      null;
     for (const [seId, state] of Object.entries(restByBlock)) {
+      const name = blocks?.find((b) => b.seId === seId)?.name;
+      if (!name) continue;
       if (!latest || state.startedAt > latest.state.startedAt) {
-        latest = { seId, state };
+        latest = { seId, state, name };
       }
     }
-    if (!latest) return null;
-    const name = blocks?.find((b) => b.seId === latest.seId)?.name;
-    return name ? { ...latest, name } : null;
+    return latest;
   }, [restByBlock, blocks]);
 
   // Live PR banner + medal set. Bests snapshot captured once at mount, so the
@@ -1157,6 +1164,7 @@ export default function SessionScreen() {
 
   function removeBlock(seId: string) {
     setBlocks((prev) => (prev ?? []).filter((b) => b.seId !== seId));
+    dismissRest(seId);
     void repo.deleteSessionExercise(seId);
   }
 
@@ -2919,9 +2927,9 @@ function CommittedRow({
         ? String(toDisplayDistance(set.distanceM, distUnit))
         : "",
     );
-    const range = rirRange(set);
-    setRirMin(range ? String(range.min) : "");
-    setRirMax(range ? String(range.max) : "");
+    const fields = rirEditFields(set);
+    setRirMin(fields.min);
+    setRirMax(fields.max);
     setRpe(set.rpe != null ? String(set.rpe) : "");
     setNote(set.note ?? "");
     setConfirmDelete(false);
@@ -2955,7 +2963,7 @@ function CommittedRow({
     if (effort) {
       // Writes always go through the range pair going forward — the legacy
       // scalar column is left null rather than kept alongside it.
-      const r = parseRirFields(rirMin, rirMax);
+      const r = parseLoggedRirFields(rirMin, rirMax);
       patch.rir = null;
       patch.rirMin = r.rirMin;
       patch.rirMax = r.rirMax;
@@ -2986,7 +2994,9 @@ function CommittedRow({
         reps.trim() === "" ? null : Number.parseInt(reps, 10),
         {
           // Estimate off the low end of the range — the harder-effort bound.
-          rir: parseRirFields(rirMin, rirMax).rirMin,
+          // Read through rirRange so a max-only entry still projects, matching
+          // the badge rather than silently falling back to plain Epley.
+          rir: rirRange(parseLoggedRirFields(rirMin, rirMax))?.min ?? null,
           rpe: rpe.trim() === "" ? null : Number.parseFloat(rpe),
         },
       )
@@ -3299,7 +3309,7 @@ const RPE_OPTIONS = Array.from({ length: 19 }, (_, i) => 10 - i * 0.5);
 type ModifierConfig = {
   key: "rir" | "rpe";
   label: string;
-  kind: "number" | "select" | "range";
+  kind: "select" | "range";
   options?: number[];
   infoTipLessonId?: LessonId;
 };
@@ -3404,35 +3414,22 @@ function ModifierField(
   return (
     <div className="flex flex-col gap-1">
       {label}
-      {config.kind === "select" ? (
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          // biome-ignore lint/a11y/noAutofocus: focuses the just-added field
-          autoFocus={autoFocus}
-          data-testid={testId}
-          className="num h-8 w-full border border-border-strong bg-surface px-2 text-sm text-soft transition-colors duration-150 ease-(--ease-out-quad) focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
-        >
-          <option value="">—</option>
-          {config.options?.map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <Input
-          inputMode="numeric"
-          placeholder="—"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          autoFocus={autoFocus}
-          className="num"
-          data-testid={testId}
-        />
-      )}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
+        // biome-ignore lint/a11y/noAutofocus: focuses the just-added field
+        autoFocus={autoFocus}
+        data-testid={testId}
+        className="num h-8 w-full border border-border-strong bg-surface px-2 text-sm text-soft transition-colors duration-150 ease-(--ease-out-quad) focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+      >
+        <option value="">—</option>
+        {config.options?.map((v) => (
+          <option key={v} value={v}>
+            {v}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -3776,7 +3773,7 @@ function ActiveRow({
   function commit(adoptGhost: boolean) {
     if (done.current) return;
     const v = parseFields(adoptGhost);
-    const parsedRir = parseRirFields(rirMin, rirMax);
+    const parsedRir = parseLoggedRirFields(rirMin, rirMax);
     const anyPresent =
       (f.weight && v.weightKg != null) ||
       (f.reps && v.reps != null) ||
@@ -4017,7 +4014,7 @@ function ActiveRow({
   // is visible without opening the sheet on either row type.
   const modifierPreview = effort
     ? [
-        formatRirRange(rirRange(parseRirFields(rirMin, rirMax))),
+        formatRirRange(rirRange(parseLoggedRirFields(rirMin, rirMax))),
         rpe.trim() !== "" ? `RPE ${rpe}` : null,
       ]
         .filter(Boolean)

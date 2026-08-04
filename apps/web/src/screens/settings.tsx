@@ -570,8 +570,8 @@ function NotificationsSection() {
     <Section
       title="Notifications"
       hint={t(
-        "Alerts fire in-app; a system notification also shows when the tab is in the background.",
-        "Alerts fire in-app. If the tab is in the background, the frog also posts a system notification.",
+        `Nothing in ${APP_NAME} sends an alert automatically yet — "Send test" is the only notification it posts today.`,
+        "The frog has nothing to announce yet. Send a test and it croaks once; otherwise it sits still.",
       )}
     >
       <div className="mt-1 divide-y divide-border">
@@ -582,7 +582,7 @@ function NotificationsSection() {
               ? "Blocked — re-enable in your browser settings."
               : permission === "unsupported"
                 ? "Not supported on this device."
-                : `Allow ${APP_NAME} to post notifications.`
+                : `Allow ${APP_NAME} to post notifications — only "Send test" posts one today.`
           }
         >
           {permission === "granted" ? (
@@ -616,7 +616,7 @@ function NotificationsSection() {
                 ? "Requires server keys — not configured."
                 : isIOS()
                   ? "iOS: install the app to Home Screen first."
-                  : `Get notifications even when ${APP_NAME} is closed.`
+                  : "Registers this device for push. No sender is wired up yet, so nothing arrives."
           }
         >
           <Toggle

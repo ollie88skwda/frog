@@ -225,8 +225,11 @@ export const routineExercises = pgTable(
     // Same non-null int = same superset; color = group index. Null = none.
     supersetGroup: integer("superset_group"),
     // Per-exercise rest seconds. Null = unset, 0 = off. No longer a timer
-    // target — rest is an untargeted stopwatch — and no UI authors it; the
-    // generator writes it and the Trainer's duration estimate reads it.
+    // target — rest is an untargeted stopwatch. The routine builder has no
+    // field for it, but still writes it: a newly added exercise seeds from
+    // exercises.default_rest_sec (the exercise editor's "Rest — seconds"),
+    // and an existing value round-trips through every save. Read by the
+    // Trainer's duration estimate and the program routine preview.
     restSec: integer("rest_sec"),
     // Persistent template note — re-renders under the exercise every session.
     note: text("note"),

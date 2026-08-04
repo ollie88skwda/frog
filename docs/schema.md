@@ -169,7 +169,7 @@ Reusable workout templates. Starting one pre-fills a live session.
 | exercise_id | uuid | FK → exercises |
 | order_index | integer | |
 | superset_group | integer? | same int = same superset; null = none |
-| rest_sec | integer? | per-exercise rest seconds; null = unset, 0 = off. No longer a timer target (rest is an untargeted stopwatch) and the routine builder no longer authors it — still written by the generator and read by the Trainer's duration estimate + the program routine preview |
+| rest_sec | integer? | per-exercise rest seconds; null = unset, 0 = off. No longer a timer target (rest is an untargeted stopwatch). The routine builder has no field for it but still writes it — a newly added exercise seeds from `exercises.default_rest_sec` (the exercise editor's "Rest — seconds" field) and an existing value round-trips through every save; also written by the generator. Read by the Trainer's duration estimate and the program routine preview |
 | note | text? | persistent template note (re-renders every session) |
 | owner_id | text | |
 

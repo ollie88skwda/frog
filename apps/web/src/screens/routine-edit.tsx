@@ -39,7 +39,7 @@ import { Input } from "@/components/ui/input";
 import { formatMMSS, parseDuration, parseIntOrNull } from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import { useExercises } from "@/lib/queries";
-import { parseRirFields } from "@/lib/rir";
+import { parseTargetRirFields } from "@/lib/rir";
 import {
   useCreateRoutine,
   useRoutineDetail,
@@ -541,9 +541,10 @@ export default function RoutineEditScreen() {
         const reps = parseIntOrNull(s.reps);
         const repsMax = parseIntOrNull(s.repsMax);
         // An inverted range is unreadable as a prescription — drop it rather
-        // than persist bounds the session UI would render backwards. Shared
-        // with the session's own RIR write path so the rule has one owner.
-        const { rirMin, rirMax } = parseRirFields(s.rirMin, s.rirMax);
+        // than persist bounds the session UI would render backwards. The
+        // session's logging path swaps instead (a performed set is data, not a
+        // prescription); both rules live in lib/rir.ts.
+        const { rirMin, rirMax } = parseTargetRirFields(s.rirMin, s.rirMax);
         return {
           setNo: si,
           setType: s.setType,
