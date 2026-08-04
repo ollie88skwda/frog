@@ -67,6 +67,7 @@ import {
   Search,
   Settings2,
   Square,
+  StickyNote,
   Timer,
   Trash2,
   Unlink,
@@ -2740,6 +2741,18 @@ function SetupStrip({
   );
 }
 
+// "@2-3 RPE 8" readout for a committed row's own RIR/RPE — shared by the ᴸ and
+// ᴿ lines of a unilateral pair so each can show its own values. RIR reads
+// through rirRange so a legacy scalar still renders.
+function effortReadout(set: LoggedSet): string {
+  return [
+    formatRirRange(rirRange(set)),
+    set.rpe != null ? `RPE ${set.rpe}` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 // Committed-value formatter for one column (— when the field is empty).
 function committedText(
   key: ColKey,
@@ -2920,6 +2933,17 @@ function CommittedRow({
   const has = (k: ColKey) => columns.some((c) => c.key === k);
   const effort = supportsEffort(type);
   const setType = (primary.setType as SetType) ?? "normal";
+  // A unilateral pair's ᴿ row has its own editable RIR/RPE/note (see the
+  // details sheet below) that can diverge from the ᴸ row's after commit —
+  // surface it only when it actually differs, so the common untouched-mirror
+  // case doesn't clutter both lines with duplicate readouts.
+  // Compared through the rendered readout, so a legacy scalar and the
+  // equivalent zero-width range don't read as a divergence.
+  const secondaryEffortDiffers =
+    isPaired && effortReadout(primary) !== effortReadout(secondary);
+  const primaryNote = primary.note?.trim() || null;
+  const secondaryNote = isPaired ? secondary?.note?.trim() || null : null;
+  const notesDiffer = isPaired && primaryNote !== secondaryNote;
 
   function openDetails(set: LoggedSet) {
     setWeight(
@@ -3051,13 +3075,20 @@ function CommittedRow({
         ))}
         <span className="flex items-center justify-center gap-1">
           {effort && (
-            <span className="num text-2xs text-faint max-md:hidden md:group-hover:hidden">
-              {[
-                formatRirRange(rirRange(primary)),
-                primary.rpe != null ? `RPE ${primary.rpe}` : null,
-              ]
-                .filter(Boolean)
-                .join(" ")}
+            <span
+              className="num text-2xs text-faint max-md:hidden md:group-hover:hidden"
+              data-testid={`committed-${index}-effort`}
+            >
+              {effortReadout(primary)}
+            </span>
+          )}
+          {isPaired && notesDiffer && primaryNote && (
+            <span
+              className="text-faint max-md:hidden md:group-hover:hidden"
+              title={primaryNote}
+              data-testid={`committed-${index}-note`}
+            >
+              <StickyNote className="size-3.5" />
             </span>
           )}
           {/* Visible by default on touch, hover-revealed only from `md:` up —
@@ -3112,7 +3143,25 @@ function CommittedRow({
                 {committedText(c.key, secondary, unit, distUnit)}
               </button>
             ))}
-            <span />
+            <span className="flex items-center justify-center gap-1">
+              {effort && secondaryEffortDiffers && (
+                <span
+                  className="num text-2xs text-faint"
+                  data-testid={`committed-${index}-right-effort`}
+                >
+                  {effortReadout(secondary)}
+                </span>
+              )}
+              {notesDiffer && secondaryNote && (
+                <span
+                  className="text-faint"
+                  title={secondaryNote}
+                  data-testid={`committed-${index}-right-note`}
+                >
+                  <StickyNote className="size-3.5" />
+                </span>
+              )}
+            </span>
           </div>
           {prSetIds.has(secondary.id) && (
             <span

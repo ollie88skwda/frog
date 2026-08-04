@@ -165,6 +165,55 @@ test("shows the laterality affix alongside the warm-up marker on a unilateral pa
   await expect(page.getByTestId("committed-0-type")).toHaveText("Wᴸ");
 });
 
+test("editing only the ᴿ row's RIR/RPE/note surfaces them in the collapsed readout and reopened sheet", async ({
+  page,
+}) => {
+  const EX = `One-Arm Press ${Date.now()}`;
+
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await waitForExercise(page, EX);
+  await markUnilateral(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await expect(page).toHaveURL(/\/session\//);
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  await page.getByTestId("set-0-weight").fill("20");
+  await page.getByTestId("set-0-reps").fill("8");
+  await page.getByTestId("set-0-done").click();
+  await expect(page.getByTestId("committed-0-right-weight")).toContainText("20");
+
+  // Edit only the ᴿ row's details — the ᴸ row keeps no RIR/RPE/note.
+  await page.getByTestId("committed-0-right-weight").click();
+  await page.getByTestId("edit-0-rir").fill("1");
+  await page.getByTestId("edit-0-rpe").selectOption("9");
+  await page.getByTestId("edit-0-note").fill("elbow flare on this side");
+  await page.getByTestId("edit-0-save").click();
+
+  // Collapsed readout now surfaces the ᴿ row's own values.
+  await expect(page.getByTestId("committed-0-right-effort")).toContainText("@1");
+  await expect(page.getByTestId("committed-0-right-effort")).toContainText("RPE 9");
+  await expect(page.getByTestId("committed-0-right-note")).toHaveAttribute(
+    "title",
+    "elbow flare on this side",
+  );
+
+  // The ᴸ row's own readout stays empty — nothing fanned back to it.
+  await expect(page.getByTestId("committed-0-effort")).toHaveText("");
+  await expect(page.getByTestId("committed-0-note")).toHaveCount(0);
+
+  // Reopening the ᴿ row's sheet still shows what was saved (it never was
+  // truly invisible in storage — only in every UI surface, until now).
+  await page.getByTestId("committed-0-right-weight").click();
+  await expect(page.getByTestId("edit-0-rir")).toHaveValue("1");
+  await expect(page.getByTestId("edit-0-rpe")).toHaveValue("9");
+  await expect(page.getByTestId("edit-0-note")).toHaveValue(
+    "elbow flare on this side",
+  );
+});
+
 test("alternating exercises log as a single row with a total-reps header", async ({
   page,
 }) => {
