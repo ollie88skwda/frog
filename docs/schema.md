@@ -48,7 +48,7 @@ The user's gym equipment — settings entered once, recalled in every session.
 | movement_pattern | text? | `horizontal-push` \| `vertical-push` \| `horizontal-pull` \| `vertical-pull` \| `squat` \| `hinge` \| `lunge` \| `carry` \| `rotation` \| `isolation` |
 | laterality | text? | `bilateral` \| `unilateral` \| `alternating`; unilateral logs each set as a ᴸ/ᴿ pair of `set_logs` rows sharing one `set_no` (see [set_logs](#set_logs)), alternating labels the reps column "total reps" in-session. Muscle credit is per physical set, the same for all three. |
 | default_reps_min / default_reps_max | integer? | prefill only — routine editor "Add exercise" + generator; never rewrites a logged/prescribed value |
-| default_rest_sec | integer? | prefill only — session rest timer default when a block has no explicit `rest_sec` |
+| default_rest_sec | integer? | prefill only — seeds `routine_exercises.rest_sec` when the routine editor adds this exercise; no session-side reader (rest is an untargeted stopwatch) |
 | notes | text? | the user's own note about the exercise (setup, cue); shown read-only under the block header in a session |
 | aliases | jsonb? | string[], alternate names; matched by the fuzzy matcher (voice logging, routine paste) and search alongside `name` |
 | media_path | text? | storage path in the private `exercise-media` bucket (user-uploaded demo image/video, resized client-side); null = no media |
@@ -122,7 +122,7 @@ One exercise performed within one session, ordered.
 | side | text? | `'left' \| 'right' \| null`. Null = the whole set (bilateral, alternating, and every row logged before this column existed). |
 | weight_kg | real? | canonical kg |
 | reps | integer? | |
-| rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null |
+| rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null. Session logging leaves it null now (it writes the range pair instead); the Strong/Hevy CSV importers are the only remaining writers |
 | rir_min / rir_max | integer? | logged RIR range; the session-screen modifier field (`ActiveRow`/`CommittedRow` in `session.tsx`) always writes both going forward, even for a single value (`min === max`) |
 | rpe | real? | 1–10 perceived exertion (halves allowed) |
 | rest_sec | integer? | seconds rested before this set (null = first/unknown). On a unilateral pair, only the left row carries it — one commit, one rest countdown. |

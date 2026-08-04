@@ -372,8 +372,9 @@ export interface Repo {
   /** Accumulated pause time (ms); duration = ended − started − paused. */
   updateSessionPausedMs(sessionId: string, pausedMs: number): Promise<void>;
   /**
-   * Per-block session fields: superset grouping, rest-countdown target, and
-   * the per-exercise session note. Only provided fields are written.
+   * Per-block session fields: superset grouping, per-exercise rest seconds
+   * (dormant — nothing writes it since rest became an untargeted stopwatch),
+   * and the per-exercise session note. Only provided fields are written.
    */
   updateSessionExercise(
     sessionExerciseId: string,
@@ -459,13 +460,15 @@ export interface Repo {
   /**
    * Starts a live session from a routine: creates the session (routine_id
    * provenance) + one session_exercise per template exercise carrying
-   * superset group, rest target, note, and routine_exercise_id. Target sets
+   * superset group, rest seconds, note, and routine_exercise_id. Target sets
    * stay on the template — the session screen reads them via
    * getRoutineDetail for draft prefill.
    */
   startRoutineSession(routineId: string): Promise<Session>;
 
-  // Web-push subscriptions (Hevy-parity M12): rest-timer/PR notifications.
+  // Web-push subscriptions (Hevy-parity M12) for the Settings → Notifications
+  // toggle; the sender Edge Function went with the rest countdown, so nothing
+  // posts to these endpoints today.
   listPushSubscriptions(): Promise<PushSubscription[]>;
   /** Upserts by endpoint (a browser re-subscribing rotates keys). */
   savePushSubscription(

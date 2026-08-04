@@ -93,8 +93,9 @@ export const exercises = pgTable(
     // Bilateral vs unilateral vs alternating (domain/exercise-types).
     laterality: text("laterality"),
     // Per-exercise defaults — prefill only, consumed by the routine editor's
-    // "Add exercise" and the session's rest timer; never rewrites a logged
-    // or prescribed value.
+    // "Add exercise" (default_rest_sec seeds routine_exercises.rest_sec; the
+    // session has no rest target to read since rest became an untargeted
+    // stopwatch); never rewrites a logged or prescribed value.
     defaultRepsMin: integer("default_reps_min"),
     defaultRepsMax: integer("default_reps_max"),
     defaultRestSec: integer("default_rest_sec"),
