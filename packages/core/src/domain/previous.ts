@@ -47,8 +47,9 @@ function formatOneSide(
     return `${m}:${String(s).padStart(2, "0")}`;
   }
   if (g.weightKg == null && g.reps == null) return null;
-  if (g.weightKg == null) return `${g.reps ?? 0} reps`;
-  return `${formatWeight(g.weightKg)} × ${g.reps ?? 0}`;
+  if (g.weightKg == null) return `${g.reps} reps`;
+  if (g.reps == null) return formatWeight(g.weightKg);
+  return `${formatWeight(g.weightKg)} × ${g.reps}`;
 }
 
 /**

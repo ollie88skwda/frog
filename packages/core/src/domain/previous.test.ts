@@ -10,6 +10,17 @@ describe("formatPrevious", () => {
     expect(formatPrevious({ weightKg: null, reps: null }, fmtKg)).toBeNull();
   });
 
+  it("omits the reps suffix when reps were never logged", () => {
+    expect(formatPrevious({ weightKg: 40, reps: null }, fmtKg)).toBe("40");
+    expect(formatPrevious({ weightKg: 40, reps: 0 }, fmtKg)).toBe("40 × 0");
+    expect(
+      formatPrevious(
+        { weightKg: 40, reps: null, otherSide: { weightKg: 35, reps: null } },
+        fmtKg,
+      ),
+    ).toBe("40 / 35");
+  });
+
   it("collapses to one string when a unilateral pair matched", () => {
     expect(
       formatPrevious(
