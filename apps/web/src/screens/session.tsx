@@ -3575,6 +3575,14 @@ function ActiveRow({
     rDistance,
   ]);
 
+  // Closing without a field blur ever landing (e.g. the sheet opened while
+  // neither weight nor reps had focus) leaves the guard armed — clear it on
+  // every close, however the sheet was dismissed, so a later genuine
+  // tap-away isn't swallowed too.
+  useEffect(() => {
+    if (!detailsOpen) suppressCheckoffRef.current = false;
+  }, [detailsOpen]);
+
   function openPlates() {
     onOpenPlates(weight.trim() === "" ? null : Number.parseFloat(weight));
   }
@@ -4078,16 +4086,7 @@ function ActiveRow({
         </div>
       )}
 
-      <Dialog
-        open={detailsOpen}
-        onOpenChange={(open) => {
-          setDetailsOpen(open);
-          // Closing without a field blur ever landing (e.g. the sheet opened
-          // while neither weight nor reps had focus) leaves the guard armed
-          // — clear it so a later, genuine tap-away isn't swallowed too.
-          if (!open) suppressCheckoffRef.current = false;
-        }}
-      >
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent
           title={`Set ${index + 1} details`}
           className="md:max-w-sm"
