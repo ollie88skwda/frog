@@ -565,7 +565,7 @@ export function ExerciseEditor({
             </div>
             <p className="text-2xs text-faint">
               Doesn't set the in-workout rest timer — feeds the Trainer's
-              duration estimate and the program preview only.
+              duration estimate only.
             </p>
           </CollapsibleSection>
 
