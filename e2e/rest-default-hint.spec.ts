@@ -154,10 +154,25 @@ test("the Rest default still moves the Trainer's duration estimate", async ({
 
   // Add the 600s-rest exercise to exactly that routine, through the builder —
   // which is where the exercise default seeds routine_exercises.rest_sec.
+  // Saving this catalog program is legal more than once, and other specs in the
+  // suite do it, so routine names repeat across folders. Scope the lookup to the
+  // active program's folder — the exact set the Trainer card reads (lib/trainer.ts).
   const routineId = await page.evaluate(async (n) => {
-    const { data, error } = await window.__frog.supabase
+    const s = window.__frog.supabase;
+    const p = await s
+      .from("programs")
+      .select("folder_id")
+      .eq("active", true)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (p.error) throw new Error(p.error.message);
+    const folderId = p.data?.[0]?.folder_id as string | undefined;
+    if (!folderId) return "";
+    const { data, error } = await s
       .from("routines")
       .select("id")
+      .eq("folder_id", folderId)
       .eq("name", n)
       .is("deleted_at", null)
       .limit(1);
