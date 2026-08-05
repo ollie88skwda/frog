@@ -165,7 +165,7 @@ type BlockState = {
 // Context an ExerciseBlock hands up on set completion, so the screen can run the
 // PR check + rest-timer + smart-scroll without re-deriving per-block facts.
 type CommitCtx = {
-  exerciseType: string;
+  exerciseType: ExerciseType;
   // Planned type of the set that will follow (routine seed at the next index),
   // used for drop-set rest suppression.
   nextSetType: string | null;
@@ -1032,11 +1032,7 @@ export default function SessionScreen() {
             .filter((b) => b.supersetGroup === group)
             .map((b) => b.seId),
     );
-    const starting = shouldStartRest(
-      nextType,
-      set.setType,
-      ctx.exerciseType as ExerciseType,
-    );
+    const starting = shouldStartRest(nextType, set.setType, ctx.exerciseType);
     const startedAt = Date.now();
     setRestByBlock((prev) => {
       const next: Record<string, RestTimerState> = {};
@@ -2252,7 +2248,9 @@ function ExerciseBlock({
           </span>
         </span>
         <span className="flex items-center gap-2">
-          <RestControl blockName={block.name} running={restRunning} />
+          {supportsEffort(type) && (
+            <RestControl blockName={block.name} running={restRunning} />
+          )}
           <BlockMenu
             blockName={block.name}
             unit={blockUnit}
