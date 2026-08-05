@@ -1,13 +1,15 @@
 /**
  * App display name — "Frog" (docs/brand/frog-brand-identity.html, 2026-07-16).
  *
- * This is the SINGLE source of truth for the user-facing display name. To rebrand,
- * change APP_NAME here (plus the <title> in apps/web/index.html and the PWA manifest).
- * Reference APP_NAME from UI (headers, branding) instead of hardcoding the literal anywhere.
+ * This is the SINGLE source of truth for the user-facing display name. Reference
+ * APP_NAME from UI (headers, branding) instead of hardcoding the literal anywhere.
+ * To rebrand, change it here plus the three static assets that cannot import this
+ * module: apps/web/index.html (title + Apple/OG/Twitter metas, CI-checked by
+ * scripts/gen-og-image.ts), apps/web/public/manifest.webmanifest (name /
+ * short_name), and apps/web/public/sw.js (default push-payload title).
  * Technical identifiers now agree with the display name (package scope @frog/*,
  * FROG_* env vars, frog_ token prefix) — the identifier layer was renamed on
- * 2026-07-28, see docs/DECISIONS.md. The one sanctioned literal outside this file
- * is supabase/functions/send-rest-push (Deno; cannot import @frog/core).
+ * 2026-07-28, see docs/DECISIONS.md.
  */
 export const APP_NAME = "Frog";
 

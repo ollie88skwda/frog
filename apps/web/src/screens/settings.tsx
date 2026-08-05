@@ -38,14 +38,12 @@ import {
   useMeasurementUnit,
   useUnit,
 } from "@/lib/settings";
-import { playRestBlip } from "@/lib/sound";
 import { cn } from "@/lib/utils";
 import { type Register, useRegister, useVoice, voice } from "@/lib/voice";
 import { getWarmupMethod, useWarmupMethod } from "@/lib/warmup-method";
 import {
   useKeepAwake,
   useLivePrBanner,
-  useRestSoundVolume,
   useSmartSupersetScroll,
 } from "@/lib/workout-prefs";
 
@@ -302,26 +300,6 @@ function VoiceSection() {
 
 // ── Workouts ────────────────────────────────────────────────────────────────
 
-const REST_OPTIONS: { label: string; sec: number | null }[] = [
-  { label: "Off", sec: null },
-  { label: "0:30", sec: 30 },
-  { label: "0:45", sec: 45 },
-  { label: "1:00", sec: 60 },
-  { label: "1:30", sec: 90 },
-  { label: "2:00", sec: 120 },
-  { label: "2:30", sec: 150 },
-  { label: "3:00", sec: 180 },
-  { label: "4:00", sec: 240 },
-  { label: "5:00", sec: 300 },
-];
-
-const SOUND_PRESETS: { label: string; value: number }[] = [
-  { label: "Off", value: 0 },
-  { label: "Low", value: 0.25 },
-  { label: "Normal", value: 0.5 },
-  { label: "High", value: 1 },
-];
-
 function WorkoutsSection() {
   const { t } = useVoice();
   const { data: prefs } = useUserPrefs();
@@ -331,9 +309,7 @@ function WorkoutsSection() {
   const [smartScroll, setSmartScroll] = useSmartSupersetScroll();
   const [livePr, setLivePr] = useLivePrBanner();
   const [keepAwake, setKeepAwake] = useKeepAwake();
-  const [restVolume, setRestVolume] = useRestSoundVolume();
 
-  const defaultRestSec = prefs?.defaultRestSec ?? null;
   const previousScope = (prefs?.previousValuesScope ?? "any") as
     | "any"
     | "routine";
@@ -350,26 +326,6 @@ function WorkoutsSection() {
   return (
     <Section title="Workouts">
       <div className="mt-1 divide-y divide-border">
-        {/* TODO(lessons): <InfoTip lessonId="rest-between-sets" /> once copy exists */}
-        <Row
-          label="Default rest timer"
-          hint="Applied to sets with no per-exercise rest set."
-        >
-          <SelectField
-            value={defaultRestSec === null ? "off" : String(defaultRestSec)}
-            onChange={(v) =>
-              updatePrefs.mutate({
-                defaultRestSec: v === "off" ? null : Number(v),
-              })
-            }
-            testid="default-rest-select"
-            options={REST_OPTIONS.map((o) => ({
-              value: o.sec === null ? "off" : String(o.sec),
-              label: o.label,
-            }))}
-          />
-        </Row>
-
         <Row
           label="Previous values"
           hint="Which past workout the PREVIOUS column fills from."
@@ -423,31 +379,6 @@ function WorkoutsSection() {
         >
           <Toggle on={keepAwake} onChange={setKeepAwake} testid="keep-awake" />
         </Row>
-
-        {/* Full-width row: the 4-preset control + Test button need the whole
-            line on a phone, so the label sits above rather than beside them. */}
-        <div className="py-2.5">
-          <p className="text-xs font-medium">Alert sound</p>
-          <p className="mt-0.5 text-2xs text-faint">
-            Rest-timer and PR blip volume.
-          </p>
-          <div className="mt-2 flex items-center gap-2">
-            <Segmented
-              options={SOUND_PRESETS}
-              value={restVolume}
-              onChange={setRestVolume}
-              testid="sound-vol"
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => playRestBlip(restVolume || 0.5)}
-              data-testid="sound-test"
-            >
-              Test
-            </Button>
-          </div>
-        </div>
       </div>
 
       <WarmupMethodEditor />
@@ -598,8 +529,8 @@ function NotificationsSection() {
   async function sendTest() {
     if (permission !== "granted") return;
     const body = voice(
-      "Rest timer test",
-      "Rest timer test. The frog cleared its throat.",
+      "Test notification",
+      "Test notification. The frog cleared its throat.",
     );
     const reg = await swRegistration();
     if (reg) await reg.showNotification(APP_NAME, { body });
@@ -639,8 +570,8 @@ function NotificationsSection() {
     <Section
       title="Notifications"
       hint={t(
-        "Rest-timer alerts fire in-app; a system notification also shows when the tab is in the background.",
-        "Rest-timer alerts fire in-app. If the tab is in the background, the frog also posts a system notification.",
+        `Nothing in ${APP_NAME} sends an alert automatically yet — "Send test" is the only notification it posts today.`,
+        "The frog has nothing to announce yet. Send a test and it croaks once; otherwise it sits still.",
       )}
     >
       <div className="mt-1 divide-y divide-border">
@@ -651,7 +582,7 @@ function NotificationsSection() {
               ? "Blocked — re-enable in your browser settings."
               : permission === "unsupported"
                 ? "Not supported on this device."
-                : `Allow ${APP_NAME} to post rest-timer alerts.`
+                : `Allow ${APP_NAME} to post notifications — only "Send test" posts one today.`
           }
         >
           {permission === "granted" ? (
@@ -685,7 +616,7 @@ function NotificationsSection() {
                 ? "Requires server keys — not configured."
                 : isIOS()
                   ? "iOS: install the app to Home Screen first."
-                  : `Get rest-timer alerts even when ${APP_NAME} is closed.`
+                  : "Registers this device for push. No sender is wired up yet, so nothing arrives."
           }
         >
           <Toggle

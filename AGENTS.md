@@ -14,7 +14,7 @@ Target user: intermediate/advanced lifters who autoregulate and control variable
 
 ## The name
 
-The app is **Frog**. The single source of truth for the display name is `APP_NAME` in `packages/core/src/config.ts` — never hardcode the literal anywhere else, so a future rebrand stays a one-line change. (The single sanctioned exception is `supabase/functions/send-rest-push`: Edge Functions are Deno and cannot import `@frog/core`.)
+The app is **Frog**. The single source of truth for the display name is `APP_NAME` in `packages/core/src/config.ts` — never hardcode the literal in code. Three static assets can't import it, so a rebrand is that one line plus those files by hand: `apps/web/index.html` (`<title>`, the Apple web-app title, and the OG/Twitter metas — `scripts/gen-og-image.ts --check` fails CI until they match), `apps/web/public/manifest.webmanifest` (`name`/`short_name`), and `apps/web/public/sw.js` (the default push-payload `title`).
 
 Technical identifiers agree with the display name as of 2026-07-28 — package scope `@frog/*`, `FROG_*` env vars, the `frog_` PAT prefix, the `__frog` E2E bridge global. See `docs/DECISIONS.md` for what was deliberately *not* renamed (`sbl.pastUsers`, the Vercel project).
 

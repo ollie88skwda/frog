@@ -61,6 +61,17 @@ export function formatMMSS(totalSec: number): string {
 }
 
 /**
+ * The numeric fields are free-text inputs (inputMode only hints the mobile
+ * keyboard), so a non-numeric entry must resolve to "no value" explicitly —
+ * letting NaN through writes a silent null at the JSON boundary.
+ */
+export function parseIntOrNull(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const v = Number.parseInt(raw, 10);
+  return Number.isFinite(v) ? v : null;
+}
+
+/**
  * Parses a duration entry into whole seconds. Accepts `m:ss` / `mm:ss` or a
  * plain seconds count (`90`). Returns null for empty / unparseable input.
  */

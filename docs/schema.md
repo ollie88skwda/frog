@@ -48,7 +48,7 @@ The user's gym equipment — settings entered once, recalled in every session.
 | movement_pattern | text? | `horizontal-push` \| `vertical-push` \| `horizontal-pull` \| `vertical-pull` \| `squat` \| `hinge` \| `lunge` \| `carry` \| `rotation` \| `isolation` |
 | laterality | text? | `bilateral` \| `unilateral` \| `alternating`; unilateral logs each set as a ᴸ/ᴿ pair of `set_logs` rows sharing one `set_no` (see [set_logs](#set_logs)), alternating labels the reps column "total reps" in-session. Muscle credit is per physical set, the same for all three. |
 | default_reps_min / default_reps_max | integer? | prefill only — routine editor "Add exercise" + generator; never rewrites a logged/prescribed value |
-| default_rest_sec | integer? | prefill only — session rest timer default when a block has no explicit `rest_sec` |
+| default_rest_sec | integer? | prefill only — seeds `routine_exercises.rest_sec` when the routine editor adds this exercise; no session-side reader (rest is an untargeted stopwatch) |
 | notes | text? | the user's own note about the exercise (setup, cue); shown read-only under the block header in a session |
 | aliases | jsonb? | string[], alternate names; matched by the fuzzy matcher (voice logging, routine paste) and search alongside `name` |
 | media_path | text? | storage path in the private `exercise-media` bucket (user-uploaded demo image/video, resized client-side); null = no media |
@@ -122,10 +122,10 @@ One exercise performed within one session, ordered.
 | side | text? | `'left' \| 'right' \| null`. Null = the whole set (bilateral, alternating, and every row logged before this column existed). |
 | weight_kg | real? | canonical kg |
 | reps | integer? | |
-| rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null |
-| rir_min / rir_max | integer? | logged RIR range; round-tripped by the repo, the API and the export today, but no app surface writes them yet (range logging lands with the session-logging follow-up) |
+| rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null. Session logging leaves it null now (it writes the range pair instead); the Strong/Hevy CSV importers are the only remaining writers |
+| rir_min / rir_max | integer? | logged RIR range; the session-screen modifier field (`ActiveRow`/`CommittedRow` in `session.tsx`) always writes both going forward, even for a single value (`min === max`) |
 | rpe | real? | 1–10 perceived exertion (halves allowed) |
-| rest_sec | integer? | seconds rested before this set (null = first/unknown). On a unilateral pair, only the left row carries it — one commit, one rest countdown. |
+| rest_sec | integer? | seconds rested before this set (null = first/unknown). On a unilateral pair, only the left row carries it — one commit, one rest stopwatch. |
 | note | text? | |
 | metric_values | jsonb | {metric_id: value} for enabled set metrics |
 | completed | boolean | |
@@ -169,7 +169,7 @@ Reusable workout templates. Starting one pre-fills a live session.
 | exercise_id | uuid | FK → exercises |
 | order_index | integer | |
 | superset_group | integer? | same int = same superset; null = none |
-| rest_sec | integer? | countdown target; null = default, 0 = off |
+| rest_sec | integer? | per-exercise rest seconds; null = unset, 0 = off. No longer a timer target (rest is an untargeted stopwatch). The routine builder has no field for it but still writes it — a newly added exercise seeds from `exercises.default_rest_sec` (the exercise editor's "Rest — seconds" field) and an existing value round-trips through every save; also written by the generator. Read by the Trainer's duration estimate and the program routine preview |
 | note | text? | persistent template note (re-renders every session) |
 | owner_id | text | |
 
@@ -236,7 +236,7 @@ pure device behavior (theme, display unit, sounds…) stays in localStorage.
 | id | uuid | PK |
 | first_weekday | integer | 0=Sun … 6=Sat (streak/calendar semantics) |
 | include_warmups_in_stats | boolean | toggling recomputes records client-side |
-| default_rest_sec | integer? | null = off; applies to exercises added later |
+| default_rest_sec | integer? | dormant — retained, but the Settings row that set it is gone and nothing reads it since rest became an up-counting stopwatch with no target |
 | previous_values_scope | text | 'any' \| 'routine' |
 | body_diagram | text | heat-map figure variant |
 | plate_config | jsonb | `{barKg, platesKg[], barLb, platesLb[], dumbbellStepKg}` |
@@ -255,7 +255,9 @@ Workout photos attached at save (photos v1; ≤3 app-enforced).
 | owner_id | text | |
 
 ### push_subscriptions
-Web-push endpoints for rest-timer/PR notifications (M12).
+Web-push endpoints for the Settings → Notifications toggle (M12). The sender
+Edge Function (`send-rest-push`) was deleted with the rest countdown; the table
+and the subscribe path stay for any future push use.
 | column | type | notes |
 |---|---|---|
 | id | uuid | PK |

@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { platesFor } from "./plates";
-import {
-  adjustRest,
-  restRemainingSec,
-  shouldStartRest,
-  startRest,
-} from "./rest-timer";
+import { shouldStartRest, startRest } from "./rest-timer";
 import {
   DEFAULT_WARMUP_METHOD,
   DEFAULT_WARMUP_ROUNDING,
@@ -66,21 +61,13 @@ describe("warmupSets", () => {
 });
 
 describe("rest timer", () => {
-  it("counts down with ±15s adjustments", () => {
-    const t0 = 1_000_000;
-    let t = startRest(90, t0);
-    expect(restRemainingSec(t, t0 + 10_000)).toBe(80);
-    t = adjustRest(t, 15);
-    expect(restRemainingSec(t, t0 + 10_000)).toBe(95);
-    t = adjustRest(t, -30);
-    expect(restRemainingSec(t, t0 + 10_000)).toBe(65);
+  it("starts at the given timestamp", () => {
+    expect(startRest(1_000_000)).toEqual({ startedAt: 1_000_000 });
   });
 
-  it("suppressed before drop sets and without a target", () => {
-    expect(shouldStartRest(90, "drop")).toBe(false);
-    expect(shouldStartRest(0, "normal")).toBe(false);
-    expect(shouldStartRest(null, "normal")).toBe(false);
-    expect(shouldStartRest(90, "normal")).toBe(true);
-    expect(shouldStartRest(90, null)).toBe(true);
+  it("suppressed before drop sets, otherwise starts", () => {
+    expect(shouldStartRest("drop")).toBe(false);
+    expect(shouldStartRest("normal")).toBe(true);
+    expect(shouldStartRest(null)).toBe(true);
   });
 });

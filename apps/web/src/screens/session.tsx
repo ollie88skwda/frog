@@ -1,5 +1,4 @@
 import {
-  adjustRest,
   checkSetForPR,
   computeRecords,
   countSets,
@@ -34,7 +33,6 @@ import {
   previousCells,
   type RestTimerState,
   type RoutineDetail,
-  restRemainingSec,
   SET_TYPE_LABELS,
   SET_TYPE_MARKERS,
   SET_TYPES,
@@ -123,6 +121,12 @@ import {
   useSetExerciseWeightUnit,
 } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
+import {
+  formatRirRange,
+  parseLoggedRirFields,
+  rirEditFields,
+  rirRange,
+} from "@/lib/rir";
 import { useRoutineDetail } from "@/lib/routine-queries";
 import {
   clearDraft,
@@ -136,14 +140,12 @@ import {
   type Unit,
   useUnit,
 } from "@/lib/settings";
-import { alertRestDone, playRestBlip } from "@/lib/sound";
 import { cn } from "@/lib/utils";
 import { voice } from "@/lib/voice";
 import { getWarmupMethod } from "@/lib/warmup-method";
 import {
   useKeepAwake,
   useLivePrBanner,
-  useRestSoundVolume,
   useSmartSupersetScroll,
 } from "@/lib/workout-prefs";
 
@@ -153,11 +155,9 @@ type BlockState = {
   name: string;
   // Provenance from a routine-started session (null = ad-hoc / empty workout).
   routineExerciseId: string | null;
-  // Superset grouping (int id shared by members; null = solo). Rest-countdown
-  // target seconds (null = fall back to the user's default). Per-exercise
+  // Superset grouping (int id shared by members; null = solo). Per-exercise
   // session note (distinct from the routine template note).
   supersetGroup: number | null;
-  restSec: number | null;
   note: string | null;
   committed: LoggedSet[];
 };
@@ -202,6 +202,8 @@ export type SetPatch = {
   durationSec?: number | null;
   distanceM?: number | null;
   rir?: number | null;
+  rirMin?: number | null;
+  rirMax?: number | null;
   rpe?: number | null;
   note?: string | null;
   setType?: SetType;
@@ -483,15 +485,13 @@ export default function SessionScreen() {
   const { data: exercises = [] } = useExercises();
   const pendingExercises = usePendingExercises();
 
-  // Device prefs (localStorage) + server prefs (default rest, plate config).
+  // Device prefs (localStorage) + server prefs (plate config).
   const [smartScroll] = useSmartSupersetScroll();
-  const [restVolume] = useRestSoundVolume();
   const [livePrEnabled] = useLivePrBanner();
   const [keepAwake] = useKeepAwake();
   const { data: userPrefs } = useUserPrefs();
   const { data: exercisePrefs = [] } = useExercisePrefs();
   const updatePrefs = useUpdateUserPrefs();
-  const defaultRestSec = userPrefs?.defaultRestSec ?? null;
   const plateConfig = userPrefs?.plateConfig ?? null;
   // PREVIOUS-column scope: "routine" narrows the ghost lookup to same-routine
   // sessions (only meaningful for a routine-started workout); else any workout.
@@ -527,7 +527,7 @@ export default function SessionScreen() {
     };
   }, [keepAwake, session?.endedAt]);
 
-  // Per-block rest countdown (keyed by seId; absent = none running).
+  // Per-block rest stopwatch (keyed by seId; absent = none running).
   const [restByBlock, setRestByBlock] = useState<
     Record<string, RestTimerState>
   >({});
@@ -539,59 +539,23 @@ export default function SessionScreen() {
       return next;
     });
   }, []);
-  const adjustRestFor = useCallback((seId: string, delta: number) => {
-    setRestByBlock((prev) =>
-      prev[seId] ? { ...prev, [seId]: adjustRest(prev[seId], delta) } : prev,
-    );
-  }, []);
-  const restDoneFor = useCallback(
-    (seId: string, name: string) => {
-      playRestBlip(restVolume);
-      // The exercise name stays outside voice() so it survives every register
-      // (Ultrafrog ribbits words; the name is data).
-      alertRestDone(
-        `${name}: ${voice(
-          "Rest complete.",
-          "Rest complete. Adenosine triphosphate: replenished (approximately). The frog suggests you pick up the bar.",
-        )}`,
-      );
-      // Keep the "rest!" bar up briefly, then clear it.
-      window.setTimeout(() => dismissRest(seId), 3000);
-    },
-    [restVolume, dismissRest],
-  );
 
-  // Done-detection runs here, for every running countdown — the dock below
-  // renders one timer at a time, so a superset's second countdown would
-  // otherwise never fire its alert while off screen. Once per (block, start).
-  const firedRest = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (Object.keys(restByBlock).length === 0) return;
-    const id = window.setInterval(() => {
-      const now = Date.now();
-      for (const [seId, state] of Object.entries(restByBlock)) {
-        const key = `${seId}:${state.startedAt}`;
-        if (firedRest.current.has(key)) continue;
-        if (restRemainingSec(state, now) > 0) continue;
-        firedRest.current.add(key);
-        restDoneFor(seId, blocks?.find((b) => b.seId === seId)?.name ?? "");
-      }
-    }, 250);
-    return () => window.clearInterval(id);
-  }, [restByBlock, restDoneFor, blocks]);
-
-  // The dock shows the most recently started countdown — the set you just
-  // finished. Any older one keeps ticking and takes the dock as it frees up.
+  // The dock shows the most recently started stopwatch — the set you just
+  // finished. Only a superset sibling of that block can still be running
+  // alongside it (every commit prunes the rest); it takes the dock as it
+  // frees up. Blocks removed mid-rest are skipped rather than blanking the
+  // dock, so a still-running sibling keeps its Stop affordance.
   const activeRest = useMemo(() => {
-    let latest: { seId: string; state: RestTimerState } | null = null;
+    let latest: { seId: string; state: RestTimerState; name: string } | null =
+      null;
     for (const [seId, state] of Object.entries(restByBlock)) {
+      const name = blocks?.find((b) => b.seId === seId)?.name;
+      if (!name) continue;
       if (!latest || state.startedAt > latest.state.startedAt) {
-        latest = { seId, state };
+        latest = { seId, state, name };
       }
     }
-    if (!latest) return null;
-    const name = blocks?.find((b) => b.seId === latest.seId)?.name;
-    return name ? { ...latest, name } : null;
+    return latest;
   }, [restByBlock, blocks]);
 
   // Live PR banner + medal set. Bests snapshot captured once at mount, so the
@@ -884,7 +848,6 @@ export default function SessionScreen() {
         name: se.exerciseName,
         routineExerciseId: se.routineExerciseId,
         supersetGroup: se.supersetGroup,
-        restSec: se.restSec,
         note: se.note,
         committed: se.sets,
       })),
@@ -942,7 +905,6 @@ export default function SessionScreen() {
         name,
         routineExerciseId: null,
         supersetGroup: null,
-        restSec: null,
         note: null,
         committed: [],
       },
@@ -970,7 +932,7 @@ export default function SessionScreen() {
     const { otherSide, ...leftFields } = set;
     const leftRow = { ...leftFields, restSec, id: leftTempId, setNo };
     // The right side writes rest_sec: null — one commit per physical set means
-    // one countdown (below), and the header average already filters nulls.
+    // one rest stopwatch (below), and the header average already filters nulls.
     // Set type / RIR / RPE / note / metrics fan out from the left side: they
     // describe the physical set, not the limb.
     const rightTempId = otherSide ? newId() : null;
@@ -983,6 +945,8 @@ export default function SessionScreen() {
             distanceM: otherSide.distanceM,
             setType: set.setType,
             rir: set.rir,
+            rirMin: set.rirMin,
+            rirMax: set.rirMax,
             rpe: set.rpe,
             note: set.note,
             metricValues: set.metricValues,
@@ -1049,18 +1013,34 @@ export default function SessionScreen() {
       }
     }
 
-    // Rest countdown: per-exercise target (block override or user default).
-    // Suppressed when a drop set is next — including the just-committed set
-    // being a drop (drops chain into the next reduction with no rest).
-    const restTarget = block?.restSec ?? defaultRestSec;
+    // Rest stopwatch: every commit prunes, then starts. Only a superset
+    // sibling of the committing block survives the prune — inside a group you
+    // alternate between members, so both are genuinely resting; moving to any
+    // other exercise (two solo blocks are not siblings) ends the old one, so
+    // Stop can never resurface a timer you left behind. The start is then
+    // suppressed when a drop set is next — including the just-committed set
+    // being a drop (drops chain into the next reduction with no rest), which
+    // leaves the committing block with no stopwatch rather than an old one.
     const committedIsDrop = (set.setType ?? "normal") === "drop";
     const nextType = committedIsDrop ? "drop" : ctx.nextSetType;
-    if (shouldStartRest(restTarget, nextType)) {
-      setRestByBlock((prev) => ({
-        ...prev,
-        [seId]: startRest(restTarget as number, Date.now()),
-      }));
-    }
+    const group = block?.supersetGroup ?? null;
+    const siblings = new Set(
+      group == null
+        ? []
+        : (blocks ?? [])
+            .filter((b) => b.supersetGroup === group)
+            .map((b) => b.seId),
+    );
+    const starting = shouldStartRest(nextType);
+    const startedAt = Date.now();
+    setRestByBlock((prev) => {
+      const next: Record<string, RestTimerState> = {};
+      for (const [id, state] of Object.entries(prev)) {
+        if (id !== seId && siblings.has(id)) next[id] = state;
+      }
+      if (starting) next[seId] = startRest(startedAt);
+      return next;
+    });
 
     // Smart superset scrolling: advance the view to the next member (wrapping).
     if (smartScroll && block?.supersetGroup != null) {
@@ -1082,15 +1062,6 @@ export default function SessionScreen() {
       (prev ?? []).map((b) => (b.seId === seId ? { ...b, note } : b)),
     );
     void repo.updateSessionExercise(seId, { note: note.trim() || null });
-  }
-
-  // Rest-countdown target for a block (null = off / use default nothing).
-  function setBlockRest(seId: string, restSec: number | null) {
-    setBlocks((prev) =>
-      (prev ?? []).map((b) => (b.seId === seId ? { ...b, restSec } : b)),
-    );
-    void repo.updateSessionExercise(seId, { restSec });
-    if (restSec == null) dismissRest(seId);
   }
 
   const nextGroupId = () => {
@@ -1195,6 +1166,7 @@ export default function SessionScreen() {
 
   function removeBlock(seId: string) {
     setBlocks((prev) => (prev ?? []).filter((b) => b.seId !== seId));
+    dismissRest(seId);
     void repo.deleteSessionExercise(seId);
   }
 
@@ -1396,10 +1368,9 @@ export default function SessionScreen() {
       <PrBanner data={prBanner} onDismiss={() => setPrBanner(null)} />
       {activeRest && (
         <RestDock
-          state={activeRest.state}
+          since={activeRest.state.startedAt}
           exerciseName={activeRest.name}
-          onAdjust={(d) => adjustRestFor(activeRest.seId, d)}
-          onDismiss={() => dismissRest(activeRest.seId)}
+          onStop={() => dismissRest(activeRest.seId)}
           testId={`rest-${activeRest.name}`}
         />
       )}
@@ -1512,13 +1483,11 @@ export default function SessionScreen() {
                 .filter((b) => b.seId !== block.seId)
                 .map((b) => ({ seId: b.seId, name: b.name }))}
               inSuperset={block.supersetGroup != null}
-              defaultRestSec={defaultRestSec}
               plateConfig={plateConfig}
               onSavePlateConfig={(cfg) =>
                 updatePrefs.mutate({ plateConfig: cfg })
               }
-              rest={restByBlock[block.seId]}
-              onSetRest={(sec) => setBlockRest(block.seId, sec)}
+              restRunning={restByBlock[block.seId] != null}
               onSetNote={(note) => setBlockNote(block.seId, note)}
               onLinkSuperset={(target) => linkSuperset(block.seId, target)}
               onUnlinkSuperset={() => unlinkSuperset(block.seId)}
@@ -2147,11 +2116,9 @@ function ExerciseBlock({
   supersetColor,
   otherBlocks,
   inSuperset,
-  defaultRestSec,
   plateConfig,
   onSavePlateConfig,
-  rest,
-  onSetRest,
+  restRunning,
   onSetNote,
   onLinkSuperset,
   onUnlinkSuperset,
@@ -2177,11 +2144,9 @@ function ExerciseBlock({
   supersetColor: string | null;
   otherBlocks: { seId: string; name: string }[];
   inSuperset: boolean;
-  defaultRestSec: number | null;
   plateConfig: PlateConfig | null;
   onSavePlateConfig: (cfg: PlateConfig) => void;
-  rest: RestTimerState | undefined;
-  onSetRest: (restSec: number | null) => void;
+  restRunning: boolean;
   onSetNote: (note: string) => void;
   onLinkSuperset: (targetSeId: string) => void;
   onUnlinkSuperset: () => void;
@@ -2231,10 +2196,6 @@ function ExerciseBlock({
     (max, s) => (s.weightKg != null && s.weightKg > max ? s.weightKg : max),
     0,
   );
-  // Block's own override > this exercise's own default rest > the global
-  // user_prefs default.
-  const effectiveRestSec =
-    block.restSec ?? exercise?.defaultRestSec ?? defaultRestSec;
 
   // PREVIOUS column: last performance per set index ('any workout' scope — the
   // existing ghost lookup). Only claims grid space when there's prior or seeded
@@ -2286,12 +2247,7 @@ function ExerciseBlock({
           </span>
         </span>
         <span className="flex items-center gap-2">
-          <RestControl
-            blockName={block.name}
-            restSec={effectiveRestSec}
-            running={rest != null}
-            onSetRest={onSetRest}
-          />
+          <RestControl blockName={block.name} running={restRunning} />
           <BlockMenu
             blockName={block.name}
             unit={blockUnit}
@@ -2952,7 +2908,8 @@ function CommittedRow({
   const [reps, setReps] = useState("");
   const [duration, setDuration] = useState("");
   const [distance, setDistance] = useState("");
-  const [rir, setRir] = useState("");
+  const [rirMin, setRirMin] = useState("");
+  const [rirMax, setRirMax] = useState("");
   const [rpe, setRpe] = useState("");
   const [note, setNote] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -2972,7 +2929,9 @@ function CommittedRow({
         ? String(toDisplayDistance(set.distanceM, distUnit))
         : "",
     );
-    setRir(set.rir != null ? String(set.rir) : "");
+    const fields = rirEditFields(set);
+    setRirMin(fields.min);
+    setRirMax(fields.max);
     setRpe(set.rpe != null ? String(set.rpe) : "");
     setNote(set.note ?? "");
     setConfirmDelete(false);
@@ -3004,7 +2963,12 @@ function CommittedRow({
             : miToM(d);
     }
     if (effort) {
-      patch.rir = rir.trim() === "" ? null : Number.parseInt(rir, 10);
+      // Writes always go through the range pair going forward — the legacy
+      // scalar column is left null rather than kept alongside it.
+      const r = parseLoggedRirFields(rirMin, rirMax);
+      patch.rir = null;
+      patch.rirMin = r.rirMin;
+      patch.rirMax = r.rirMax;
       patch.rpe = rpe.trim() === "" ? null : Number.parseFloat(rpe);
     }
     onSave(editingRow.id, patch);
@@ -3031,7 +2995,10 @@ function CommittedRow({
         liveWeightKg,
         reps.trim() === "" ? null : Number.parseInt(reps, 10),
         {
-          rir: rir.trim() === "" ? null : Number.parseInt(rir, 10),
+          // Estimate off the low end of the range — the harder-effort bound.
+          // Read through rirRange so a max-only entry still projects, matching
+          // the badge rather than silently falling back to plain Epley.
+          rir: rirRange(parseLoggedRirFields(rirMin, rirMax))?.min ?? null,
           rpe: rpe.trim() === "" ? null : Number.parseFloat(rpe),
         },
       )
@@ -3083,7 +3050,7 @@ function CommittedRow({
           {effort && (
             <span className="num text-2xs text-faint max-md:hidden md:group-hover:hidden">
               {[
-                primary.rir != null ? `@${primary.rir}` : null,
+                formatRirRange(rirRange(primary)),
                 primary.rpe != null ? `RPE ${primary.rpe}` : null,
               ]
                 .filter(Boolean)
@@ -3228,15 +3195,20 @@ function CommittedRow({
             </div>
 
             {effort && (
-              <div className="grid grid-cols-2 gap-3">
-                {SET_MODIFIERS.map((m) => (
+              <div className="flex flex-col gap-3">
+                {modifierBindings({
+                  rirMin,
+                  rirMax,
+                  rpe,
+                  setRirMin,
+                  setRirMax,
+                  setRpe,
+                }).map((b) => (
                   <ModifierField
-                    key={m.key}
-                    config={m}
-                    value={m.key === "rir" ? rir : rpe}
-                    onChange={m.key === "rir" ? setRir : setRpe}
+                    key={b.config.key}
+                    {...b}
                     onKeyDown={onKeyDown}
-                    testId={`edit-${index}-${m.key}`}
+                    testId={`edit-${index}-${b.config.key}`}
                   />
                 ))}
               </div>
@@ -3339,73 +3311,127 @@ const RPE_OPTIONS = Array.from({ length: 19 }, (_, i) => 10 - i * 0.5);
 type ModifierConfig = {
   key: "rir" | "rpe";
   label: string;
-  kind: "number" | "select";
+  kind: "select" | "range";
   options?: number[];
   infoTipLessonId?: LessonId;
 };
 
 const SET_MODIFIERS: ModifierConfig[] = [
-  { key: "rir", label: "RIR", kind: "number", infoTipLessonId: "rir" },
+  { key: "rir", label: "RIR", kind: "range", infoTipLessonId: "rir" },
   { key: "rpe", label: "RPE", kind: "select", options: RPE_OPTIONS },
 ];
+
+// A bounded min/max pair, always strings (draft-editable text) — same shape
+// as the routine editor's rep-range fields.
+type RangeValue = { min: string; max: string };
+
+// A registry entry bound to the row state that backs it. Discriminated by
+// `kind`, so a modifier's value and its setter can't drift apart in the shape
+// they carry — handing a plain string to the range entry is a type error at
+// the binding, not a crash on `range.min` at render.
+type ModifierBinding = { config: ModifierConfig } & (
+  | { kind: "range"; value: RangeValue; onChange: (v: RangeValue) => void }
+  | { kind: "scalar"; value: string; onChange: (v: string) => void }
+);
+
+// Both row types (draft and committed) bind the same registry to the same
+// three pieces of state, so the wiring lives here once rather than as a
+// duplicated ternary at each call site.
+function modifierBindings(state: {
+  rirMin: string;
+  rirMax: string;
+  rpe: string;
+  setRirMin: (v: string) => void;
+  setRirMax: (v: string) => void;
+  setRpe: (v: string) => void;
+}): ModifierBinding[] {
+  return SET_MODIFIERS.map((config) =>
+    config.kind === "range"
+      ? {
+          config,
+          kind: "range",
+          value: { min: state.rirMin, max: state.rirMax },
+          onChange: (v: RangeValue) => {
+            state.setRirMin(v.min);
+            state.setRirMax(v.max);
+          },
+        }
+      : { config, kind: "scalar", value: state.rpe, onChange: state.setRpe },
+  );
+}
 
 // Shared field renderer for every modifier — the label row reserves a fixed
 // height (`min-h-6`) whether or not it carries an InfoTip icon, so RIR and RPE
 // (or a future third modifier) always sit flush in the same grid row instead
 // of drifting by the icon's height, and the select gets the exact classes as
 // the shared Input so its box never looks "elevated" next to a sibling field.
-function ModifierField({
-  config,
-  value,
-  onChange,
-  onKeyDown,
-  autoFocus,
-  testId,
-}: {
-  config: ModifierConfig;
-  value: string;
-  onChange: (v: string) => void;
-  onKeyDown?: (e: React.KeyboardEvent) => void;
-  autoFocus?: boolean;
-  testId: string;
-}) {
+function ModifierField(
+  props: ModifierBinding & {
+    onKeyDown?: (e: React.KeyboardEvent) => void;
+    autoFocus?: boolean;
+    testId: string;
+  },
+) {
+  const { config, onKeyDown, autoFocus, testId } = props;
+  const label = (
+    <span className="flex min-h-6 items-center gap-1 text-2xs font-medium tracking-wide text-faint uppercase">
+      {config.label}
+      {config.infoTipLessonId && <InfoTip lessonId={config.infoTipLessonId} />}
+    </span>
+  );
+
+  if (props.kind === "range") {
+    const range = props.value;
+    const onRangeChange = props.onChange;
+    return (
+      <div className="flex flex-col gap-1">
+        {label}
+        <div className="flex items-center gap-1">
+          <Input
+            inputMode="numeric"
+            placeholder="—"
+            value={range.min}
+            onChange={(e) => onRangeChange({ ...range, min: e.target.value })}
+            onKeyDown={onKeyDown}
+            autoFocus={autoFocus}
+            className="num"
+            data-testid={`${testId}min`}
+          />
+          <span className="text-2xs text-faint">–</span>
+          <Input
+            inputMode="numeric"
+            placeholder="—"
+            value={range.max}
+            onChange={(e) => onRangeChange({ ...range, max: e.target.value })}
+            onKeyDown={onKeyDown}
+            className="num"
+            data-testid={`${testId}max`}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const { value, onChange } = props;
   return (
     <div className="flex flex-col gap-1">
-      <span className="flex min-h-6 items-center gap-1 text-2xs font-medium tracking-wide text-faint uppercase">
-        {config.label}
-        {config.infoTipLessonId && (
-          <InfoTip lessonId={config.infoTipLessonId} />
-        )}
-      </span>
-      {config.kind === "select" ? (
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          // biome-ignore lint/a11y/noAutofocus: focuses the just-added field
-          autoFocus={autoFocus}
-          data-testid={testId}
-          className="num h-8 w-full border border-border-strong bg-surface px-2 text-sm text-soft transition-colors duration-150 ease-(--ease-out-quad) focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
-        >
-          <option value="">—</option>
-          {config.options?.map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <Input
-          inputMode="numeric"
-          placeholder="—"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          autoFocus={autoFocus}
-          className="num"
-          data-testid={testId}
-        />
-      )}
+      {label}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
+        // biome-ignore lint/a11y/noAutofocus: focuses the just-added field
+        autoFocus={autoFocus}
+        data-testid={testId}
+        className="num h-8 w-full border border-border-strong bg-surface px-2 text-sm text-soft transition-colors duration-150 ease-(--ease-out-quad) focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+      >
+        <option value="">—</option>
+        {config.options?.map((v) => (
+          <option key={v} value={v}>
+            {v}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -3505,7 +3531,8 @@ function ActiveRow({
         ? String(toDisplayDistance(seed.distanceM, distUnit))
         : ""),
   );
-  const [rir, setRir] = useState(() => draft?.rir ?? "");
+  const [rirMin, setRirMin] = useState(() => draft?.rirMin ?? "");
+  const [rirMax, setRirMax] = useState(() => draft?.rirMax ?? "");
   const [rpe, setRpe] = useState(() => draft?.rpe ?? "");
   const [note, setNote] = useState(() => draft?.note ?? "");
   // Right side of a unilateral pair. Blank means "mirror the left value" —
@@ -3538,7 +3565,8 @@ function ActiveRow({
       reps,
       duration,
       distance,
-      rir,
+      rirMin,
+      rirMax,
       rpe,
       note,
       setType,
@@ -3555,7 +3583,8 @@ function ActiveRow({
     reps,
     duration,
     distance,
-    rir,
+    rirMin,
+    rirMax,
     rpe,
     note,
     setType,
@@ -3746,6 +3775,7 @@ function ActiveRow({
   function commit(adoptGhost: boolean) {
     if (done.current) return;
     const v = parseFields(adoptGhost);
+    const parsedRir = parseLoggedRirFields(rirMin, rirMax);
     const anyPresent =
       (f.weight && v.weightKg != null) ||
       (f.reps && v.reps != null) ||
@@ -3762,7 +3792,10 @@ function ActiveRow({
         setType,
         durationSec: v.durationSec,
         distanceM: v.distanceM,
-        rir: effort && rir.trim() !== "" ? Number.parseInt(rir, 10) : null,
+        // New logging always writes the range pair, never the legacy scalar.
+        rir: null,
+        rirMin: effort ? parsedRir.rirMin : null,
+        rirMax: effort ? parsedRir.rirMax : null,
         rpe: effort && rpe.trim() !== "" ? Number.parseFloat(rpe) : null,
         note: note.trim() === "" ? null : note.trim(),
         metricValues: metricValues(),
@@ -3983,7 +4016,7 @@ function ActiveRow({
   // is visible without opening the sheet on either row type.
   const modifierPreview = effort
     ? [
-        rir.trim() !== "" ? `@${rir}` : null,
+        formatRirRange(rirRange(parseLoggedRirFields(rirMin, rirMax))),
         rpe.trim() !== "" ? `RPE ${rpe}` : null,
       ]
         .filter(Boolean)
@@ -4063,15 +4096,20 @@ function ActiveRow({
         >
           <div className="flex flex-col gap-4">
             {effort && (
-              <div className="grid grid-cols-2 gap-3">
-                {SET_MODIFIERS.map((m) => (
+              <div className="flex flex-col gap-3">
+                {modifierBindings({
+                  rirMin,
+                  rirMax,
+                  rpe,
+                  setRirMin,
+                  setRirMax,
+                  setRpe,
+                }).map((b) => (
                   <ModifierField
-                    key={m.key}
-                    config={m}
-                    value={m.key === "rir" ? rir : rpe}
-                    onChange={m.key === "rir" ? setRir : setRpe}
-                    autoFocus={lastAdded === m.key}
-                    testId={`set-${index}-${m.key}`}
+                    key={b.config.key}
+                    {...b}
+                    autoFocus={lastAdded === b.config.key}
+                    testId={`set-${index}-${b.config.key}`}
                   />
                 ))}
               </div>

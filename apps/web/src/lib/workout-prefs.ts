@@ -33,31 +33,9 @@ function boolPref(key: string, dflt: boolean) {
   };
 }
 
-// A 0–1 volume device pref (0 = muted). Clamped on write.
-function volumePref(key: string, dflt: number) {
-  const read = () => {
-    const v = localStorage.getItem(key);
-    if (v === null) return dflt;
-    const n = Number.parseFloat(v);
-    return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : dflt;
-  };
-  const write = (value: number) => {
-    localStorage.setItem(key, String(Math.min(1, Math.max(0, value))));
-    emit();
-  };
-  return function useVolumePref(): [number, (v: number) => void] {
-    const value = useSyncExternalStore(subscribe, read);
-    const set = useCallback((v: number) => write(v), []);
-    return [value, set];
-  };
-}
-
 /** Smart Superset Scrolling: completing a set inside a superset auto-advances
  * the view to the next member (wrapping). Default ON (matches Hevy). */
 export const useSmartSupersetScroll = boolPref("smartSupersetScroll", true);
-
-/** Rest-timer alert volume (0 muted … 1 full). Also gates the PR/rest blip. */
-export const useRestSoundVolume = volumePref("restSoundVolume", 0.5);
 
 /** Keep the screen awake during an active session (Wake Lock API). Default OFF
  * (battery-conscious). Read by session.tsx to acquire/release the lock. */
