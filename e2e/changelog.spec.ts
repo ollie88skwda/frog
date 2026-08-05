@@ -47,7 +47,12 @@ test("nav badge shows an unseen entry, /changelog surfaces it in order, and visi
   await shot(page, "2-settings-changelog-section");
   await changelogLink.click();
   await expect(page).toHaveURL(/\/changelog$/);
-  await expect(page.getByRole("heading", { name: "Changelog" })).toBeVisible();
+  // Match the level too: react-router runs the navigation in a transition, so
+  // Settings stays mounted until the lazy chunk lands — and it has its own
+  // "Changelog" section <h2>. Only the page's <h1> proves we got here.
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Changelog", exact: true }),
+  ).toBeVisible();
 
   // Entries newer than the (far-past) marker are surfaced in their own
   // section at the top of the page.
@@ -71,6 +76,9 @@ test("nav badge shows an unseen entry, /changelog surfaces it in order, and visi
   await page.reload();
   await expect(page).toHaveURL(/\/changelog$/);
   await page.goto("/profile");
+  // Wait for the nav to actually paint first — a `toHaveCount(0)` on a shell
+  // that hasn't booted yet passes for the wrong reason.
+  await expect(page.getByTitle("Profile")).toBeVisible();
   await expect(
     page.getByTitle("Profile").locator("span.bg-accent"),
   ).toHaveCount(0);
@@ -78,6 +86,10 @@ test("nav badge shows an unseen entry, /changelog surfaces it in order, and visi
 
   // Revisiting shows no "new" section — the marker has caught up.
   await page.goto("/changelog");
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Changelog", exact: true }),
+  ).toBeVisible();
   await expect(page.getByTestId("changelog-new")).toHaveCount(0);
+  await expect(page.getByTestId("changelog-all")).toBeVisible();
   await shot(page, "5-changelog-no-new-section");
 });
