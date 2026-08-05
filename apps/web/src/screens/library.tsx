@@ -1,5 +1,6 @@
 import {
   type Exercise,
+  formatPrevious,
   formatWeight,
   groupByPrimaryMuscle,
   jointActionLabel,
@@ -839,11 +840,7 @@ function LastSetSummary({ exerciseId }: { exerciseId: string }) {
   const { data: sets = [] } = useLastSets(exerciseId);
   if (sets.length === 0) return null;
   const summary = sets
-    .map((s) =>
-      s.weightKg != null && s.reps != null
-        ? `${formatWeight(s.weightKg, unit)}\u00d7${s.reps}`
-        : null,
-    )
+    .map((s) => formatPrevious(s, (kg) => formatWeight(kg, unit)))
     .filter((s): s is string => s != null)
     .join(", ");
   if (!summary) return null;
