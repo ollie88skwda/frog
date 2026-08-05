@@ -3,6 +3,7 @@ import { Dumbbell, Home, Moon, Sun, User } from "lucide-react";
 import { lazy, Suspense, useMemo } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { FrogMark } from "@/components/frog-mark";
+import { useChangelogHasUnseen } from "@/lib/changelog-prefs";
 import { useHotkeys } from "@/lib/hotkeys";
 import { useActiveSession } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
@@ -31,22 +32,27 @@ export function AppShell() {
   const repo = useRepo();
   const { data: active } = useActiveSession();
   const { pathname } = useLocation();
+  // Changelog lives inside Profile → Settings (no 4th tab — 2026-07-14), so
+  // its unseen-entry dot surfaces on the Profile nav item instead.
+  const hasUnseenChangelog = useChangelogHasUnseen();
 
   // The Training tab jumps straight into the live session when one exists, so
   // you don't have to land on /train and click "Resume". It stays highlighted
   // for both the training landing and any open session.
   const nav = useMemo(
     () =>
-      NAV.map((item) =>
-        item.to === "/train"
+      NAV.map((item) => {
+        const badge = item.to === "/profile" && hasUnseenChangelog;
+        return item.to === "/train"
           ? {
               ...item,
               to: active ? `/session/${active.id}` : "/train",
               active: pathname === "/train" || pathname.startsWith("/session/"),
+              badge,
             }
-          : { ...item, active: undefined as boolean | undefined },
-      ),
-    [active, pathname],
+          : { ...item, active: undefined as boolean | undefined, badge };
+      }),
+    [active, pathname, hasUnseenChangelog],
   );
 
   useHotkeys(
@@ -93,7 +99,15 @@ export function AppShell() {
         </p>
         <nav className="flex flex-col gap-0.5 px-2">
           {nav.map(
-            ({ to, label, icon: Icon, end, key, active: forceActive }) => (
+            ({
+              to,
+              label,
+              icon: Icon,
+              end,
+              key,
+              active: forceActive,
+              badge,
+            }) => (
               <NavLink
                 key={label}
                 to={to}
@@ -107,7 +121,12 @@ export function AppShell() {
                   )
                 }
               >
-                <Icon className="size-4 shrink-0" strokeWidth={STROKE} />
+                <span className="relative shrink-0">
+                  <Icon className="size-4" strokeWidth={STROKE} />
+                  {badge && (
+                    <span className="absolute top-0 right-0 size-1.5 bg-accent" />
+                  )}
+                </span>
                 <span className="min-w-0 flex-1 truncate">{label}</span>
                 {key && <kbd className="keycap">{key}</kbd>}
               </NavLink>
@@ -131,38 +150,45 @@ export function AppShell() {
           reveal its label (the "island" effect); square corners hold the
           0px-radius design language. */}
       <nav className="floating float-in fixed inset-x-0 bottom-0 z-40 mx-auto mb-[calc(0.75rem+env(safe-area-inset-bottom))] flex w-fit items-center gap-0.5 p-1.5 md:hidden">
-        {nav.map(({ to, label, icon: Icon, end, active: forceActive }) => (
-          <NavLink
-            key={label}
-            to={to}
-            end={end}
-            title={label}
-            className={({ isActive }) =>
-              cn(
-                "flex h-11 items-center justify-center gap-1.5 px-3 text-2xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
-                (forceActive ?? isActive)
-                  ? "bg-accent-soft text-accent"
-                  : "text-soft active:text-ink",
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <Icon className="size-[22px] shrink-0" strokeWidth={STROKE} />
-                <span
-                  className={cn(
-                    "overflow-hidden leading-none whitespace-nowrap transition-all duration-150 ease-(--ease-out-quad)",
-                    (forceActive ?? isActive)
-                      ? "max-w-24 opacity-100"
-                      : "max-w-0 opacity-0",
-                  )}
-                >
-                  {label}
-                </span>
-              </>
-            )}
-          </NavLink>
-        ))}
+        {nav.map(
+          ({ to, label, icon: Icon, end, active: forceActive, badge }) => (
+            <NavLink
+              key={label}
+              to={to}
+              end={end}
+              title={label}
+              className={({ isActive }) =>
+                cn(
+                  "flex h-11 items-center justify-center gap-1.5 px-3 text-2xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
+                  (forceActive ?? isActive)
+                    ? "bg-accent-soft text-accent"
+                    : "text-soft active:text-ink",
+                )
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span className="relative shrink-0">
+                    <Icon className="size-[22px]" strokeWidth={STROKE} />
+                    {badge && (
+                      <span className="absolute top-0 right-0 size-1.5 bg-accent" />
+                    )}
+                  </span>
+                  <span
+                    className={cn(
+                      "overflow-hidden leading-none whitespace-nowrap transition-all duration-150 ease-(--ease-out-quad)",
+                      (forceActive ?? isActive)
+                        ? "max-w-24 opacity-100"
+                        : "max-w-0 opacity-0",
+                    )}
+                  >
+                    {label}
+                  </span>
+                </>
+              )}
+            </NavLink>
+          ),
+        )}
       </nav>
 
       <Suspense fallback={null}>

@@ -11,6 +11,7 @@ import {
   Moon,
   type Play,
   Ruler,
+  ScrollText,
   Settings,
   Sun,
   User,
@@ -91,6 +92,12 @@ export function CommandPalette() {
       icon: Lightbulb,
       action: () => navigate("/tips"),
       keywords: "lessons education info help",
+    },
+    {
+      label: "Changelog",
+      icon: ScrollText,
+      action: () => navigate("/changelog"),
+      keywords: "whats new updates decisions dev log",
     },
   ];
 
