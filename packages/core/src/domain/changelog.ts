@@ -9,6 +9,7 @@ export type ChangelogEntry = {
   title: string | null;
   section: string;
   body: string;
+  line: number; // 1-based source line of the bullet — the only stable id
 };
 
 // Matches a top-level entry bullet, e.g.:
@@ -28,7 +29,9 @@ export function parseDecisionsLog(markdown: string): ChangelogEntry[] {
   let section = "";
   let current: ChangelogEntry | null = null;
 
-  for (const line of markdown.split("\n")) {
+  const lines = markdown.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const heading = line.match(HEADING_RE);
     if (heading) {
       section = heading[1].trim();
@@ -42,6 +45,7 @@ export function parseDecisionsLog(markdown: string): ChangelogEntry[] {
         title: match[2] ?? null,
         section,
         body: match[3].trim(),
+        line: i + 1,
       };
       entries.push(current);
       continue;

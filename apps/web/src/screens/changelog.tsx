@@ -12,11 +12,6 @@ const dateFmt = new Intl.DateTimeFormat(undefined, {
 const formatEntryDate = (date: string) =>
   dateFmt.format(new Date(`${date}T00:00:00Z`));
 
-// Entries have no id; same-day entries are common (see docs/DECISIONS.md
-// 2026-08-04), so key off date + title/body rather than array index.
-const entryKey = (entry: ChangelogEntry) =>
-  `${entry.date}-${entry.title ?? entry.body.slice(0, 32)}`;
-
 // docs/DECISIONS.md entries use **bold**, `code`, and ~~strikethrough~~
 // (SUPERSEDED markers) throughout — a light inline pass so the log reads
 // cleanly here instead of showing literal asterisks/backticks.
@@ -86,7 +81,7 @@ export default function ChangelogScreen() {
                 data-testid="changelog-new"
               >
                 {newEntries.map((entry) => (
-                  <EntryCard key={`new-${entryKey(entry)}`} entry={entry} />
+                  <EntryCard key={`new-${entry.line}`} entry={entry} />
                 ))}
               </div>
             </>
@@ -101,7 +96,7 @@ export default function ChangelogScreen() {
           >
             {entries.map((entry, i) => (
               <EntryCard
-                key={entryKey(entry)}
+                key={entry.line}
                 entry={entry}
                 testId={`changelog-entry-${i}`}
               />

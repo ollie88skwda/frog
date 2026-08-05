@@ -11,6 +11,7 @@ describe("parseDecisionsLog", () => {
         title: null,
         section: "Product",
         body: "First decision.",
+        line: 5,
       },
     ]);
   });
@@ -23,6 +24,7 @@ describe("parseDecisionsLog", () => {
       title: "rest stopwatch",
       section: "Design",
       body: "Narrows the trigger.",
+      line: 3,
     });
   });
 
@@ -78,6 +80,19 @@ describe("parseDecisionsLog", () => {
     // Same-day entries keep their original relative order (stable sort).
     expect(entries[1].body).toBe("Middle.");
     expect(entries[2].body).toBe("Middle, second entry.");
+  });
+
+  it("gives same-date, same-title entries distinct line numbers", () => {
+    // docs/DECISIONS.md really does carry two `2026-07-30 (session-page
+    // cleanup)` entries — date + title is not a unique key, `line` is.
+    const md = [
+      "## Product",
+      "- **2026-07-30 (session-page cleanup)** — First pass.",
+      "- **2026-07-30 (session-page cleanup)** — Second pass.",
+    ].join("\n");
+    const entries = parseDecisionsLog(md);
+    expect(entries.map((e) => e.line)).toEqual([2, 3]);
+    expect(new Set(entries.map((e) => e.line)).size).toBe(entries.length);
   });
 
   it("returns an empty array for a log with no dated entries", () => {
