@@ -66,8 +66,26 @@ describe("rest timer", () => {
   });
 
   it("suppressed before drop sets, otherwise starts", () => {
-    expect(shouldStartRest("drop")).toBe(false);
-    expect(shouldStartRest("normal")).toBe(true);
-    expect(shouldStartRest(null)).toBe(true);
+    expect(shouldStartRest("drop", "normal", "weight_reps")).toBe(false);
+    expect(shouldStartRest("normal", "normal", "weight_reps")).toBe(true);
+    expect(shouldStartRest(null, "normal", "weight_reps")).toBe(true);
+  });
+
+  it("suppressed when the completed set was a warm-up", () => {
+    expect(shouldStartRest("normal", "warmup", "weight_reps")).toBe(false);
+  });
+
+  it("suppressed on duration/distance-type exercises", () => {
+    expect(shouldStartRest("normal", "normal", "duration")).toBe(false);
+    expect(shouldStartRest("normal", "normal", "distance_duration")).toBe(
+      false,
+    );
+    expect(shouldStartRest("normal", "normal", "weight_distance")).toBe(false);
+    expect(shouldStartRest("normal", "normal", "weight_duration")).toBe(false);
+  });
+
+  it("starts for a normal working set on a rep/weight-based exercise", () => {
+    expect(shouldStartRest("normal", "normal", "weight_reps")).toBe(true);
+    expect(shouldStartRest("normal", "normal", "bodyweight_reps")).toBe(true);
   });
 });
