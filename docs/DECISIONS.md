@@ -2,6 +2,8 @@
 
 Terse, dated log of product/design/architecture decisions. **Rule: when a new decision overrides an old one, edit the old entry in place — mark it `SUPERSEDED → [see entry]` — so this file never contradicts itself.** Add an entry in the same commit as the change it describes.
 
+**This file's format is load-bearing** — it is the in-app `/changelog`'s only content source, parsed at build time (`parseDecisionsLog` in `packages/core/src/domain/changelog.ts`, wired in `apps/web/vite.config.ts`). An entry reaches that page only as a top-level `- **YYYY-MM-DD** — …` / `- **YYYY-MM-DD (title)** — …` bullet under a `##` heading; anything else is silently invisible there. Every line here also ships verbatim in that chunk, so read AGENTS.md's bundle-gate bullet before writing an E2E marker name in prose. Rationale: the 2026-08-04 (dev changelog page) entry.
+
 ## Product
 
 - **2026-06-20** — Frog is a training lab notebook: log work + conditions, surface correlations ("Findings") with transparent stats, no AI/ML black boxes. Second moat: open data (export, PAT API, MCP). PRD: `docs/superpowers/specs/2026-06-20-frog-prd.html`.
