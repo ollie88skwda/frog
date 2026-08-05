@@ -4112,11 +4112,12 @@ function ActiveRow({
     : "";
 
   return (
-    <div ref={rowRef} className="border-t border-border px-4 py-2">
-      <div
-        className="grid items-center gap-x-2"
-        style={{ gridTemplateColumns: template }}
-      >
+    <div
+      ref={rowRef}
+      className="grid gap-x-2 border-t border-border px-4 py-2"
+      style={{ gridTemplateColumns: template }}
+    >
+      <div className="col-span-full grid grid-cols-subgrid items-center gap-x-2">
         <SetTypeCell
           index={index}
           setType={setType}
@@ -4173,10 +4174,7 @@ function ActiveRow({
       {/* Right side of a unilateral pair: no ring, no ⋯ — set type/RIR/RPE/
           note are properties of the physical set, entered once above. */}
       {isUnilateral && (
-        <div
-          className="mt-1 grid items-center gap-x-2"
-          style={{ gridTemplateColumns: template }}
-        >
+        <div className="col-span-full mt-1 grid grid-cols-subgrid items-center gap-x-2">
           <span className="num pl-6 text-2xs tabular-nums text-faint">
             {index + 1}ᴿ
           </span>
@@ -4297,7 +4295,7 @@ function ActiveRow({
           </div>
         </DialogContent>
       </Dialog>
-      <div className="mt-2 grid grid-cols-[1fr_auto] items-stretch gap-2">
+      <div className="col-span-full mt-2 grid grid-cols-[1fr_auto] items-stretch gap-2">
         <Button
           variant="outline"
           size="lg"
