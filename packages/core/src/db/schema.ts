@@ -230,7 +230,7 @@ export const routineExercises = pgTable(
     // field for it, but still writes it: a newly added exercise seeds from
     // exercises.default_rest_sec (the exercise editor's "Rest — seconds"),
     // and an existing value round-trips through every save. Read by the
-    // Trainer's duration estimate and the program routine preview.
+    // Trainer's duration estimate.
     restSec: integer("rest_sec"),
     // Persistent template note — re-renders under the exercise every session.
     note: text("note"),

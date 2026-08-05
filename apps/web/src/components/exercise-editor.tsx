@@ -563,6 +563,10 @@ export function ExerciseEditor({
               />
               <span className="text-2xs text-faint">seconds</span>
             </div>
+            <p className="text-2xs text-faint">
+              Doesn't set the in-workout rest timer — feeds the Trainer's
+              duration estimate only.
+            </p>
           </CollapsibleSection>
 
           {/* Section 5 — Reference (collapsed) */}
