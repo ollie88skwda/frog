@@ -2328,7 +2328,10 @@ function ExerciseBlock({
                 override={override}
                 globalUnit={unit}
                 onSet={(u) =>
-                  setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
+                  setWeightUnit.mutate({
+                    exerciseId: block.exerciseId,
+                    unit: u,
+                  })
                 }
               />
             ) : (
@@ -3125,9 +3128,10 @@ function CommittedRow({
         </span>
       )}
 
-      {/* Right side of a unilateral pair: no ring, no set-type/⋯ control —
-          those are properties of the physical set, controlled from the ᴸ
-          line above. Tapping a value still opens that limb's own details. */}
+      {/* Right side of a unilateral pair: no ring, no set-type control — both
+          belong to the physical set and are controlled from the ᴸ line above.
+          No ⋯ either, but tapping any value opens this limb's own details
+          sheet, which is where its per-limb RIR/RPE/note are edited. */}
       {isPaired && (
         <div
           className="relative col-span-full grid grid-cols-subgrid items-center gap-x-2 -mx-4 bg-surface px-4 pb-1.5 md:pb-1"
@@ -4141,10 +4145,7 @@ function ActiveRow({
         {columns.map((c, i) =>
           dataCell(c.key, autoFocusWeight && i === 0, i === columns.length - 1),
         )}
-        <span
-          ref={moreCellRef}
-          className="flex items-center justify-end gap-1"
-        >
+        <span ref={moreCellRef} className="flex items-center justify-end gap-1">
           {modifierPreview && (
             <span className="num text-2xs text-faint">{modifierPreview}</span>
           )}
@@ -4170,7 +4171,9 @@ function ActiveRow({
       </div>
 
       {/* Right side of a unilateral pair: no ring, no ⋯ — set type/RIR/RPE/
-          note are properties of the physical set, entered once above. */}
+          note are entered once above and seed both rows at commit. Only set
+          type stays shared after that; post-commit RIR/RPE/note are per-limb,
+          edited from each committed row's own details sheet. */}
       {isUnilateral && (
         <div className="col-span-full mt-1 grid grid-cols-subgrid items-center gap-x-2">
           <span className="num pl-6 text-2xs tabular-nums text-faint">
