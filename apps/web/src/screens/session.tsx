@@ -361,7 +361,7 @@ function SetTypeCell({
   ringState: "done" | "empty";
   onChange: (t: SetType) => void;
   testId: string;
-  /** "L" on a unilateral pair's top line — renders "Nᴸ" instead of "N". */
+  /** "L" on a unilateral pair's top line — appends ᴸ to the number or type marker. */
   sideLabel?: "L";
 }) {
   const [open, setOpen] = useState(false);
@@ -383,7 +383,7 @@ function SetTypeCell({
         )}
         data-testid={testId}
       >
-        {marker || (sideLabel ? `${index + 1}ᴸ` : index + 1)}
+        {sideLabel ? `${marker || index + 1}ᴸ` : marker || index + 1}
       </button>
       {open && (
         <>

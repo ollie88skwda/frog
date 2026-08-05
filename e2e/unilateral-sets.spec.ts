@@ -136,6 +136,34 @@ test("logs a unilateral set as two rows sharing one set_no, and counts it once",
   await expect(page.getByTestId("committed-1-right-reps")).toContainText("8");
 });
 
+test("shows the laterality affix alongside the warm-up marker on a unilateral pair's top line", async ({
+  page,
+}) => {
+  const EX = `Warmup Row ${Date.now()}`;
+
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await waitForExercise(page, EX);
+  await markUnilateral(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await expect(page).toHaveURL(/\/session\//);
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  // The marker must still carry the ᴸ affix once a type is assigned — losing
+  // it drops the pairing cue that ties this line to its ᴿ line below.
+  await page.getByTestId("set-0-type").click();
+  await page.getByTestId("set-0-type-warmup").click();
+  await expect(page.getByTestId("set-0-type")).toHaveText("Wᴸ");
+
+  await page.getByTestId("set-0-weight").fill("20");
+  await page.getByTestId("set-0-reps").fill("12");
+  await page.getByTestId("set-0-done").click();
+
+  await expect(page.getByTestId("committed-0-type")).toHaveText("Wᴸ");
+});
+
 test("alternating exercises log as a single row with a total-reps header", async ({
   page,
 }) => {
