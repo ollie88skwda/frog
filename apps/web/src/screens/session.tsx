@@ -3086,7 +3086,7 @@ function CommittedRow({
               )}
               data-testid={`committed-${index}-effort`}
             >
-              {effortReadout(primary)}
+              {effortReadout(primary) || (secondaryEffortDiffers ? "—" : "")}
             </span>
           )}
           {isPaired && notesDiffer && primaryNote && (

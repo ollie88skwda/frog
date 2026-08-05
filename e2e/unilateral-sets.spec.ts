@@ -19,6 +19,15 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
+async function cellX(
+  page: import("@playwright/test").Page,
+  testId: string,
+): Promise<number> {
+  const box = await page.getByTestId(testId).boundingBox();
+  if (!box) throw new Error(`${testId} has no bounding box`);
+  return box.x;
+}
+
 async function markUnilateral(
   page: import("@playwright/test").Page,
   name: string,
@@ -206,8 +215,10 @@ test("editing only the ᴿ row's RIR/RPE/note surfaces them in the collapsed rea
     "elbow flare on this side",
   );
 
-  // The ᴸ row's own readout stays empty — nothing fanned back to it.
-  await expect(page.getByTestId("committed-0-effort")).toHaveText("");
+  // Nothing fanned back to the ᴸ row — and it says so with a "—" rather
+  // than a blank span, which would read as "this line mirrors the other".
+  await expect(page.getByTestId("committed-0-effort")).toHaveText("—");
+  await expect(page.getByTestId("committed-0-effort")).toBeVisible();
   await expect(page.getByTestId("committed-0-note")).toHaveCount(0);
 
   // Reopening the ᴿ row's sheet still shows what was saved (it never was
@@ -244,6 +255,21 @@ test("a mirrored pair prints no ᴿ readout; clearing the ᴿ side prints — be
   await page.getByTestId("set-0-rpe").selectOption("8");
   await expect(page.getByTestId("set-0-note")).toBeVisible(); // sheet is open
   await page.keyboard.press("Escape");
+  await expect(page.getByTestId("set-0-note")).toBeHidden();
+
+  // The draft row's ᴸ line now carries a preview badge its ᴿ line doesn't.
+  // Both lines size their columns from one grid, so the values stay
+  // pixel-aligned anyway — the whole point of the shared track.
+  await expect(page.getByTestId(`block-${EX}`)).toContainText("@2 RPE 8");
+  expect(await cellX(page, "set-0-right-weight")).toBeCloseTo(
+    await cellX(page, "set-0-weight"),
+    0,
+  );
+  expect(await cellX(page, "set-0-right-reps")).toBeCloseTo(
+    await cellX(page, "set-0-reps"),
+    0,
+  );
+
   await page.getByTestId("set-0-reps").fill("8");
   await page.getByTestId("set-0-done").click();
 
@@ -271,6 +297,17 @@ test("a mirrored pair prints no ᴿ readout; clearing the ᴿ side prints — be
   // viewport, so the readout that IS there can't read as the whole set's.
   await expect(page.getByTestId("committed-0-effort")).toBeVisible();
   await expect(page.getByTestId("committed-0-effort")).toHaveText("@2 RPE 8");
+
+  // One badge per line, of different widths — the committed pair's columns
+  // still line up, because both lines share the row's own grid tracks.
+  expect(await cellX(page, "committed-0-right-weight")).toBeCloseTo(
+    await cellX(page, "committed-0-weight"),
+    0,
+  );
+  expect(await cellX(page, "committed-0-right-reps")).toBeCloseTo(
+    await cellX(page, "committed-0-reps"),
+    0,
+  );
 });
 
 test("alternating exercises log as a single row with a total-reps header", async ({
