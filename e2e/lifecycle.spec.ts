@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  rowCount,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // G1: end session + resume-active on Train.
 

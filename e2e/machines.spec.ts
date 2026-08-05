@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // Machines: catalog search → "my gym", settings memory in the session setup
 // strip, muscle-grouped library, and the RIR lesson InfoTip.
@@ -46,9 +52,7 @@ test("machine from catalog: settings remembered into the session setup strip", a
   await page.getByTestId(`machine-row-${MACHINE}`).click();
   await page.getByTestId(`add-setting-${MACHINE}`).fill("Seat height");
   await page.getByTestId(`add-setting-${MACHINE}`).press("Enter");
-  await page
-    .getByTestId(`setting-value-${MACHINE}-Seat height`)
-    .fill("4");
+  await page.getByTestId(`setting-value-${MACHINE}-Seat height`).fill("4");
 
   // Custom exercise linked to the machine, via the row's Edit sheet.
   await createExercise(page, EX);

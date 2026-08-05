@@ -1,5 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // M2 routine → session integration: build a routine with a fixed-target set and
 // a rep-range set, start it (draft grid prefilled from the targets, PREVIOUS
@@ -33,7 +39,11 @@ async function routineSetTargets(
   page: Page,
   routineId: string,
 ): Promise<
-  Array<{ set_no: number; target_weight_kg: number | null; target_reps: number }>
+  Array<{
+    set_no: number;
+    target_weight_kg: number | null;
+    target_reps: number;
+  }>
 > {
   return page.evaluate(async (rid) => {
     const { data: exRows, error: exError } = await window.__frog.supabase
@@ -82,7 +92,11 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
 
   // The picker seeds 3 blank sets; drop the third so this routine has
   // exactly the two sets under test (fixed, rep-range).
-  await page.getByTestId("routine-ex-0").getByLabel("Remove set").last().click();
+  await page
+    .getByTestId("routine-ex-0")
+    .getByLabel("Remove set")
+    .last()
+    .click();
   await page.getByTestId("routine-ex-0-set-0-reps").fill("5");
   await page.getByTestId("routine-ex-0-set-1-reps").fill("8");
   await page.getByTestId("routine-ex-0-set-1-repsmax").fill("12");
@@ -194,8 +208,16 @@ test("+ Add set inherits reps/range/RIR from the previous set, not weight or set
 
   // Remove one of the two default extra sets so "Add set" appends after a
   // single, known-shape set.
-  await page.getByTestId("routine-ex-0").getByLabel("Remove set").last().click();
-  await page.getByTestId("routine-ex-0").getByLabel("Remove set").last().click();
+  await page
+    .getByTestId("routine-ex-0")
+    .getByLabel("Remove set")
+    .last()
+    .click();
+  await page
+    .getByTestId("routine-ex-0")
+    .getByLabel("Remove set")
+    .last()
+    .click();
   await page.getByTestId("routine-ex-0-add-set").click();
 
   // The new set (index 1) inherited reps/range/RIR range…

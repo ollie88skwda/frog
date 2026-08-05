@@ -1,5 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // Rest stopwatch: completing a set auto-starts a per-exercise up-counting
 // stopwatch (docked above the mobile tab island); it never reaches a "done"

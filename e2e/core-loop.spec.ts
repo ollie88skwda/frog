@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  rowCount,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // Parity port of the legacy Expo E2E (archived at tag expo-final,
 // e2e/web.spec.ts): add exercise → session → log sets → ghost prefill →
@@ -7,16 +14,14 @@ import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } fr
 // reload against the server, and row counts are asserted through the app's own
 // signed-in client (window.__frog, VITE_E2E builds only) under RLS.
 
-
-
-
-
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
   await signIn(page);
 });
 
-test("core loop: add exercise, pick in session, persistence", async ({ page }) => {
+test("core loop: add exercise, pick in session, persistence", async ({
+  page,
+}) => {
   const EX = `Bench ${Date.now()}`;
 
   // 1) Library: add an exercise -> appears in the list and lands on the server.
@@ -32,7 +37,9 @@ test("core loop: add exercise, pick in session, persistence", async ({ page }) =
   await page.getByTestId(`pick-exercise-${EX}`).click();
   await expect(page.getByTestId("set-0-weight")).toBeVisible();
   await expect.poll(() => rowCount(page, "sessions")).toBeGreaterThanOrEqual(1);
-  await expect.poll(() => rowCount(page, "session_exercises")).toBeGreaterThanOrEqual(1);
+  await expect
+    .poll(() => rowCount(page, "session_exercises"))
+    .toBeGreaterThanOrEqual(1);
 
   // 3) "Relaunch" (reload) -> data persists server-side.
   await page.goto("/library");
@@ -67,8 +74,14 @@ test("log sets persists to set_logs, and ghost prefill shows the prior session",
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
-  await expect(page.getByTestId("set-0-weight")).toHaveAttribute("placeholder", "135");
-  await expect(page.getByTestId("set-0-reps")).toHaveAttribute("placeholder", "5");
+  await expect(page.getByTestId("set-0-weight")).toHaveAttribute(
+    "placeholder",
+    "135",
+  );
+  await expect(page.getByTestId("set-0-reps")).toHaveAttribute(
+    "placeholder",
+    "5",
+  );
 
   // Enter with empty fields adopts the ghost (tap-to-accept) and commits.
   const before2 = await rowCount(page, "set_logs");

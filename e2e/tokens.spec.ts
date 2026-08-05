@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // P6: PAT lifecycle — create in Settings, read through the Edge Function
 // under the token, revoke, get rejected. The function runs inside local
@@ -12,7 +18,10 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-test("create token, read own data via PAT API, revoke → 401", async ({ page, request }) => {
+test("create token, read own data via PAT API, revoke → 401", async ({
+  page,
+  request,
+}) => {
   const NAME = `tok-${Date.now()}`;
   const EX = `Token Lift ${Date.now()}`;
 
@@ -29,7 +38,8 @@ test("create token, read own data via PAT API, revoke → 401", async ({ page, r
   await page.goto("/settings");
   await page.getByTestId("token-name-input").fill(NAME);
   await page.getByTestId("create-token-btn").click();
-  const token = (await page.getByTestId("token-plaintext").textContent())?.trim() ?? "";
+  const token =
+    (await page.getByTestId("token-plaintext").textContent())?.trim() ?? "";
   expect(token).toMatch(/^frog_/);
 
   // Valid PAT → 200 with own data (seeds + the new exercise).

@@ -1,7 +1,13 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // M9: the post-save celebration summary (ordinal + overview slides), the
 // share-as-image card (client-rendered PNG, asserted via a download event), and
@@ -82,7 +88,7 @@ test("post-save summary shows the ordinal, offers a hero-set pick, and shares a 
   // The hero-set picker defaults to the auto top-set pick; tapping a specific
   // set re-renders the canvas with that set headlined instead.
   await expect(page.getByTestId("share-hero-auto")).toBeVisible();
-  const setChip = page.getByTestId(new RegExp("^share-hero-set-"));
+  const setChip = page.getByTestId(/^share-hero-set-/);
   await setChip.first().click();
   await expect(await isPainted()).toBe(true);
 

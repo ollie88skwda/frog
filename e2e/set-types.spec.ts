@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // M1 set types: the set-number cell assigns Normal / Warm-up / Failure / Drop,
 // renders a W/F/D marker, persists via the log + update paths, and survives a

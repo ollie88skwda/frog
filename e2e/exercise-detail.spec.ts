@@ -1,5 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // M5 exercise detail: log an exercise across two sessions, then the detail
 // screen (reached from the library) shows the Summary chart + records panel +
@@ -102,7 +108,9 @@ test("duplicate exercise creates a history-free copy", async ({ page }) => {
   // ⋯ → Duplicate exercise → lands on a NEW exercise detail with a copy name.
   await page.getByTestId("exercise-more").click();
   await page.getByTestId("exercise-duplicate").click();
-  await expect(page.getByTestId("exercise-detail-name")).toHaveText(`${EX} (copy)`);
+  await expect(page.getByTestId("exercise-detail-name")).toHaveText(
+    `${EX} (copy)`,
+  );
   expect(page.url()).not.toBe(originalUrl);
 
   // The copy carries no history.

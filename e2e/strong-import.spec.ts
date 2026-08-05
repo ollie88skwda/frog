@@ -65,8 +65,12 @@ ${fmt(d2)},${pull},45m,Deadlift (Barbell),1,315,lbs,3,,,,,,
         .from("session_exercises")
         .select("id,session_id")
         .in("session_id", [pushId, pullId]);
-      const pushSe = (se ?? []).filter((x) => x.session_id === pushId).map((x) => x.id);
-      const pullSe = (se ?? []).filter((x) => x.session_id === pullId).map((x) => x.id);
+      const pushSe = (se ?? [])
+        .filter((x) => x.session_id === pushId)
+        .map((x) => x.id);
+      const pullSe = (se ?? [])
+        .filter((x) => x.session_id === pullId)
+        .map((x) => x.id);
       const { data: pushSets } = await sb
         .from("set_logs")
         .select("set_type")
@@ -99,10 +103,9 @@ ${fmt(d2)},${pull},45m,Deadlift (Barbell),1,315,lbs,3,,,,,,
     const before = await page.locator('[data-testid^="history-row-"]').count();
     await more.click();
     await expect
-      .poll(
-        () => page.locator('[data-testid^="history-row-"]').count(),
-        { timeout: 5000 },
-      )
+      .poll(() => page.locator('[data-testid^="history-row-"]').count(), {
+        timeout: 5000,
+      })
       .toBeGreaterThan(before);
   }
   await expect(page.getByText(push)).toBeVisible();

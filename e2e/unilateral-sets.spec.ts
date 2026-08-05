@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // Unilateral set logging: a set_logs.side column pairs two rows under one
 // set_no. The session UI renders them as ONE set (ᴸ line you type into, ᴿ
@@ -12,7 +18,10 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-async function markUnilateral(page: import("@playwright/test").Page, name: string) {
+async function markUnilateral(
+  page: import("@playwright/test").Page,
+  name: string,
+) {
   await page.evaluate(async (n) => {
     const { error } = await window.__frog.supabase
       .from("exercises")
@@ -63,7 +72,9 @@ test("logs a unilateral set as two rows sharing one set_no, and counts it once",
   // ONE physical set, not two — the bug this feature fixes.
   await expect(page.getByTestId("session-stats")).toContainText("1 set");
   await expect(page.getByTestId("committed-0-type")).toContainText("1ᴸ");
-  await expect(page.getByTestId("committed-0-right-weight")).toContainText("30");
+  await expect(page.getByTestId("committed-0-right-weight")).toContainText(
+    "30",
+  );
   await expect(page.getByTestId("committed-0-right-reps")).toContainText("10");
 
   // Both rows share one set_no. The two upserts run in the background behind
@@ -119,7 +130,9 @@ test("logs a unilateral set as two rows sharing one set_no, and counts it once",
   await page.getByTestId("set-1-done").click();
 
   await expect(page.getByTestId("session-stats")).toContainText("2 sets");
-  await expect(page.getByTestId("committed-1-right-weight")).toContainText("28");
+  await expect(page.getByTestId("committed-1-right-weight")).toContainText(
+    "28",
+  );
   await expect(page.getByTestId("committed-1-right-reps")).toContainText("8");
 });
 

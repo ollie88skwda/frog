@@ -69,14 +69,18 @@ async function seedSessions(
   );
 }
 
-test("countdown appears below 5 sessions, verdict appears at 6", async ({ page }) => {
+test("countdown appears below 5 sessions, verdict appears at 6", async ({
+  page,
+}) => {
   const EX = `Trend Lift ${Date.now()}`;
 
   // 3 sessions → countdown (2 more needed).
   await seedSessions(page, EX, 3);
   await page.goto("/findings");
   await expect(page.getByTestId(`countdown-${EX}`)).toBeVisible();
-  await expect(page.getByTestId(`countdown-${EX}`)).toContainText("2 more sessions");
+  await expect(page.getByTestId(`countdown-${EX}`)).toContainText(
+    "2 more sessions",
+  );
 
   // 6 sessions total → PROGRESSING verdict for this exercise.
   const EX2 = `Trend Lift B ${Date.now()}`;

@@ -94,9 +94,21 @@ async function seedSession(
 
 // Noon on day 15 of the month `offset` months before now — always fully in the
 // past, so both months are "completed" and appear in the archive.
-function monthDay15(offset: number): { at: number; year: number; month: number } {
+function monthDay15(offset: number): {
+  at: number;
+  year: number;
+  month: number;
+} {
   const now = new Date();
-  const d = new Date(now.getFullYear(), now.getMonth() - offset, 15, 12, 0, 0, 0);
+  const d = new Date(
+    now.getFullYear(),
+    now.getMonth() - offset,
+    15,
+    12,
+    0,
+    0,
+    0,
+  );
   return { at: d.getTime(), year: d.getFullYear(), month: d.getMonth() };
 }
 

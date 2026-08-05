@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  rowCount,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // Auto-checkoff: once both weight AND reps carry a value, leaving the row
 // commits the set (no separate checkmark tap needed) — the phantom-commit
