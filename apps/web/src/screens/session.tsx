@@ -67,6 +67,7 @@ import {
   Search,
   Settings2,
   Square,
+  StickyNote,
   Timer,
   Trash2,
   Unlink,
@@ -122,7 +123,7 @@ import {
 } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
 import {
-  formatRirRange,
+  effortReadout,
   parseLoggedRirFields,
   rirEditFields,
   rirRange,
@@ -186,8 +187,10 @@ type CommitInput = Omit<LoggedSet, "id" | "setNo" | "restSec"> & {
   restSec?: number | null;
   /** Present only for a unilateral pair: the right side's own values,
    * written as a second row sharing this commit's set_no. Set type, RIR/RPE,
-   * note and metrics fan out from the left side — they're properties of the
-   * physical set, not the limb. */
+   * note and metrics seed the right row from the left side at commit — one
+   * entry for the symmetric case. Only set type stays shared afterwards (its
+   * ᴸ control writes both rows); post-commit RIR/RPE/note are per-limb, each
+   * row's details sheet editing its own. */
   otherSide?: {
     weightKg: number | null;
     reps: number | null;
@@ -933,8 +936,10 @@ export default function SessionScreen() {
     const leftRow = { ...leftFields, restSec, id: leftTempId, setNo };
     // The right side writes rest_sec: null — one commit per physical set means
     // one rest stopwatch (below), and the header average already filters nulls.
-    // Set type / RIR / RPE / note / metrics fan out from the left side: they
-    // describe the physical set, not the limb.
+    // Set type / RIR / RPE / note / metrics seed from the left side at commit,
+    // so the symmetric case is one entry. Only set type stays shared after
+    // that — post-commit RIR/RPE/note are per-limb, edited from each row's own
+    // details sheet and surfaced on that row's line when they diverge.
     const rightTempId = otherSide ? newId() : null;
     const rightRow =
       otherSide && rightTempId
@@ -2301,98 +2306,106 @@ function ExerciseBlock({
 
       {machine && <SetupStrip machine={machine} blockName={block.name} />}
 
+      {/* One grid for the whole block, every row a `subgrid` spanning it: the
+          auto menu-gutter track has to be measured across the block, or the
+          one row carrying a divergence badge (`@2 RPE 8`) widens its own
+          gutter and squeezes its value columns out of line with its siblings'.
+          The grid owns the `px-4` gutter; rows that paint a border or a
+          background take it back with a net-zero `-mx-4 px-4`. */}
       <div
-        className="grid items-center gap-x-2 px-4 py-1 text-2xs font-medium tracking-widest text-faint uppercase"
+        className="grid gap-x-2 px-4"
         style={{ gridTemplateColumns: template }}
       >
-        <span>#</span>
-        {showPrevious && <span>prev</span>}
-        {columns.map((c) =>
-          c.key === "weight" ? (
-            <UnitOverrideMenu
-              key={c.key}
-              header={c.header}
-              blockName={block.name}
-              override={override}
-              globalUnit={unit}
-              onSet={(u) =>
-                setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
-              }
-            />
-          ) : (
-            <span key={c.key}>{c.header}</span>
-          ),
-        )}
-        <span />
-      </div>
+        <div className="col-span-full grid grid-cols-subgrid items-center gap-x-2 py-1 text-2xs font-medium tracking-widest text-faint uppercase">
+          <span>#</span>
+          {showPrevious && <span>prev</span>}
+          {columns.map((c) =>
+            c.key === "weight" ? (
+              <UnitOverrideMenu
+                key={c.key}
+                header={c.header}
+                blockName={block.name}
+                override={override}
+                globalUnit={unit}
+                onSet={(u) =>
+                  setWeightUnit.mutate({
+                    exerciseId: block.exerciseId,
+                    unit: u,
+                  })
+                }
+              />
+            ) : (
+              <span key={c.key}>{c.header}</span>
+            ),
+          )}
+          <span />
+        </div>
 
-      {groupSetsBySetNo(block.committed).map((rows, i) => (
-        <CommittedRow
-          key={rows[0].id}
-          rows={rows}
-          index={i}
+        {groupSetsBySetNo(block.committed).map((rows, i) => (
+          <CommittedRow
+            key={rows[0].id}
+            rows={rows}
+            index={i}
+            unit={blockUnit}
+            distUnit={distUnit}
+            type={type}
+            columns={columns}
+            showPrevious={showPrevious}
+            previous={cells[i]?.previous ?? null}
+            prSetIds={prSetIds}
+            onSave={(setId, patch) => onSaveSet(setId, patch)}
+            onSaveType={(patch) => {
+              for (const r of rows) onSaveSet(r.id, patch);
+            }}
+            onDelete={() => {
+              for (const r of rows) onRemoveSet(r.id);
+            }}
+          />
+        ))}
+
+        <ActiveRow
+          key={`${activeIndex}-${seedNonce}`}
+          ref={registerRowRef}
+          seId={block.seId}
+          index={activeIndex}
           unit={blockUnit}
           distUnit={distUnit}
           type={type}
           columns={columns}
-          template={template}
           showPrevious={showPrevious}
-          previous={cells[i]?.previous ?? null}
-          prSetIds={prSetIds}
-          onSave={(setId, patch) => onSaveSet(setId, patch)}
-          onSaveType={(patch) => {
-            for (const r of rows) onSaveSet(r.id, patch);
+          previous={cells[activeIndex]?.previous ?? null}
+          seed={seedSets[activeIndex]}
+          nextSeedType={seedSets[activeIndex + 1]?.setType ?? null}
+          ghost={ghostFor(ghost, activeIndex)}
+          hasGhost={ghost.length > 0}
+          enabledMetrics={enabledMetrics}
+          autoFocusWeight={activeIndex > 0}
+          barLoaded={barLoaded}
+          laterality={exercise?.laterality ?? null}
+          onOpenPlates={(target) => {
+            setPlateTarget(target);
+            setPlateOpen(true);
           }}
-          onDelete={() => {
-            for (const r of rows) onRemoveSet(r.id);
-          }}
+          timerRunning={timerRunning}
+          timerStartedAt={timerStartedAt}
+          onToggleTimer={onToggleTimer}
+          onCommit={onCommit}
         />
-      ))}
 
-      <ActiveRow
-        key={`${activeIndex}-${seedNonce}`}
-        ref={registerRowRef}
-        seId={block.seId}
-        index={activeIndex}
-        unit={blockUnit}
-        distUnit={distUnit}
-        type={type}
-        columns={columns}
-        template={template}
-        showPrevious={showPrevious}
-        previous={cells[activeIndex]?.previous ?? null}
-        seed={seedSets[activeIndex]}
-        nextSeedType={seedSets[activeIndex + 1]?.setType ?? null}
-        ghost={ghostFor(ghost, activeIndex)}
-        hasGhost={ghost.length > 0}
-        enabledMetrics={enabledMetrics}
-        autoFocusWeight={activeIndex > 0}
-        barLoaded={barLoaded}
-        laterality={exercise?.laterality ?? null}
-        onOpenPlates={(target) => {
-          setPlateTarget(target);
-          setPlateOpen(true);
-        }}
-        timerRunning={timerRunning}
-        timerStartedAt={timerStartedAt}
-        onToggleTimer={onToggleTimer}
-        onCommit={onCommit}
-      />
-
-      {seedSets.slice(activeIndex + 1).map((seed, i) => (
-        <UpcomingRow
-          // biome-ignore lint/suspicious/noArrayIndexKey: seed targets carry no id; position is the set number
-          key={activeIndex + 1 + i}
-          index={activeIndex + 1 + i}
-          seed={seed}
-          unit={blockUnit}
-          distUnit={distUnit}
-          columns={columns}
-          template={template}
-          showPrevious={showPrevious}
-          previous={cells[activeIndex + 1 + i]?.previous ?? null}
-        />
-      ))}
+        {seedSets.slice(activeIndex + 1).map((seed, i) => (
+          <UpcomingRow
+            // biome-ignore lint/suspicious/noArrayIndexKey: seed targets carry no id; position is the set number
+            key={activeIndex + 1 + i}
+            index={activeIndex + 1 + i}
+            seed={seed}
+            unit={blockUnit}
+            distUnit={distUnit}
+            columns={columns}
+            showPrevious={showPrevious}
+            previous={cells[activeIndex + 1 + i]?.previous ?? null}
+          />
+        ))}
+      </div>
 
       <PlateSheet
         open={plateOpen}
@@ -2797,7 +2810,6 @@ function UpcomingRow({
   unit,
   distUnit,
   columns,
-  template,
   showPrevious,
   previous,
 }: {
@@ -2806,15 +2818,13 @@ function UpcomingRow({
   unit: Unit;
   distUnit: DistanceUnit;
   columns: Column[];
-  template: string;
   showPrevious: boolean;
   previous: GhostSet | null;
 }) {
   const marker = SET_TYPE_MARKERS[seed.setType];
   return (
     <div
-      className="grid h-8 items-center gap-x-2 border-t border-border px-4"
-      style={{ gridTemplateColumns: template }}
+      className="col-span-full grid h-8 grid-cols-subgrid items-center gap-x-2 -mx-4 border-t border-border px-4"
       data-testid={`upcoming-${index}`}
     >
       <span className="flex items-center gap-2">
@@ -2880,7 +2890,6 @@ function CommittedRow({
   distUnit,
   type,
   columns,
-  template,
   showPrevious,
   previous,
   prSetIds,
@@ -2894,7 +2903,6 @@ function CommittedRow({
   distUnit: DistanceUnit;
   type: ExerciseType;
   columns: Column[];
-  template: string;
   showPrevious: boolean;
   previous: GhostSet | null;
   prSetIds: Set<string>;
@@ -2920,6 +2928,17 @@ function CommittedRow({
   const has = (k: ColKey) => columns.some((c) => c.key === k);
   const effort = supportsEffort(type);
   const setType = (primary.setType as SetType) ?? "normal";
+  // A unilateral pair's ᴿ row has its own editable RIR/RPE/note (see the
+  // details sheet below) that can diverge from the ᴸ row's after commit —
+  // surface it only when it actually differs, so the common untouched-mirror
+  // case doesn't clutter both lines with duplicate readouts.
+  // Compared through the rendered readout, so a legacy scalar and the
+  // equivalent zero-width range don't read as a divergence.
+  const secondaryEffortDiffers =
+    isPaired && effortReadout(primary) !== effortReadout(secondary);
+  const primaryNote = primary.note?.trim() || null;
+  const secondaryNote = isPaired ? secondary?.note?.trim() || null : null;
+  const notesDiffer = isPaired && primaryNote !== secondaryNote;
 
   function openDetails(set: LoggedSet) {
     setWeight(
@@ -3013,13 +3032,19 @@ function CommittedRow({
   const labelCls = "text-2xs font-medium tracking-wide text-faint uppercase";
 
   return (
-    <div className="relative border-t border-border">
+    // The row is itself a `subgrid` of the block's grid, and so is each of its
+    // ᴸ/ᴿ lines: every line in the block resolves its columns from the same
+    // tracks, or the auto menu-gutter track sizes per line and whichever line
+    // carries a divergence badge pushes its own values out of alignment with
+    // the rest. The lines keep their own full-bleed background (`-mx-4 px-4`
+    // nets to no track offset, so the columns still land where the header
+    // row's do).
+    <div className="relative col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4">
       <div
         className={cn(
-          "group commit-flash grid h-11 items-center gap-x-2 bg-surface px-4 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-8",
+          "group commit-flash col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 -mx-4 bg-surface px-4 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-8",
           isPaired && "pb-0.5 md:pb-0",
         )}
-        style={{ gridTemplateColumns: template }}
         data-testid={`committed-${index}`}
       >
         <SetTypeCell
@@ -3049,15 +3074,32 @@ function CommittedRow({
             {committedText(c.key, primary, unit, distUnit)}
           </button>
         ))}
-        <span className="flex items-center justify-center gap-1">
+        {/* Right-anchored: the gutter track is now sized by the widest badge
+            in the whole block, so centring would leave the ⋯ of a badge-free
+            row floating mid-track, out of line with its siblings'. */}
+        <span className="flex items-center justify-end gap-1">
           {effort && (
-            <span className="num text-2xs text-faint max-md:hidden md:group-hover:hidden">
-              {[
-                formatRirRange(rirRange(primary)),
-                primary.rpe != null ? `RPE ${primary.rpe}` : null,
-              ]
-                .filter(Boolean)
-                .join(" ")}
+            <span
+              className={cn(
+                "num text-2xs text-faint md:group-hover:hidden",
+                // Below `md:` this readout is desktop chrome the narrow row
+                // can't spare — unless it's carrying a pair's divergence, in
+                // which case it has to show alongside the (touch-visible) ⋯
+                // button, or the ᴿ line's readout reads as the whole set's.
+                !secondaryEffortDiffers && "max-md:hidden",
+              )}
+              data-testid={`committed-${index}-effort`}
+            >
+              {effortReadout(primary) || (secondaryEffortDiffers ? "—" : "")}
+            </span>
+          )}
+          {isPaired && notesDiffer && primaryNote && (
+            <span
+              className="text-faint md:group-hover:hidden"
+              title={primaryNote}
+              data-testid={`committed-${index}-note`}
+            >
+              <StickyNote className="size-3.5" />
             </span>
           )}
           {/* Visible by default on touch, hover-revealed only from `md:` up —
@@ -3086,34 +3128,53 @@ function CommittedRow({
         </span>
       )}
 
-      {/* Right side of a unilateral pair: no ring, no set-type/⋯ control —
-          those are properties of the physical set, controlled from the ᴸ
-          line above. Tapping a value still opens that limb's own details. */}
+      {/* Right side of a unilateral pair: no ring, no set-type control — both
+          belong to the physical set and are controlled from the ᴸ line above.
+          No ⋯ either, but tapping any value opens this limb's own details
+          sheet, which is where its per-limb RIR/RPE/note are edited. */}
       {isPaired && (
-        <div className="relative">
-          <div
-            className="grid items-center gap-x-2 bg-surface px-4 pb-1.5 md:pb-1"
-            style={{ gridTemplateColumns: template }}
-            data-testid={`committed-${index}-right`}
-          >
-            <span className="num pl-6 text-2xs tabular-nums text-faint md:pl-5">
-              {index + 1}ᴿ
-            </span>
-            {showPrevious && <span />}
-            {columns.map((c) => (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => openDetails(secondary)}
-                className="num cursor-pointer text-left text-sm text-soft"
-                title="Set details"
-                data-testid={`committed-${index}-right-${c.key}`}
+        <div
+          className="relative col-span-full grid grid-cols-subgrid items-center gap-x-2 -mx-4 bg-surface px-4 pb-1.5 md:pb-1"
+          data-testid={`committed-${index}-right`}
+        >
+          <span className="num pl-6 text-2xs tabular-nums text-faint md:pl-5">
+            {index + 1}ᴿ
+          </span>
+          {showPrevious && <span />}
+          {columns.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => openDetails(secondary)}
+              className="num cursor-pointer text-left text-sm text-soft"
+              title="Set details"
+              data-testid={`committed-${index}-right-${c.key}`}
+            >
+              {committedText(c.key, secondary, unit, distUnit)}
+            </button>
+          ))}
+          <span className="flex items-center justify-end gap-1">
+            {effort && secondaryEffortDiffers && (
+              <span
+                className="num text-2xs text-faint"
+                data-testid={`committed-${index}-right-effort`}
               >
-                {committedText(c.key, secondary, unit, distUnit)}
-              </button>
-            ))}
-            <span />
-          </div>
+                {/* This line only prints when it diverges, so an empty
+                    readout would render as nothing at all — identical to the
+                    suppressed mirror case. A cleared ᴿ effort says so. */}
+                {effortReadout(secondary) || "—"}
+              </span>
+            )}
+            {notesDiffer && secondaryNote && (
+              <span
+                className="text-faint"
+                title={secondaryNote}
+                data-testid={`committed-${index}-right-note`}
+              >
+                <StickyNote className="size-3.5" />
+              </span>
+            )}
+          </span>
           {prSetIds.has(secondary.id) && (
             <span
               className="pointer-events-none absolute top-0.5 right-1.5 text-accent"
@@ -3458,7 +3519,6 @@ function ActiveRow({
   distUnit,
   type,
   columns,
-  template,
   showPrevious,
   previous,
   seed,
@@ -3482,7 +3542,6 @@ function ActiveRow({
   distUnit: DistanceUnit;
   type: ExerciseType;
   columns: Column[];
-  template: string;
   showPrevious: boolean;
   previous: GhostSet | null;
   seed: SeedSet | undefined;
@@ -4049,20 +4108,18 @@ function ActiveRow({
   // mirrors CommittedRow's collapsed RIR/RPE readout, so the same information
   // is visible without opening the sheet on either row type.
   const modifierPreview = effort
-    ? [
-        formatRirRange(rirRange(parseLoggedRirFields(rirMin, rirMax))),
-        rpe.trim() !== "" ? `RPE ${rpe}` : null,
-      ]
-        .filter(Boolean)
-        .join(" ")
+    ? effortReadout({
+        ...parseLoggedRirFields(rirMin, rirMax),
+        rpe: rpe.trim() === "" ? null : Number.parseFloat(rpe),
+      })
     : "";
 
   return (
-    <div ref={rowRef} className="border-t border-border px-4 py-2">
-      <div
-        className="grid items-center gap-x-2"
-        style={{ gridTemplateColumns: template }}
-      >
+    <div
+      ref={rowRef}
+      className="col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4 py-2"
+    >
+      <div className="col-span-full grid grid-cols-subgrid items-center gap-x-2">
         <SetTypeCell
           index={index}
           setType={setType}
@@ -4088,10 +4145,7 @@ function ActiveRow({
         {columns.map((c, i) =>
           dataCell(c.key, autoFocusWeight && i === 0, i === columns.length - 1),
         )}
-        <span
-          ref={moreCellRef}
-          className="flex items-center justify-center gap-1"
-        >
+        <span ref={moreCellRef} className="flex items-center justify-end gap-1">
           {modifierPreview && (
             <span className="num text-2xs text-faint">{modifierPreview}</span>
           )}
@@ -4117,12 +4171,11 @@ function ActiveRow({
       </div>
 
       {/* Right side of a unilateral pair: no ring, no ⋯ — set type/RIR/RPE/
-          note are properties of the physical set, entered once above. */}
+          note are entered once above and seed both rows at commit. Only set
+          type stays shared after that; post-commit RIR/RPE/note are per-limb,
+          edited from each committed row's own details sheet. */}
       {isUnilateral && (
-        <div
-          className="mt-1 grid items-center gap-x-2"
-          style={{ gridTemplateColumns: template }}
-        >
+        <div className="col-span-full mt-1 grid grid-cols-subgrid items-center gap-x-2">
           <span className="num pl-6 text-2xs tabular-nums text-faint">
             {index + 1}ᴿ
           </span>
@@ -4243,7 +4296,7 @@ function ActiveRow({
           </div>
         </DialogContent>
       </Dialog>
-      <div className="mt-2 grid grid-cols-[1fr_auto] items-stretch gap-2">
+      <div className="col-span-full mt-2 grid grid-cols-[1fr_auto] items-stretch gap-2">
         <Button
           variant="outline"
           size="lg"

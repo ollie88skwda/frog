@@ -19,6 +19,20 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
+async function cellX(
+  page: import("@playwright/test").Page,
+  testId: string,
+  // The draft row's cells are Radix TextField roots: the test id lands on the
+  // inner <input>, which the field's own 1px border insets from the grid cell
+  // around it. Measure that wrapper when comparing against a committed cell.
+  wrapper = false,
+): Promise<number> {
+  const el = page.getByTestId(testId);
+  const box = await (wrapper ? el.locator("..") : el).boundingBox();
+  if (!box) throw new Error(`${testId} has no bounding box`);
+  return box.x;
+}
+
 async function markUnilateral(
   page: import("@playwright/test").Page,
   name: string,
@@ -163,6 +177,174 @@ test("shows the laterality affix alongside the warm-up marker on a unilateral pa
   await page.getByTestId("set-0-done").click();
 
   await expect(page.getByTestId("committed-0-type")).toHaveText("Wᴸ");
+});
+
+test("editing only the ᴿ row's RIR/RPE/note surfaces them in the collapsed readout and reopened sheet", async ({
+  page,
+}) => {
+  const EX = `One-Arm Press ${Date.now()}`;
+
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await waitForExercise(page, EX);
+  await markUnilateral(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await expect(page).toHaveURL(/\/session\//);
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  await page.getByTestId("set-0-weight").fill("20");
+  await page.getByTestId("set-0-reps").fill("8");
+  await page.getByTestId("set-0-done").click();
+  await expect(page.getByTestId("committed-0-right-weight")).toContainText(
+    "20",
+  );
+
+  // Edit only the ᴿ row's details — the ᴸ row keeps no RIR/RPE/note.
+  await page.getByTestId("committed-0-right-weight").click();
+  await page.getByTestId("edit-0-rirmin").fill("1");
+  await page.getByTestId("edit-0-rpe").selectOption("9");
+  await page.getByTestId("edit-0-note").fill("elbow flare on this side");
+  await page.getByTestId("edit-0-save").click();
+
+  // Collapsed readout now surfaces the ᴿ row's own values.
+  await expect(page.getByTestId("committed-0-right-effort")).toContainText(
+    "@1",
+  );
+  await expect(page.getByTestId("committed-0-right-effort")).toContainText(
+    "RPE 9",
+  );
+  await expect(page.getByTestId("committed-0-right-note")).toHaveAttribute(
+    "title",
+    "elbow flare on this side",
+  );
+
+  // Nothing fanned back to the ᴸ row — and it says so with a "—" rather
+  // than a blank span, which would read as "this line mirrors the other".
+  await expect(page.getByTestId("committed-0-effort")).toHaveText("—");
+  await expect(page.getByTestId("committed-0-effort")).toBeVisible();
+  await expect(page.getByTestId("committed-0-note")).toHaveCount(0);
+
+  // Reopening the ᴿ row's sheet still shows what was saved (it never was
+  // truly invisible in storage — only in every UI surface, until now).
+  await page.getByTestId("committed-0-right-weight").click();
+  await expect(page.getByTestId("edit-0-rirmin")).toHaveValue("1");
+  await expect(page.getByTestId("edit-0-rpe")).toHaveValue("9");
+  await expect(page.getByTestId("edit-0-note")).toHaveValue(
+    "elbow flare on this side",
+  );
+});
+
+test("a mirrored pair prints no ᴿ readout; clearing the ᴿ side prints — beside the ᴸ values", async ({
+  page,
+}) => {
+  const EX = `One-Arm Curl ${Date.now()}`;
+
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await waitForExercise(page, EX);
+  await markUnilateral(page, EX);
+
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await expect(page).toHaveURL(/\/session\//);
+  await page.getByTestId(`pick-exercise-${EX}`).click();
+
+  // Weight only, so far — auto-checkoff (weight+reps both filled) hasn't
+  // armed yet, so opening the details sheet next can't race it. Effort
+  // entered here fans out to both rows at commit.
+  await page.getByTestId("set-0-weight").fill("20");
+  await page.getByTestId("set-0-more").click();
+  await page.getByTestId("set-0-rirmin").fill("2");
+  await page.getByTestId("set-0-rpe").selectOption("8");
+  await expect(page.getByTestId("set-0-note")).toBeVisible(); // sheet is open
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("set-0-note")).toBeHidden();
+
+  // The draft row's ᴸ line now carries a preview badge its ᴿ line doesn't.
+  // Both lines size their columns from one grid, so the values stay
+  // pixel-aligned anyway — the whole point of the shared track.
+  await expect(page.getByTestId(`block-${EX}`)).toContainText("@2 RPE 8");
+  expect(await cellX(page, "set-0-right-weight")).toBeCloseTo(
+    await cellX(page, "set-0-weight"),
+    0,
+  );
+  expect(await cellX(page, "set-0-right-reps")).toBeCloseTo(
+    await cellX(page, "set-0-reps"),
+    0,
+  );
+
+  await page.getByTestId("set-0-reps").fill("8");
+  await page.getByTestId("set-0-done").click();
+
+  // Both rows carry the same effort: the ᴿ line prints nothing at all, and
+  // the ᴸ line's readout stays desktop-only chrome at this viewport (the
+  // suite's iPhone 13 default, below `md:`).
+  await expect(page.getByTestId("committed-0-right-weight")).toContainText(
+    "20",
+  );
+  await expect(page.getByTestId("committed-0-right-effort")).toHaveCount(0);
+  await expect(page.getByTestId("committed-0-effort")).toBeHidden();
+
+  // Clear the ᴿ row's own effort — the two sides now differ, with nothing
+  // left on the ᴿ one.
+  await page.getByTestId("committed-0-right-weight").click();
+  await page.getByTestId("edit-0-rirmin").fill("");
+  await page.getByTestId("edit-0-rpe").selectOption("");
+  await page.getByTestId("edit-0-save").click();
+
+  // "—", not a blank span: cleared has to read differently from mirrored.
+  await expect(page.getByTestId("committed-0-right-effort")).toHaveText("—");
+  await expect(page.getByTestId("committed-0-right-effort")).toBeVisible();
+
+  // …and the ᴸ line's own values come out of hiding on the same narrow
+  // viewport, so the readout that IS there can't read as the whole set's.
+  await expect(page.getByTestId("committed-0-effort")).toBeVisible();
+  await expect(page.getByTestId("committed-0-effort")).toHaveText("@2 RPE 8");
+
+  // One badge per line, of different widths — the committed pair's columns
+  // still line up, because both lines share the row's own grid tracks.
+  expect(await cellX(page, "committed-0-right-weight")).toBeCloseTo(
+    await cellX(page, "committed-0-weight"),
+    0,
+  );
+  expect(await cellX(page, "committed-0-right-reps")).toBeCloseTo(
+    await cellX(page, "committed-0-reps"),
+    0,
+  );
+
+  // …and it has to hold across the block, not just within the pair: log a
+  // second, badge-free set. Every row of one exercise shares one grid, so the
+  // widest badge in the block sizes the auto menu gutter once. Sized per row,
+  // set 1's values would sit left of set 2's and of the draft row's.
+  await page.getByTestId("set-1-weight").fill("20");
+  await page.getByTestId("set-1-reps").fill("8");
+  await page.getByTestId("set-1-done").click();
+  await expect(page.getByTestId("committed-1-right-weight")).toContainText(
+    "20",
+  );
+
+  const repsX = await cellX(page, "committed-0-reps");
+  for (const [id, wrapper] of [
+    ["committed-0-right-reps", false],
+    ["committed-1-reps", false],
+    ["committed-1-right-reps", false],
+    ["set-2-reps", true],
+  ] as const) {
+    expect(
+      await cellX(page, id, wrapper),
+      `${id} vs committed-0-reps`,
+    ).toBeCloseTo(repsX, 0);
+  }
+
+  // The ⋯ controls stay right-anchored inside that shared gutter: a row with
+  // no badge must not float its button mid-track (same-size buttons, so the
+  // left edge is enough to say so).
+  const menuX = await cellX(page, "set-menu-0");
+  for (const id of ["set-menu-1", "set-2-more"]) {
+    expect(await cellX(page, id), `${id} vs set-menu-0`).toBeCloseTo(menuX, 0);
+  }
 });
 
 test("alternating exercises log as a single row with a total-reps header", async ({
