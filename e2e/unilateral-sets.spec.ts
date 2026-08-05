@@ -22,8 +22,13 @@ test.beforeEach(async ({ page }) => {
 async function cellX(
   page: import("@playwright/test").Page,
   testId: string,
+  // The draft row's cells are Radix TextField roots: the test id lands on the
+  // inner <input>, which the field's own 1px border insets from the grid cell
+  // around it. Measure that wrapper when comparing against a committed cell.
+  wrapper = false,
 ): Promise<number> {
-  const box = await page.getByTestId(testId).boundingBox();
+  const el = page.getByTestId(testId);
+  const box = await (wrapper ? el.locator("..") : el).boundingBox();
   if (!box) throw new Error(`${testId} has no bounding box`);
   return box.x;
 }
@@ -308,6 +313,38 @@ test("a mirrored pair prints no ᴿ readout; clearing the ᴿ side prints — be
     await cellX(page, "committed-0-reps"),
     0,
   );
+
+  // …and it has to hold across the block, not just within the pair: log a
+  // second, badge-free set. Every row of one exercise shares one grid, so the
+  // widest badge in the block sizes the auto menu gutter once. Sized per row,
+  // set 1's values would sit left of set 2's and of the draft row's.
+  await page.getByTestId("set-1-weight").fill("20");
+  await page.getByTestId("set-1-reps").fill("8");
+  await page.getByTestId("set-1-done").click();
+  await expect(page.getByTestId("committed-1-right-weight")).toContainText(
+    "20",
+  );
+
+  const repsX = await cellX(page, "committed-0-reps");
+  for (const [id, wrapper] of [
+    ["committed-0-right-reps", false],
+    ["committed-1-reps", false],
+    ["committed-1-right-reps", false],
+    ["set-2-reps", true],
+  ] as const) {
+    expect(
+      await cellX(page, id, wrapper),
+      `${id} vs committed-0-reps`,
+    ).toBeCloseTo(repsX, 0);
+  }
+
+  // The ⋯ controls stay right-anchored inside that shared gutter: a row with
+  // no badge must not float its button mid-track (same-size buttons, so the
+  // left edge is enough to say so).
+  const menuX = await cellX(page, "set-menu-0");
+  for (const id of ["set-menu-1", "set-2-more"]) {
+    expect(await cellX(page, id), `${id} vs set-menu-0`).toBeCloseTo(menuX, 0);
+  }
 });
 
 test("alternating exercises log as a single row with a total-reps header", async ({

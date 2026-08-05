@@ -2306,98 +2306,103 @@ function ExerciseBlock({
 
       {machine && <SetupStrip machine={machine} blockName={block.name} />}
 
+      {/* One grid for the whole block, every row a `subgrid` spanning it: the
+          auto menu-gutter track has to be measured across the block, or the
+          one row carrying a divergence badge (`@2 RPE 8`) widens its own
+          gutter and squeezes its value columns out of line with its siblings'.
+          The grid owns the `px-4` gutter; rows that paint a border or a
+          background take it back with a net-zero `-mx-4 px-4`. */}
       <div
-        className="grid items-center gap-x-2 px-4 py-1 text-2xs font-medium tracking-widest text-faint uppercase"
+        className="grid gap-x-2 px-4"
         style={{ gridTemplateColumns: template }}
       >
-        <span>#</span>
-        {showPrevious && <span>prev</span>}
-        {columns.map((c) =>
-          c.key === "weight" ? (
-            <UnitOverrideMenu
-              key={c.key}
-              header={c.header}
-              blockName={block.name}
-              override={override}
-              globalUnit={unit}
-              onSet={(u) =>
-                setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
-              }
-            />
-          ) : (
-            <span key={c.key}>{c.header}</span>
-          ),
-        )}
-        <span />
-      </div>
+        <div className="col-span-full grid grid-cols-subgrid items-center gap-x-2 py-1 text-2xs font-medium tracking-widest text-faint uppercase">
+          <span>#</span>
+          {showPrevious && <span>prev</span>}
+          {columns.map((c) =>
+            c.key === "weight" ? (
+              <UnitOverrideMenu
+                key={c.key}
+                header={c.header}
+                blockName={block.name}
+                override={override}
+                globalUnit={unit}
+                onSet={(u) =>
+                  setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
+                }
+              />
+            ) : (
+              <span key={c.key}>{c.header}</span>
+            ),
+          )}
+          <span />
+        </div>
 
-      {groupSetsBySetNo(block.committed).map((rows, i) => (
-        <CommittedRow
-          key={rows[0].id}
-          rows={rows}
-          index={i}
+        {groupSetsBySetNo(block.committed).map((rows, i) => (
+          <CommittedRow
+            key={rows[0].id}
+            rows={rows}
+            index={i}
+            unit={blockUnit}
+            distUnit={distUnit}
+            type={type}
+            columns={columns}
+            showPrevious={showPrevious}
+            previous={cells[i]?.previous ?? null}
+            prSetIds={prSetIds}
+            onSave={(setId, patch) => onSaveSet(setId, patch)}
+            onSaveType={(patch) => {
+              for (const r of rows) onSaveSet(r.id, patch);
+            }}
+            onDelete={() => {
+              for (const r of rows) onRemoveSet(r.id);
+            }}
+          />
+        ))}
+
+        <ActiveRow
+          key={`${activeIndex}-${seedNonce}`}
+          ref={registerRowRef}
+          seId={block.seId}
+          index={activeIndex}
           unit={blockUnit}
           distUnit={distUnit}
           type={type}
           columns={columns}
-          template={template}
           showPrevious={showPrevious}
-          previous={cells[i]?.previous ?? null}
-          prSetIds={prSetIds}
-          onSave={(setId, patch) => onSaveSet(setId, patch)}
-          onSaveType={(patch) => {
-            for (const r of rows) onSaveSet(r.id, patch);
+          previous={cells[activeIndex]?.previous ?? null}
+          seed={seedSets[activeIndex]}
+          nextSeedType={seedSets[activeIndex + 1]?.setType ?? null}
+          ghost={ghostFor(ghost, activeIndex)}
+          hasGhost={ghost.length > 0}
+          enabledMetrics={enabledMetrics}
+          autoFocusWeight={activeIndex > 0}
+          barLoaded={barLoaded}
+          laterality={exercise?.laterality ?? null}
+          onOpenPlates={(target) => {
+            setPlateTarget(target);
+            setPlateOpen(true);
           }}
-          onDelete={() => {
-            for (const r of rows) onRemoveSet(r.id);
-          }}
+          timerRunning={timerRunning}
+          timerStartedAt={timerStartedAt}
+          onToggleTimer={onToggleTimer}
+          onCommit={onCommit}
         />
-      ))}
 
-      <ActiveRow
-        key={`${activeIndex}-${seedNonce}`}
-        ref={registerRowRef}
-        seId={block.seId}
-        index={activeIndex}
-        unit={blockUnit}
-        distUnit={distUnit}
-        type={type}
-        columns={columns}
-        template={template}
-        showPrevious={showPrevious}
-        previous={cells[activeIndex]?.previous ?? null}
-        seed={seedSets[activeIndex]}
-        nextSeedType={seedSets[activeIndex + 1]?.setType ?? null}
-        ghost={ghostFor(ghost, activeIndex)}
-        hasGhost={ghost.length > 0}
-        enabledMetrics={enabledMetrics}
-        autoFocusWeight={activeIndex > 0}
-        barLoaded={barLoaded}
-        laterality={exercise?.laterality ?? null}
-        onOpenPlates={(target) => {
-          setPlateTarget(target);
-          setPlateOpen(true);
-        }}
-        timerRunning={timerRunning}
-        timerStartedAt={timerStartedAt}
-        onToggleTimer={onToggleTimer}
-        onCommit={onCommit}
-      />
-
-      {seedSets.slice(activeIndex + 1).map((seed, i) => (
-        <UpcomingRow
-          // biome-ignore lint/suspicious/noArrayIndexKey: seed targets carry no id; position is the set number
-          key={activeIndex + 1 + i}
-          index={activeIndex + 1 + i}
-          seed={seed}
-          unit={blockUnit}
-          distUnit={distUnit}
-          columns={columns}
-          template={template}
-          showPrevious={showPrevious}
-          previous={cells[activeIndex + 1 + i]?.previous ?? null}
-        />
-      ))}
+        {seedSets.slice(activeIndex + 1).map((seed, i) => (
+          <UpcomingRow
+            // biome-ignore lint/suspicious/noArrayIndexKey: seed targets carry no id; position is the set number
+            key={activeIndex + 1 + i}
+            index={activeIndex + 1 + i}
+            seed={seed}
+            unit={blockUnit}
+            distUnit={distUnit}
+            columns={columns}
+            showPrevious={showPrevious}
+            previous={cells[activeIndex + 1 + i]?.previous ?? null}
+          />
+        ))}
+      </div>
 
       <PlateSheet
         open={plateOpen}
@@ -2802,7 +2807,6 @@ function UpcomingRow({
   unit,
   distUnit,
   columns,
-  template,
   showPrevious,
   previous,
 }: {
@@ -2811,15 +2815,13 @@ function UpcomingRow({
   unit: Unit;
   distUnit: DistanceUnit;
   columns: Column[];
-  template: string;
   showPrevious: boolean;
   previous: GhostSet | null;
 }) {
   const marker = SET_TYPE_MARKERS[seed.setType];
   return (
     <div
-      className="grid h-8 items-center gap-x-2 border-t border-border px-4"
-      style={{ gridTemplateColumns: template }}
+      className="col-span-full grid h-8 grid-cols-subgrid items-center gap-x-2 -mx-4 border-t border-border px-4"
       data-testid={`upcoming-${index}`}
     >
       <span className="flex items-center gap-2">
@@ -2885,7 +2887,6 @@ function CommittedRow({
   distUnit,
   type,
   columns,
-  template,
   showPrevious,
   previous,
   prSetIds,
@@ -2899,7 +2900,6 @@ function CommittedRow({
   distUnit: DistanceUnit;
   type: ExerciseType;
   columns: Column[];
-  template: string;
   showPrevious: boolean;
   previous: GhostSet | null;
   prSetIds: Set<string>;
@@ -3029,16 +3029,14 @@ function CommittedRow({
   const labelCls = "text-2xs font-medium tracking-wide text-faint uppercase";
 
   return (
-    // One grid for the whole row, each line a `subgrid` spanning it: the ᴸ and
-    // ᴿ lines of a pair must resolve their columns *together*, or the auto
-    // menu-gutter track sizes per line and whichever line carries a divergence
-    // badge pushes its own values out of alignment with the other's. The lines
-    // keep their own full-bleed background (`-mx-4 px-4` nets to no track
-    // offset, so the columns still land where the header row's do).
-    <div
-      className="relative grid gap-x-2 border-t border-border px-4"
-      style={{ gridTemplateColumns: template }}
-    >
+    // The row is itself a `subgrid` of the block's grid, and so is each of its
+    // ᴸ/ᴿ lines: every line in the block resolves its columns from the same
+    // tracks, or the auto menu-gutter track sizes per line and whichever line
+    // carries a divergence badge pushes its own values out of alignment with
+    // the rest. The lines keep their own full-bleed background (`-mx-4 px-4`
+    // nets to no track offset, so the columns still land where the header
+    // row's do).
+    <div className="relative col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4">
       <div
         className={cn(
           "group commit-flash col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 -mx-4 bg-surface px-4 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-8",
@@ -3073,7 +3071,10 @@ function CommittedRow({
             {committedText(c.key, primary, unit, distUnit)}
           </button>
         ))}
-        <span className="flex items-center justify-center gap-1">
+        {/* Right-anchored: the gutter track is now sized by the widest badge
+            in the whole block, so centring would leave the ⋯ of a badge-free
+            row floating mid-track, out of line with its siblings'. */}
+        <span className="flex items-center justify-end gap-1">
           {effort && (
             <span
               className={cn(
@@ -3148,7 +3149,7 @@ function CommittedRow({
               {committedText(c.key, secondary, unit, distUnit)}
             </button>
           ))}
-          <span className="flex items-center justify-center gap-1">
+          <span className="flex items-center justify-end gap-1">
             {effort && secondaryEffortDiffers && (
               <span
                 className="num text-2xs text-faint"
@@ -3514,7 +3515,6 @@ function ActiveRow({
   distUnit,
   type,
   columns,
-  template,
   showPrevious,
   previous,
   seed,
@@ -3538,7 +3538,6 @@ function ActiveRow({
   distUnit: DistanceUnit;
   type: ExerciseType;
   columns: Column[];
-  template: string;
   showPrevious: boolean;
   previous: GhostSet | null;
   seed: SeedSet | undefined;
@@ -4114,8 +4113,7 @@ function ActiveRow({
   return (
     <div
       ref={rowRef}
-      className="grid gap-x-2 border-t border-border px-4 py-2"
-      style={{ gridTemplateColumns: template }}
+      className="col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4 py-2"
     >
       <div className="col-span-full grid grid-cols-subgrid items-center gap-x-2">
         <SetTypeCell
@@ -4145,7 +4143,7 @@ function ActiveRow({
         )}
         <span
           ref={moreCellRef}
-          className="flex items-center justify-center gap-1"
+          className="flex items-center justify-end gap-1"
         >
           {modifierPreview && (
             <span className="num text-2xs text-faint">{modifierPreview}</span>
