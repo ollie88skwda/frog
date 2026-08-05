@@ -3556,6 +3556,15 @@ function ActiveRow({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const done = useRef(false);
   const rowRef = useRef<HTMLDivElement>(null);
+  // Set when the "…" button opens the details sheet: Radix moves focus into
+  // the dialog once it mounts, blurring whichever weight/reps input was
+  // focused. That blur reaches onFieldBlur/onRightFieldBlur just like a
+  // real tap-away would, so without this it auto-checks the set off the
+  // moment the sheet opens. Consumed by the next blur, or cleared when the
+  // sheet closes without one (e.g. it opened while neither field was
+  // focused).
+  const suppressCheckoffRef = useRef(false);
+  const moreCellRef = useRef<HTMLSpanElement>(null);
   const [, tick] = useReducer((n: number) => n + 1, 0);
 
   // Mirror uncommitted keystrokes to localStorage so a reload restores them.
@@ -3595,6 +3604,14 @@ function ActiveRow({
     rDuration,
     rDistance,
   ]);
+
+  // Closing without a field blur ever landing (e.g. the sheet opened while
+  // neither weight nor reps had focus) leaves the guard armed — clear it on
+  // every close, however the sheet was dismissed, so a later genuine
+  // tap-away isn't swallowed too.
+  useEffect(() => {
+    if (!detailsOpen) suppressCheckoffRef.current = false;
+  }, [detailsOpen]);
 
   function openPlates() {
     onOpenPlates(weight.trim() === "" ? null : Number.parseFloat(weight));
@@ -3825,7 +3842,17 @@ function ActiveRow({
   // — only leaving the ᴿ line does, and only once the ᴸ line is complete.
   // Otherwise the moment you tab off "weight" into "reps" would half-log the
   // set before the right side ever gets a chance to mirror or override.
-  function onFieldBlur() {
+  function onFieldBlur(e: React.FocusEvent<HTMLInputElement>) {
+    if (suppressCheckoffRef.current) {
+      suppressCheckoffRef.current = false;
+      return;
+    }
+    // Tab out of reps lands on the "…" trigger — mousedown-preventDefault
+    // only covers pointers, so nothing has armed the guard above. Committing
+    // here unmounts that trigger mid-Tab, putting set details out of reach of
+    // the keyboard on a complete-but-uncommitted row.
+    const next = e.relatedTarget as Node | null;
+    if (next && moreCellRef.current?.contains(next)) return;
     if (isUnilateral) return;
     if (weight.trim() !== "" && reps.trim() !== "") commit(false);
   }
@@ -3835,6 +3862,10 @@ function ActiveRow({
   // complete, which would otherwise auto-commit before the reps override is
   // even typed. Only fires once focus actually leaves this row.
   function onRightFieldBlur(e: React.FocusEvent<HTMLInputElement>) {
+    if (suppressCheckoffRef.current) {
+      suppressCheckoffRef.current = false;
+      return;
+    }
     const next = e.relatedTarget as Node | null;
     if (next && rowRef.current?.contains(next)) return;
     if (weight.trim() !== "" && reps.trim() !== "") commit(false);
@@ -4054,14 +4085,23 @@ function ActiveRow({
         {columns.map((c, i) =>
           dataCell(c.key, autoFocusWeight && i === 0, i === columns.length - 1),
         )}
-        <span className="flex items-center justify-center gap-1">
+        <span
+          ref={moreCellRef}
+          className="flex items-center justify-center gap-1"
+        >
           {modifierPreview && (
             <span className="num text-2xs text-faint">{modifierPreview}</span>
           )}
           <Button
             variant="outline"
             size="icon-lg"
-            onClick={() => setDetailsOpen(true)}
+            onClick={() => {
+              // Opening the sheet is about to steal focus from weight/reps
+              // via Radix's own auto-focus — arm the guard so that blur
+              // doesn't read as "done with this row" and check it off.
+              suppressCheckoffRef.current = true;
+              setDetailsOpen(true);
+            }}
             // Keep the weight/reps input focused so tapping doesn't blur it
             // — Safari doesn't focus buttons on tap.
             onMouseDown={(e) => e.preventDefault()}
