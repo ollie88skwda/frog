@@ -59,8 +59,17 @@ if (kb > BUDGET_KB) {
 // must never ship — in production it would expose a Supabase-native sign-in
 // path that bypasses Clerk. A stray VITE_E2E=1 in an env file is enough to
 // leak it, so check every emitted chunk for the marker.
+//
+// Matches the property-access shape (`.__frog`), not a bare substring: the
+// /changelog lazy chunk embeds docs/DECISIONS.md's own text verbatim (2026-08-04
+// changelog page), which permanently quotes "__frog" in prose (the 2026-07-28
+// rename entry) with no preceding dot — a bare `.includes("__frog")` false-
+// positives on that forever, since the entry can't be edited away. The actual
+// leak (confirmed against a VITE_E2E=1 build) always emits `window.__frog=`,
+// so the dot is the reliable discriminator.
+const FROG_MARKER_RE = /\.__frog\b/;
 for (const f of readdirSync(assetsDir).filter((n) => n.endsWith(".js"))) {
-  if (readFileSync(join(assetsDir, f), "utf8").includes("__frog")) {
+  if (FROG_MARKER_RE.test(readFileSync(join(assetsDir, f), "utf8"))) {
     console.error(
       `E2E test-hook marker "__frog" found in ${f} — was the build run with VITE_E2E=1?`,
     );

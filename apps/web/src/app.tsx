@@ -28,6 +28,7 @@ const MonthlyReportScreen = lazy(() => import("@/screens/monthly-report"));
 const YearReviewScreen = lazy(() => import("@/screens/year-review"));
 const SettingsScreen = lazy(() => import("@/screens/settings"));
 const TipsScreen = lazy(() => import("@/screens/tips"));
+const ChangelogScreen = lazy(() => import("@/screens/changelog"));
 const NotFoundScreen = lazy(() => import("@/screens/not-found"));
 
 const queryClient = new QueryClient({
@@ -115,6 +116,7 @@ export function App() {
                       <Route path="stats/year" element={<YearReviewScreen />} />
                       <Route path="settings" element={<SettingsScreen />} />
                       <Route path="tips" element={<TipsScreen />} />
+                      <Route path="changelog" element={<ChangelogScreen />} />
                       <Route path="*" element={<NotFoundScreen />} />
                     </Route>
                   </Route>

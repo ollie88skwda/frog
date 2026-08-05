@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useSignOut } from "@/lib/auth";
+import { useChangelogHasUnseen } from "@/lib/changelog-prefs";
 import { formatDate } from "@/lib/format";
 import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
 import {
@@ -195,6 +196,7 @@ export default function SettingsScreen() {
       <ImportCard />
       <ApiTokensSection />
       <LearnSection />
+      <ChangelogSection />
 
       <Section title="Account">
         <Button
@@ -928,6 +930,38 @@ function LearnSection() {
           >
             Browse
           </Link>
+        </Row>
+      </div>
+    </Section>
+  );
+}
+
+// ── Changelog ───────────────────────────────────────────────────────────────
+
+function ChangelogSection() {
+  const hasUnseen = useChangelogHasUnseen();
+  return (
+    <Section title="Changelog">
+      <div className="mt-1 divide-y divide-border">
+        <Row
+          label="What's new"
+          hint="Dev log of what shipped, pulled from docs/DECISIONS.md."
+        >
+          <span className="flex items-center gap-2">
+            {hasUnseen && (
+              <span
+                className="size-1.5 bg-accent"
+                data-testid="changelog-unseen-dot"
+              />
+            )}
+            <Link
+              to="/changelog"
+              className="flex h-8 items-center border border-border bg-surface px-3 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+              data-testid="changelog-link"
+            >
+              Browse
+            </Link>
+          </span>
         </Row>
       </div>
     </Section>
