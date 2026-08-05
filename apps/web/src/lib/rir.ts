@@ -30,6 +30,24 @@ export function formatRirRange(
 }
 
 /**
+ * The collapsed "@2-3 RPE 8" effort readout, in one place: the session's
+ * committed rows (both lines of a unilateral pair), its draft-row preview and
+ * the history detail all render the same string, so a change to the format
+ * can't make the same set read differently on two screens. RIR goes through
+ * rirRange so a legacy scalar still renders. Empty when neither is logged.
+ */
+export function effortReadout(s: {
+  rir?: number | null;
+  rirMin: number | null;
+  rirMax: number | null;
+  rpe: number | null;
+}): string {
+  return [formatRirRange(rirRange(s)), s.rpe != null ? `RPE ${s.rpe}` : null]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
  * Seeds the min/max edit fields from a stored set. Distinct from rirRange(),
  * which is a *display* collapse: it back-fills a missing bound so a half-open
  * range still reads as one number. Seeding an editable field that way would

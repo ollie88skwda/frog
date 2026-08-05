@@ -29,7 +29,7 @@ import {
   useUpdateSessionStartedAt,
 } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
-import { formatRirRange, rirRange } from "@/lib/rir";
+import { effortReadout } from "@/lib/rir";
 import { useCreateRoutine } from "@/lib/routine-queries";
 import { useUnit } from "@/lib/settings";
 import { ordinalFor } from "@/lib/share/ordinal";
@@ -470,12 +470,7 @@ export default function HistoryDetailScreen() {
                 </span>
                 <span className="num text-sm">{set.reps ?? "—"}</span>
                 <span className="num text-2xs text-faint">
-                  {[
-                    formatRirRange(rirRange(set)),
-                    set.rpe != null ? `RPE ${set.rpe}` : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
+                  {effortReadout(set)}
                 </span>
               </div>
             ))}
