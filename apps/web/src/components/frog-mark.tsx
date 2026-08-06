@@ -2,21 +2,22 @@ import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 // The frog brand mark as in-app chrome (docs/brand/frog-brand-identity.html).
-// This is the simplified cut of public/icon.svg: at the 20-32px it renders at,
-// the haunches, nostrils and eye glints collapse into mud, so they are dropped
-// and the surviving strokes carry the mark. Geometry is the same silhouette —
-// the body path is icon.svg's, mapped from the tile's 572x355.5 art space into
-// a 24-unit icon box (x * 0.0370879, centred) — so a change there has to be
-// re-mapped here. The strokes are then ~1.35x the scaled weight: at 24px the
-// true weight falls under a pixel and greys out. Do not push them further — at
-// 1.75x the eye humps close over the eyes and the crown between them fills in.
+// Same geometry as apps/web/public/icon.svg's mark (docs/brand/assets/frog-mark.svg,
+// a color-separated potrace trace — see scripts/vectorize-frog-mark.ts), just
+// without the ground square and recolored for in-app chrome instead of the
+// tile's fixed black-on-green: outline/eyes/nostrils/mouth -> currentColor,
+// body -> var(--accent), the two eye-glint dots -> a fixed light sage
+// (#ECEEED) since a glint has to read as light regardless of theme. The app
+// ships light and dark (set before first paint), so a hardcoded dark outline
+// would vanish against the dark sage surface. This is the one place the mark
+// is NOT the tile's fixed palette: the tile owns its colors, the app chrome
+// follows the theme.
 //
-// Theme-transparent on purpose — outline currentColor, body var(--accent).
-// The app ships light and dark (set before first paint), and a hardcoded dark
-// outline would vanish against the dark sage surface. This is the one place the
-// mark is NOT the tile's fixed black-on-green: the tile owns its palette, the
-// app chrome follows the theme. Never swap this for a raster: it is ~1.3 kB
-// inline against 5-20 kB, and the bundle is CI-gated.
+// Unlike the mark this replaced, these are filled potrace shapes, not
+// stroke-drawn ones, so there is no thin-stroke-goes-sub-pixel problem at
+// 20-32px (the sizes this renders at) and no small-size treatment is needed —
+// verified at 20/32px in Chrome. Never swap this for a raster: it is a few kB
+// inline against 5-20 kB, and the bundle is CI-gated (scripts/check-bundle.ts).
 export function FrogMark({
   className,
   style,
@@ -26,29 +27,30 @@ export function FrogMark({
 }) {
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="0 0 630 395"
       fill="none"
       aria-hidden="true"
       className={cn("shrink-0", className)}
       style={style}
     >
-      <g
-        fill="var(--accent)"
-        stroke="currentColor"
-        strokeWidth={1.3}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {/* Body: left flank, left eye hump, the low crown between them, right hump, right flank. */}
-        <path d="M5.32 18.11C5.32 17.42 4.81 16.31 4.68 15.5C4.39 13.76 4.87 12.01 5.89 10.6C6.68 9.51 7.94 8.89 8.15 8.62C8.32 8.41 8.22 7.9 8.3 7.63C8.51 6.88 9.12 6.22 9.89 6.01C10.53 5.83 11.24 5.9 11.81 6.25C12.03 6.39 12.53 6.95 12.74 6.92C13.27 6.83 13.58 6.56 14.23 6.59C14.51 6.61 15.43 6.93 15.56 6.9C15.75 6.86 16.15 6.35 16.38 6.21C17.33 5.62 18.62 5.92 19.27 6.82C20.11 7.99 19.32 8.76 19.35 9.3C19.37 9.71 19.55 10.13 19.62 10.53C19.79 11.56 19.85 12.59 19.79 13.64C19.74 14.51 19.57 15.4 19.34 16.24C19.16 16.86 18.82 17.46 18.82 18.11Z" />
-        {/* Front feet, mouth, then the ground bar the frog sits on. */}
-        <path fill="none" d="M7.86 16.24v1.87M16.01 16.24v1.87" />
-        <path fill="none" strokeWidth={0.95} d="M9.98 11.43h7.79" />
-        <path fill="none" d="M1.87 18.11h20.25" />
-      </g>
-      <g fill="currentColor">
-        <circle cx="10.54" cy="8.21" r="1.12" />
-        <circle cx="17.4" cy="8.21" r="1.12" />
+      <g transform="translate(0,395) scale(0.1,-0.1)">
+        <g fill="currentColor">
+          <path d="M2635 3739 c-348 -58 -625 -375 -625 -714 0 -60 5 -54 -110 -127 -388 -245 -711 -707 -837 -1198 -7 -28 -15 -36 -43 -43 -196 -49 -300 -105 -405 -218 -207 -224 -224 -608 -41 -912 19 -31 31 -58 28 -61 -3 -3 -48 -6 -101 -6 -111 0 -152 -15 -188 -69 -39 -57 -21 -134 39 -171 33 -20 42 -20 2812 -20 l2778 0 39 39 c34 33 39 45 39 83 0 93 -57 136 -181 137 -36 1 -68 4 -71 7 -4 3 11 38 32 77 192 357 150 746 -103 958 -65 54 -196 123 -263 137 l-39 8 1 55 c6 250 -34 619 -91 858 l-35 143 29 87 c101 295 39 567 -174 770 -211 200 -540 248 -809 117 -52 -25 -118 -67 -147 -93 -104 -93 -82 -86 -195 -56 -145 39 -382 39 -528 0 l-98 -26 -66 55 c-86 74 -132 102 -219 136 -138 54 -290 70 -428 47z m228 -253 c119 -23 196 -67 314 -178 97 -93 104 -98 145 -98 26 0 61 9 88 24 189 100 445 97 645 -8 68 -36 113 -16 214 94 93 102 158 140 281 166 205 43 412 -62 504 -256 57 -120 46 -307 -24 -422 -24 -40 -26 -104 -5 -174 83 -284 125 -675 106 -1010 -22 -419 -94 -743 -250 -1136 l-11 -28 -244 0 c-185 0 -247 3 -253 13 -4 6 -10 106 -13 220 l-5 209 -32 28 c-62 56 -146 45 -196 -24 -21 -29 -22 -41 -23 -229 -1 -109 -6 -203 -11 -208 -5 -5 -391 -8 -964 -7 l-954 3 -5 205 c-3 137 -9 212 -17 227 -49 85 -177 85 -226 0 -8 -15 -14 -90 -17 -227 l-5 -205 -206 -3 c-157 -2 -209 1 -216 10 -14 17 -85 197 -111 278 -59 183 -98 463 -89 635 19 358 160 703 408 997 116 138 316 301 449 368 99 49 120 86 120 212 0 149 31 242 118 348 79 97 191 161 317 180 76 11 87 11 168 -4z m-1841 -2242 c13 -245 45 -413 122 -644 51 -151 57 -140 -80 -140 l-116 0 -35 37 c-121 132 -190 293 -200 469 -11 175 73 322 221 390 81 37 80 37 88 -112z m4430 107 c68 -29 133 -94 170 -169 32 -65 33 -70 33 -192 0 -109 -4 -135 -27 -205 -31 -91 -107 -219 -168 -283 l-41 -43 -127 3 c-151 4 -144 -17 -72 193 65 192 118 423 145 630 13 96 15 97 87 66z" />
+          <path d="M2698 3274 c-22 -7 -22 -7 2 -46 26 -44 25 -69 -5 -102 -32 -35 -86 -36 -120 -1 -14 13 -25 31 -25 40 0 30 -18 14 -41 -37 -33 -72 -34 -194 -2 -254 49 -93 144 -149 253 -149 117 1 197 50 251 158 65 127 6 302 -125 369 -40 21 -150 33 -188 22z" />
+          <path d="M4540 3270 c-12 -7 -12 -11 3 -28 10 -11 20 -35 24 -55 14 -88 -126 -124 -157 -41 -12 31 -24 24 -51 -27 -108 -213 105 -456 337 -383 209 65 261 360 86 487 -69 51 -197 76 -242 47z" />
+          <path d="M3423 2890 c-48 -19 -58 -95 -18 -135 41 -42 102 -30 130 25 37 71 -34 141 -112 110z" />
+          <path d="M3879 2871 c-17 -18 -29 -40 -29 -56 0 -32 49 -85 80 -85 29 0 76 26 84 45 36 94 -65 165 -135 96z" />
+          <path d="M3155 2229 c-328 -12 -557 -29 -584 -42 -46 -23 -65 -60 -51 -101 23 -70 26 -70 333 -57 649 27 993 32 1372 22 207 -6 407 -14 445 -17 69 -7 69 -7 105 29 50 50 40 121 -22 145 -71 28 -1064 41 -1598 21z" />
+        </g>
+        <g fill="var(--accent)">
+          <path d="M2695 3490 c-126 -19 -238 -83 -317 -180 -87 -106 -118 -199 -118 -348 0 -126 -21 -163 -120 -212 -192 -96 -438 -325 -582 -542 -203 -304 -305 -703 -269 -1043 14 -127 53 -320 83 -415 26 -81 97 -261 111 -278 7 -9 59 -12 216 -10 l206 3 5 205 c3 137 9 212 17 227 49 85 177 85 226 0 8 -15 14 -90 17 -227 l5 -205 954 -3 c573 -1 959 2 964 7 5 5 10 99 11 208 1 188 2 200 23 229 50 69 134 80 196 24 l32 -28 5 -209 c3 -114 9 -214 13 -220 6 -10 68 -13 253 -13 l244 0 11 28 c156 393 228 717 250 1136 19 335 -23 726 -106 1010 -21 70 -19 134 5 174 70 115 81 302 24 422 -92 194 -299 299 -504 256 -123 -26 -188 -64 -281 -166 -101 -110 -146 -130 -214 -94 -200 105 -456 108 -645 8 -27 -15 -62 -24 -88 -24 -41 0 -48 5 -145 98 -118 111 -195 155 -314 178 -81 15 -92 15 -168 4z m191 -238 c201 -102 200 -395 0 -500 -130 -68 -309 -11 -379 122 -32 60 -31 182 2 254 13 28 29 52 36 52 7 0 20 11 28 24 45 67 222 95 313 48z m1809 17 c196 -54 259 -316 110 -464 -149 -150 -399 -88 -460 114 -64 212 134 409 350 350z m-1182 -389 c64 -50 25 -150 -58 -150 -56 0 -94 76 -64 131 21 40 83 50 122 19z m482 -5 c25 -24 32 -65 19 -100 -8 -19 -55 -45 -84 -45 -31 0 -80 53 -80 85 0 16 12 38 29 56 38 37 82 39 116 4z m502 -645 c245 -11 276 -18 298 -61 23 -43 18 -68 -20 -106 -36 -36 -36 -36 -105 -29 -38 3 -238 11 -445 17 -379 10 -723 5 -1372 -22 -307 -13 -310 -13 -333 57 -14 41 5 78 51 101 80 39 1368 68 1926 43z" />
+          <path d="M934 1356 c-148 -68 -232 -215 -221 -390 10 -176 79 -337 200 -469 l35 -37 116 0 c137 0 131 -11 80 140 -77 231 -109 399 -122 644 -8 149 -7 149 -88 112z" />
+          <path d="M5377 1353 c-3 -10 -8 -40 -12 -68 -27 -207 -80 -438 -145 -630 -72 -210 -79 -189 72 -193 l127 -3 41 43 c61 64 137 192 168 283 23 70 27 96 27 205 0 122 -1 127 -33 192 -37 75 -102 140 -170 169 -54 24 -69 24 -75 2z" />
+        </g>
+        <g fill="#ECEEED">
+          <path d="M2608 3234 c-36 -19 -50 -46 -39 -76 4 -13 12 -23 17 -23 5 0 8 -4 6 -8 -1 -5 7 -6 18 -2 11 4 20 2 20 -4 0 -6 5 -11 12 -11 6 0 8 3 5 7 -7 6 33 39 43 36 15 -4 2 55 -16 74 -25 27 -30 27 -66 7z" />
+          <path d="M4459 3232 c-33 -17 -56 -58 -26 -46 9 3 24 -7 39 -26 24 -31 24 -31 46 -12 28 25 28 37 -2 72 -23 28 -24 29 -57 12z" />
+        </g>
       </g>
     </svg>
   );

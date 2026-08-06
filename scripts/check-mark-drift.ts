@@ -5,9 +5,22 @@
 // time. Assert all four still match the source they were copied from:
 // apps/web/public/icon.svg for the tile/16px pair, and
 // apps/web/src/components/frog-mark.tsx for the in-app-mark pair — so a
-// drifted copy fails CI instead of quietly going stale. The icon.svg ->
-// frog-mark.tsx hop is a hand-fitted re-map into another coordinate space and
-// is not checkable here; that one stays manual. See AGENTS.md "Brand mark."
+// drifted copy fails CI instead of quietly going stale. The two canonical
+// sources are also checked against each other, or a regen that updates one
+// and not the other leaves two self-consistent sets of copies and ships two
+// different frogs. See AGENTS.md "Brand mark" and docs/DECISIONS.md
+// 2026-08-06.
+//
+// Both canonical sources share one shape since 2026-08-06: a mark is 3
+// <g fill="..."> layers, in a fixed order (outline, body, eye glints), each
+// holding some number of filled <path>s — a color-separated potrace trace
+// (scripts/vectorize-frog-mark.ts), not the hand-authored stroke-based
+// silhouette it replaced. There is no small-size stroke/eye treatment to
+// check anymore: filled vector shapes don't go sub-pixel at 16-32px the way
+// thin strokes did, so icon.svg carries no size media query and frog-mark.tsx
+// carries no separate simplification — the samples below are the *same*
+// geometry as their canonical source, just recolored (icon.svg) or resized
+// (16px sample), which is exactly what this checks.
 import { readFileSync } from "node:fs";
 
 const icon = readFileSync("apps/web/public/icon.svg", "utf8");
@@ -16,9 +29,9 @@ const inAppSrc = readFileSync("apps/web/src/components/frog-mark.tsx", "utf8");
 
 const errors: string[] = [];
 
-// Whitespace-insensitive token comparison: icon.svg is hand-formatted with
-// spaces around path commands, the HTML/TSX copies are minified — "M1 2C3 4"
-// and "M1 2 C3 4" describe the same geometry and must compare equal.
+// Whitespace-insensitive token comparison: some copies are hand-formatted
+// with spaces around path commands, others are minified — "M1 2C3 4" and
+// "M1 2 C3 4" describe the same geometry and must compare equal.
 function tokens(d: string): string {
   return (d.match(/[A-Za-z]|-?\d*\.?\d+/g) ?? []).join(",");
 }
@@ -29,45 +42,46 @@ function need(src: string, re: RegExp, label: string): string {
   return m[1];
 }
 
-// Whole <path> tags in document order, so a part's other attributes are read
-// off the same tag its geometry came from: nothing here is located by its own
-// coordinates, which would turn a legitimate coordinated edit into a "check
-// script is broken" throw.
-function pathTags(src: string, count: number, label: string): string[] {
-  const out = [...src.matchAll(/<path\b[^>]*>/g)].map((m) => m[0]);
-  if (out.length !== count)
+type Layer = { fill: string; paths: string[] };
+
+// A mark's 3 fill layers, in document order, each with its <path d> list in
+// document order. `root` must capture exactly the markup spanning all 3
+// layers (see call sites) so this doesn't need to hand-balance nested <g>s.
+function markLayers(root: string, label: string): Layer[] {
+  const layers = [...root.matchAll(/<g fill="([^"]+)">([\s\S]*?)<\/g>/g)].map(
+    ([, fill, inner]) => ({
+      fill,
+      paths: [...inner.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)].map((m) => m[1]),
+    }),
+  );
+  if (layers.length !== 3)
     throw new Error(
-      `expected ${count} ${label}, found ${out.length} — check script is broken`,
+      `expected 3 fill layers in ${label}, found ${layers.length} — check script is broken`,
     );
-  return out;
+  return layers;
 }
 
-function pathD(tag: string, label: string): string {
-  return need(tag, /\bd="([^"]+)"/, `${label} path d`);
-}
-
-// SVG attribute in the .svg/.html copies, JSX prop in the .tsx source. Widths
-// are captured with the fraction attached — a bare (\d+) silently truncates
-// 36.5 to 36 and lets real drift compare equal.
-function strokeWidth(src: string, label: string): string {
-  return need(src, /(?:stroke-width="|strokeWidth=\{)([\d.]+)/, label);
+function compareLayers(label: string, got: Layer[], want: Layer[]) {
+  const LAYER_NAMES = ["outline", "body", "glints"];
+  got.forEach((layer, i) => {
+    const wantLayer = want[i];
+    if (layer.paths.length !== wantLayer.paths.length) {
+      errors.push(
+        `${label}: ${LAYER_NAMES[i]} layer has ${layer.paths.length} paths, canonical has ${wantLayer.paths.length}`,
+      );
+      return;
+    }
+    layer.paths.forEach((d, j) => {
+      if (tokens(d) !== tokens(wantLayer.paths[j]))
+        errors.push(
+          `${label}: ${LAYER_NAMES[i]} layer path ${j + 1} does not match canonical`,
+        );
+    });
+  });
 }
 
 function viewBox(src: string, label: string): string {
   return need(src, /<svg\b[^>]*\bviewBox="([^"]+)"/, label);
-}
-
-type Circle = [cx: string, cy: string, r: string];
-
-function circles(src: string, count: number, label: string): Circle[] {
-  const re =
-    /<circle\b[^>]*\bcx="([^"]+)"[^>]*\bcy="([^"]+)"[^>]*\br="([^"]+)"/g;
-  const out = [...src.matchAll(re)].map((m) => [m[1], m[2], m[3]] as Circle);
-  if (out.length !== count)
-    throw new Error(
-      `expected ${count} ${label}, found ${out.length} — check script is broken`,
-    );
-  return out;
 }
 
 function compare(
@@ -81,120 +95,47 @@ function compare(
     errors.push(`${label}: ${what} "${got}" != ${source} "${want}"`);
 }
 
-function comparePaths(
-  label: string,
-  got: string[],
-  want: string[],
-  names: string[],
-) {
-  got.forEach((tag, i) => {
-    const g = pathD(tag, `${label} ${names[i]}`);
-    const w = pathD(want[i], `canonical ${names[i]}`);
-    if (tokens(g) !== tokens(w))
-      errors.push(`${label}: ${names[i]} path does not match canonical`);
-  });
-}
-
-function compareCircles(
-  label: string,
-  got: Circle[],
-  want: Circle[],
-  names: string[],
-) {
-  got.forEach(([cx, cy, r], i) => {
-    const [wcx, wcy, wr] = want[i];
-    if (cx !== wcx || cy !== wcy || r !== wr)
-      errors.push(`${label}: ${names[i]} circle does not match canonical`);
-  });
-}
-
-const PART_NAMES = [
-  "left haunch",
-  "right haunch",
-  "body",
-  "feet",
-  "mouth",
-  "ground",
-];
-const EYE_NAMES = [
-  "left eye",
-  "right eye",
-  "left nostril",
-  "right nostril",
-  "left glint",
-  "right glint",
-];
-const MARK_PART_NAMES = ["body", "feet", "mouth", "ground"];
-// The in-app cut drops the nostrils and glints, so its two circles are eyes.
-const MARK_EYE_NAMES = ["left eye", "right eye"];
-const MOUTH = PART_NAMES.indexOf("mouth");
-const MARK_MOUTH = MARK_PART_NAMES.indexOf("mouth");
-
 // ---- Canonical geometry: apps/web/public/icon.svg ----
-// 6 paths in document order: left haunch, right haunch, body, feet, mouth, ground.
-const iconPaths = pathTags(icon, 6, "icon.svg paths");
-// 6 circles in document order: left/right eye, left/right nostril, left/right glint.
-const iconCircles = circles(icon, 6, "icon.svg circles");
-
-// The icon cut: the tile samples hand-copy both the square window and the #pad
-// offset that positions the mark inside it, so a moved cut has to move in all
-// three or the samples render the wrong crop with every path still matching.
+// <g id="mark" transform="..."> wrapping exactly the 3 fill layers.
+const iconMarkRoot = need(
+  icon,
+  /<g id="mark"[^>]*>((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  "icon.svg #mark",
+);
+const iconLayers = markLayers(iconMarkRoot, "icon.svg");
 const iconViewBox = viewBox(icon, "icon.svg viewBox");
 const iconPad = need(
   icon,
   /<g\b[^>]*\bid="pad"[^>]*\btransform="([^"]+)"/,
   "icon.svg #pad transform",
 );
-
-const iconStrokeWidth = need(
+const iconMarkTransform = need(
   icon,
-  /class="frog"[\s\S]*?stroke-width="([\d.]+)"/,
-  "icon.svg base stroke-width",
-);
-const iconMouthStrokeWidth = need(
-  icon,
-  /class="mouth"[^>]*stroke-width="([\d.]+)"/,
-  "icon.svg mouth stroke-width",
-);
-// The 16px treatment lives in icon.svg's own <style> media query.
-const iconSmallStrokeWidth = need(
-  icon,
-  /\.frog\s*\{\s*stroke-width:\s*([\d.]+)/,
-  "icon.svg 16px .frog stroke-width",
-);
-const iconSmallMouthStrokeWidth = need(
-  icon,
-  /\.mouth\s*\{\s*stroke-width:\s*([\d.]+)/,
-  "icon.svg 16px .mouth stroke-width",
-);
-const iconSmallEyeR = need(
-  icon,
-  /\.eye\s*\{\s*r:\s*([\d.]+)px/,
-  "icon.svg 16px .eye r",
-);
-const iconSmallEyeCy = need(
-  icon,
-  /\.eye\s*\{[^}]*cy:\s*([\d.]+)px/,
-  "icon.svg 16px .eye cy",
+  /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/,
+  "icon.svg #mark transform",
 );
 
 // ---- Canonical geometry: apps/web/src/components/frog-mark.tsx ----
-// 4 paths in document order: body, feet, mouth, ground. 2 circles: the eyes.
-const markPaths = pathTags(inAppSrc, 4, "frog-mark.tsx paths");
-const markCircles = circles(inAppSrc, 2, "frog-mark.tsx circles");
+const markMarkRoot = need(
+  inAppSrc,
+  /<g transform="translate\(0,395\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  "frog-mark.tsx mark group",
+);
+const markLayersCanon = markLayers(markMarkRoot, "frog-mark.tsx");
 const markViewBox = need(
   inAppSrc,
   /viewBox="([^"]+)"/,
   "frog-mark.tsx viewBox",
 );
-const markStrokeWidth = strokeWidth(
-  inAppSrc,
-  "frog-mark.tsx base stroke-width",
-);
-const markMouthStrokeWidth = strokeWidth(
-  markPaths[MARK_MOUTH],
-  "frog-mark.tsx mouth stroke-width",
-);
+
+// ---- The two canonical sources must agree with each other ----
+// They legitimately differ in fill (the tile's fixed palette vs the app's
+// theme tokens), viewBox and outer framing transform, but they draw one
+// shape. Without this, a partial regen — re-run vectorize-frog-mark.ts +
+// gen-pwa-icons.ts, update the two samples this guard forces you to, forget
+// frog-mark.tsx — leaves two self-consistent equivalence classes and ships
+// the old frog in the sidebar next to the new one in the favicon.
+compareLayers("frog-mark.tsx vs icon.svg", markLayersCanon, iconLayers);
 
 // ---- Copy 1: brand spec's standalone app-tile sample ----
 const tileBlock = need(
@@ -202,13 +143,15 @@ const tileBlock = need(
   /(<svg class="big-mark"[^>]*aria-label="Frog app tile"[\s\S]*?<\/svg>)/,
   "brand spec app-tile sample",
 );
-const tilePaths = pathTags(tileBlock, 6, "app-tile paths");
-comparePaths("app-tile sample", tilePaths, iconPaths, PART_NAMES);
-compareCircles(
+const tileMarkRoot = need(
+  tileBlock,
+  /<g id="mark"[^>]*>((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  "app-tile sample #mark",
+);
+compareLayers(
   "app-tile sample",
-  circles(tileBlock, 6, "app-tile circles"),
-  iconCircles,
-  EYE_NAMES,
+  markLayers(tileMarkRoot, "app-tile sample"),
+  iconLayers,
 );
 compare(
   "app-tile sample",
@@ -220,56 +163,44 @@ compare(
 compare(
   "app-tile sample",
   "pad transform",
-  need(tileBlock, /<g\b[^>]*\btransform="([^"]+)"/, "app-tile pad transform"),
+  need(
+    tileBlock,
+    /<g\b[^>]*\bid="pad"[^>]*\btransform="([^"]+)"/,
+    "app-tile pad transform",
+  ),
   iconPad,
   "icon.svg #pad",
 );
 compare(
   "app-tile sample",
-  "base stroke-width",
-  strokeWidth(tileBlock, "app-tile base stroke-width"),
-  iconStrokeWidth,
-  "icon.svg",
-);
-compare(
-  "app-tile sample",
-  "mouth stroke-width",
-  strokeWidth(tilePaths[MOUTH], "app-tile mouth stroke-width"),
-  iconMouthStrokeWidth,
-  "icon.svg",
+  "mark transform",
+  need(
+    tileBlock,
+    /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/,
+    "app-tile mark transform",
+  ),
+  iconMarkTransform,
+  "icon.svg #mark",
 );
 
 // ---- Copy 2: brand spec's 16px sample ----
+// Same markup as the tile sample (filled vector shapes don't need a separate
+// small-size treatment), just rendered smaller via the .logo-16 CSS class.
 const smallBlock = need(
   brand,
   /(<svg class="logo-16"[\s\S]*?<\/svg>)/,
   "brand spec 16px sample",
 );
-const smallPaths = pathTags(smallBlock, 6, "16px sample paths");
-comparePaths("16px sample", smallPaths, iconPaths, PART_NAMES);
-circles(smallBlock, 2, "16px sample eyes").forEach(([cx, cy, r], i) => {
-  compare(
-    "16px sample",
-    `${EYE_NAMES[i]} cx`,
-    cx,
-    iconCircles[i][0],
-    "icon.svg",
-  );
-  compare(
-    "16px sample",
-    `${EYE_NAMES[i]} cy`,
-    cy,
-    iconSmallEyeCy,
-    "icon.svg 16px .eye cy",
-  );
-  compare(
-    "16px sample",
-    `${EYE_NAMES[i]} r`,
-    r,
-    iconSmallEyeR,
-    "icon.svg 16px .eye r",
-  );
-});
+const smallMarkRoot = need(
+  smallBlock,
+  /<g id="mark"[^>]*>((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  "16px sample #mark",
+);
+compareLayers(
+  "16px sample",
+  markLayers(smallMarkRoot, "16px sample"),
+  iconLayers,
+);
 compare(
   "16px sample",
   "viewBox",
@@ -282,7 +213,7 @@ compare(
   "pad transform",
   need(
     smallBlock,
-    /<g\b[^>]*\btransform="([^"]+)"/,
+    /<g\b[^>]*\bid="pad"[^>]*\btransform="([^"]+)"/,
     "16px sample pad transform",
   ),
   iconPad,
@@ -290,17 +221,14 @@ compare(
 );
 compare(
   "16px sample",
-  "base stroke-width",
-  strokeWidth(smallBlock, "16px sample base stroke-width"),
-  iconSmallStrokeWidth,
-  "icon.svg 16px .frog",
-);
-compare(
-  "16px sample",
-  "mouth stroke-width",
-  strokeWidth(smallPaths[MOUTH], "16px sample mouth stroke-width"),
-  iconSmallMouthStrokeWidth,
-  "icon.svg 16px .mouth",
+  "mark transform",
+  need(
+    smallBlock,
+    /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/,
+    "16px sample mark transform",
+  ),
+  iconMarkTransform,
+  "icon.svg #mark",
 );
 
 // ---- Copy 3: brand spec's standalone in-app-mark sample ----
@@ -309,33 +237,21 @@ const inAppBlock = need(
   /(<svg class="big-mark"[^>]*aria-label="Frog in-app mark"[\s\S]*?<\/svg>)/,
   "brand spec in-app-mark sample",
 );
-const inAppPaths = pathTags(inAppBlock, 4, "in-app-mark sample paths");
-comparePaths("in-app-mark sample", inAppPaths, markPaths, MARK_PART_NAMES);
-compareCircles(
+const inAppMarkRoot = need(
+  inAppBlock,
+  /<g transform="translate\(0,395\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  "in-app-mark sample mark group",
+);
+compareLayers(
   "in-app-mark sample",
-  circles(inAppBlock, 2, "in-app-mark sample circles"),
-  markCircles,
-  MARK_EYE_NAMES,
+  markLayers(inAppMarkRoot, "in-app-mark sample"),
+  markLayersCanon,
 );
 compare(
   "in-app-mark sample",
   "viewBox",
   viewBox(inAppBlock, "in-app-mark sample viewBox"),
   markViewBox,
-  "frog-mark.tsx",
-);
-compare(
-  "in-app-mark sample",
-  "base stroke-width",
-  strokeWidth(inAppBlock, "in-app-mark sample base stroke-width"),
-  markStrokeWidth,
-  "frog-mark.tsx",
-);
-compare(
-  "in-app-mark sample",
-  "mouth stroke-width",
-  strokeWidth(inAppPaths[MARK_MOUTH], "in-app-mark sample mouth stroke-width"),
-  markMouthStrokeWidth,
   "frog-mark.tsx",
 );
 
@@ -345,13 +261,15 @@ const rowBlock = need(
   /(<svg[^>]*aria-label="frog"[\s\S]*?<\/svg>)/,
   "brand spec icon-row copy",
 );
-const rowPaths = pathTags(rowBlock, 4, "icon-row paths");
-comparePaths("icon-row copy", rowPaths, markPaths, MARK_PART_NAMES);
-compareCircles(
+const rowMarkRoot = need(
+  rowBlock,
+  /<g transform="translate\(0,395\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  "icon-row copy mark group",
+);
+compareLayers(
   "icon-row copy",
-  circles(rowBlock, 2, "icon-row circles"),
-  markCircles,
-  MARK_EYE_NAMES,
+  markLayers(rowMarkRoot, "icon-row copy"),
+  markLayersCanon,
 );
 compare(
   "icon-row copy",
@@ -360,24 +278,12 @@ compare(
   markViewBox,
   "frog-mark.tsx",
 );
-compare(
-  "icon-row copy",
-  "base stroke-width",
-  strokeWidth(rowBlock, "icon-row base stroke-width"),
-  markStrokeWidth,
-  "frog-mark.tsx",
-);
-compare(
-  "icon-row copy",
-  "mouth stroke-width",
-  strokeWidth(rowPaths[MARK_MOUTH], "icon-row mouth stroke-width"),
-  markMouthStrokeWidth,
-  "frog-mark.tsx",
-);
 
 if (errors.length > 0) {
   console.error("frog mark geometry has drifted from its canonical source:");
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log("frog mark geometry matches across all 4 hand-copies.");
+console.log(
+  "frog mark geometry matches across both canonical sources and all 4 hand-copies.",
+);

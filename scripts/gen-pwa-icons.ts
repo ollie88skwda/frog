@@ -1,252 +1,137 @@
-// Renders the PWA/app PNG icons from apps/web/public/icon.svg — the frog mark is
-// authored once, as vector, and every raster here is a render of it. No external
-// assets, no runtime dep (Playwright is already a devDependency). Re-run after
-// touching icon.svg:
+// Generates apps/web/public/icon.svg (the favicon + PWA manifest SVG icon)
+// and every PNG derivative from the vectorized frog mark
+// (docs/brand/assets/frog-mark.svg — see vectorize-frog-mark.ts for how
+// that's derived from the reference art). Unlike the hand-authored mark this
+// replaced (see docs/DECISIONS.md 2026-08-06), icon.svg is *generated
+// output* here, not a hand source — never hand-edit it, re-run this after
+// touching frog-mark.svg:
 //   bun scripts/gen-pwa-icons.ts
-// Emits into apps/web/public/: icon-192.png, icon-512.png,
-// icon-maskable-512.png (safe-zone padded), apple-touch-icon.png (180, opaque).
-import { readFileSync } from "node:fs";
+// Emits into apps/web/public/: icon.svg (bg square + mark, the primary
+// favicon — modern browsers rasterize SVG favicons crisply at any density),
+// icon-192.png, icon-512.png, icon-maskable-512.png (safe-zone padded),
+// apple-touch-icon.png (180, opaque — iOS doesn't support SVG here),
+// favicon-32.png (old-browser fallback for the <link rel="icon"> PNG).
+//
+// Being vector, rasterizing frog-mark.svg at any target size is clean by
+// construction — no background-removal or downscale-quality tricks needed,
+// unlike the raster pipeline two mark-generations back.
+import { readFileSync, writeFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
 
-// Must match the #ground fill in icon.svg. The tile ships on the source art's
-// own grass green, with the frog as black line art over it. Flipping this alone
-// is not enough — the line work in icon.svg is picked against this ground, and
-// the body carries the same green so only the outline separates them. See the
-// brand doc.
-const GROUND = "#6AB347";
+// Ground + mark fill both come straight off the reference art's own palette
+// (see vectorize-frog-mark.ts's FILLS) — the frog's body carries the same
+// green as the ground, so only the outline separates them. Keep this in sync
+// with FILLS.green there.
+const GROUND = "#6ab347";
 
-// --- the cut ---------------------------------------------------------------
-// The mark is 1.6:1, so a straight render of the *whole* mark can never fill a
-// square tile: sized to the width it leaves top/bottom margins ~2.5x the sides
-// and the frog reads as floating in a mostly-empty tile. The tiles therefore
-// ship an **icon cut** — a square window onto the mark, not the whole mark.
-//
-// Two numbers define that window, and every box they are stated against is
-// measured off the live SVG below, so the frog stays the single geometry
-// definition: edit icon.svg and the cut follows it.
-const CUT = {
-  // The head + body (#body in icon.svg) is the silhouette and must never be
-  // cropped, so it sets the window width and therefore the window. 0.93 leaves
-  // a hairline of ground beside its widest point. The haunches, feet and ground
-  // bar are wider than that and run off the left and right edges — a bleeding
-  // ground line is what makes the crop read as deliberate rather than as a mark
-  // that doesn't quite fit.
-  bodyFill: 0.93,
-  // Bottom-anchored: the ground bar sits this far (as a fraction of the window)
-  // above the tile's bottom edge, so the frog sits on the tile floor and the
-  // vertical slack is spent as headroom above it rather than as equal dead
-  // space above and below.
-  floor: 0.035,
-};
+// The mark is landscape (a sitting frog is wider than it is tall) and can't
+// fill a square tile without letterboxing on one axis, so every tile is the
+// mark centered on the ground square with breathing room on all sides.
+// 0.9 leaves ~10% total margin split across the shorter axis's slack.
+const TILE_FILL = 0.9;
 
-// Maskable is a different problem and gets the whole mark: platforms crop it to
-// an arbitrary shape and only the inner 80% circle is guaranteed, so nothing may
-// bleed. Fill is then a placement question. Centring the mark on its bounding
-// box wastes the circle — the mark's corners are empty, its ground-bar caps are
-// what actually reach furthest — while centring on the circle that minimises
-// the enclosing radius fills most but lifts the frog 13% of the tile, which a
-// launcher showing a near-full square reads as top-heavy. 0.25 takes about half
-// the available gain for a 3% offset you have to measure to see.
-const MASK_BIAS = 0.25;
-// The maskable spec's safe circle is the inner 80%, r = 0.4 * size. Land half a
-// pixel inside it: at exactly 0.4 the antialiased edge of the outermost stroke
-// rasterises past the boundary. Verified by scanning the emitted PNG — every
-// painted pixel, faint antialiasing included, lies wholly inside 0.4 * size.
+// Maskable icons get cropped to an arbitrary shape by the platform — only the
+// inner-80%-diameter circle (r = 0.4 * size) is guaranteed on screen, so
+// nothing may bleed past it. The mark's bounding box corners are the
+// farthest points from its own center (it has no protruding stroke caps to
+// walk, unlike the old stroke-based mark), so sizing to the box's own
+// enclosing circle is exact, not an approximation. 0.396 instead of 0.4
+// leaves half a pixel for antialiasing to not rasterize past the boundary.
 const SAFE_R = 0.396;
+
+const publicDir = new URL("../apps/web/public/", import.meta.url);
+const mark = readFileSync(
+  new URL("../docs/brand/assets/frog-mark.svg", import.meta.url),
+  "utf8",
+);
+const viewBox = mark.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/);
+if (!viewBox) throw new Error("frog-mark.svg missing a 0 0 W H viewBox");
+const markW = Number(viewBox[1]);
+const markH = Number(viewBox[2]);
+
+const layers = [
+  ...mark.matchAll(
+    /<g transform="[^"]*"\nfill="(#[0-9a-fA-F]+)" stroke="none">([\s\S]*?)<\/g>/g,
+  ),
+];
+if (layers.length === 0) throw new Error("frog-mark.svg has no color layers");
+const markInner = layers
+  .map(([, fill, body]) => `<g fill="${fill}">${body.trim()}</g>`)
+  .join("\n    ");
+// The mark's own <g transform> bakes potrace's y-flip convention; carry it
+// through (reformatted compactly — potrace pads every number to 6 decimals)
+// so <g id="mark"> below composes with the pad/scale below.
+const rawMarkTransform = mark.match(/<g transform="([^"]*)"/)?.[1];
+if (!rawMarkTransform)
+  throw new Error("frog-mark.svg missing its <g transform>");
+const markTransform = `transform="${rawMarkTransform.replace(/-?\d*\.?\d+/g, (n) => String(Number(n)))}"`;
+
+function frame(side: number, tx: number, ty: number, scale: number): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${side} ${side}">
+  <title>Frog</title>
+  <rect id="ground" width="100%" height="100%" fill="${GROUND}"/>
+  <g id="pad" transform="translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${scale.toFixed(6)})">
+    <g id="mark" ${markTransform}>
+    ${markInner}
+    </g>
+  </g>
+</svg>
+`;
+}
+
+// Tile: mark centered, longest side at TILE_FILL of the square.
+const tileScale = (TILE_FILL * 512) / Math.max(markW, markH);
+const tileSide = 512;
+const tileTx = (tileSide - markW * tileScale) / 2;
+const tileTy = (tileSide - markH * tileScale) / 2;
+
+// Maskable: mark's bounding-box diagonal fit inside the safe circle.
+const diag = Math.hypot(markW, markH);
+const maskScale = (2 * SAFE_R * 512) / diag;
+const maskSide = 512;
+const maskTx = (maskSide - markW * maskScale) / 2;
+const maskTy = (maskSide - markH * maskScale) / 2;
+
+const iconSvg = frame(tileSide, tileTx, tileTy, tileScale);
+writeFileSync(new URL("icon.svg", publicDir), iconSvg);
+console.log("wrote apps/web/public/icon.svg");
+
+// Both frames render on a fixed 512-unit viewBox; PNG targets just resize the
+// root <svg>'s pixel width/height on top of that same coordinate system
+// (SVG scales the viewBox to fit), so tx/ty/scale never need re-deriving
+// per target size.
+const frames = {
+  tile: frame(512, tileTx, tileTy, tileScale),
+  maskable: frame(512, maskTx, maskTy, maskScale),
+} as const;
 
 const targets = [
   { file: "icon-192.png", size: 192, cut: "tile" },
   { file: "icon-512.png", size: 512, cut: "tile" },
   { file: "icon-maskable-512.png", size: 512, cut: "maskable" },
-  // Apple touch: exactly 180 x 180, fully opaque (iOS discards alpha), and no
-  // baked-in corner radius — iOS rounds its own.
+  // Apple touch: exactly 180 x 180, fully opaque (iOS discards alpha), no
+  // baked-in corner radius — iOS rounds its own. Opaque by construction here:
+  // #ground always fills the whole tile.
   { file: "apple-touch-icon.png", size: 180, cut: "tile" },
-] as const;
-
-const outDir = new URL("../apps/web/public/", import.meta.url);
-const svg = readFileSync(new URL("icon.svg", outDir), "utf8");
+  // Old-browser fallback for browsers that don't rasterize an SVG favicon.
+  { file: "favicon-32.png", size: 32, cut: "tile" },
+] as const satisfies { file: string; size: number; cut: keyof typeof frames }[];
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
-await page.setContent(
-  `<!doctype html><meta charset="utf-8">
-   <style>*{margin:0;padding:0}</style>${svg}`,
-);
-
-// Both windows, in the mark's own art coordinates, measured off the live SVG.
-// Each is stated the way icon.svg already frames itself — a square viewBox of
-// side `side`, plus the #pad translate that places the mark inside it.
-const windows = await page.evaluate(
-  ({ cut, maskBias, safeR }) => {
-    const root = document.querySelector("svg") as SVGSVGElement;
-    const pad = document.getElementById("pad") as unknown as SVGGElement;
-    // Un-translate the mark and give it a 1:1 viewBox, so every measurement
-    // below reads straight out in the mark's own coordinates.
-    root.setAttribute("viewBox", "0 0 1000 1000");
-    pad.setAttribute("transform", "translate(0 0)");
-
-    const shapes = [
-      ...root.querySelectorAll<SVGGeometryElement>(
-        "#pad path, #pad ellipse, #pad circle",
-      ),
-    ];
-    // getBBox() is geometry-only, and getBoundingClientRect() agrees with it on
-    // SVG, so the stroke has to be added back by hand: half a stroke width,
-    // which is exact here because every cap and join in the mark is round.
-    const outset = (el: SVGGeometryElement) => {
-      const s = getComputedStyle(el as unknown as Element);
-      return s.stroke === "none"
-        ? 0
-        : (Number.parseFloat(s.strokeWidth) || 0) / 2;
-    };
-    const strokeBox = (el: SVGGeometryElement) => {
-      const b = el.getBBox();
-      const o = outset(el);
-      return {
-        x: b.x - o,
-        y: b.y - o,
-        w: b.width + 2 * o,
-        h: b.height + 2 * o,
-      };
-    };
-    const boxes = shapes.map(strokeBox);
-    const left = Math.min(...boxes.map((b) => b.x));
-    const top = Math.min(...boxes.map((b) => b.y));
-    const right = Math.max(...boxes.map((b) => b.x + b.w));
-    const bottom = Math.max(...boxes.map((b) => b.y + b.h));
-    const body = strokeBox(
-      document.getElementById("body") as unknown as SVGPathElement,
-    );
-
-    // Every outline walked once, each point carrying its own element's stroke
-    // outset — the points don't depend on the candidate centre, only the
-    // distance to it does, and the ternary search below asks for ~100 centres.
-    const samples = shapes.flatMap((el) => {
-      const len = el.getTotalLength();
-      const o = outset(el);
-      const n = Math.max(64, Math.ceil(len / 2));
-      return Array.from({ length: n + 1 }, (_, i) => {
-        const p = el.getPointAtLength((len * i) / n);
-        return { x: p.x, y: p.y, o };
-      });
-    });
-    // Farthest painted point from a candidate centre. Drives the maskable safe
-    // circle, so the sampling above is load-bearing on the shipped raster.
-    const radius = (cx: number, cy: number) =>
-      samples.reduce(
-        (max, s) => Math.max(max, Math.hypot(s.x - cx, s.y - cy) + s.o),
-        0,
-      );
-
-    const tileSide = body.w / cut.bodyFill;
-    const tile = {
-      side: tileSide,
-      tx: tileSide / 2 - (body.x + body.w / 2),
-      ty: tileSide * (1 - cut.floor) - bottom,
-    };
-
-    // Ternary search for the centre that minimises the enclosing radius, then
-    // bias back toward the bounding-box centre for optical balance.
-    const cx = (left + right) / 2;
-    let lo = top;
-    let hi = bottom;
-    for (let i = 0; i < 50; i++) {
-      const a = lo + (hi - lo) / 3;
-      const b = hi - (hi - lo) / 3;
-      if (radius(cx, a) < radius(cx, b)) hi = b;
-      else lo = a;
-    }
-    const bboxCy = (top + bottom) / 2;
-    const cy = bboxCy + maskBias * ((lo + hi) / 2 - bboxCy);
-    const maskSide = radius(cx, cy) / safeR;
-    const maskable = {
-      side: maskSide,
-      tx: maskSide / 2 - cx,
-      ty: maskSide / 2 - cy,
-    };
-    return {
-      tile,
-      maskable,
-      markH: bottom - top,
-      // The body's own edges inside the tile window, for the crop assert.
-      bodyTop: body.y + tile.ty,
-      bodyBottom: body.y + body.h + tile.ty,
-    };
-  },
-  { cut: CUT, maskBias: MASK_BIAS, safeR: SAFE_R },
-);
-
-// The cut is allowed to crop the haunches, feet and ground bar — that bleed is
-// the point — but never the head + body. Horizontally that holds by
-// construction (the window's side *is* body.w / bodyFill); vertically nothing
-// enforces it, so check it: a redraw that makes the silhouette taller relative
-// to the body's width would otherwise slice the head off every tile, and the
-// drift assert below would still pass, since it only compares the authored
-// framing to the derived one.
-const cropped = (
-  [
-    ["top", -windows.bodyTop],
-    ["bottom", windows.bodyBottom - windows.tile.side],
-  ] as const
-).filter(([, over]) => over > 0);
-if (cropped.length) {
-  throw new Error(
-    "the icon cut would crop the body, the one part it may never crop:\n" +
-      cropped
-        .map(([edge, over]) => `  ${over.toFixed(1)} units off the ${edge}`)
-        .join("\n") +
-      `\n  (body spans ${windows.bodyTop.toFixed(1)}..${windows.bodyBottom.toFixed(1)}` +
-      ` in a ${windows.tile.side.toFixed(1)}-unit window)`,
-  );
-}
-
-// icon.svg frames itself on the same cut, so the favicon and the manifest's SVG
-// icon read like the PNG tiles rather than like the old floating mark. Those
-// three numbers are the only hand-authored framing left, so assert them: an
-// edit to the mark that moves the cut must not leave icon.svg on the old one.
-const authored = [
-  Number(/viewBox="0 0 ([\d.]+) \1"/.exec(svg)?.[1]),
-  ...(
-    /id="pad" transform="translate\((-?[\d.]+) (-?[\d.]+)\)"/
-      .exec(svg)
-      ?.slice(1, 3) ?? []
-  ).map(Number),
-];
-const wanted = [windows.tile.side, windows.tile.tx, windows.tile.ty];
-if (wanted.some((v, i) => !(Math.abs(v - authored[i]) < 0.5))) {
-  const [s, tx, ty] = wanted.map((v) => v.toFixed(1));
-  throw new Error(
-    "icon.svg frames itself on a stale cut — update it to:\n" +
-      `  viewBox="0 0 ${s} ${s}"  and  #pad transform="translate(${tx} ${ty})"\n` +
-      `  (it currently has ${authored.join(", ")})`,
-  );
-}
 
 for (const t of targets) {
-  const w = t.cut === "tile" ? windows.tile : windows.maskable;
   await page.setViewportSize({ width: t.size, height: t.size });
-  await page.evaluate(
-    ({ size, side, tx, ty, ground }) => {
-      const root = document.querySelector("svg") as SVGSVGElement;
-      root.setAttribute("viewBox", `0 0 ${side} ${side}`);
-      root.setAttribute("width", String(size));
-      root.setAttribute("height", String(size));
-      const rect = document.getElementById(
-        "ground",
-      ) as unknown as SVGRectElement;
-      rect.setAttribute("fill", ground);
-      const pad = document.getElementById("pad") as unknown as SVGGElement;
-      pad.setAttribute("transform", `translate(${tx} ${ty})`);
-    },
-    { size: t.size, side: w.side, tx: w.tx, ty: w.ty, ground: GROUND },
+  await page.setContent(
+    `<!doctype html><meta charset="utf-8"><style>*{margin:0;padding:0}</style>${frames[t.cut]}`,
   );
-  const el = await page.$("svg");
-  if (!el) throw new Error(`icon.svg produced no <svg> element for ${t.file}`);
-  await el.screenshot({ path: new URL(t.file, outDir).pathname });
-  const tall = ((windows.markH / w.side) * 100).toFixed(0);
-  console.log(
-    `wrote apps/web/public/${t.file} (${t.size}px, ${t.cut} cut, mark ${tall}% tall)`,
-  );
+  const root = page.locator("svg").first();
+  await root.evaluate((el, size) => {
+    el.setAttribute("width", String(size));
+    el.setAttribute("height", String(size));
+  }, t.size);
+  await root.screenshot({ path: new URL(t.file, publicDir).pathname });
+  console.log(`wrote apps/web/public/${t.file} (${t.size}px, ${t.cut} cut)`);
 }
 
 await browser.close();
