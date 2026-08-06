@@ -5,23 +5,23 @@ import { cn } from "@/lib/utils";
 // Same geometry as apps/web/public/icon.svg's mark (docs/brand/assets/frog-mark.svg,
 // a color-separated potrace trace — see scripts/vectorize-frog-mark.ts), just
 // without the ground square and recolored for in-app chrome instead of the
-// tile's fixed black-on-green: outline/eyes/nostrils/mouth -> currentColor,
-// body -> var(--accent), the two eye-glint dots -> a fixed light sage
-// (#ECEEED) since a glint has to read as light regardless of theme. The app
-// ships light and dark (set before first paint), so a hardcoded dark outline
-// would vanish against the dark sage surface. This is the one place the mark
-// is NOT the tile's fixed palette: the tile owns its colors, the app chrome
-// follows the theme.
+// tile's fixed black-on-green: outline/eyes/nostrils/mouth -> a fixed
+// reference navy (#131426), body -> var(--accent), the two eye-glint dots ->
+// a fixed light sage (#ECEEED). Only the body follows the theme; the outline
+// and glints are fixed hex, same as the tile.
 //
-// KNOWN ISSUE, not yet resolved (see docs/DECISIONS.md, needs-decision entry
-// dated after the 2026-08-06 mark rewrite below): `currentColor` resolves to
-// `--ink` (`--sage-12`), which is near-black in the light theme but near-white
-// in the dark theme — so the outline renders LIGHT in dark mode instead of
-// the reference art's dark navy. The captain wants the mark to look exactly
-// like the reference regardless of theme, which conflicts with this
-// currentColor scheme; a fixed dark-navy outline would in turn be low-contrast
-// against the dark theme's own dark surface. Not resolved here — flagged for
-// a captain decision, not silently picked.
+// The outline used to be currentColor (resolving to --ink, so it followed
+// the theme) — captain wants the mark to look exactly like the reference in
+// both themes, and a rendered A/B/C/D comparison at 20/32/64px on the real
+// dark-theme background (docs/DECISIONS.md, this file's 2026-08-07 entry)
+// showed the fixed-navy outline reads perfectly fine there: the green
+// var(--accent) body still separates cleanly from the near-black surface, so
+// only the outline itself needed to stop following the theme, not the whole
+// mark. currentColor's dark-mode failure was worse than "the outline is
+// light" — the pupils/nostrils/mouth share that layer, so they went light
+// too, and a near-white glint sitting on a near-white pupil barely read as
+// an eye. No theme branch, no background chip (rejected: an unwanted new
+// surface element next to a plain wordmark).
 //
 // Unlike the mark this replaced, these are filled potrace shapes, not
 // stroke-drawn ones, so there is no thin-stroke-goes-sub-pixel problem at
@@ -44,7 +44,7 @@ export function FrogMark({
       style={style}
     >
       <g transform="translate(0,1187) scale(0.1,-0.1)">
-        <g fill="currentColor">
+        <g fill="#131426">
           <path d="M8155 11244 c-191 -13 -466 -75 -662 -150 -411 -158 -803 -468 -1040 -824 -264 -398 -374 -729 -390 -1175 -7 -219 0 -204 -143 -285 -299 -168 -713 -484 -984 -749 -375 -369 -650 -701 -887 -1071 -388 -606 -651 -1202 -815 -1845 -35 -138 -58 -175 -108 -175 -37 0 -372 -86 -471 -120 -332 -117 -737 -426 -925 -705 -217 -323 -302 -565 -351 -1000 -55 -495 88 -1090 378 -1572 51 -86 93 -161 93 -167 0 -33 -23 -36 -311 -36 -321 0 -368 -7 -465 -73 -251 -168 -205 -557 79 -670 67 -27 67 -27 8355 -27 7367 0 8293 2 8333 15 58 20 135 79 180 139 108 142 89 380 -40 506 -93 92 -164 110 -429 110 -270 0 -276 4 -192 130 167 249 357 755 406 1080 29 192 26 649 -5 800 -48 235 -137 480 -231 636 -151 252 -283 397 -540 591 -139 105 -534 287 -653 300 -130 15 -139 33 -125 253 11 175 -1 667 -22 920 -29 351 -39 438 -65 620 -8 52 -17 122 -20 155 -3 33 -19 134 -35 225 -16 91 -38 217 -49 280 -11 63 -52 239 -91 390 -106 412 -100 363 -58 461 246 576 261 1208 41 1759 -111 279 -360 606 -623 817 -278 223 -654 387 -990 433 -382 52 -773 23 -1062 -80 -332 -117 -581 -269 -827 -505 -82 -79 -149 -135 -160 -135 -11 0 -55 11 -98 24 -173 54 -375 99 -584 131 -150 23 -636 23 -809 0 -210 -28 -478 -89 -596 -136 -41 -16 -79 -29 -85 -29 -5 0 -51 40 -103 88 -282 266 -522 417 -851 535 -148 53 -196 65 -445 113 -84 16 -395 26 -525 18z m485 -788 c362 -67 647 -235 929 -548 189 -209 284 -273 422 -284 92 -8 133 4 299 87 587 294 1255 290 1858 -13 141 -71 193 -80 306 -54 128 30 233 114 337 268 51 76 198 224 294 296 280 210 714 320 1045 267 275 -45 504 -143 680 -290 342 -287 500 -621 500 -1055 0 -253 -50 -442 -186 -705 -93 -181 -95 -269 -14 -545 22 -74 52 -191 65 -259 14 -68 37 -172 50 -230 38 -163 43 -190 59 -281 48 -276 107 -718 132 -990 33 -356 27 -1246 -12 -1655 -28 -297 -67 -623 -79 -665 -2 -8 -12 -64 -20 -125 -23 -159 -98 -530 -136 -670 -17 -66 -42 -165 -54 -220 -81 -361 -401 -1291 -473 -1377 -24 -28 -24 -28 -746 -28 -606 0 -725 2 -741 14 -29 21 -33 112 -34 702 l-1 511 -35 71 c-42 82 -108 147 -193 189 -83 41 -221 41 -304 0 -70 -34 -146 -101 -187 -165 -56 -88 -59 -121 -59 -717 1 -555 0 -578 -32 -595 -12 -6 -1023 -10 -2871 -10 -2725 -1 -2854 0 -2870 17 -16 17 -18 65 -23 595 -5 538 -7 580 -25 627 -69 182 -183 265 -366 266 -169 0 -276 -70 -353 -233 l-36 -77 -2 -578 c-2 -551 -3 -580 -20 -598 -18 -17 -49 -18 -627 -20 -483 -1 -611 2 -623 12 -29 24 -97 180 -260 594 -76 193 -182 576 -224 805 -6 36 -20 106 -30 155 -35 168 -67 385 -85 580 -42 449 -27 800 52 1195 19 96 39 196 43 221 27 154 155 581 226 755 31 77 65 162 76 189 73 187 408 757 566 964 261 344 621 724 853 900 46 36 111 85 143 110 173 133 436 305 569 374 157 81 197 109 270 185 105 111 127 198 121 473 -5 249 10 373 66 541 103 308 337 622 590 790 351 234 746 313 1170 234z m-5568 -6323 c16 -14 18 -34 19 -157 1 -267 27 -644 63 -901 9 -60 21 -150 26 -200 6 -49 17 -117 25 -150 8 -33 28 -125 45 -204 18 -80 54 -217 82 -305 27 -89 67 -218 88 -287 22 -69 66 -207 100 -305 65 -193 69 -218 43 -232 -32 -16 -623 -22 -668 -7 -65 22 -255 244 -372 435 -22 36 -64 103 -93 150 -186 298 -311 838 -270 1167 13 103 90 336 142 433 148 271 307 409 613 531 137 55 132 54 157 32z m13273 -61 c462 -202 669 -550 669 -1127 0 -239 -10 -296 -120 -640 -80 -249 -295 -607 -490 -814 -112 -119 -74 -111 -502 -111 -464 0 -429 -19 -344 192 73 182 267 783 310 959 78 314 102 420 118 504 9 50 27 148 40 219 39 205 103 590 119 720 8 65 20 125 26 132 19 24 60 16 174 -34z" />
           <path d="M8215 9830 c-166 -22 -182 -37 -113 -107 137 -142 107 -324 -68 -409 -137 -67 -322 23 -341 165 -12 92 -52 73 -113 -54 -84 -175 -104 -261 -105 -435 0 -138 3 -163 24 -225 85 -250 217 -401 451 -520 227 -115 499 -111 742 11 389 195 566 696 385 1088 -161 346 -492 533 -862 486z" />
           <path d="M13725 9834 c-120 -17 -132 -37 -67 -109 134 -146 95 -346 -82 -420 -114 -48 -268 20 -322 142 -31 69 -42 73 -76 33 -132 -159 -187 -471 -122 -695 82 -285 250 -471 513 -568 142 -52 371 -65 503 -28 259 73 465 250 557 479 96 239 96 424 1 670 -85 221 -279 401 -505 467 -88 26 -308 42 -400 29z" />

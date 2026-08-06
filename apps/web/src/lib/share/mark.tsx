@@ -8,10 +8,24 @@ import { FrogMark } from "@/components/frog-mark";
 // tracks the copies that do exist). Mounted into a detached host via the
 // app's own react-dom/client (already loaded; react-dom/server would double
 // the bundle for this one icon — ~61 kB gz measured) and read back with the
-// native XMLSerializer. FrogMark's outline is `currentColor` and its body is
-// `var(--accent)`; set both via inline style/custom-property so the
-// serialized SVG (no access to the page's live CSS once standalone) resolves
-// the requested palette. Moved verbatim from the pre-redesign share-card.tsx.
+// native XMLSerializer. FrogMark's body is `var(--accent)`, set via the
+// `--accent` custom property so the serialized SVG (no access to the page's
+// live CSS once standalone) resolves the requested palette. Moved verbatim
+// from the pre-redesign share-card.tsx.
+//
+// `outline` is now inert for FrogMark itself — its outline/eyes/nostrils/
+// mouth layer is a fixed reference navy (`docs/DECISIONS.md`, the in-app
+// dark-theme-outline decision), not `currentColor` — but it's kept as a
+// cache-key input and still set as the host's inline `color` in case a
+// future FrogMark variant reads it again. **Not re-verified against the
+// Photo ground specifically**: that ground previously forced the outline to
+// white for guaranteed contrast against an arbitrary, un-scrimmed photo (the
+// scrim `paint.ts` draws only darkens the card's bottom 55%, not the header
+// row this mark sits in) and now gets the same fixed navy as every other
+// ground — fine against the Green/Light/Dark grounds' own always-known
+// backgrounds (the in-app decision's A/B/C/D comparison covers Dark), but a
+// sufficiently dark or busy Photo background could still wash a navy outline
+// out where white was chosen deliberately. Flagged, not fixed here.
 
 const markImageCache = new Map<string, HTMLImageElement>();
 
