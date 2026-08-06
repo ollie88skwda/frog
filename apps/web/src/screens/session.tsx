@@ -142,7 +142,7 @@ import {
   useUnit,
 } from "@/lib/settings";
 import { cn } from "@/lib/utils";
-import { voice } from "@/lib/voice";
+import { useVoice, voice } from "@/lib/voice";
 import { getWarmupMethod } from "@/lib/warmup-method";
 import {
   useKeepAwake,
@@ -439,12 +439,17 @@ export default function SessionScreen() {
   const location = useLocation();
   const qc = useQueryClient();
   const { unit } = useUnit();
+  const { t } = useVoice();
   const sessionQuery = useSession(sessionId);
   const session = sessionQuery.data;
   // Until this resolves, routineId is unknown — the seed gate below can't tell
   // a routine start from an ad-hoc workout.
   const sessionLoading = sessionQuery.isLoading;
-  const { data: restored } = useSessionExercises(sessionId);
+  const {
+    data: restored,
+    isError: restoredError,
+    refetch: refetchRestored,
+  } = useSessionExercises(sessionId);
   const { data: metrics = [] } = useMetrics();
   // Routine provenance: template targets + notes for prefill / write-back.
   const routineQuery = useRoutineDetail(session?.routineId ?? null);
@@ -868,6 +873,18 @@ export default function SessionScreen() {
     }
   }, [blocks]);
 
+  // Sets whose write exhausted its retries (app.tsx: mutations retry 3x) and
+  // never persisted — the optimistic row is still on screen looking saved,
+  // which is exactly the silent-data-loss shape from the 2026-08-06 outage.
+  // Keyed by tempId so a later successful retry (below) can clear its own
+  // entry without touching any other pending failure.
+  const [failedSets, setFailedSets] = useState<
+    Record<
+      string,
+      { seId: string; set: CommitInput; tempId: string; setNo: number }
+    >
+  >({});
+
   const logSet = useMutation({
     mutationFn: (input: {
       seId: string;
@@ -879,11 +896,25 @@ export default function SessionScreen() {
     // The committed row keeps its optimistic id, so it never remounts here.
     onSuccess: (realId, { tempId }) => {
       setIdMap((prev) => ({ ...prev, [tempId]: realId }));
+      setFailedSets((prev) => {
+        if (!(tempId in prev)) return prev;
+        const next = { ...prev };
+        delete next[tempId];
+        return next;
+      });
+    },
+    onError: (_err, variables) => {
+      setFailedSets((prev) => ({ ...prev, [variables.tempId]: variables }));
     },
     // A new set can mint a PR — mark the records snapshot stale (no observer is
     // mounted mid-session, so this never refetches on the logging path).
     onSettled: () => qc.invalidateQueries({ queryKey: ["records-data"] }),
   });
+
+  const failedSetCount = Object.keys(failedSets).length;
+  function retryFailedSets() {
+    for (const v of Object.values(failedSets)) logSet.mutate(v);
+  }
 
   useHotkeys(
     useMemo(
@@ -1350,7 +1381,42 @@ export default function SessionScreen() {
     navigate("/");
   }
 
-  if (blocks === null) return null;
+  // blocks stays null until the seed effect above runs, which never happens
+  // if either query it depends on failed (a 400 from a schema-drifted
+  // column, a dropped connection, ...) — without this branch that reads as
+  // an unconditional blank screen, indistinguishable from "still loading".
+  if (blocks === null) {
+    if (sessionQuery.isError || restoredError) {
+      return (
+        <div className="mx-auto flex max-w-2xl flex-col items-center gap-3 px-4 py-16 text-center">
+          <p className="text-sm text-neg" data-testid="session-error">
+            {t(
+              "Couldn't reach the server. This session may still be there.",
+              "The frog couldn't reach the pond. This session may still be there.",
+            )}
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              void sessionQuery.refetch();
+              void refetchRestored();
+            }}
+            data-testid="session-retry"
+          >
+            Retry
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <p
+        className="px-4 py-16 text-center text-xs text-faint"
+        data-testid="session-loading"
+      >
+        {t("Loading…", "The frog is thinking…")}
+      </p>
+    );
+  }
 
   const setCount = blocks.reduce((n, b) => n + countSets(b.committed), 0);
   const volumeKg = blocks.reduce(
@@ -1372,6 +1438,30 @@ export default function SessionScreen() {
   return (
     <>
       <PrBanner data={prBanner} onDismiss={() => setPrBanner(null)} />
+      {failedSetCount > 0 && (
+        <div
+          className="pointer-events-none fixed inset-x-0 top-28 z-30 flex justify-center px-4"
+          role="status"
+          data-testid="set-sync-error"
+        >
+          <div className="pointer-events-auto flex max-w-md items-center gap-2 border border-neg bg-(--color-panel-solid) px-3 py-2 shadow-(--shadow-6)">
+            <span className="min-w-0 text-xs text-neg">
+              {t(
+                `${failedSetCount} set${failedSetCount === 1 ? "" : "s"} didn't save — couldn't reach the server.`,
+                `The frog dropped ${failedSetCount} set${failedSetCount === 1 ? "" : "s"} — couldn't reach the pond.`,
+              )}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={retryFailedSets}
+              data-testid="set-sync-retry"
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      )}
       {activeRest && (
         <RestDock
           since={activeRest.state.startedAt}

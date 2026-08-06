@@ -4,9 +4,17 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # Migration drift can happen with zero new commits — a migration merges,
+    # nobody runs `supabase db push`, and nothing else re-triggers CI to
+    # notice. This is the only thing here that runs without a push, so it
+    # catches that even if nothing else lands for days (exactly what let the
+    # 2026-08-06 outage run for days unnoticed — see docs/DECISIONS.md).
+    - cron: "17 6 * * *"
 
 jobs:
   checks:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +28,7 @@ jobs:
       - run: bun scripts/gen-og-image.ts --check
 
   integration-e2e:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +45,7 @@ jobs:
         run: supabase stop
 
   build:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,3 +56,23 @@ jobs:
           VITE_SUPABASE_URL: https://placeholder.supabase.co
           VITE_SUPABASE_ANON_KEY: placeholder
       - run: bun scripts/check-bundle.ts
+
+  # Detects (never auto-fixes) the hosted database falling behind the
+  # committed migrations — see scripts/check-migration-drift.ts for the
+  # mechanism and the exact read-only role SUPABASE_DRIFT_DB_URL needs, and
+  # docs/DECISIONS.md for the outage this guards against and why this is a
+  # detector, not an auto-push (deliberately no SUPABASE_ACCESS_TOKEN —
+  # Supabase has no narrower-scoped token, so that one could also `db
+  # push`). Passes with a loud ::warning:: (not a failure) until
+  # SUPABASE_DRIFT_DB_URL is added as a repo secret.
+  migration-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: bun scripts/check-migration-drift.ts
+        env:
+          SUPABASE_DRIFT_DB_URL: ${{ secrets.SUPABASE_DRIFT_DB_URL }}
