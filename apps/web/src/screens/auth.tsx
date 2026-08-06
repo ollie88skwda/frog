@@ -1,7 +1,7 @@
 import { SignIn } from "@clerk/react";
 import { APP_NAME } from "@sbl/core";
 import { Navigate } from "react-router";
-import frogMark from "@/assets/frog-mark.png";
+import frogMark from "@/assets/frog-mark.svg";
 import { useSignedIn } from "@/lib/auth";
 import { e2eBridge } from "@/lib/e2e-bridge";
 import { useVoice } from "@/lib/voice";

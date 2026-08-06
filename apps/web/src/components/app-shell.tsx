@@ -2,7 +2,7 @@ import { APP_NAME } from "@sbl/core";
 import { Dumbbell, Home, Moon, Sun, User } from "lucide-react";
 import { lazy, Suspense, useMemo } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
-import frogMark from "@/assets/frog-mark.png";
+import frogMark from "@/assets/frog-mark.svg";
 import { useHotkeys } from "@/lib/hotkeys";
 import { useActiveSession } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
