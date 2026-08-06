@@ -17,7 +17,7 @@
 import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import { chromium } from "playwright";
 
-const BG = "#101211"; // Radix sage-1 (dark app background)
+const BG = "#69b249"; // frog body green — must match FILLS.green in vectorize-frog-mark.ts
 const MARK_SVG = new URL("../docs/brand/assets/frog-mark.svg", import.meta.url);
 const PUBLIC_DIR = new URL("../apps/web/public/", import.meta.url);
 const ASSETS_DIR = new URL("../apps/web/src/assets/", import.meta.url);
