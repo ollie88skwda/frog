@@ -91,6 +91,45 @@ const cutout: { dataUrl: string; width: number; height: number } =
     return { dataUrl: trimmed.toDataURL("image/png"), width: bw, height: bh };
   }, sourceDataUrl);
 
+// High-quality downscale: a single ctx.drawImage bilinear pass looks fine for
+// mild reductions but goes aliased/grainy on a large ratio (e.g. the ~600px
+// cutout down to a 16-32px favicon) because the browser's filter only samples
+// a 2x2 texel neighborhood regardless of scale factor. Halving repeatedly
+// (mipmap-style box filtering) until within 2x of the target fixes it.
+await page.evaluate(() => {
+  (window as unknown as { __drawHQ: unknown }).__drawHQ = (
+    destCtx: CanvasRenderingContext2D,
+    source: CanvasImageSource,
+    sw: number,
+    sh: number,
+    dx: number,
+    dy: number,
+    dw: number,
+    dh: number,
+  ) => {
+    let curW = sw;
+    let curH = sh;
+    let cur: CanvasImageSource = source;
+    while (curW > dw * 2 && curH > dh * 2) {
+      const nw = Math.max(dw, Math.round(curW / 2));
+      const nh = Math.max(dh, Math.round(curH / 2));
+      const step = document.createElement("canvas");
+      step.width = nw;
+      step.height = nh;
+      const stepCtx = step.getContext("2d")!;
+      stepCtx.imageSmoothingEnabled = true;
+      stepCtx.imageSmoothingQuality = "high";
+      stepCtx.drawImage(cur, 0, 0, curW, curH, 0, 0, nw, nh);
+      cur = step;
+      curW = nw;
+      curH = nh;
+    }
+    destCtx.imageSmoothingEnabled = true;
+    destCtx.imageSmoothingQuality = "high";
+    destCtx.drawImage(cur, 0, 0, curW, curH, dx, dy, dw, dh);
+  };
+});
+
 // Square app icon: bg-filled rounded square with the cutout centered inside
 // a (1 - 2*pad) safe box, preserving aspect ratio.
 async function composeSquare(
@@ -122,7 +161,20 @@ async function composeSquare(
       const scale = Math.min(box / cw, box / ch);
       const dw = cw * scale;
       const dh = ch * scale;
-      ctx.drawImage(img, (size - dw) / 2, (size - dh) / 2, dw, dh);
+      (
+        window as unknown as {
+          __drawHQ: (
+            ctx: CanvasRenderingContext2D,
+            img: CanvasImageSource,
+            sw: number,
+            sh: number,
+            dx: number,
+            dy: number,
+            dw: number,
+            dh: number,
+          ) => void;
+        }
+      ).__drawHQ(ctx, img, cw, ch, (size - dw) / 2, (size - dh) / 2, dw, dh);
       return canvas.toDataURL("image/png");
     },
     {
@@ -153,7 +205,20 @@ async function composeTrimmed(maxDim: number): Promise<Buffer> {
       const img = new Image();
       img.src = cutoutUrl;
       await img.decode();
-      ctx.drawImage(img, 0, 0, w, h);
+      (
+        window as unknown as {
+          __drawHQ: (
+            ctx: CanvasRenderingContext2D,
+            img: CanvasImageSource,
+            sw: number,
+            sh: number,
+            dx: number,
+            dy: number,
+            dw: number,
+            dh: number,
+          ) => void;
+        }
+      ).__drawHQ(ctx, img, cw, ch, 0, 0, w, h);
       return canvas.toDataURL("image/png");
     },
     { cutoutUrl: cutout.dataUrl, cw: cutout.width, ch: cutout.height, maxDim },
