@@ -563,7 +563,6 @@ m-1382 -34 c164 -114 147 -338 -33 -430 -258 -132 -493 223 -271 409 84 71
           </svg>
           <div class="tiny">
             <svg class="logo-16" viewBox="0 0 512 512" aria-label="Frog favicon at 16px">
-                <style>@media (max-width: 48px) { .fine-detail { display: none } }</style>
                 <rect id="ground" width="512" height="512" fill="#6ab347"/>
                 <g id="pad" transform="translate(15.36 105.35) scale(0.253840)">
                   <g id="mark" transform="translate(0,1187) scale(0.1,-0.1)">
@@ -618,8 +617,8 @@ l-1 511 -35 71 c-42 82 -108 147 -193 189 -83 41 -221 41 -304 0 -70 -34 -146
 11 389 195 566 696 385 1088 -161 346 -492 533 -862 486z"/><path d="M13725 9834 c-120 -17 -132 -37 -67 -109 134 -146 95 -346 -82 -420
 -114 -48 -268 20 -322 142 -31 69 -42 73 -76 33 -132 -159 -187 -471 -122
 -695 82 -285 250 -471 513 -568 142 -52 371 -65 503 -28 259 73 465 250 557
-479 96 239 96 424 1 670 -85 221 -279 401 -505 467 -88 26 -308 42 -400 29z"/><path class="fine-detail" d="M11750 8679 c-89 -40 -170 -151 -170 -233 0 -52 34 -121 85 -173 93
--93 206 -104 318 -33 250 158 36 561 -233 439z"/><path class="fine-detail" d="M10321 8677 c-118 -45 -183 -176 -147 -299 47 -161 200 -231 346
+479 96 239 96 424 1 670 -85 221 -279 401 -505 467 -88 26 -308 42 -400 29z"/><path class="fine-detail" style="display:none" d="M11750 8679 c-89 -40 -170 -151 -170 -233 0 -52 34 -121 85 -173 93
+-93 206 -104 318 -33 250 158 36 561 -233 439z"/><path class="fine-detail" style="display:none" d="M10321 8677 c-118 -45 -183 -176 -147 -299 47 -161 200 -231 346
 -156 180 92 197 316 33 430 -55 37 -166 49 -232 25z"/><path d="M10795 6720 c-286 -4 -650 -13 -810 -19 -159 -6 -418 -16 -575 -21
 -581 -21 -789 -30 -930 -40 -80 -5 -224 -14 -320 -20 -335 -20 -419 -38 -497
 -105 -106 -91 -120 -234 -34 -353 71 -97 166 -121 411 -103 91 6 271 16 400
@@ -689,7 +688,7 @@ m-1382 -34 c164 -114 147 -338 -33 -430 -258 -132 -493 223 -271 409 84 71
         </div>
         <div class="logo-meta">
           <h4>Standalone tile</h4>
-          <p>Browser favicon, PWA icon, iOS home screen. Ships on the reference art's own grass green <code>#6ab347</code> with the frog as <b>flat navy line art</b> — outline, eyes, nostrils and mouth in <code>#131426</code>, both values sampled straight out of the reference. The body carries the <em>same</em> green as the ground, so only the outline separates them; the eye glints are the one light note (<code>#ffffff</code>) against the dark eyes. <b>Ground and line work move together</b> — flipping one alone breaks the mark. Being <b>filled vector shapes, not stroked lines</b>, the mark has no thin-stroke-goes-sub-pixel problem at small sizes, but the two nostril dots and the mouth line still go to mush under ~48px, so <code>icon.svg</code> carries a <code>@media (max-width: 48px)</code> rule that hides the nostrils (tagged <code>class="fine-detail"</code> on their two <code>&lt;path&gt;</code>s — found automatically by measuring each outline path's own bounding-box diagonal, not hand-picked) — the 16px sample alongside is the exact same markup, just smaller, and renders with the nostrils already dropped. 0px radius: iOS rounds its own corners, so never bake one in.</p>
+          <p>Browser favicon, PWA icon, iOS home screen. Ships on the reference art's own grass green <code>#6ab347</code> with the frog as <b>flat navy line art</b> — outline, eyes, nostrils and mouth in <code>#131426</code>, both values sampled straight out of the reference. The body carries the <em>same</em> green as the ground, so only the outline separates them; the eye glints are the one light note (<code>#ffffff</code>) against the dark eyes. <b>Ground and line work move together</b> — flipping one alone breaks the mark. Being <b>filled vector shapes, not stroked lines</b>, the mark has no thin-stroke-goes-sub-pixel problem at small sizes, but the two nostril dots and the mouth line still go to mush under ~48px, so <code>icon.svg</code> carries a <code>@media (max-width: 48px)</code> rule that hides the nostrils (tagged <code>class="fine-detail"</code> on their two <code>&lt;path&gt;</code>s — found automatically by measuring each outline path's own bounding-box diagonal, not hand-picked) — the 16px sample alongside is the same geometry, just smaller, with those two paths hard-hidden inline (a media query inside an inline SVG would resolve against this page's viewport, not the 16px box) so it renders what a real 16px favicon shows: nostrils dropped. 0px radius: iOS rounds its own corners, so never bake one in.</p>
         </div>
       </div>
 

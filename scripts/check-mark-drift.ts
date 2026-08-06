@@ -208,8 +208,13 @@ compare(
 );
 
 // ---- Copy 2: brand spec's 16px sample ----
-// Same markup as the tile sample (filled vector shapes don't need a separate
-// small-size treatment), just rendered smaller via the .logo-16 CSS class.
+// Same geometry as the tile sample (filled vector shapes don't need a separate
+// small-size treatment), just rendered smaller via the .logo-16 CSS class,
+// with the two fine-detail paths hard-hidden inline: icon.svg's own
+// `@media (max-width: 48px)` rule can't work inside an inline SVG on an HTML
+// page (it resolves against the document viewport), so the sample hardcodes
+// the state a real 16px favicon renders. Only `d` is compared, so that
+// inline style is not drift.
 const smallBlock = need(
   brand,
   /(<svg class="logo-16"[\s\S]*?<\/svg>)/,
