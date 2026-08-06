@@ -49,7 +49,11 @@ if (!viewBox) throw new Error("frog-mark.svg missing a 0 0 W H viewBox");
 const markW = Number(viewBox[1]);
 const markH = Number(viewBox[2]);
 
-const layers = [...mark.matchAll(/<g transform="[^"]*"\nfill="(#[0-9a-fA-F]+)" stroke="none">([\s\S]*?)<\/g>/g)];
+const layers = [
+  ...mark.matchAll(
+    /<g transform="[^"]*"\nfill="(#[0-9a-fA-F]+)" stroke="none">([\s\S]*?)<\/g>/g,
+  ),
+];
 if (layers.length === 0) throw new Error("frog-mark.svg has no color layers");
 const markInner = layers
   .map(([, fill, body]) => `<g fill="${fill}">${body.trim()}</g>`)
@@ -58,7 +62,8 @@ const markInner = layers
 // through (reformatted compactly — potrace pads every number to 6 decimals)
 // so <g id="mark"> below composes with the pad/scale below.
 const rawMarkTransform = mark.match(/<g transform="([^"]*)"/)?.[1];
-if (!rawMarkTransform) throw new Error("frog-mark.svg missing its <g transform>");
+if (!rawMarkTransform)
+  throw new Error("frog-mark.svg missing its <g transform>");
 const markTransform = `transform="${rawMarkTransform.replace(/-?\d*\.?\d+/g, (n) => String(Number(n)))}"`;
 
 function frame(side: number, tx: number, ty: number, scale: number): string {
@@ -121,13 +126,10 @@ for (const t of targets) {
     `<!doctype html><meta charset="utf-8"><style>*{margin:0;padding:0}</style>${frames[t.cut]}`,
   );
   const root = page.locator("svg").first();
-  await root.evaluate(
-    (el, size) => {
-      el.setAttribute("width", String(size));
-      el.setAttribute("height", String(size));
-    },
-    t.size,
-  );
+  await root.evaluate((el, size) => {
+    el.setAttribute("width", String(size));
+    el.setAttribute("height", String(size));
+  }, t.size);
   await root.screenshot({ path: new URL(t.file, publicDir).pathname });
   console.log(`wrote apps/web/public/${t.file} (${t.size}px, ${t.cut} cut)`);
 }

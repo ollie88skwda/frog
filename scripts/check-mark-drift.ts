@@ -48,9 +48,7 @@ function markLayers(root: string, label: string): Layer[] {
   const layers = [...root.matchAll(/<g fill="([^"]+)">([\s\S]*?)<\/g>/g)].map(
     ([, fill, inner]) => ({
       fill,
-      paths: [...inner.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)].map(
-        (m) => m[1],
-      ),
+      paths: [...inner.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)].map((m) => m[1]),
     }),
   );
   if (layers.length !== 3)
@@ -138,7 +136,11 @@ const tileMarkRoot = need(
   /<g id="mark"[^>]*>((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
   "app-tile sample #mark",
 );
-compareLayers("app-tile sample", markLayers(tileMarkRoot, "app-tile sample"), iconLayers);
+compareLayers(
+  "app-tile sample",
+  markLayers(tileMarkRoot, "app-tile sample"),
+  iconLayers,
+);
 compare(
   "app-tile sample",
   "viewBox",
@@ -149,14 +151,22 @@ compare(
 compare(
   "app-tile sample",
   "pad transform",
-  need(tileBlock, /<g\b[^>]*\bid="pad"[^>]*\btransform="([^"]+)"/, "app-tile pad transform"),
+  need(
+    tileBlock,
+    /<g\b[^>]*\bid="pad"[^>]*\btransform="([^"]+)"/,
+    "app-tile pad transform",
+  ),
   iconPad,
   "icon.svg #pad",
 );
 compare(
   "app-tile sample",
   "mark transform",
-  need(tileBlock, /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/, "app-tile mark transform"),
+  need(
+    tileBlock,
+    /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/,
+    "app-tile mark transform",
+  ),
   iconMarkTransform,
   "icon.svg #mark",
 );
@@ -174,7 +184,11 @@ const smallMarkRoot = need(
   /<g id="mark"[^>]*>((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
   "16px sample #mark",
 );
-compareLayers("16px sample", markLayers(smallMarkRoot, "16px sample"), iconLayers);
+compareLayers(
+  "16px sample",
+  markLayers(smallMarkRoot, "16px sample"),
+  iconLayers,
+);
 compare(
   "16px sample",
   "viewBox",
@@ -185,14 +199,22 @@ compare(
 compare(
   "16px sample",
   "pad transform",
-  need(smallBlock, /<g\b[^>]*\bid="pad"[^>]*\btransform="([^"]+)"/, "16px sample pad transform"),
+  need(
+    smallBlock,
+    /<g\b[^>]*\bid="pad"[^>]*\btransform="([^"]+)"/,
+    "16px sample pad transform",
+  ),
   iconPad,
   "icon.svg #pad",
 );
 compare(
   "16px sample",
   "mark transform",
-  need(smallBlock, /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/, "16px sample mark transform"),
+  need(
+    smallBlock,
+    /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/,
+    "16px sample mark transform",
+  ),
   iconMarkTransform,
   "icon.svg #mark",
 );
@@ -232,7 +254,11 @@ const rowMarkRoot = need(
   /<g transform="translate\(0,395\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
   "icon-row copy mark group",
 );
-compareLayers("icon-row copy", markLayers(rowMarkRoot, "icon-row copy"), markLayersCanon);
+compareLayers(
+  "icon-row copy",
+  markLayers(rowMarkRoot, "icon-row copy"),
+  markLayersCanon,
+);
 compare(
   "icon-row copy",
   "viewBox",
