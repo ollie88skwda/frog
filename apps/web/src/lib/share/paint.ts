@@ -16,7 +16,7 @@ import {
 } from "./graphics";
 import type { Ground, Palette } from "./grounds";
 import { paletteFor } from "./grounds";
-import { loadFrogMarkImage } from "./mark";
+import { drawFrogMark, loadFrogMarkImage } from "./mark";
 
 const FONT_SANS = `"Bricolage Grotesque", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
 const FONT_MONO = `ui-monospace, "SF Mono", "Berkeley Mono", Menlo, monospace`;
@@ -128,7 +128,7 @@ async function paintBrand(
   const markSize = frame.w * MARK_SIZE_RATIO;
   try {
     const mark = await loadFrogMarkImage(p.ink, p.markBody);
-    ctx.drawImage(mark, pad, y, markSize, markSize);
+    drawFrogMark(ctx, mark, pad, y, markSize);
   } catch {
     // Rasterizing the mark failed — the wordmark alone still reads fine.
   }
@@ -476,7 +476,7 @@ export async function paintBrandOg(canvas: HTMLCanvasElement) {
 
   try {
     const mark = await loadFrogMarkImage(p.ink, p.markBody);
-    ctx.drawImage(mark, pad, y, markSize, markSize);
+    drawFrogMark(ctx, mark, pad, y, markSize);
   } catch {
     // Wordmark alone still reads fine.
   }
@@ -511,11 +511,11 @@ export async function paintBrandOg(canvas: HTMLCanvasElement) {
   const bigSize = frame.h * 0.62;
   try {
     const mark = await loadFrogMarkImage(p.ink, p.markBody);
-    ctx.drawImage(
+    drawFrogMark(
+      ctx,
       mark,
       colW + (frame.w - colW - bigSize) / 2,
       (frame.h - bigSize) / 2,
-      bigSize,
       bigSize,
     );
   } catch {

@@ -31,6 +31,19 @@ export function loadFrogMarkImage(
   const style = { color: outline, "--accent": accent } as CSSProperties;
   flushSync(() => root.render(<FrogMark style={style} />));
   const svgEl = host.querySelector("svg");
+  // FrogMark declares only a viewBox, so on its own an <img> of it has an
+  // intrinsic ratio but no intrinsic size. Stamp width/height off the viewBox
+  // so the raster carries the mark's real proportions and `drawFrogMark` can
+  // read them back — the mark is landscape, and every canvas slot is square.
+  if (svgEl) {
+    const [, , vbW, vbH] = (svgEl.getAttribute("viewBox") ?? "")
+      .split(/[\s,]+/)
+      .map(Number);
+    if (vbW > 0 && vbH > 0) {
+      svgEl.setAttribute("width", String(vbW));
+      svgEl.setAttribute("height", String(vbH));
+    }
+  }
   const markup = svgEl ? new XMLSerializer().serializeToString(svgEl) : "";
   root.unmount();
   host.remove();
@@ -45,4 +58,31 @@ export function loadFrogMarkImage(
     img.onerror = () => reject(new Error("frog mark failed to rasterize"));
     img.src = url;
   });
+}
+
+/**
+ * Paints the mark into a square `size` slot the way icon.svg's tile does:
+ * scaled to fit on its longer axis and centred on the shorter one. `drawImage`
+ * fills whatever destination rect it is handed, so a square rect would stretch
+ * the landscape mark — never hand it one directly.
+ */
+export function drawFrogMark(
+  ctx: CanvasRenderingContext2D,
+  mark: HTMLImageElement,
+  x: number,
+  y: number,
+  size: number,
+) {
+  const w = mark.naturalWidth || size;
+  const h = mark.naturalHeight || size;
+  const scale = size / Math.max(w, h);
+  const drawW = w * scale;
+  const drawH = h * scale;
+  ctx.drawImage(
+    mark,
+    x + (size - drawW) / 2,
+    y + (size - drawH) / 2,
+    drawW,
+    drawH,
+  );
 }

@@ -5,8 +5,11 @@
 // time. Assert all four still match the source they were copied from:
 // apps/web/public/icon.svg for the tile/16px pair, and
 // apps/web/src/components/frog-mark.tsx for the in-app-mark pair — so a
-// drifted copy fails CI instead of quietly going stale. See AGENTS.md
-// "Brand mark" and docs/DECISIONS.md 2026-08-06.
+// drifted copy fails CI instead of quietly going stale. The two canonical
+// sources are also checked against each other, or a regen that updates one
+// and not the other leaves two self-consistent sets of copies and ships two
+// different frogs. See AGENTS.md "Brand mark" and docs/DECISIONS.md
+// 2026-08-06.
 //
 // Both canonical sources share one shape since 2026-08-06: a mark is 3
 // <g fill="..."> layers, in a fixed order (outline, body, eye glints), each
@@ -124,6 +127,15 @@ const markViewBox = need(
   /viewBox="([^"]+)"/,
   "frog-mark.tsx viewBox",
 );
+
+// ---- The two canonical sources must agree with each other ----
+// They legitimately differ in fill (the tile's fixed palette vs the app's
+// theme tokens), viewBox and outer framing transform, but they draw one
+// shape. Without this, a partial regen — re-run vectorize-frog-mark.ts +
+// gen-pwa-icons.ts, update the two samples this guard forces you to, forget
+// frog-mark.tsx — leaves two self-consistent equivalence classes and ships
+// the old frog in the sidebar next to the new one in the favicon.
+compareLayers("frog-mark.tsx vs icon.svg", markLayersCanon, iconLayers);
 
 // ---- Copy 1: brand spec's standalone app-tile sample ----
 const tileBlock = need(
@@ -272,4 +284,6 @@ if (errors.length > 0) {
   for (const e of errors) console.error(`  - ${e}`);
   process.exit(1);
 }
-console.log("frog mark geometry matches across all 4 hand-copies.");
+console.log(
+  "frog mark geometry matches across both canonical sources and all 4 hand-copies.",
+);
