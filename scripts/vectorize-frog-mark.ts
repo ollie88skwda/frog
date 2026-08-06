@@ -4,10 +4,35 @@
 // fill, white eye-highlight dots), so tracing each color plane separately and
 // letting potrace fit clean bezier curves reproduces it far more faithfully
 // than a generic multi-color autotrace (imagetracerjs was tried first and
-// rejected: only 21.8% pixel-exact, visibly faceted edges — this
-// color-separated approach gets to 94% of pixels within a diff of 20/255,
-// the rest a sub-pixel edge halo, not shape error — see docs/DECISIONS.md
-// 2026-08-06).
+// rejected: only 21.8% pixel-exact, visibly faceted edges).
+//
+// Classifies and traces at SUPERSAMPLE× the source's native 1024px (bicubic
+// upscale, `imageSmoothingQuality: "high"`) rather than at native resolution
+// — the captain rejected the first potrace pass for visible faceting (a
+// staircase-y, jaggy edge instead of a smooth curve, worst on thin features
+// like the mouth line) and zoomed-crop comparison against the reference
+// showed why: classifying at native res gives potrace too few boundary
+// samples per curve segment to fit a smooth bezier through, so it traces the
+// pixel staircase almost literally. Supersampling gives it ~9× the boundary
+// points at the same real-world curve length, which is what actually buys
+// the smoothness (confirmed by direct zoomed-crop diff against the
+// reference, not the whole-image pixel-diff % below, which barely moves —
+// it's dominated by JPEG anti-alias-halo width against a hard vector edge,
+// not by curve smoothness, so it can't see this fix). Despeckle scales with
+// it too (radius = SUPERSAMPLE, was a fixed 3×3): naively supersampling
+// without widening despeckle let JPEG chroma-fringing at color boundaries
+// through as dozens of spurious sub-path fragments (green 3→23 paths, white
+// 2→10) — invisible at final render size but real geometry bloat. Widening
+// despeckle to match cleaned it back to the expected topology (dark 6 =
+// silhouette + 2 pupils + 2 nostrils + mouth; green 3 = body + 2 haunches;
+// white 2 = 2 glints) with no loss of real detail (nostrils/glints verified
+// still present, foot notches and head-crown corners still sharp). potrace's
+// `--alphamax`/`--opttolerance` also went from 1/0.3 to 1.1/0.4 (more
+// aggressive corner-smoothing and curve-fit tolerance) — cheap extra
+// smoothing once despeckle stopped feeding it noise to fit around. Verified
+// against the reference at 1024px full-image and multiple 3-4x zoomed crops
+// (eye, nostril, mouth, head-crown notch, foot notch, haunch outline edge)
+// — see docs/DECISIONS.md for the before/after zoom pair.
 //
 // Source is docs/brand/assets/frog-logo-reference.jpg — the original supplied
 // reference art (see docs/DECISIONS.md 2026-08-06). docs/brand/frog-source-1024.png
@@ -40,6 +65,11 @@ const SOURCE = new URL(
 );
 const OUT = new URL("../docs/brand/assets/frog-mark.svg", import.meta.url);
 
+// See the file-header comment for why: more boundary samples per curve
+// segment for potrace to fit smooth beziers through, at the cost of a
+// larger (still small) SVG.
+const SUPERSAMPLE = 3;
+
 const browser = await chromium.launch();
 const page = await browser.newPage();
 await page.setContent("<!doctype html><html><body></body></html>");
@@ -53,131 +83,142 @@ const sourceDataUrl = `data:image/jpeg;base64,${readFileSync(SOURCE).toString("b
 // 1 = black/foreground, the convention potrace expects). Returned as base64
 // so Node never needs a PNG decoder.
 const result: { width: number; height: number; pbm: Record<string, string> } =
-  await page.evaluate(async (src) => {
-    const img = new Image();
-    img.src = src;
-    await img.decode();
-    const canvas = document.createElement("canvas");
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(img, 0, 0);
-    const { data, width, height } = ctx.getImageData(
-      0,
-      0,
-      canvas.width,
-      canvas.height,
-    );
+  await page.evaluate(
+    async ({ src, ss }) => {
+      const img = new Image();
+      img.src = src;
+      await img.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth * ss;
+      canvas.height = img.naturalHeight * ss;
+      const ctx = canvas.getContext("2d")!;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const { data, width, height } = ctx.getImageData(
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+      );
 
-    // Alpha-key (distance-from-white) + trim bbox.
-    const alpha = new Uint8Array(width * height);
-    let minX = width;
-    let minY = height;
-    let maxX = 0;
-    let maxY = 0;
-    const lo = 8;
-    const hi = 45;
-    for (let i = 0; i < width * height; i++) {
-      const r = data[i * 4];
-      const g = data[i * 4 + 1];
-      const b = data[i * 4 + 2];
-      const dist = Math.sqrt((255 - r) ** 2 + (255 - g) ** 2 + (255 - b) ** 2);
-      const a = Math.max(0, Math.min(1, (dist - lo) / (hi - lo)));
-      alpha[i] = a > 0.5 ? 1 : 0;
-      if (a > 0.02) {
-        const x = i % width;
-        const y = Math.floor(i / width);
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
+      // Alpha-key (distance-from-white) + trim bbox.
+      const alpha = new Uint8Array(width * height);
+      let minX = width;
+      let minY = height;
+      let maxX = 0;
+      let maxY = 0;
+      const lo = 8;
+      const hi = 45;
+      for (let i = 0; i < width * height; i++) {
+        const r = data[i * 4];
+        const g = data[i * 4 + 1];
+        const b = data[i * 4 + 2];
+        const dist = Math.sqrt(
+          (255 - r) ** 2 + (255 - g) ** 2 + (255 - b) ** 2,
+        );
+        const a = Math.max(0, Math.min(1, (dist - lo) / (hi - lo)));
+        alpha[i] = a > 0.5 ? 1 : 0;
+        if (a > 0.02) {
+          const x = i % width;
+          const y = Math.floor(i / width);
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
       }
-    }
-    const padX = Math.round((maxX - minX) * 0.04);
-    const padY = Math.round((maxY - minY) * 0.04);
-    const bx = Math.max(0, minX - padX);
-    const by = Math.max(0, minY - padY);
-    const bw = Math.min(width, maxX + padX) - bx;
-    const bh = Math.min(height, maxY + padY) - by;
+      const padX = Math.round((maxX - minX) * 0.04);
+      const padY = Math.round((maxY - minY) * 0.04);
+      const bx = Math.max(0, minX - padX);
+      const by = Math.max(0, minY - padY);
+      const bw = Math.min(width, maxX + padX) - bx;
+      const bh = Math.min(height, maxY + padY) - by;
 
-    // Classify trimmed, opaque pixels into dark / green / white buckets.
-    const classes: Record<string, Uint8Array> = {
-      dark: new Uint8Array(bw * bh),
-      green: new Uint8Array(bw * bh),
-      white: new Uint8Array(bw * bh),
-    };
-    for (let ty = 0; ty < bh; ty++) {
-      for (let tx = 0; tx < bw; tx++) {
-        const sx = bx + tx;
-        const sy = by + ty;
-        const si = sy * width + sx;
-        if (!alpha[si]) continue;
-        const r = data[si * 4];
-        const g = data[si * 4 + 1];
-        const b = data[si * 4 + 2];
-        const mx = Math.max(r, g, b);
-        const mn = Math.min(r, g, b);
-        const ti = ty * bw + tx;
-        if (mn > 170) classes.white![ti] = 1;
-        else if (mx < 100) classes.dark![ti] = 1;
-        else classes.green![ti] = 1;
+      // Classify trimmed, opaque pixels into dark / green / white buckets.
+      const classes: Record<string, Uint8Array> = {
+        dark: new Uint8Array(bw * bh),
+        green: new Uint8Array(bw * bh),
+        white: new Uint8Array(bw * bh),
+      };
+      for (let ty = 0; ty < bh; ty++) {
+        for (let tx = 0; tx < bw; tx++) {
+          const sx = bx + tx;
+          const sy = by + ty;
+          const si = sy * width + sx;
+          if (!alpha[si]) continue;
+          const r = data[si * 4];
+          const g = data[si * 4 + 1];
+          const b = data[si * 4 + 2];
+          const mx = Math.max(r, g, b);
+          const mn = Math.min(r, g, b);
+          const ti = ty * bw + tx;
+          if (mn > 170) classes.white![ti] = 1;
+          else if (mx < 100) classes.dark![ti] = 1;
+          else classes.green![ti] = 1;
+        }
       }
-    }
 
-    // Despeckle: 3x3 majority vote kills isolated noise pixels without
-    // eroding real edges.
-    function despeckle(mask: Uint8Array): Uint8Array {
-      const out = new Uint8Array(bw * bh);
-      for (let y = 0; y < bh; y++) {
-        for (let x = 0; x < bw; x++) {
-          let on = 0;
-          let total = 0;
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              const nx = x + dx;
-              const ny = y + dy;
-              if (nx < 0 || ny < 0 || nx >= bw || ny >= bh) continue;
-              total++;
-              if (mask[ny * bw + nx]) on++;
+      // Despeckle: (2r+1)x(2r+1) majority vote kills isolated noise pixels
+      // without eroding real edges. r = ss (was a fixed 1, i.e. 3x3) — see the
+      // file-header comment: at ss=1 this window doesn't scale with the extra
+      // boundary noise supersampling introduces (JPEG chroma-fringing along
+      // color transitions), and lets it through as spurious sub-path
+      // fragments.
+      function despeckle(mask: Uint8Array, r: number): Uint8Array {
+        const out = new Uint8Array(bw * bh);
+        for (let y = 0; y < bh; y++) {
+          for (let x = 0; x < bw; x++) {
+            let on = 0;
+            let total = 0;
+            for (let dy = -r; dy <= r; dy++) {
+              for (let dx = -r; dx <= r; dx++) {
+                const nx = x + dx;
+                const ny = y + dy;
+                if (nx < 0 || ny < 0 || nx >= bw || ny >= bh) continue;
+                total++;
+                if (mask[ny * bw + nx]) on++;
+              }
+            }
+            out[y * bw + x] = on * 2 > total ? 1 : 0;
+          }
+        }
+        return out;
+      }
+
+      // Pack a 0/1 mask into a raw P4 PBM buffer (MSB-first, 1 = black).
+      function toPbmBase64(mask: Uint8Array): string {
+        const rowBytes = Math.ceil(bw / 8);
+        const bytes = new Uint8Array(rowBytes * bh);
+        for (let y = 0; y < bh; y++) {
+          for (let x = 0; x < bw; x++) {
+            if (mask[y * bw + x]) {
+              bytes[y * rowBytes + (x >> 3)] |= 0x80 >> (x & 7);
             }
           }
-          out[y * bw + x] = on * 2 > total ? 1 : 0;
         }
+        const header = `P4\n${bw} ${bh}\n`;
+        const headerBytes = new TextEncoder().encode(header);
+        const combined = new Uint8Array(headerBytes.length + bytes.length);
+        combined.set(headerBytes, 0);
+        combined.set(bytes, headerBytes.length);
+        let binary = "";
+        for (const byte of combined) binary += String.fromCharCode(byte);
+        return btoa(binary);
       }
-      return out;
-    }
 
-    // Pack a 0/1 mask into a raw P4 PBM buffer (MSB-first, 1 = black).
-    function toPbmBase64(mask: Uint8Array): string {
-      const rowBytes = Math.ceil(bw / 8);
-      const bytes = new Uint8Array(rowBytes * bh);
-      for (let y = 0; y < bh; y++) {
-        for (let x = 0; x < bw; x++) {
-          if (mask[y * bw + x]) {
-            bytes[y * rowBytes + (x >> 3)] |= 0x80 >> (x & 7);
-          }
-        }
-      }
-      const header = `P4\n${bw} ${bh}\n`;
-      const headerBytes = new TextEncoder().encode(header);
-      const combined = new Uint8Array(headerBytes.length + bytes.length);
-      combined.set(headerBytes, 0);
-      combined.set(bytes, headerBytes.length);
-      let binary = "";
-      for (const byte of combined) binary += String.fromCharCode(byte);
-      return btoa(binary);
-    }
-
-    return {
-      width: bw,
-      height: bh,
-      pbm: {
-        dark: toPbmBase64(despeckle(classes.dark!)),
-        green: toPbmBase64(despeckle(classes.green!)),
-        white: toPbmBase64(despeckle(classes.white!)),
-      },
-    };
-  }, sourceDataUrl);
+      return {
+        width: bw,
+        height: bh,
+        pbm: {
+          dark: toPbmBase64(despeckle(classes.dark!, ss)),
+          green: toPbmBase64(despeckle(classes.green!, ss)),
+          white: toPbmBase64(despeckle(classes.white!, ss)),
+        },
+      };
+    },
+    { src: sourceDataUrl, ss: SUPERSAMPLE },
+  );
 
 await browser.close();
 
@@ -192,7 +233,11 @@ for (const name of ["dark", "green", "white"] as const) {
   const pbmPath = join(workDir, `${name}.pbm`);
   writeFileSync(pbmPath, Buffer.from(result.pbm[name]!, "base64"));
   const svgPath = join(workDir, `${name}.svg`);
-  const turdsize = name === "white" ? "8" : "6";
+  // turdsize is an area (px²) threshold, so it scales with SUPERSAMPLE² to
+  // despeckle the same real-world speck size as before.
+  const turdsize = String(
+    (name === "white" ? 8 : 6) * SUPERSAMPLE * SUPERSAMPLE,
+  );
   const res = spawnSync("potrace", [
     pbmPath,
     "-s",
@@ -201,9 +246,9 @@ for (const name of ["dark", "green", "white"] as const) {
     "--turdsize",
     turdsize,
     "--alphamax",
-    "1",
+    "1.1",
     "--opttolerance",
-    "0.3",
+    "0.4",
   ]);
   if (res.status !== 0) {
     console.error(`potrace failed on ${name}:`, res.stderr?.toString());

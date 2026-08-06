@@ -15,12 +15,20 @@
 // <g fill="..."> layers, in a fixed order (outline, body, eye glints), each
 // holding some number of filled <path>s — a color-separated potrace trace
 // (scripts/vectorize-frog-mark.ts), not the hand-authored stroke-based
-// silhouette it replaced. There is no small-size stroke/eye treatment to
-// check anymore: filled vector shapes don't go sub-pixel at 16-32px the way
-// thin strokes did, so icon.svg carries no size media query and frog-mark.tsx
-// carries no separate simplification — the samples below are the *same*
-// geometry as their canonical source, just recolored (icon.svg) or resized
-// (16px sample), which is exactly what this checks.
+// silhouette it replaced. Filled vector shapes don't go sub-pixel at 16-32px
+// the way thin strokes did, so frog-mark.tsx (the in-app mark, rendered at
+// 20-32px) still carries no small-size simplification. icon.svg (the
+// favicon, rendered as small as 16px) is the exception as of the small-size
+// legibility fix in docs/DECISIONS.md: its outline layer's two smallest
+// paths (the nostrils) carry a `class="fine-detail"` attribute and a
+// `@media (max-width: 48px)` rule hides them — a class, not a wrapping <g>,
+// specifically so every path stays in its original document position and
+// markLayers() below still sees a flat 3-layer/N-path shape per layer. This
+// is why compareLayers() only tokenizes each <path>'s `d` attribute: a class
+// difference between icon.svg and frog-mark.tsx's otherwise-identical paths
+// must never register as drift. The samples below are the *same* geometry
+// (paths, including their class attributes where present) as their
+// canonical source, just recolored (icon.svg) or resized (16px sample).
 import { readFileSync } from "node:fs";
 
 const icon = readFileSync("apps/web/public/icon.svg", "utf8");
@@ -118,7 +126,7 @@ const iconMarkTransform = need(
 // ---- Canonical geometry: apps/web/src/components/frog-mark.tsx ----
 const markMarkRoot = need(
   inAppSrc,
-  /<g transform="translate\(0,395\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  /<g transform="translate\(0,[\d.]+\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
   "frog-mark.tsx mark group",
 );
 const markLayersCanon = markLayers(markMarkRoot, "frog-mark.tsx");
@@ -239,7 +247,7 @@ const inAppBlock = need(
 );
 const inAppMarkRoot = need(
   inAppBlock,
-  /<g transform="translate\(0,395\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  /<g transform="translate\(0,[\d.]+\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
   "in-app-mark sample mark group",
 );
 compareLayers(
@@ -263,7 +271,7 @@ const rowBlock = need(
 );
 const rowMarkRoot = need(
   rowBlock,
-  /<g transform="translate\(0,395\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  /<g transform="translate\(0,[\d.]+\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
   "icon-row copy mark group",
 );
 compareLayers(

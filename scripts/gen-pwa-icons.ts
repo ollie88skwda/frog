@@ -27,8 +27,11 @@ const GROUND = "#6ab347";
 // The mark is landscape (a sitting frog is wider than it is tall) and can't
 // fill a square tile without letterboxing on one axis, so every tile is the
 // mark centered on the ground square with breathing room on all sides.
-// 0.9 leaves ~10% total margin split across the shorter axis's slack.
-const TILE_FILL = 0.9;
+// 0.94 leaves ~6% total margin split across the shorter axis's slack (was
+// 0.9/~10% — tightened per the captain's "reduce tile padding" small-size
+// legibility complaint; see the fine-detail media query below for the other
+// half of that fix).
+const TILE_FILL = 0.94;
 
 // Maskable icons get cropped to an arbitrary shape by the platform — only the
 // inner-80%-diameter circle (r = 0.4 * size) is guaranteed on screen, so
@@ -55,9 +58,103 @@ const layers = [
   ),
 ];
 if (layers.length === 0) throw new Error("frog-mark.svg has no color layers");
-const markInner = layers
-  .map(([, fill, body]) => `<g fill="${fill}">${body.trim()}</g>`)
-  .join("\n    ");
+
+// Small-size legibility (the captain's other favicon complaint: nostrils and
+// the mouth line go to mush under 48px). The nostrils are the two smallest
+// disjoint shapes in the outline layer — find them by measuring each
+// top-level <path>'s own on-curve bounding-box diagonal (approximate: walks
+// the absolute M + relative c/l endpoints, ignoring bezier control points,
+// which is precise enough to rank shapes by size) rather than hand-picking
+// path indices, so this keeps working if a future re-trace reorders potrace's
+// output. Anything under 15% of the layer's largest diagonal, capped to 2
+// shapes, is tagged "fine" and wrapped so a small-size media query below can
+// drop it — degrades to hiding nothing if the trace ever stops producing
+// small disjoint dot shapes, rather than mis-hiding real geometry.
+function pathDiagonal(d: string): number {
+  let x = 0;
+  let y = 0;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  const record = (px: number, py: number) => {
+    if (px < minX) minX = px;
+    if (px > maxX) maxX = px;
+    if (py < minY) minY = py;
+    if (py > maxY) maxY = py;
+  };
+  const tokens = d.match(/[MmCcLlZz]|-?\d*\.?\d+/g) ?? [];
+  let cmd = "";
+  let i = 0;
+  while (i < tokens.length) {
+    const t = tokens[i]!;
+    if (/[MmCcLlZz]/.test(t)) {
+      cmd = t;
+      i++;
+      continue;
+    }
+    if (cmd === "M" || cmd === "L") {
+      x = Number(t);
+      y = Number(tokens[i + 1]);
+      i += 2;
+      record(x, y);
+    } else if (cmd === "m" || cmd === "l") {
+      x += Number(t);
+      y += Number(tokens[i + 1]);
+      i += 2;
+      record(x, y);
+    } else if (cmd === "c") {
+      x += Number(tokens[i + 4]);
+      y += Number(tokens[i + 5]);
+      i += 6;
+      record(x, y);
+    } else if (cmd === "C") {
+      x = Number(tokens[i + 4]);
+      y = Number(tokens[i + 5]);
+      i += 6;
+      record(x, y);
+    } else {
+      i++;
+    }
+  }
+  return Math.hypot(maxX - minX, maxY - minY);
+}
+
+const [, darkFill, darkBody] = layers[0]!;
+const darkPaths = [...darkBody.matchAll(/<path d="([^"]*)"\/>/g)].map(
+  (m) => m[1]!,
+);
+const diagonals = darkPaths.map(pathDiagonal);
+const maxDiagonal = Math.max(0, ...diagonals);
+const fineIdx = diagonals
+  .map((d, i) => [d, i] as const)
+  .filter(([d]) => maxDiagonal > 0 && d / maxDiagonal < 0.15)
+  .sort((a, b) => a[0] - b[0])
+  .slice(0, 2)
+  .map(([, i]) => i);
+
+// class, not a wrapping <g> — check-mark-drift.ts's layer-splitting regex
+// assumes each of the 3 top-level fill layers has no nested <g>, and this
+// keeps every path in its original document position (compareLayers does a
+// positional diff against frog-mark.tsx, which carries no fine-detail split
+// at all — the in-app mark stays full-detail per docs/DECISIONS.md).
+const darkInner =
+  darkPaths.length > 0 && fineIdx.length > 0
+    ? darkPaths
+        .map((d, i) =>
+          fineIdx.includes(i)
+            ? `<path class="fine-detail" d="${d}"/>`
+            : `<path d="${d}"/>`,
+        )
+        .join("")
+    : darkBody.trim();
+
+const markInner = [
+  `<g fill="${darkFill}">${darkInner}</g>`,
+  ...layers
+    .slice(1)
+    .map(([, fill, body]) => `<g fill="${fill}">${body.trim()}</g>`),
+].join("\n    ");
 // The mark's own <g transform> bakes potrace's y-flip convention; carry it
 // through (reformatted compactly — potrace pads every number to 6 decimals)
 // so <g id="mark"> below composes with the pad/scale below.
@@ -69,6 +166,7 @@ const markTransform = `transform="${rawMarkTransform.replace(/-?\d*\.?\d+/g, (n)
 function frame(side: number, tx: number, ty: number, scale: number): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${side} ${side}">
   <title>Frog</title>
+  <style>@media (max-width: 48px) { .fine-detail { display: none } }</style>
   <rect id="ground" width="100%" height="100%" fill="${GROUND}"/>
   <g id="pad" transform="translate(${tx.toFixed(2)} ${ty.toFixed(2)}) scale(${scale.toFixed(6)})">
     <g id="mark" ${markTransform}>
