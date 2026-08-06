@@ -20,7 +20,7 @@ function ClerkAuthScreen() {
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-3">
           {/* Frog mark — quiet chrome, never the expressive mascot. */}
-          <FrogMark className="size-8 text-ink" />
+          <FrogMark className="size-8" />
           <div className="flex flex-col items-center gap-1">
             <h1 className="text-lg font-semibold tracking-tight">
               Sign in to {APP_NAME}

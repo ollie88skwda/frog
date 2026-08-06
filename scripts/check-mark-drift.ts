@@ -15,12 +15,20 @@
 // <g fill="..."> layers, in a fixed order (outline, body, eye glints), each
 // holding some number of filled <path>s — a color-separated potrace trace
 // (scripts/vectorize-frog-mark.ts), not the hand-authored stroke-based
-// silhouette it replaced. There is no small-size stroke/eye treatment to
-// check anymore: filled vector shapes don't go sub-pixel at 16-32px the way
-// thin strokes did, so icon.svg carries no size media query and frog-mark.tsx
-// carries no separate simplification — the samples below are the *same*
-// geometry as their canonical source, just recolored (icon.svg) or resized
-// (16px sample), which is exactly what this checks.
+// silhouette it replaced. Filled vector shapes don't go sub-pixel at 16-32px
+// the way thin strokes did, so frog-mark.tsx (the in-app mark, rendered at
+// 20-32px) still carries no small-size simplification. icon.svg (the
+// favicon, rendered as small as 16px) is the exception as of the small-size
+// legibility fix in docs/DECISIONS.md: its outline layer's two smallest
+// paths (the nostrils) carry a `class="fine-detail"` attribute and a
+// `@media (max-width: 48px)` rule hides them — a class, not a wrapping <g>,
+// specifically so every path stays in its original document position and
+// markLayers() below still sees a flat 3-layer/N-path shape per layer. This
+// is why compareLayers() only tokenizes each <path>'s `d` attribute: a class
+// difference between icon.svg and frog-mark.tsx's otherwise-identical paths
+// must never register as drift. The samples below are the *same* geometry
+// (paths, including their class attributes where present) as their
+// canonical source, just recolored (icon.svg) or resized (16px sample).
 import { readFileSync } from "node:fs";
 
 const icon = readFileSync("apps/web/public/icon.svg", "utf8");
@@ -84,6 +92,29 @@ function viewBox(src: string, label: string): string {
   return need(src, /<svg\b[^>]*\bviewBox="([^"]+)"/, label);
 }
 
+// The mark's framing <g>: flips potrace's y-up output and scales it back into
+// the viewBox. Every copy must carry exactly one. The mark-root regexes below
+// capture the 3 fill layers rather than anchoring on this wrapper, so a copy
+// that opens the same framing <g> twice still matches — the engine simply
+// backtracks to the inner one — and its geometry still compares equal, while
+// the doubled transform renders the mark at ~1% scale in the corner of its
+// box. Counting the wrapper is what catches that.
+const FRAME_TRANSFORM =
+  /<g\b[^>]*\btransform="(translate\(0,[\d.]+\) scale\(0\.1,-0\.1\))"[^>]*>/g;
+
+function frameTransform(block: string, label: string): string {
+  const found = [...block.matchAll(FRAME_TRANSFORM)].map((m) => m[1]);
+  if (found.length === 0)
+    throw new Error(
+      `could not find ${label} mark framing transform — check script is broken`,
+    );
+  if (found.length > 1)
+    errors.push(
+      `${label}: ${found.length} nested mark framing <g transform> wrappers, expected 1 — the transform applies once per wrapper, so the mark renders at ~1% scale`,
+    );
+  return found[0];
+}
+
 function compare(
   label: string,
   what: string,
@@ -109,16 +140,12 @@ const iconPad = need(
   /<g\b[^>]*\bid="pad"[^>]*\btransform="([^"]+)"/,
   "icon.svg #pad transform",
 );
-const iconMarkTransform = need(
-  icon,
-  /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/,
-  "icon.svg #mark transform",
-);
+const iconMarkTransform = frameTransform(icon, "icon.svg");
 
 // ---- Canonical geometry: apps/web/src/components/frog-mark.tsx ----
 const markMarkRoot = need(
   inAppSrc,
-  /<g transform="translate\(0,395\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  /<g transform="translate\(0,[\d.]+\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
   "frog-mark.tsx mark group",
 );
 const markLayersCanon = markLayers(markMarkRoot, "frog-mark.tsx");
@@ -127,6 +154,7 @@ const markViewBox = need(
   /viewBox="([^"]+)"/,
   "frog-mark.tsx viewBox",
 );
+const markMarkTransform = frameTransform(inAppSrc, "frog-mark.tsx");
 
 // ---- The two canonical sources must agree with each other ----
 // They legitimately differ in fill (the tile's fixed palette vs the app's
@@ -174,18 +202,19 @@ compare(
 compare(
   "app-tile sample",
   "mark transform",
-  need(
-    tileBlock,
-    /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/,
-    "app-tile mark transform",
-  ),
+  frameTransform(tileBlock, "app-tile sample"),
   iconMarkTransform,
   "icon.svg #mark",
 );
 
 // ---- Copy 2: brand spec's 16px sample ----
-// Same markup as the tile sample (filled vector shapes don't need a separate
-// small-size treatment), just rendered smaller via the .logo-16 CSS class.
+// Same geometry as the tile sample (filled vector shapes don't need a separate
+// small-size treatment), just rendered smaller via the .logo-16 CSS class,
+// with the two fine-detail paths hard-hidden inline: icon.svg's own
+// `@media (max-width: 48px)` rule can't work inside an inline SVG on an HTML
+// page (it resolves against the document viewport), so the sample hardcodes
+// the state a real 16px favicon renders. Only `d` is compared, so that
+// inline style is not drift.
 const smallBlock = need(
   brand,
   /(<svg class="logo-16"[\s\S]*?<\/svg>)/,
@@ -222,11 +251,7 @@ compare(
 compare(
   "16px sample",
   "mark transform",
-  need(
-    smallBlock,
-    /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/,
-    "16px sample mark transform",
-  ),
+  frameTransform(smallBlock, "16px sample"),
   iconMarkTransform,
   "icon.svg #mark",
 );
@@ -239,7 +264,7 @@ const inAppBlock = need(
 );
 const inAppMarkRoot = need(
   inAppBlock,
-  /<g transform="translate\(0,395\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  /<g transform="translate\(0,[\d.]+\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
   "in-app-mark sample mark group",
 );
 compareLayers(
@@ -254,6 +279,13 @@ compare(
   markViewBox,
   "frog-mark.tsx",
 );
+compare(
+  "in-app-mark sample",
+  "mark transform",
+  frameTransform(inAppBlock, "in-app-mark sample"),
+  markMarkTransform,
+  "frog-mark.tsx",
+);
 
 // ---- Copy 4: brand spec's icon-row copy ----
 const rowBlock = need(
@@ -263,7 +295,7 @@ const rowBlock = need(
 );
 const rowMarkRoot = need(
   rowBlock,
-  /<g transform="translate\(0,395\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
+  /<g transform="translate\(0,[\d.]+\) scale\(0\.1,-0\.1\)">((?:\s*<g fill="[^"]+">[\s\S]*?<\/g>\s*){3})\s*<\/g>/,
   "icon-row copy mark group",
 );
 compareLayers(
@@ -276,6 +308,13 @@ compare(
   "viewBox",
   viewBox(rowBlock, "icon-row viewBox"),
   markViewBox,
+  "frog-mark.tsx",
+);
+compare(
+  "icon-row copy",
+  "mark transform",
+  frameTransform(rowBlock, "icon-row copy"),
+  markMarkTransform,
   "frog-mark.tsx",
 );
 
