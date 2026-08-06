@@ -92,6 +92,29 @@ function viewBox(src: string, label: string): string {
   return need(src, /<svg\b[^>]*\bviewBox="([^"]+)"/, label);
 }
 
+// The mark's framing <g>: flips potrace's y-up output and scales it back into
+// the viewBox. Every copy must carry exactly one. The mark-root regexes below
+// capture the 3 fill layers rather than anchoring on this wrapper, so a copy
+// that opens the same framing <g> twice still matches — the engine simply
+// backtracks to the inner one — and its geometry still compares equal, while
+// the doubled transform renders the mark at ~1% scale in the corner of its
+// box. Counting the wrapper is what catches that.
+const FRAME_TRANSFORM =
+  /<g\b[^>]*\btransform="(translate\(0,[\d.]+\) scale\(0\.1,-0\.1\))"[^>]*>/g;
+
+function frameTransform(block: string, label: string): string {
+  const found = [...block.matchAll(FRAME_TRANSFORM)].map((m) => m[1]);
+  if (found.length === 0)
+    throw new Error(
+      `could not find ${label} mark framing transform — check script is broken`,
+    );
+  if (found.length > 1)
+    errors.push(
+      `${label}: ${found.length} nested mark framing <g transform> wrappers, expected 1 — the transform applies once per wrapper, so the mark renders at ~1% scale`,
+    );
+  return found[0];
+}
+
 function compare(
   label: string,
   what: string,
@@ -117,11 +140,7 @@ const iconPad = need(
   /<g\b[^>]*\bid="pad"[^>]*\btransform="([^"]+)"/,
   "icon.svg #pad transform",
 );
-const iconMarkTransform = need(
-  icon,
-  /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/,
-  "icon.svg #mark transform",
-);
+const iconMarkTransform = frameTransform(icon, "icon.svg");
 
 // ---- Canonical geometry: apps/web/src/components/frog-mark.tsx ----
 const markMarkRoot = need(
@@ -135,6 +154,7 @@ const markViewBox = need(
   /viewBox="([^"]+)"/,
   "frog-mark.tsx viewBox",
 );
+const markMarkTransform = frameTransform(inAppSrc, "frog-mark.tsx");
 
 // ---- The two canonical sources must agree with each other ----
 // They legitimately differ in fill (the tile's fixed palette vs the app's
@@ -182,11 +202,7 @@ compare(
 compare(
   "app-tile sample",
   "mark transform",
-  need(
-    tileBlock,
-    /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/,
-    "app-tile mark transform",
-  ),
+  frameTransform(tileBlock, "app-tile sample"),
   iconMarkTransform,
   "icon.svg #mark",
 );
@@ -230,11 +246,7 @@ compare(
 compare(
   "16px sample",
   "mark transform",
-  need(
-    smallBlock,
-    /<g\b[^>]*\bid="mark"[^>]*\btransform="([^"]+)"/,
-    "16px sample mark transform",
-  ),
+  frameTransform(smallBlock, "16px sample"),
   iconMarkTransform,
   "icon.svg #mark",
 );
@@ -262,6 +274,13 @@ compare(
   markViewBox,
   "frog-mark.tsx",
 );
+compare(
+  "in-app-mark sample",
+  "mark transform",
+  frameTransform(inAppBlock, "in-app-mark sample"),
+  markMarkTransform,
+  "frog-mark.tsx",
+);
 
 // ---- Copy 4: brand spec's icon-row copy ----
 const rowBlock = need(
@@ -284,6 +303,13 @@ compare(
   "viewBox",
   viewBox(rowBlock, "icon-row viewBox"),
   markViewBox,
+  "frog-mark.tsx",
+);
+compare(
+  "icon-row copy",
+  "mark transform",
+  frameTransform(rowBlock, "icon-row copy"),
+  markMarkTransform,
   "frog-mark.tsx",
 );
 
