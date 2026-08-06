@@ -9,11 +9,13 @@
 // the rest a sub-pixel edge halo, not shape error — see docs/DECISIONS.md
 // 2026-08-06).
 //
-// Source is docs/brand/frog-source-1024.png — the same reference art main's
-// own hand-fitted icon.svg trace was measured against, already flattened to
-// its 3 colors (see that file's header and docs/DECISIONS.md), which also
-// makes it a cleaner input for the classify-by-color step below than a raw
-// JPEG would be.
+// Source is docs/brand/assets/frog-logo-reference.jpg — the original supplied
+// reference art (see docs/DECISIONS.md 2026-08-06). docs/brand/frog-source-1024.png
+// (main's own prior flattened reference, used by a hand-fitted trace this
+// pipeline replaces) loses the eye-highlight color in its flatten — it gets
+// merged into the near-white background — so it can't reproduce the glints
+// this mark has; the original supplied art keeps them as a distinguishable
+// near-white shade, which is what the classify step below needs.
 //
 // Requires the `potrace` CLI on PATH (`brew install potrace`) — not an npm
 // dependency, so this is a manual/occasional re-run, not part of the regular
@@ -32,14 +34,17 @@ if (spawnSync("potrace", ["--version"]).status !== 0) {
   process.exit(1);
 }
 
-const SOURCE = new URL("../docs/brand/frog-source-1024.png", import.meta.url);
+const SOURCE = new URL(
+  "../docs/brand/assets/frog-logo-reference.jpg",
+  import.meta.url,
+);
 const OUT = new URL("../docs/brand/assets/frog-mark.svg", import.meta.url);
 
 const browser = await chromium.launch();
 const page = await browser.newPage();
 await page.setContent("<!doctype html><html><body></body></html>");
 
-const sourceDataUrl = `data:image/png;base64,${readFileSync(SOURCE).toString("base64")}`;
+const sourceDataUrl = `data:image/jpeg;base64,${readFileSync(SOURCE).toString("base64")}`;
 
 // In-page: key the white/near-white background to alpha, trim to content
 // bbox, classify every opaque pixel into one of 3 flat-color buckets,
@@ -187,7 +192,7 @@ for (const name of ["dark", "green", "white"] as const) {
   const pbmPath = join(workDir, `${name}.pbm`);
   writeFileSync(pbmPath, Buffer.from(result.pbm[name]!, "base64"));
   const svgPath = join(workDir, `${name}.svg`);
-  const turdsize = name === "white" ? "2" : "6";
+  const turdsize = name === "white" ? "8" : "6";
   const res = spawnSync("potrace", [
     pbmPath,
     "-s",
