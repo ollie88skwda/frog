@@ -55,9 +55,11 @@ const markInner = layers
   .map(([, fill, body]) => `<g fill="${fill}">${body.trim()}</g>`)
   .join("\n    ");
 // The mark's own <g transform> bakes potrace's y-flip convention; carry it
-// through unchanged so <g id="mark"> below composes with the pad/scale below.
-const markTransform = mark.match(/<g (transform="[^"]*")/)?.[1];
-if (!markTransform) throw new Error("frog-mark.svg missing its <g transform>");
+// through (reformatted compactly — potrace pads every number to 6 decimals)
+// so <g id="mark"> below composes with the pad/scale below.
+const rawMarkTransform = mark.match(/<g transform="([^"]*)"/)?.[1];
+if (!rawMarkTransform) throw new Error("frog-mark.svg missing its <g transform>");
+const markTransform = `transform="${rawMarkTransform.replace(/-?\d*\.?\d+/g, (n) => String(Number(n)))}"`;
 
 function frame(side: number, tx: number, ty: number, scale: number): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${side} ${side}">
