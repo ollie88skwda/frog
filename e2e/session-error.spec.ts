@@ -49,3 +49,38 @@ test("a failed session-exercises load shows an error, never a blank screen", asy
   await expect(page.getByTestId("session-error")).not.toBeVisible();
   await expect(page.getByTestId("end-session-btn")).toBeVisible();
 });
+
+test("a failed exercise load in the in-session picker shows an error, not an empty library", async ({
+  page,
+}) => {
+  await page.route("**/rest/v1/exercises*", async (route) => {
+    if (route.request().method() !== "GET") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 400,
+      contentType: "application/json",
+      body: JSON.stringify({
+        code: "42703",
+        message: "column exercises.mechanic does not exist",
+      }),
+    });
+  });
+
+  // Full load with the route already installed, so nothing is cached.
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+
+  // The picker auto-opens on a session with no blocks — this is the first
+  // thing the user sees under exactly the drift being guarded against.
+  await expect(page.getByTestId("picker-error")).toBeVisible();
+  await expect(page.getByText("No exercises yet")).not.toBeVisible();
+  await expect(
+    page.getByText(/couldn't reach the (server|pond)/i),
+  ).toBeVisible();
+
+  await page.unroute("**/rest/v1/exercises*");
+  await page.getByTestId("picker-retry").click();
+  await expect(page.getByTestId("picker-error")).not.toBeVisible();
+});

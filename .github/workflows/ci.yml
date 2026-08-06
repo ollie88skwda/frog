@@ -65,7 +65,13 @@ jobs:
   # Supabase has no narrower-scoped token, so that one could also `db
   # push`). Passes with a loud ::warning:: (not a failure) until
   # SUPABASE_DRIFT_DB_URL is added as a repo secret.
+  #
+  # Not run on pull_request: a PR that adds a migration legitimately can't
+  # have it on hosted yet (that only happens on merge + `supabase db push`),
+  # so it would fail by construction on exactly the PRs that touch
+  # migrations. Drift is only real once the migration is on main.
   migration-drift:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

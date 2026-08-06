@@ -915,6 +915,21 @@ export default function SessionScreen() {
   function retryFailedSets() {
     for (const v of Object.values(failedSets)) logSet.mutate(v);
   }
+  // A queued payload must never outlive the row it describes: editing or
+  // deleting a set that never persisted has to reach its retry entry too,
+  // or Retry writes stale values / resurrects a deleted row.
+  function dropFailedSets(
+    match: (tempId: string, v: (typeof failedSets)[string]) => boolean,
+  ) {
+    setFailedSets((prev) => {
+      const next = Object.fromEntries(
+        Object.entries(prev).filter(([id, v]) => !match(id, v)),
+      );
+      return Object.keys(next).length === Object.keys(prev).length
+        ? prev
+        : next;
+    });
+  }
 
   useHotkeys(
     useMemo(
@@ -1185,6 +1200,17 @@ export default function SessionScreen() {
           : b,
       ),
     );
+    // A row whose write never landed has no server row for updateSet to match
+    // (0 rows, no error) — its queued payload is the only thing a retry will
+    // write, so the edit has to land there too or Retry rewrites stale values.
+    setFailedSets((prev) => {
+      const failed = prev[setId];
+      if (!failed) return prev;
+      return {
+        ...prev,
+        [setId]: { ...failed, set: { ...failed.set, ...patch } },
+      };
+    });
     // setId is the row's stable (optimistic) id — translate to the real server
     // id if logSet has resolved (else the optimistic id already equals it).
     void repo.updateSet(idMap[setId] ?? setId, patch);
@@ -1198,12 +1224,14 @@ export default function SessionScreen() {
           : b,
       ),
     );
+    dropFailedSets((id) => id === setId);
     void repo.deleteSet(idMap[setId] ?? setId);
   }
 
   function removeBlock(seId: string) {
     setBlocks((prev) => (prev ?? []).filter((b) => b.seId !== seId));
     dismissRest(seId);
+    dropFailedSets((_id, v) => v.seId === seId);
     void repo.deleteSessionExercise(seId);
   }
 
@@ -1440,7 +1468,12 @@ export default function SessionScreen() {
       <PrBanner data={prBanner} onDismiss={() => setPrBanner(null)} />
       {failedSetCount > 0 && (
         <div
-          className="pointer-events-none fixed inset-x-0 top-28 z-30 flex justify-center px-4"
+          className={cn(
+            "pointer-events-none fixed inset-x-0 z-30 flex justify-center px-4",
+            // PrBanner owns top-28 (and auto-dismisses after 4s); sit below it
+            // while both are up rather than painting over it.
+            prBanner ? "top-44" : "top-28",
+          )}
           role="status"
           data-testid="set-sync-error"
         >
@@ -1894,7 +1927,12 @@ function ExercisePicker({
   onOpenChange: (open: boolean) => void;
   onPick: (id: string, name: string) => void;
 }) {
-  const { data: exercises = [], isLoading } = useExercises();
+  const { data: exerciseData, isLoading, isError, refetch } = useExercises();
+  // Presence, not query status (same rule as library.tsx): a failed background
+  // refetch on a list we already have is not an error state to show.
+  const exercises = exerciseData ?? [];
+  const exercisesLoaded = exerciseData !== undefined;
+  const { t } = useVoice();
   const { data: machines = [] } = useMachines();
   // A just-created exercise is in the list before its INSERT lands; adding it
   // to the session would violate the session_exercises FK. Leaving the
@@ -1957,6 +1995,26 @@ function ExercisePicker({
           />
           {isLoading ? (
             <p className="px-4 py-6 text-center text-xs text-faint">Loading…</p>
+          ) : isError && !exercisesLoaded ? (
+            <div
+              className="flex flex-col items-center gap-2 px-4 py-6 text-center"
+              data-testid="picker-error"
+            >
+              <p className="text-xs text-neg">
+                {t(
+                  "Couldn't reach the server. Your exercises may still be there.",
+                  "The frog couldn't reach the pond. Your exercises may still be there.",
+                )}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void refetch()}
+                data-testid="picker-retry"
+              >
+                Retry
+              </Button>
+            </div>
           ) : exercises.length === 0 ? (
             <p className="px-4 py-6 text-center text-xs text-faint">
               No exercises yet — add one in Library.

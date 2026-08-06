@@ -20,11 +20,20 @@
 //   GRANT USAGE ON SCHEMA supabase_migrations TO drift_check_ro;
 //   GRANT SELECT ON supabase_migrations.schema_migrations TO drift_check_ro;
 //
-// Run that against the hosted project (SQL editor or `psql`), then set
-// SUPABASE_DRIFT_DB_URL to
-// `postgresql://drift_check_ro:<password>@<host>:<port>/postgres` (host/port
-// from the hosted project's connection info) as a GitHub Actions repo
-// secret. Deliberately NOT SUPABASE_ACCESS_TOKEN: Supabase has no
+// Run that against the hosted project (SQL editor or `psql`), then add
+// SUPABASE_DRIFT_DB_URL as a GitHub Actions repo secret. It must be the
+// **Supavisor pooler** URL, not the direct one: Supabase's direct connection
+// (`db.<project_ref>.supabase.co:5432`) is IPv6-only unless the project buys
+// the IPv4 add-on, and GitHub-hosted runners are IPv4-only — a direct URL
+// simply can't be reached from this job. The pooler's username carries the
+// project ref:
+//
+//   postgresql://drift_check_ro.<project_ref>:<password>@<pooler-host>:5432/postgres
+//
+// (session mode, port 5432 — take the exact pooler host, e.g.
+// `aws-0-<region>.pooler.supabase.com`, from the project's Connect dialog and
+// swap in the role above for `postgres`. The direct URL works only if the
+// project has the IPv4 add-on.) Deliberately NOT SUPABASE_ACCESS_TOKEN: Supabase has no
 // narrower-scoped personal access token, so that one can do anything the
 // account can do (including `db push`) even though this script would never
 // call it — captain's call, see docs/DECISIONS.md.
@@ -60,7 +69,10 @@ try {
   );
 } catch (e) {
   console.error(
-    "Could not reach the target database to check migration drift.",
+    "Could not reach the target database to check migration drift. " +
+      "SUPABASE_DRIFT_DB_URL must be the Supavisor pooler URL (username " +
+      "`<role>.<project_ref>`) — the direct `db.<project_ref>.supabase.co` " +
+      "host is IPv6-only and unreachable from GitHub-hosted runners.",
   );
   console.error(e instanceof Error ? e.message : String(e));
   process.exit(1);
