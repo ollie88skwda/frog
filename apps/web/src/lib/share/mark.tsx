@@ -8,16 +8,17 @@ import { FrogMark } from "@/components/frog-mark";
 // tracks the copies that do exist). Mounted into a detached host via the
 // app's own react-dom/client (already loaded; react-dom/server would double
 // the bundle for this one icon — ~61 kB gz measured) and read back with the
-// native XMLSerializer. FrogMark's body is `var(--accent)`, set via the
-// `--accent` custom property so the serialized SVG (no access to the page's
-// live CSS once standalone) resolves the requested palette. Moved verbatim
-// from the pre-redesign share-card.tsx.
+// native XMLSerializer. Moved verbatim from the pre-redesign share-card.tsx.
 //
-// `outline` is now inert for FrogMark itself — its outline/eyes/nostrils/
-// mouth layer is a fixed reference navy (`docs/DECISIONS.md`, the in-app
-// dark-theme-outline decision), not `currentColor` — but it's kept as a
-// cache-key input and still set as the host's inline `color` in case a
-// future FrogMark variant reads it again. **Not re-verified against the
+// `outline` and `accent` are now BOTH inert for FrogMark itself — every
+// fill layer (outline/eyes/nostrils/mouth, body, glints) is a fixed hex
+// reproducing apps/web/public/icon.svg (`docs/DECISIONS.md`, the in-app
+// dark-theme-outline decision, extended to the body/glints so the in-app
+// mark stops following `--accent`). Both params are kept as cache-key
+// inputs and still set on the host (`color` / `--accent`) in case a future
+// FrogMark variant reads them again — left as-is rather than ripped out,
+// since removing them would mean re-plumbing every call site with no
+// behavior change. **Not re-verified against the
 // Photo ground specifically**: that ground previously forced the outline to
 // white for guaranteed contrast against an arbitrary, un-scrimmed photo (the
 // scrim `paint.ts` draws only darkens the card's bottom 55%, not the header

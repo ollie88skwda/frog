@@ -6,22 +6,14 @@ import { cn } from "@/lib/utils";
 // a color-separated potrace trace — see scripts/vectorize-frog-mark.ts), just
 // without the ground square and recolored for in-app chrome instead of the
 // tile's fixed black-on-green: outline/eyes/nostrils/mouth -> a fixed
-// reference navy (#131426), body -> var(--accent), the two eye-glint dots ->
-// a fixed light sage (#ECEEED). Only the body follows the theme; the outline
-// and glints are fixed hex, same as the tile.
-//
-// The outline used to be currentColor (resolving to --ink, so it followed
-// the theme) — captain wants the mark to look exactly like the reference in
-// both themes, and a rendered A/B/C/D comparison at 20/32/64px on the real
-// dark-theme background (docs/DECISIONS.md, this file's 2026-08-07 entry)
-// showed the fixed-navy outline reads perfectly fine there: the green
-// var(--accent) body still separates cleanly from the near-black surface, so
-// only the outline itself needed to stop following the theme, not the whole
-// mark. currentColor's dark-mode failure was worse than "the outline is
-// light" — the pupils/nostrils/mouth share that layer, so they went light
-// too, and a near-white glint sitting on a near-white pupil barely read as
-// an eye. No theme branch, no background chip (rejected: an unwanted new
-// surface element next to a plain wordmark).
+// reference navy (#131426), body -> the icon's fixed green (#6ab347), the
+// two eye-glint dots -> white (#ffffff). None of these follow the theme —
+// the outline stopped following --ink in the 2026-08-07 decision (see
+// docs/DECISIONS.md), and the body/glints follow suit here so the in-app
+// mark reproduces apps/web/public/icon.svg exactly instead of picking up
+// --accent (Radix grass, a visibly different green). No theme branch, no
+// background chip (rejected: an unwanted new surface element next to a
+// plain wordmark).
 //
 // Unlike the mark this replaced, these are filled potrace shapes, not
 // stroke-drawn ones, so there is no thin-stroke-goes-sub-pixel problem at
@@ -52,12 +44,12 @@ export function FrogMark({
           <path d="M10321 8677 c-118 -45 -183 -176 -147 -299 47 -161 200 -231 346 -156 180 92 197 316 33 430 -55 37 -166 49 -232 25z" />
           <path d="M10795 6720 c-286 -4 -650 -13 -810 -19 -159 -6 -418 -16 -575 -21 -581 -21 -789 -30 -930 -40 -80 -5 -224 -14 -320 -20 -335 -20 -419 -38 -497 -105 -106 -91 -120 -234 -34 -353 71 -97 166 -121 411 -103 91 6 271 16 400 21 129 6 397 17 595 25 401 16 1117 39 1805 56 639 16 1843 1 2600 -31 882 -39 813 -42 905 42 131 119 142 267 30 387 -91 98 -100 99 -885 130 -805 32 -1798 44 -2695 31z" />
         </g>
-        <g fill="var(--accent)">
+        <g fill="#6ab347">
           <path d="M8175 10480 c-511 -52 -949 -353 -1203 -830 -122 -228 -165 -436 -158 -759 6 -275 -16 -362 -121 -473 -73 -76 -113 -104 -270 -185 -133 -69 -396 -241 -569 -374 -32 -25 -97 -74 -143 -110 -232 -176 -592 -556 -853 -900 -158 -207 -493 -777 -566 -964 -11 -27 -45 -112 -76 -189 -71 -174 -199 -601 -226 -755 -4 -25 -24 -125 -43 -221 -39 -196 -51 -284 -68 -515 -25 -335 17 -854 101 -1260 10 -49 24 -119 30 -155 42 -229 148 -612 224 -805 163 -414 231 -570 260 -594 12 -10 140 -13 623 -12 578 2 609 3 627 20 17 18 18 47 20 598 l2 578 36 77 c77 163 184 233 353 233 183 -1 297 -84 366 -266 18 -47 20 -89 25 -627 5 -530 7 -578 23 -595 16 -17 145 -18 2870 -17 1848 0 2859 4 2871 10 32 17 33 40 32 595 0 596 3 629 59 717 41 64 117 131 187 165 83 41 221 41 304 0 85 -42 151 -107 193 -189 l35 -71 1 -511 c1 -590 5 -681 34 -702 16 -12 135 -14 741 -14 833 0 740 -17 806 150 183 465 347 963 413 1255 12 55 37 154 54 220 38 140 113 511 136 670 8 61 18 117 20 125 12 42 51 368 79 665 39 409 45 1299 12 1655 -25 272 -84 714 -132 990 -16 91 -21 118 -59 281 -13 58 -36 162 -50 230 -13 68 -43 185 -65 259 -81 276 -79 364 14 545 205 396 242 756 119 1150 -110 352 -457 706 -802 819 -341 111 -527 122 -841 50 -308 -70 -650 -295 -809 -532 -104 -154 -209 -238 -337 -268 -113 -26 -165 -17 -306 54 -603 303 -1271 307 -1858 13 -166 -83 -207 -95 -299 -87 -138 11 -233 75 -422 284 -204 226 -343 330 -594 444 -239 108 -532 155 -800 128z m357 -666 c501 -129 760 -707 529 -1178 -206 -418 -708 -595 -1111 -391 -234 119 -366 270 -451 520 -40 116 -35 344 10 480 61 185 134 316 162 288 18 -18 48 -2 59 32 29 86 174 185 274 185 39 0 47 4 58 27 27 57 307 80 470 37z m5593 -9 c226 -66 420 -246 505 -467 95 -246 95 -431 -1 -670 -92 -229 -298 -406 -557 -479 -132 -37 -361 -24 -503 28 -263 97 -431 283 -513 568 -34 117 -37 300 -6 420 33 131 133 314 165 301 16 -6 37 18 54 60 30 76 202 194 283 194 42 0 50 3 60 25 28 62 332 74 513 20z m-2190 -1119 c186 -78 215 -341 48 -446 -112 -71 -225 -60 -318 33 -81 82 -100 155 -65 249 50 133 215 214 335 164z m-1382 -34 c164 -114 147 -338 -33 -430 -258 -132 -493 223 -271 409 84 71 218 80 304 21z m2127 -1937 c357 -7 1243 -41 1428 -55 149 -12 202 -32 267 -101 112 -120 101 -268 -30 -387 -92 -84 -23 -81 -905 -42 -757 32 -1961 47 -2600 31 -688 -17 -1404 -40 -1805 -56 -198 -8 -466 -19 -595 -25 -129 -5 -309 -15 -400 -21 -245 -18 -340 6 -411 103 -86 119 -72 262 34 353 78 67 162 85 497 105 96 6 240 15 320 20 141 10 349 19 930 40 157 5 416 15 575 21 623 25 1759 30 2695 14z" />
           <path d="M2915 4101 c-160 -64 -205 -88 -301 -160 -328 -245 -510 -705 -449 -1136 50 -357 136 -629 265 -835 29 -47 71 -114 93 -150 117 -191 307 -413 372 -435 45 -15 636 -9 668 7 26 14 22 39 -43 232 -34 98 -78 236 -100 305 -21 69 -61 198 -88 287 -28 88 -64 225 -82 305 -17 79 -37 171 -45 204 -8 33 -19 101 -25 150 -5 50 -17 140 -26 200 -36 257 -62 634 -63 901 -1 123 -3 143 -19 157 -25 22 -20 23 -157 -32z" />
           <path d="M16171 4106 c-6 -7 -18 -67 -26 -132 -16 -130 -80 -515 -119 -720 -13 -71 -31 -169 -40 -219 -16 -84 -40 -190 -118 -504 -43 -176 -237 -777 -310 -959 -85 -211 -120 -192 344 -192 428 0 390 -8 502 111 195 207 410 565 490 814 110 344 120 401 120 640 0 577 -207 925 -669 1127 -114 50 -155 58 -174 34z" />
         </g>
-        <g fill="#ECEEED">
+        <g fill="#ffffff">
           <path d="M13423 9710 c-89 -55 -153 -120 -153 -157 0 -31 16 -29 47 7 35 42 46 38 94 -27 24 -32 48 -62 56 -66 7 -4 13 -14 13 -21 0 -7 11 -23 25 -36 24 -23 24 -23 83 36 74 74 83 107 46 170 -29 49 -50 64 -88 64 -31 0 -35 25 -6 40 11 6 20 17 20 25 0 30 -56 15 -137 -35z" />
           <path d="M7887 9716 c-114 -55 -167 -126 -167 -223 0 -57 44 -127 88 -139 36 -10 40 5 9 32 -16 13 -25 29 -22 34 4 6 18 0 37 -15 16 -14 38 -25 49 -25 12 0 19 -7 19 -19 0 -23 30 -35 61 -26 16 5 18 9 8 21 -13 16 -1 30 52 59 35 19 79 72 79 95 0 29 11 50 26 50 8 0 14 7 14 15 0 8 5 15 10 15 6 0 10 7 10 15 0 8 -4 15 -10 15 -5 0 -16 16 -24 35 -14 33 -52 53 -40 20 7 -17 -4 -19 -26 -5 -10 6 -11 10 -2 10 19 0 14 25 -11 48 -33 31 -79 27 -160 -12z" />
         </g>
