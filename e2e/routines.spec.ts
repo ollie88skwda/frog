@@ -230,7 +230,7 @@ test("+ Add set inherits reps/range/RIR from the previous set, not weight or set
   await expect(page.getByTestId("routine-ex-0-set-1-type")).toHaveText("2");
 });
 
-test("a fresh set defaults its target RIR range to 1-2, and the bumped controls meet the 40px floor", async ({
+test("a fresh set defaults its target RIR range to 1-2, and the RIR/name controls meet the 40px floor", async ({
   page,
 }) => {
   const EX = `RirDefaultEx ${Date.now()}`;
@@ -255,16 +255,19 @@ test("a fresh set defaults its target RIR range to 1-2, and the bumped controls 
     .locator("..")
     .boundingBox();
   expect(nameBox?.height).toBeGreaterThanOrEqual(39);
+  // The RIR fields are the boxless `Field` primitive now (a bare <input>, no
+  // wrapper div) — its parent is the two-field flex group, sized by the
+  // input's own h-10 (40px) at this mobile viewport.
   const rirBox = await page
     .getByTestId("routine-ex-0-set-0-rirmin")
     .locator("..")
     .boundingBox();
   expect(rirBox?.height).toBeGreaterThanOrEqual(39);
-  const typeCellBox = await page
-    .getByTestId("routine-ex-0-set-0-type")
-    .boundingBox();
-  expect(typeCellBox?.height).toBeGreaterThanOrEqual(39);
-  expect(typeCellBox?.width).toBeGreaterThanOrEqual(39);
+  // The set-type cell is the same boxless marker+StatusRing treatment as the
+  // session screen (docs/DECISIONS.md 2026-08-07) — a small glyph, not a 40px
+  // box — so it's covered by visibility/click coverage elsewhere in this
+  // file (the warm-up-type test above) rather than a tap-target floor here.
+  await expect(page.getByTestId("routine-ex-0-set-0-type")).toBeVisible();
 });
 
 test("Exercise Note is a full-width row with no Rest select, and doesn't clip a long note", async ({
