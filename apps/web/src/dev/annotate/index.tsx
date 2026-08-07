@@ -58,6 +58,10 @@ const uiMark: Record<string, string> = { [UI_ATTR]: "" };
 const isOurUi = (t: EventTarget | null) =>
   t instanceof Element && t.closest(`[${UI_ATTR}]`) !== null;
 
+/** A control of this tool: chrome that must never take focus off the app. */
+const isOurButton = (t: EventTarget | null) =>
+  isOurUi(t) && t instanceof Element && t.closest("button") !== null;
+
 const panelBase: React.CSSProperties = {
   position: "fixed",
   left: "max(8px, env(safe-area-inset-left))",
@@ -191,19 +195,36 @@ export default function AnnotateOverlay() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [setMode]);
 
-  /* Focus moves the overlay causes are invisible to the app. Entering the mode
-   * blurs whatever was focused, tapping the floating bar moves focus onto it,
-   * and the composer takes focus outright — each of which the app reads as the
-   * user leaving a field, and a session row auto-commits its set on blur.
-   * Stopping `focusout` at document capture keeps React's delegated listener,
-   * on the #root container below, from ever seeing it. */
+  /* The app never loses focus to this tool, and never learns about the focus
+   * moves the tool makes for itself. Blur is load-bearing here — a session row
+   * auto-commits its set when a field is left — and the overlay touches focus
+   * constantly: entering the mode blurs the active element, the composer takes
+   * it outright, and every tap on the chrome would take it too.
+   *
+   * Two listeners, both alive whether the mode is on or off, because the
+   * floating toggle is tappable with the mode still off:
+   *  - Pointer focus is refused at the source. Chrome focuses a <button> on
+   *    click, WebKit and Gecko do not — there the field simply loses focus to
+   *    the document with a null `relatedTarget`, which no after-the-fact guard
+   *    can tell apart from the captain tapping the page. Text fields are not
+   *    included, so the composer still takes the caret.
+   *  - What focus moves remain (the mode's own blur, the composer, a Tab into
+   *    the chrome) are stopped at document capture, before React's delegated
+   *    listener on the #root container below can see them. */
   useEffect(() => {
+    function holdFocus(e: MouseEvent) {
+      if (isOurButton(e.target)) e.preventDefault();
+    }
     function guardFocus(e: FocusEvent) {
       if (isOurUi(e.target)) return;
       if (onRef.current || isOurUi(e.relatedTarget)) e.stopPropagation();
     }
+    document.addEventListener("mousedown", holdFocus, true);
     document.addEventListener("focusout", guardFocus, true);
-    return () => document.removeEventListener("focusout", guardFocus, true);
+    return () => {
+      document.removeEventListener("mousedown", holdFocus, true);
+      document.removeEventListener("focusout", guardFocus, true);
+    };
   }, []);
 
   /* Crosshair + no text selection while picking. */

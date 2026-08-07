@@ -24,10 +24,21 @@ spec drives it). Off by default, every load.
   of app controls like the finish sheet's Discard); it expands as soon as you
   start annotating or a note exists to review.
 
-While the mode is on, pointer and key events are intercepted at the document
-level, so clicking a button annotates it instead of firing it, and the app's
-single-key hotkeys (`s`/`l`/`h`/`f`) stay quiet. The page still scrolls. Turning
-the mode off restores everything — no listeners remain.
+While the mode is on, pointer, key and `focusout` events are intercepted at the
+document level, so clicking a button annotates it instead of firing it, and the
+app's single-key hotkeys (`s`/`l`/`h`/`f`) stay quiet. The page still scrolls.
+Turning the mode off restores everything — no listeners remain except the focus
+guard below.
+
+Focus is the one interception that outlives the mode, and the one to look at if
+you are ever debugging a `onBlur` that didn't fire. Blur is load-bearing in this
+app — a session row auto-commits its set when you leave a field, and
+`measures`/`conditions`/`exercise-editor`/`machines` all save on blur — but the
+overlay moves focus itself (entering the mode blurs the active element, the
+composer takes focus), so the app must never see a focus change the tool caused.
+The overlay's own buttons also refuse pointer focus for the same reason, mode on
+or off: on WebKit and Gecko a `<button>` isn't focused by a click, so tapping the
+floating toggle would otherwise blur the field you were typing in.
 
 Point at an element (hover on desktop, tap on a phone) to outline it and see a
 label; click/tap to open the composer. Write the note, **Add note** (or
