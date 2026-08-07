@@ -205,7 +205,7 @@ export default function AnnotateOverlay() {
    * constantly: entering the mode blurs the active element, the composer takes
    * it outright, and every tap on the chrome would take it too.
    *
-   * Two listeners, both alive whether the mode is on or off, because the
+   * Three listeners, all alive whether the mode is on or off, because the
    * floating toggle is tappable with the mode still off:
    *  - Pointer focus is refused at the source, for every pixel of the chrome
    *    that is not text entry — not just its buttons. A tap on panel padding,
@@ -216,22 +216,34 @@ export default function AnnotateOverlay() {
    *    half-covered either way.) The cost, taken deliberately: a note's text in
    *    the list can no longer be drag-selected — Copy all is the way out, and
    *    Edit still gives a real textarea with a caret and selection.
-   *  - What focus moves remain (the mode's own blur, the composer, a Tab into
-   *    the chrome) are stopped at document capture, before React's delegated
-   *    listener on the #root container below can see them. */
+   *  - Focus *leaving* the app for whatever moves remain (the mode's own blur,
+   *    the composer, a Tab into the chrome) is stopped at document capture,
+   *    before React's delegated listener on the #root container below can see
+   *    it.
+   *  - Focus *arriving* in the chrome is stopped there too, and that is what
+   *    lets the composer be typed into over a modal sheet. Radix's FocusScope
+   *    trap (every dialog in the app is modal) listens for `focusin` on
+   *    document and pulls focus back the instant it lands outside the dialog —
+   *    which the overlay always is, portalled to <body>. Capture on the same
+   *    node runs first, so the trap never learns the tool took focus. */
   useEffect(() => {
     function holdFocus(e: MouseEvent) {
       if (isOurUi(e.target) && !isTextEntry(e.target)) e.preventDefault();
     }
-    function guardFocus(e: FocusEvent) {
+    function guardFocusOut(e: FocusEvent) {
       if (isOurUi(e.target)) return;
       if (onRef.current || isOurUi(e.relatedTarget)) e.stopPropagation();
     }
+    function guardFocusIn(e: FocusEvent) {
+      if (isOurUi(e.target)) e.stopPropagation();
+    }
     document.addEventListener("mousedown", holdFocus, true);
-    document.addEventListener("focusout", guardFocus, true);
+    document.addEventListener("focusout", guardFocusOut, true);
+    document.addEventListener("focusin", guardFocusIn, true);
     return () => {
       document.removeEventListener("mousedown", holdFocus, true);
-      document.removeEventListener("focusout", guardFocus, true);
+      document.removeEventListener("focusout", guardFocusOut, true);
+      document.removeEventListener("focusin", guardFocusIn, true);
     };
   }, []);
 

@@ -24,7 +24,7 @@ spec drives it). Off by default, every load.
   of app controls like the finish sheet's Discard); it expands as soon as you
   start annotating or a note exists to review.
 
-While the mode is on, pointer, key and `focusout` events are intercepted at the
+While the mode is on, pointer, key and focus events are intercepted at the
 document level, so clicking a button annotates it instead of firing it, and the
 app's single-key hotkeys (`s`/`l`/`h`/`f`) stay quiet. The page still scrolls.
 Turning the mode off restores everything — no listeners remain except the focus
@@ -41,6 +41,11 @@ or off: tapping the floating toggle, or any part of the notes panel, would
 otherwise blur the field you were typing in. Everything but text entry is
 covered, so one side effect is that note text in the list can't be
 drag-selected — use **Copy all**, or **Edit** for a real textarea.
+
+Focus arriving *in* the overlay is hidden from the app for the opposite reason:
+every dialog in the app is modal, and Radix's focus trap pulls focus back the
+moment it lands outside the dialog. Without that half, the composer would open
+over a sheet with no caret and swallow everything you typed.
 
 Point at an element (hover on desktop, tap on a phone) to outline it and see a
 label; click/tap to open the composer. Write the note, **Add note** (or
