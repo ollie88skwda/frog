@@ -358,6 +358,51 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     );
   });
 
+  it("machine catalog: search matches brand/model/alias and browse filters by category", async () => {
+    // Multi-term AND over brand+model, same interaction the old static scan
+    // had.
+    const byTerms = await repoA.searchMachineCatalog("matrix diverging seated");
+    expect(byTerms.map((r) => r.model)).toContain("Ultra Diverging Seated Row");
+
+    // Alias-only hit: Freemotion's "Total Quad / Hip" carries the model code
+    // "G628" in aliases (not in brand/model) — searchable via the jsonb array.
+    const byAlias = await repoA.searchMachineCatalog("g628");
+    expect(
+      byAlias.some(
+        (r) => r.brand === "Freemotion" && r.model === "Total Quad / Hip",
+      ),
+    ).toBe(true);
+
+    // Empty query = browse: category filter applies, limit caps server-side.
+    const chest = await repoA.searchMachineCatalog("", {
+      category: "chest-press",
+      limit: 5,
+    });
+    expect(chest).toHaveLength(5);
+    expect(chest.every((r) => r.category === "chest-press")).toBe(true);
+
+    // No match → empty list, not an error.
+    expect(await repoA.searchMachineCatalog("zzzz-no-such-machine")).toEqual(
+      [],
+    );
+
+    // Narrow entry shape only — no spec/mechanism fields on the picker path.
+    expect(Object.keys(byTerms[0]).sort()).toEqual([
+      "brand",
+      "category",
+      "id",
+      "model",
+    ]);
+  });
+
+  it("machine catalog: categories are distinct and sorted", async () => {
+    const cats = await repoA.listMachineCategories();
+    expect(cats.length).toBeGreaterThan(20);
+    expect(cats[0]).toBe("ab-crunch");
+    expect([...cats].sort()).toEqual(cats);
+    expect(new Set(cats).size).toBe(cats.length);
+  });
+
   it("machine photos: owner can upload, others cannot read", async () => {
     const machine = await repoA.createMachine({ name: "Photo Machine" });
     const pixel = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], {

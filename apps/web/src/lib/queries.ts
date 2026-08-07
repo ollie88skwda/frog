@@ -324,6 +324,35 @@ export function useMachines() {
   });
 }
 
+// Server-side catalog search (machine_catalog). Debounce upstream — the query
+// key holds the trimmed text, so a keystroke that doesn't change the trimmed
+// value re-renders without refetching. Empty query + no category = disabled
+// (the picker shows browse chips instead of a request).
+export function useMachineCatalogSearch(
+  query: string,
+  category: string | null,
+) {
+  const repo = useRepo();
+  const q = query.trim();
+  return useQuery({
+    queryKey: ["machine-catalog-search", q, category],
+    queryFn: () => repo.searchMachineCatalog(q, { category, limit: 20 }),
+    enabled: q !== "" || category != null,
+    staleTime: 60_000,
+  });
+}
+
+// Catalog categories for the browse view. DB-derived so a later seed batch
+// that introduces a new category shows up without a code change.
+export function useMachineCategories() {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["machine-categories"],
+    queryFn: () => repo.listMachineCategories(),
+    staleTime: Infinity,
+  });
+}
+
 export function useCreateMachine() {
   const repo = useRepo();
   const qc = useQueryClient();

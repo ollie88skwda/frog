@@ -56,14 +56,17 @@ export type MachineSetting = { label: string; value: number | null };
 // distinct from `machines` (a user's owned equipment, owner-scoped, no seed
 // rows — see the comment above that table). Mirrors the `exercises` seed-row
 // pattern: ownerId null = global, readable by all, writable only by
-// migrations. v1 seeds the existing static catalog (411 rows, 16 brands as
+// migrations. v1 seeds the existing static catalog (867 rows, 16 brands as
 // of 2026-08-07 — see docs/DECISIONS.md for the stale-count correction)
-// (packages/core/src/data/machine-catalog.ts); `category` extends that
-// file's MachineCategory union (app-validated, not a DB enum, same as
-// exercises.exercise_type). No photo/image column — manufacturer photos stay
-// out on copyright grounds (docs/DECISIONS.md 2026-07-12); productUrl links
-// out instead. Not yet wired to any UI or repo query (see docs/DECISIONS.md
-// 2026-08-07) — `machines.catalog_key` still matches the static TS array.
+// (packages/core/src/data/machine-catalog.ts, which the web app no longer
+// imports — the lookup-UX search reads this table server-side); `category`
+// extends that file's MachineCategory union (app-validated, not a DB enum,
+// same as exercises.exercise_type). No photo/image column — manufacturer
+// photos stay out on copyright grounds (docs/DECISIONS.md 2026-07-12);
+// productUrl links out instead. Read by Repo.searchMachineCatalog /
+// listMachineCategories (see docs/DECISIONS.md 2026-08-07 phase 3) —
+// `machines.catalog_key` stores this table's id for rows added from the
+// catalog picker.
 export const machineCatalog = pgTable(
   "machine_catalog",
   {
