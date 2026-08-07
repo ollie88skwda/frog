@@ -46,17 +46,17 @@ moved** since batch A verified them). Runs on the scaffold pipeline
 | Nautilus | **corehandf.com** (domain moved from nautilus.com) | 96 | 95 | **65** | 19 auto-dropped as seed dupes + 11 manual (benches + seed dups) |
 | Freemotion | freemotionfitness.com | 90 | 90 | **29** | EPIC/Genesis lines are seed dupes (32); benches/racks/rigs (29) dropped |
 | Atlantis | atlantisstrength.com (equipment sitemap) | 199 | 334 | **61** | category-listing pages also extracted (155 rows) → dropped; 33 seed dupes |
-| Gym80 | **gym80.de** (gym80.com lapsed — GoDaddy parking page) | ~450 | TBD | **TBD** | |
-| **Total** | | ~930 | | **~219 + Gym80** | |
+| Gym80 | **gym80.de** (gym80.com lapsed — GoDaddy parking page) | 419 | 410 | **145** | 235 free-weight/accessory rows + benches + 10 seed dupes dropped |
+| **Total** | | ~930 | ~1,000 | **364** | |
 
 `machine_catalog` seed before this batch: 503 rows (phase-1 + batch A).
-Target after: **~720+ rows**, still 0 duplicate `(brand, model)`.
+After: **867 rows**, still 0 duplicate `(brand, model)`.
 
 ## QA actions taken (all decisions, per row)
 
 1. **Seed-overlap dedupe (auto + manual).** `qa.ts`'s bag-of-words dedupe
-   caught the exact/near-exact seed dups (19 Nautilus). Where the seed
-   names a machine differently from the current site, the overlap was
+   caught the exact/near-exact seed dups (19 Nautilus, 12 Gym80). Where the
+   seed names a machine differently from the current site, the overlap was
    judged manually and dropped:
    - **Freemotion**: the seed's whole EPIC line (`EPIC Selectorized Chest
      Press ES800`...) and the Genesis Dual Cable Cross are the same
@@ -90,6 +90,15 @@ Target after: **~720+ rows**, still 0 duplicate `(brand, model)`.
    `HumanSport Arm Crunch` → ab-crunch; Freemotion `Preacher Curl` →
    preacher-curl; Atlantis `Sissy squat` → squat-machine, `Multi-forearm`
    → other.
+7. **Gym80 specifics:** 235 `"other"` rows were free-weight furniture and
+   accessories (barbells/dumbbells/discs/kettlebells/benches/racks/bags/
+   straps/platforms) — dropped wholesale; only `PURE KRAFT SEATED TIBIALIS
+   MACHINE` and `Forearms Machine` are genuine machines with no fitting
+   category, kept as `"other"`. Two Gym80 products share the exact name
+   `LOWER BACK MACHINE` (IDs 3007 + 3038, both live) — one renamed
+   `Lower Back Machine (3038)`. `PURE KRAFT SQUAT MACHINE` (4038) kept:
+   the seed's `Pure Kraft Pendulum Squat` appears to map to it but the
+   current page is titled Squat Machine; noted as a possible seed dup.
 
 ## Sample spot-check
 
