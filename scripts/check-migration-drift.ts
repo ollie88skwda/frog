@@ -10,7 +10,8 @@
 // prints one row per migration known to either side, with `remote` blank
 // wherever the committed migration was never applied to the target
 // database. This intentionally does NOT run `supabase db push` or write
-// anything — see "Automate vs. detect" in docs/DECISIONS.md for why.
+// anything — see the 2026-08-06 migration-drift entry in
+// docs/DECISIONS.md for why it detects rather than pushes.
 //
 // Credential: SUPABASE_DRIFT_DB_URL, a Postgres connection string (repo
 // secret, not committed here) for a role with exactly this and nothing
