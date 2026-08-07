@@ -103,6 +103,17 @@ export type NewMachineInput = {
 
 export type MachinePatch = Partial<NewMachineInput>;
 
+// One row of the global reference catalog (`machine_catalog`) as returned by
+// the lookup-UX search — the narrow columns the picker renders. Not the full
+// `MachineCatalogRow` schema type: search never ships the spec/mechanism
+// fields. Read-only from the app's side (seed rows, RLS readable by all).
+export type MachineCatalogEntry = {
+  id: string;
+  brand: string;
+  model: string;
+  category: string;
+};
+
 export type NewExerciseOpts = {
   /** Client-generated id — same optimistic-identity rule as NewMachineInput. */
   id?: string;
@@ -247,6 +258,18 @@ export interface Repo {
   // Machines: the user's gym equipment — settings entered once, shown in
   // every session (setup memory). No seed machines; all rows owner-scoped.
   listMachines(): Promise<Machine[]>;
+
+  // Global reference catalog (`machine_catalog`): server-side ranked/filtered
+  // search over brand/model/category/aliases (AND-ed ILIKE terms, limited
+  // server-side — this replaced the static TS array scan, which leaves the
+  // bundle entirely). Read-only; the table is seed-owned. `category` narrows
+  // to one MachineCategory for the browse view; empty query = browse.
+  searchMachineCatalog(
+    query: string,
+    opts?: { category?: string | null; limit?: number },
+  ): Promise<MachineCatalogEntry[]>;
+  /** Distinct catalog categories, for browse chips (DB-derived, not a copy). */
+  listMachineCategories(): Promise<string[]>;
   createMachine(input: NewMachineInput): Promise<Machine>;
   /** Partial update; `settings` replaces the whole array when provided. */
   updateMachine(id: string, patch: MachinePatch): Promise<void>;

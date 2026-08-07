@@ -1,6 +1,7 @@
-import type { Machine, MachineSetting } from "@frog/core";
-import { Camera, ChevronDown, ChevronRight, Search } from "lucide-react";
-import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
+import type { Machine, MachineCatalogEntry, MachineSetting } from "@frog/core";
+import { Camera, ChevronDown, ChevronRight } from "lucide-react";
+import { type ChangeEvent, type FormEvent, useState } from "react";
+import { MachineCatalogPicker } from "@/components/machine-catalog-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -10,17 +11,6 @@ import {
   useUpdateMachine,
   useUploadMachinePhoto,
 } from "@/lib/queries";
-import { useVoice } from "@/lib/voice";
-
-type CatalogModule = typeof import("@frog/core/data/machine-catalog");
-
-// The catalog is a lazy chunk — loaded on first search keystroke, never part
-// of the initial bundle (AGENTS.md budget).
-let catalogPromise: Promise<CatalogModule> | null = null;
-function loadCatalog(): Promise<CatalogModule> {
-  catalogPromise ??= import("@frog/core/data/machine-catalog");
-  return catalogPromise;
-}
 
 export function MachinesSection({ machines }: { machines: Machine[] }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -55,40 +45,18 @@ export function MachinesSection({ machines }: { machines: Machine[] }) {
 
 function AddMachine() {
   const create = useCreateMachine();
-  const { t } = useVoice();
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<
-    { key: string; brand: string; model: string; category: string }[]
-  >([]);
   const [customName, setCustomName] = useState("");
   const [customBrand, setCustomBrand] = useState("");
 
-  useEffect(() => {
-    const q = query.trim();
-    if (!q) {
-      setResults([]);
-      return;
-    }
-    let cancelled = false;
-    void loadCatalog().then((mod) => {
-      if (!cancelled) setResults(mod.searchCatalog(q, 8));
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [query]);
-
-  function addFromCatalog(entry: {
-    key: string;
-    brand: string;
-    model: string;
-  }) {
+  function addFromCatalog(entry: MachineCatalogEntry) {
     create.mutate({
       name: entry.model,
       brand: entry.brand,
-      catalogKey: entry.key,
+      // The catalog row's id — machines.catalog_key (text) is the
+      // denormalized link to machine_catalog now that the search is a DB
+      // query (the old static-array key is gone; docs/DECISIONS.md).
+      catalogKey: entry.id,
     });
-    setQuery("");
   }
 
   function addCustom(e: FormEvent) {
@@ -102,45 +70,7 @@ function AddMachine() {
 
   return (
     <div className="mt-3">
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-2 left-2 size-4 text-faint" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search the machine catalog (brand, model, type)"
-          className="pl-8"
-          data-testid="machine-catalog-search"
-        />
-      </div>
-      {query.trim() !== "" && results.length === 0 && (
-        <p className="mt-1 px-2 text-xs text-faint">
-          {t("No matches in the catalog.", "No specimens match the catalog.")}
-        </p>
-      )}
-      {results.length > 0 && (
-        <ul className="mt-1 divide-y divide-border border border-border bg-surface">
-          {results.map((r) => (
-            <li key={r.key}>
-              <button
-                type="button"
-                onClick={() => addFromCatalog(r)}
-                className="flex h-8 w-full items-center gap-2 px-2 text-left text-xs transition-colors duration-100 hover:bg-surface-hover"
-                data-testid={`catalog-result-${r.key}`}
-              >
-                <span className="bg-translucent px-1 text-2xs text-faint">
-                  {r.category.replace(/-/g, " ")}
-                </span>
-                <span className="truncate">
-                  <span className="text-soft">{r.brand}</span> · {r.model}
-                </span>
-                <span className="ml-auto shrink-0 text-2xs text-faint">
-                  add to my gym
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <MachineCatalogPicker onPick={addFromCatalog} />
 
       <form onSubmit={addCustom} className="mt-2 flex gap-2">
         <Input

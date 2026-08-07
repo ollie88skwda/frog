@@ -82,6 +82,7 @@ import {
 } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { ExerciseRibbon, ExerciseThumb } from "@/components/anatomy-ui";
+import { AttachMachineStrip } from "@/components/attach-machine";
 import { ConditionsChip } from "@/components/conditions";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import {
@@ -2419,7 +2420,17 @@ function ExerciseBlock({
         onCommit={onSetNote}
       />
 
-      {machine && <SetupStrip machine={machine} blockName={block.name} />}
+      {/* No machine attached yet — the block header offers the in-workout
+          catalog attach in SetupStrip's slot, so the affordance sits exactly
+          where the remembered setup would. */}
+      {machine ? (
+        <SetupStrip machine={machine} blockName={block.name} />
+      ) : (
+        <AttachMachineStrip
+          exerciseId={block.exerciseId}
+          blockName={block.name}
+        />
+      )}
 
       {/* One grid for the whole block, every row a `subgrid` spanning it.
           The menu-gutter track is FIXED at 2.5rem (gridTemplate above), so

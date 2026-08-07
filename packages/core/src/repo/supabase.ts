@@ -33,6 +33,7 @@ import type {
   ExercisePatch,
   ExportBundle,
   GhostSet,
+  MachineCatalogEntry,
   MachinePatch,
   MeasurementPatch,
   NewExerciseOpts,
@@ -449,6 +450,34 @@ export class SupabaseRepo implements Repo {
       .order("name");
     throwIf(error);
     return (data as Row[]).map(toMachine);
+  }
+
+  // The lookup-UX search lives in SQL (search_machine_catalog, migration
+  // 20260807101227): it must match a term against the `aliases` jsonb array
+  // too, which PostgREST's or()/ilike filters can't express. SECURITY INVOKER
+  // keeps it RLS-scoped exactly like a direct select.
+  async searchMachineCatalog(
+    query: string,
+    opts: { category?: string | null; limit?: number } = {},
+  ): Promise<MachineCatalogEntry[]> {
+    const { data, error } = await this.client.rpc("search_machine_catalog", {
+      q: query,
+      cat: opts.category ?? null,
+      max_rows: opts.limit ?? 20,
+    });
+    throwIf(error);
+    return (data as Row[]).map((r) => ({
+      id: r.id as string,
+      brand: r.brand as string,
+      model: r.model as string,
+      category: r.category as string,
+    }));
+  }
+
+  async listMachineCategories(): Promise<string[]> {
+    const { data, error } = await this.client.rpc("list_machine_categories");
+    throwIf(error);
+    return (data as Row[]).map((r) => r.category as string);
   }
 
   async createMachine(input: NewMachineInput): Promise<Machine> {
