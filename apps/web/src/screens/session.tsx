@@ -59,7 +59,6 @@ import {
   Link2,
   Medal,
   Mic,
-  MoreHorizontal,
   MoreVertical,
   Pause,
   Play,
@@ -95,15 +94,20 @@ import { InfoTip } from "@/components/lesson";
 import { MachineEditor } from "@/components/machines";
 import { PlateSheet } from "@/components/session/plate-sheet";
 import { PrBanner, type PrBannerData } from "@/components/session/pr-banner";
-import { RestControl, RestDock } from "@/components/session/rest-countdown";
+import { RestDock } from "@/components/session/rest-countdown";
+import { RestTimerIcon } from "@/components/session/rest-timer-icon";
 import {
   FinishPhotoStrip,
   type PendingPhoto,
 } from "@/components/session-photos";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dots } from "@/components/ui/dots";
+import { Field } from "@/components/ui/field";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { StatusRing } from "@/components/ui/status-ring";
+import { Toolbar } from "@/components/ui/toolbar";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
 import { useHotkeys } from "@/lib/hotkeys";
 import type { LessonId } from "@/lib/lessons";
@@ -269,15 +273,17 @@ function columnsFor(
 }
 
 // `2.5rem` set-number + optional PREVIOUS reference + one flexible column each +
-// a menu gutter floored at `2.5rem` (the icon-button size) so the header /
-// committed / active rows stay pixel-aligned regardless of type, and allowed to
-// grow past it for the rows that also carry a modifier preview (`@2 RPE 8`)
-// alongside the button — a fixed track would spill that text past the card edge.
-// PREVIOUS only claims space when there's prior/target data to show (blank
-// column suppressed for a brand-new exercise).
+// a FIXED `2.5rem` menu-gutter track — the one column template shared by the
+// column-header row, every committed row, the active row and the upcoming
+// rows, so every ⋯ lands at the same x-position and every value column stays a
+// straight line regardless of type. The gutter is fixed, not auto: the
+// RIR/RPE modifier readout lives as a badge OUT of the grid flow (see
+// CommittedRow/ActiveRow), so no row content can ever widen the track and
+// nudge its siblings. PREVIOUS only claims space when there's prior/target
+// data to show (blank column suppressed for a brand-new exercise).
 function gridTemplate(cols: Column[], showPrevious: boolean): string {
   const prev = showPrevious ? "3.5rem " : "";
-  return `2.5rem ${prev}${cols.map(() => "1fr").join(" ")} minmax(2.5rem, auto)`;
+  return `2.5rem ${prev}${cols.map(() => "1fr").join(" ")} 2.5rem`;
 }
 
 // Compact previous-performance string for the PREVIOUS column: weight sans unit
@@ -1667,6 +1673,7 @@ export default function SessionScreen() {
                 updatePrefs.mutate({ plateConfig: cfg })
               }
               restRunning={restByBlock[block.seId] != null}
+              onStopRest={() => dismissRest(block.seId)}
               onSetNote={(note) => setBlockNote(block.seId, note)}
               onLinkSuperset={(target) => linkSuperset(block.seId, target)}
               onUnlinkSuperset={() => unlinkSuperset(block.seId)}
@@ -2323,6 +2330,7 @@ function ExerciseBlock({
   plateConfig,
   onSavePlateConfig,
   restRunning,
+  onStopRest,
   onSetNote,
   onLinkSuperset,
   onUnlinkSuperset,
@@ -2351,6 +2359,7 @@ function ExerciseBlock({
   plateConfig: PlateConfig | null;
   onSavePlateConfig: (cfg: PlateConfig) => void;
   restRunning: boolean;
+  onStopRest: () => void;
   onSetNote: (note: string) => void;
   onLinkSuperset: (targetSeId: string) => void;
   onUnlinkSuperset: () => void;
@@ -2379,6 +2388,7 @@ function ExerciseBlock({
   const navigate = useNavigate();
   const [plateTarget, setPlateTarget] = useState<number | null>(null);
   const [plateOpen, setPlateOpen] = useState(false);
+  const noteInputRef = useRef<HTMLInputElement>(null);
   const activeIndex = countSets(block.committed);
   const enabledMetrics = metrics.filter(
     (m) => m.scope === "set" && m.exerciseIds?.includes(block.exerciseId),
@@ -2423,7 +2433,7 @@ function ExerciseBlock({
       data-testid={`block-${block.name}`}
       data-superset={inSuperset ? "1" : undefined}
     >
-      <header className="group flex min-h-8 items-center justify-between gap-2 border-b border-border px-4 py-1">
+      <header className="flex min-h-10 items-center justify-between gap-2 border-b border-border px-4 py-1 md:min-h-8">
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <ExerciseThumb imageUrl={exercise?.imageUrl} name={block.name} />
           <span className="flex min-w-0 flex-col">
@@ -2450,10 +2460,28 @@ function ExerciseBlock({
             )}
           </span>
         </span>
-        <span className="flex items-center gap-2">
+        {/* One row of four uniform icon buttons — rest, note, options,
+            remove. Same size, same border+fill; the rest timer glows while
+            that block's stopwatch runs (and taps stop it), remove turns red
+            on hover instead of disappearing. */}
+        <Toolbar>
           {supportsEffort(type) && (
-            <RestControl blockName={block.name} running={restRunning} />
+            <IconButton
+              active={restRunning}
+              onClick={onStopRest}
+              title={restRunning ? "Stop rest" : "Rest timer"}
+              data-testid={`block-${block.name}-rest-timer`}
+            >
+              <RestTimerIcon className="size-4" />
+            </IconButton>
           )}
+          <IconButton
+            onClick={() => noteInputRef.current?.focus()}
+            title="Session note"
+            data-testid={`block-${block.name}-note-btn`}
+          >
+            <StickyNote className="size-4" />
+          </IconButton>
           <BlockMenu
             blockName={block.name}
             unit={blockUnit}
@@ -2471,16 +2499,15 @@ function ExerciseBlock({
               )
             }
           />
-          <button
-            type="button"
+          <IconButton
+            danger
             onClick={onRemoveBlock}
-            title="Remove exercise from session"
-            className="rounded-sm p-1 text-faint transition-opacity duration-150 ease-(--ease-out-quad) hover:text-neg max-md:opacity-100 md:p-0.5 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100"
+            title="Remove exercise"
             data-testid={`remove-block-${block.name}`}
           >
             <X className="size-4" />
-          </button>
-        </span>
+          </IconButton>
+        </Toolbar>
       </header>
 
       {/* The exercise's own cue ("brace before you unrack") — set once in
@@ -2500,16 +2527,18 @@ function ExerciseBlock({
         note={block.note ?? ""}
         ghostNote={ghostNote ?? null}
         onCommit={onSetNote}
+        inputRef={noteInputRef}
       />
 
       {machine && <SetupStrip machine={machine} blockName={block.name} />}
 
-      {/* One grid for the whole block, every row a `subgrid` spanning it: the
-          auto menu-gutter track has to be measured across the block, or the
-          one row carrying a divergence badge (`@2 RPE 8`) widens its own
-          gutter and squeezes its value columns out of line with its siblings'.
-          The grid owns the `px-4` gutter; rows that paint a border or a
-          background take it back with a net-zero `-mx-4 px-4`. */}
+      {/* One grid for the whole block, every row a `subgrid` spanning it.
+          The menu-gutter track is FIXED at 2.5rem (gridTemplate above), so
+          every row's ⋯ lands at the same x unconditionally — the modifier
+          readout lives as a badge out of the grid flow precisely so nothing
+          can stretch the track. The grid owns the `px-4` gutter; rows that
+          paint a border or a background take it back with a net-zero
+          `-mx-4 px-4`. */}
       <div
         className="grid gap-x-2 px-4"
         style={{ gridTemplateColumns: template }}
@@ -2536,7 +2565,7 @@ function ExerciseBlock({
               <span key={c.key}>{c.header}</span>
             ),
           )}
-          <span />
+          <span className="justify-self-end">···</span>
         </div>
 
         {groupSetsBySetNo(block.committed).map((rows, i) => (
@@ -2627,17 +2656,20 @@ function SessionNoteField({
   note,
   ghostNote,
   onCommit,
+  inputRef,
 }: {
   blockName: string;
   note: string;
   ghostNote: string | null;
   onCommit: (note: string) => void;
+  inputRef?: Ref<HTMLInputElement>;
 }) {
   const [value, setValue] = useState(note);
   // Carry-forward ghost: the prior session's note shows greyed as the
   // placeholder until typed over (dropped on save if left untouched).
   return (
     <input
+      ref={inputRef}
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={() => {
@@ -2681,15 +2713,13 @@ function BlockMenu({
 
   return (
     <span className="relative">
-      <Button
-        variant="outline"
-        size="icon-lg"
+      <IconButton
         onClick={() => setOpen((o) => !o)}
         title="Exercise options"
         data-testid={`block-${blockName}-menu`}
       >
         <MoreVertical className="size-4" />
-      </Button>
+      </IconButton>
       {open && (
         <>
           <button
@@ -3232,15 +3262,14 @@ function CommittedRow({
   return (
     // The row is itself a `subgrid` of the block's grid, and so is each of its
     // ᴸ/ᴿ lines: every line in the block resolves its columns from the same
-    // tracks, or the auto menu-gutter track sizes per line and whichever line
-    // carries a divergence badge pushes its own values out of alignment with
-    // the rest. The lines keep their own full-bleed background (`-mx-4 px-4`
-    // nets to no track offset, so the columns still land where the header
-    // row's do).
+    // fixed tracks, so the value columns line up across all rows no matter
+    // which line carries a divergence badge. The lines keep their own
+    // full-bleed background (`-mx-4 px-4` nets to no track offset, so the
+    // columns still land where the header row's do).
     <div className="relative col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4">
       <div
         className={cn(
-          "group commit-flash col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 -mx-4 bg-surface px-4 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-8",
+          "relative commit-flash col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 -mx-4 bg-surface px-4 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-8",
           isPaired && "pb-0.5 md:pb-0",
         )}
         data-testid={`committed-${index}`}
@@ -3272,48 +3301,52 @@ function CommittedRow({
             {committedText(c.key, primary, unit, distUnit)}
           </button>
         ))}
-        {/* Right-anchored: the gutter track is now sized by the widest badge
-            in the whole block, so centring would leave the ⋯ of a badge-free
-            row floating mid-track, out of line with its siblings'. */}
-        <span className="flex items-center justify-end gap-1">
-          {effort && (
-            <span
-              className={cn(
-                "num text-2xs text-faint md:group-hover:hidden",
-                // Below `md:` this readout is desktop chrome the narrow row
-                // can't spare — unless it's carrying a pair's divergence, in
-                // which case it has to show alongside the (touch-visible) ⋯
-                // button, or the ᴿ line's readout reads as the whole set's.
-                !secondaryEffortDiffers && "max-md:hidden",
-              )}
-              data-testid={`committed-${index}-effort`}
-            >
-              {effortReadout(primary) || (secondaryEffortDiffers ? "—" : "")}
-            </span>
-          )}
-          {isPaired && notesDiffer && primaryNote && (
-            <span
-              className="text-faint md:group-hover:hidden"
-              title={primaryNote}
-              data-testid={`committed-${index}-note`}
-            >
-              <StickyNote className="size-3.5" />
-            </span>
-          )}
-          {/* Visible by default on touch, hover-revealed only from `md:` up —
-              the display utilities restore `inline-flex` (the button's own
-              display), not `block`, so the icon stays centred. */}
-          <Button
-            variant="outline"
-            size="icon-lg"
+        {/* The ⋯ is a quiet fixed-track button: right-anchored so every row's
+            dots land at the same x (the track is fixed at 2.5rem), and small
+            enough (24px visual) to stay visible at all times without
+            dominating the row. */}
+        <span className="flex items-center justify-end">
+          <Dots
             onClick={() => openDetails(primary)}
             title="Set details"
-            className="md:hidden md:group-hover:inline-flex"
             data-testid={`set-menu-${index}`}
-          >
-            <MoreHorizontal className="size-4" />
-          </Button>
+          />
         </span>
+
+        {/* RIR/RPE readout + per-limb note: rendered as badges OUT of the
+            grid flow (absolute, straddling the row's top border) so the
+            fixed gutter track never widens for them — the `@2 RPE 8`
+            preview and the ᴸ/ᴿ divergence marker stay visible at every
+            viewport. */}
+        {((effort && (effortReadout(primary) || secondaryEffortDiffers)) ||
+          (notesDiffer && primaryNote)) && (
+          <span className="pointer-events-none absolute top-0 right-1.5 z-10 flex -translate-y-1/2 items-center gap-1">
+            {effort && (effortReadout(primary) || secondaryEffortDiffers) && (
+              <span
+                className={cn(
+                  "num rounded-sm border border-border bg-surface px-1 text-2xs text-faint",
+                  // Below `md:` this readout is desktop chrome the narrow row
+                  // can't spare — unless it's carrying a pair's divergence, in
+                  // which case it has to show alongside the (touch-visible) ⋯
+                  // button, or the ᴿ line's readout reads as the whole set's.
+                  !secondaryEffortDiffers && "max-md:hidden",
+                )}
+                data-testid={`committed-${index}-effort`}
+              >
+                {effortReadout(primary) || "—"}
+              </span>
+            )}
+            {notesDiffer && primaryNote && (
+              <span
+                className="text-faint"
+                title={primaryNote}
+                data-testid={`committed-${index}-note`}
+              >
+                <StickyNote className="size-3.5" />
+              </span>
+            )}
+          </span>
+        )}
       </div>
 
       {prSetIds.has(primary.id) && (
@@ -3351,28 +3384,31 @@ function CommittedRow({
               {committedText(c.key, secondary, unit, distUnit)}
             </button>
           ))}
-          <span className="flex items-center justify-end gap-1">
-            {effort && secondaryEffortDiffers && (
-              <span
-                className="num text-2xs text-faint"
-                data-testid={`committed-${index}-right-effort`}
-              >
-                {/* This line only prints when it diverges, so an empty
-                    readout would render as nothing at all — identical to the
-                    suppressed mirror case. A cleared ᴿ effort says so. */}
-                {effortReadout(secondary) || "—"}
-              </span>
-            )}
-            {notesDiffer && secondaryNote && (
-              <span
-                className="text-faint"
-                title={secondaryNote}
-                data-testid={`committed-${index}-right-note`}
-              >
-                <StickyNote className="size-3.5" />
-              </span>
-            )}
-          </span>
+          {(effort && secondaryEffortDiffers) ||
+          (notesDiffer && secondaryNote) ? (
+            <span className="pointer-events-none absolute top-0.5 right-1.5 z-10 flex items-center gap-1">
+              {effort && secondaryEffortDiffers && (
+                <span
+                  className="num rounded-sm border border-border bg-surface px-1 text-2xs text-faint"
+                  data-testid={`committed-${index}-right-effort`}
+                >
+                  {/* This line only prints when it diverges, so an empty
+                      readout would render as nothing at all — identical to the
+                      suppressed mirror case. A cleared ᴿ effort says so. */}
+                  {effortReadout(secondary) || "—"}
+                </span>
+              )}
+              {notesDiffer && secondaryNote && (
+                <span
+                  className="text-faint"
+                  title={secondaryNote}
+                  data-testid={`committed-${index}-right-note`}
+                >
+                  <StickyNote className="size-3.5" />
+                </span>
+              )}
+            </span>
+          ) : null}
           {prSetIds.has(secondary.id) && (
             <span
               className="pointer-events-none absolute top-0.5 right-1.5 text-accent"
@@ -4140,8 +4176,8 @@ function ActiveRow({
   function dataCell(key: ColKey, autoFocus: boolean, last: boolean) {
     const enterKeyHint = last ? "done" : "next";
     if (key === "weight") {
-      const input = (
-        <Input
+      return (
+        <Field
           key={key}
           inputMode="decimal"
           enterKeyHint={enterKeyHint}
@@ -4153,15 +4189,13 @@ function ActiveRow({
           onKeyDown={onKeyDown}
           onBlur={onFieldBlur}
           autoFocus={autoFocus}
-          className="num h-10 md:h-8"
           data-testid={`set-${index}-weight`}
         />
       );
-      return input;
     }
     if (key === "reps")
       return (
-        <Input
+        <Field
           key={key}
           inputMode="numeric"
           enterKeyHint={enterKeyHint}
@@ -4171,13 +4205,12 @@ function ActiveRow({
           onKeyDown={onKeyDown}
           onBlur={onFieldBlur}
           autoFocus={autoFocus}
-          className="num h-10 md:h-8"
           data-testid={`set-${index}-reps`}
         />
       );
     if (key === "distance")
       return (
-        <Input
+        <Field
           key={key}
           inputMode="decimal"
           enterKeyHint={enterKeyHint}
@@ -4186,14 +4219,13 @@ function ActiveRow({
           onChange={(e) => setDistance(e.target.value)}
           onKeyDown={onKeyDown}
           autoFocus={autoFocus}
-          className="num h-10 md:h-8"
           data-testid={`set-${index}-distance`}
         />
       );
     // duration
     return (
       <span key={key} className="flex items-center gap-1">
-        <Input
+        <Field
           inputMode="text"
           enterKeyHint={enterKeyHint}
           placeholder={ghostDuration ?? "m:ss"}
@@ -4202,19 +4234,16 @@ function ActiveRow({
           onChange={(e) => setDuration(e.target.value)}
           onKeyDown={onKeyDown}
           autoFocus={autoFocus}
-          className="num h-10 md:h-8"
           data-testid={`set-${index}-duration`}
         />
-        <button
-          type="button"
+        <IconButton
           onMouseDown={(e) => e.preventDefault()}
           onClick={toggleTimer}
           title={timerRunning ? "Stop timer" : "Start timer"}
           className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-md border border-border transition-colors duration-100 md:size-8",
-            timerRunning
-              ? "bg-accent text-accent-fg"
-              : "bg-surface-2 text-soft hover:bg-surface-hover hover:text-ink",
+            timerRunning &&
+              "border-accent bg-accent text-accent-fg hover:bg-accent hover:text-accent-fg",
+            !timerRunning && "text-soft",
           )}
           data-testid={`set-${index}-timer`}
         >
@@ -4223,7 +4252,7 @@ function ActiveRow({
           ) : (
             <Play className="size-3.5" />
           )}
-        </button>
+        </IconButton>
       </span>
     );
   }
@@ -4234,7 +4263,7 @@ function ActiveRow({
   function rDataCell(key: ColKey) {
     if (key === "weight")
       return (
-        <Input
+        <Field
           key={key}
           inputMode="decimal"
           placeholder={
@@ -4248,13 +4277,12 @@ function ActiveRow({
           onChange={(e) => setRWeight(e.target.value)}
           onKeyDown={onKeyDown}
           onBlur={onRightFieldBlur}
-          className="num h-10 md:h-8"
           data-testid={`set-${index}-right-weight`}
         />
       );
     if (key === "reps")
       return (
-        <Input
+        <Field
           key={key}
           inputMode="numeric"
           placeholder={
@@ -4266,13 +4294,12 @@ function ActiveRow({
           onChange={(e) => setRReps(e.target.value)}
           onKeyDown={onKeyDown}
           onBlur={onRightFieldBlur}
-          className="num h-10 md:h-8"
           data-testid={`set-${index}-right-reps`}
         />
       );
     if (key === "distance")
       return (
-        <Input
+        <Field
           key={key}
           inputMode="decimal"
           placeholder={
@@ -4281,13 +4308,12 @@ function ActiveRow({
           value={rDistance}
           onChange={(e) => setRDistance(e.target.value)}
           onKeyDown={onKeyDown}
-          className="num h-10 md:h-8"
           data-testid={`set-${index}-right-distance`}
         />
       );
     // duration — no second timer button: one physical set has one clock.
     return (
-      <Input
+      <Field
         key={key}
         inputMode="text"
         placeholder={
@@ -4296,7 +4322,6 @@ function ActiveRow({
         value={rDuration}
         onChange={(e) => setRDuration(e.target.value)}
         onKeyDown={onKeyDown}
-        className="num h-10 md:h-8"
         data-testid={`set-${index}-right-duration`}
       />
     );
@@ -4315,9 +4340,9 @@ function ActiveRow({
   return (
     <div
       ref={rowRef}
-      className="col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4 py-2"
+      className="relative col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4"
     >
-      <div className="col-span-full grid grid-cols-subgrid items-center gap-x-2">
+      <div className="col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 md:h-8">
         <SetTypeCell
           index={index}
           setType={setType}
@@ -4343,13 +4368,8 @@ function ActiveRow({
         {columns.map((c, i) =>
           dataCell(c.key, autoFocusWeight && i === 0, i === columns.length - 1),
         )}
-        <span ref={moreCellRef} className="flex items-center justify-end gap-1">
-          {modifierPreview && (
-            <span className="num text-2xs text-faint">{modifierPreview}</span>
-          )}
-          <Button
-            variant="outline"
-            size="icon-lg"
+        <span ref={moreCellRef} className="flex items-center justify-end">
+          <Dots
             onClick={() => {
               // Opening the sheet is about to steal focus from weight/reps
               // via Radix's own auto-focus — arm the guard so that blur
@@ -4362,11 +4382,17 @@ function ActiveRow({
             onMouseDown={(e) => e.preventDefault()}
             title="Set details"
             data-testid={`set-${index}-more`}
-          >
-            <MoreHorizontal className="size-4" />
-          </Button>
+          />
         </span>
       </div>
+
+      {/* RIR/RPE draft preview: the same badge out of the grid flow as the
+          committed rows', so the fixed gutter never widens for it. */}
+      {modifierPreview && (
+        <span className="num pointer-events-none absolute top-0 right-1.5 z-10 -translate-y-1/2 rounded-sm border border-border bg-surface px-1 text-2xs text-faint">
+          {modifierPreview}
+        </span>
+      )}
 
       {/* Right side of a unilateral pair: no ring, no ⋯ — set type/RIR/RPE/
           note are entered once above and seed both rows at commit. Only set
