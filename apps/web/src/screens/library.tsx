@@ -275,6 +275,26 @@ export default function LibraryScreen() {
           <p className="px-4 py-6 text-center text-xs text-faint">
             {t("Loading…", "The frog is thinking…")}
           </p>
+        ) : isError && !libraryLoaded ? (
+          <div
+            className="flex flex-col items-center gap-2 px-4 py-6 text-center"
+            data-testid="library-error"
+          >
+            <p className="text-xs text-neg">
+              {t(
+                "Couldn't reach the server. Your exercises may still be there.",
+                "The frog couldn't reach the pond. Your exercises may still be there.",
+              )}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              data-testid="library-retry"
+            >
+              Retry
+            </Button>
+          </div>
         ) : exercises.length === 0 ? (
           <p className="px-4 py-6 text-center text-xs text-faint">
             {t(

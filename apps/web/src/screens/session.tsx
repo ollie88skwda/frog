@@ -142,7 +142,7 @@ import {
   useUnit,
 } from "@/lib/settings";
 import { cn } from "@/lib/utils";
-import { voice } from "@/lib/voice";
+import { useVoice, voice } from "@/lib/voice";
 import { getWarmupMethod } from "@/lib/warmup-method";
 import {
   useKeepAwake,
@@ -439,19 +439,34 @@ export default function SessionScreen() {
   const location = useLocation();
   const qc = useQueryClient();
   const { unit } = useUnit();
+  const { t } = useVoice();
   const sessionQuery = useSession(sessionId);
   const session = sessionQuery.data;
-  // Until this resolves, routineId is unknown — the seed gate below can't tell
-  // a routine start from an ad-hoc workout.
-  const sessionLoading = sessionQuery.isLoading;
-  const { data: restored } = useSessionExercises(sessionId);
+  // Until the row itself is in hand, routineId is unknown — the seed gate
+  // below can't tell a routine start from an ad-hoc workout. Presence, not
+  // isLoading: a query in `error` status reports isLoading false even while
+  // the error branch's Retry is refetching it, and it stays false if the
+  // session load failed outright — either way the gate would fall through
+  // with routineId still unknown.
+  const sessionLoaded = session !== undefined;
+  const {
+    data: restored,
+    isError: restoredError,
+    refetch: refetchRestored,
+  } = useSessionExercises(sessionId);
   const { data: metrics = [] } = useMetrics();
   // Routine provenance: template targets + notes for prefill / write-back.
   const routineQuery = useRoutineDetail(session?.routineId ?? null);
   const routineDetail = routineQuery.data ?? null;
-  // isLoading is false for a disabled query (empty workout) and once a routine
-  // resolves — even to null (deleted routine) — so blocks always eventually seed.
-  const routineLoading = routineQuery.isLoading;
+  // Presence, not isLoading (same rule as the session row above): an errored
+  // query reports isLoading false, so it can't hold the gate while the error
+  // branch's Retry refetches it. Only consulted for routine-started sessions
+  // (the query is disabled otherwise), and false once the routine resolves —
+  // even to null (deleted routine) or to a definitive error — so blocks
+  // always eventually seed rather than hanging on the loading branch.
+  const routineLoading =
+    routineQuery.isFetching ||
+    (routineQuery.data === undefined && !routineQuery.isError);
 
   const [blocks, setBlocks] = useState<BlockState[] | null>(null);
   const [picking, setPicking] = useState(false);
@@ -842,7 +857,7 @@ export default function SessionScreen() {
     // still undefined and `session?.routineId` reads as "ad-hoc", skipping the
     // routine wait below and mounting the grid unseeded — permanently, since
     // blocks seed once. Wait for the session row before deciding.
-    if (sessionLoading) return;
+    if (!sessionLoaded) return;
     if (session?.routineId && routineLoading) return;
     setBlocks(
       restored.map((se) => ({
@@ -855,7 +870,7 @@ export default function SessionScreen() {
         committed: se.sets,
       })),
     );
-  }, [restored, blocks, sessionLoading, session?.routineId, routineLoading]);
+  }, [restored, blocks, sessionLoaded, session?.routineId, routineLoading]);
 
   // Auto-open the exercise picker once when a session loads with no blocks —
   // but let it be dismissed (Escape/X). Not `open={blocks.length === 0}`, which
@@ -868,6 +883,28 @@ export default function SessionScreen() {
     }
   }, [blocks]);
 
+  // Every set write that hasn't landed yet, keyed by tempId so an entry
+  // clears without touching any other one. `failed` flips once the write
+  // exhausts its retries (app.tsx: mutations retry 3x) and never persisted —
+  // the optimistic row is still on screen looking saved, which is exactly the
+  // silent-data-loss shape from the 2026-08-06 outage — and only those are
+  // reported. Entries are registered when the write is dispatched, not when
+  // it fails: the retries take ~7s, and an edit or delete inside that window
+  // has to reach the queued payload too (see saveSet/removeSet/removeBlock)
+  // or a later failure would queue the pre-edit values, or a deleted row.
+  const [queuedSets, setQueuedSets] = useState<
+    Record<
+      string,
+      {
+        seId: string;
+        set: CommitInput;
+        tempId: string;
+        setNo: number;
+        failed: boolean;
+      }
+    >
+  >({});
+
   const logSet = useMutation({
     mutationFn: (input: {
       seId: string;
@@ -879,11 +916,61 @@ export default function SessionScreen() {
     // The committed row keeps its optimistic id, so it never remounts here.
     onSuccess: (realId, { tempId }) => {
       setIdMap((prev) => ({ ...prev, [tempId]: realId }));
+      setQueuedSets((prev) => {
+        if (!(tempId in prev)) return prev;
+        const next = { ...prev };
+        delete next[tempId];
+        return next;
+      });
+    },
+    // Only ever marks an entry that is still queued: a set removed while its
+    // write was in flight has no entry left, and must not come back here.
+    onError: (_err, { tempId }) => {
+      setQueuedSets((prev) => {
+        const queued = prev[tempId];
+        if (!queued || queued.failed) return prev;
+        return { ...prev, [tempId]: { ...queued, failed: true } };
+      });
     },
     // A new set can mint a PR — mark the records snapshot stale (no observer is
     // mounted mid-session, so this never refetches on the logging path).
     onSettled: () => qc.invalidateQueries({ queryKey: ["records-data"] }),
   });
+
+  // Track the payload from the moment it is dispatched, so the reconciliation
+  // below covers the whole in-flight window and not just exhausted writes.
+  function queueSet(v: {
+    seId: string;
+    set: CommitInput;
+    tempId: string;
+    setNo: number;
+  }) {
+    setQueuedSets((prev) => ({ ...prev, [v.tempId]: { ...v, failed: false } }));
+  }
+
+  const failedSets = Object.values(queuedSets).filter((v) => v.failed);
+  const failedSetCount = failedSets.length;
+  // The entry stays failed until its write actually lands (onSuccess clears
+  // it), so the banner keeps telling the truth while a retry is in flight.
+  function retryFailedSets() {
+    for (const { seId, set, tempId, setNo } of failedSets)
+      logSet.mutate({ seId, set, tempId, setNo });
+  }
+  // A queued payload must never outlive the row it describes: editing or
+  // deleting a set that never persisted has to reach its retry entry too,
+  // or Retry writes stale values / resurrects a deleted row.
+  function dropQueuedSets(
+    match: (tempId: string, v: (typeof queuedSets)[string]) => boolean,
+  ) {
+    setQueuedSets((prev) => {
+      const next = Object.fromEntries(
+        Object.entries(prev).filter(([id, v]) => !match(id, v)),
+      );
+      return Object.keys(next).length === Object.keys(prev).length
+        ? prev
+        : next;
+    });
+  }
 
   useHotkeys(
     useMemo(
@@ -976,9 +1063,14 @@ export default function SessionScreen() {
       ),
     );
     setLastCommitByBlock((prev) => ({ ...prev, [seId]: Date.now() }));
-    logSet.mutate({ seId, set: leftRow, tempId: leftTempId, setNo });
-    if (rightRow)
-      logSet.mutate({ seId, set: rightRow, tempId: rightRow.id, setNo });
+    const leftWrite = { seId, set: leftRow, tempId: leftTempId, setNo };
+    queueSet(leftWrite);
+    logSet.mutate(leftWrite);
+    if (rightRow) {
+      const rightWrite = { seId, set: rightRow, tempId: rightRow.id, setNo };
+      queueSet(rightWrite);
+      logSet.mutate(rightWrite);
+    }
     // The uncommitted row is now saved server-side — drop its local draft.
     clearDraft(seId);
 
@@ -1154,6 +1246,17 @@ export default function SessionScreen() {
           : b,
       ),
     );
+    // A row whose write hasn't landed has no server row for updateSet to match
+    // (0 rows, no error) — its queued payload is the only thing a retry will
+    // write, so the edit has to land there too or Retry rewrites stale values.
+    setQueuedSets((prev) => {
+      const queued = prev[setId];
+      if (!queued) return prev;
+      return {
+        ...prev,
+        [setId]: { ...queued, set: { ...queued.set, ...patch } },
+      };
+    });
     // setId is the row's stable (optimistic) id — translate to the real server
     // id if logSet has resolved (else the optimistic id already equals it).
     void repo.updateSet(idMap[setId] ?? setId, patch);
@@ -1167,12 +1270,14 @@ export default function SessionScreen() {
           : b,
       ),
     );
+    dropQueuedSets((id) => id === setId);
     void repo.deleteSet(idMap[setId] ?? setId);
   }
 
   function removeBlock(seId: string) {
     setBlocks((prev) => (prev ?? []).filter((b) => b.seId !== seId));
     dismissRest(seId);
+    dropQueuedSets((_id, v) => v.seId === seId);
     void repo.deleteSessionExercise(seId);
   }
 
@@ -1350,7 +1455,45 @@ export default function SessionScreen() {
     navigate("/");
   }
 
-  if (blocks === null) return null;
+  // blocks stays null until the seed effect above runs, which never happens
+  // if either query it depends on failed (a 400 from a schema-drifted
+  // column, a dropped connection, ...) — without this branch that reads as
+  // an unconditional blank screen, indistinguishable from "still loading".
+  if (blocks === null) {
+    if (sessionQuery.isError || restoredError) {
+      return (
+        <div className="mx-auto flex max-w-2xl flex-col items-center gap-3 px-4 py-16 text-center">
+          <p className="text-sm text-neg" data-testid="session-error">
+            {t(
+              "Couldn't reach the server. This session may still be there.",
+              "The frog couldn't reach the pond. This session may still be there.",
+            )}
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              void sessionQuery.refetch();
+              void refetchRestored();
+              // The routine template gates the seed too: leaving it errored
+              // seeds every row with no targets, notes or prefill.
+              if (session?.routineId) void routineQuery.refetch();
+            }}
+            data-testid="session-retry"
+          >
+            Retry
+          </Button>
+        </div>
+      );
+    }
+    return (
+      <p
+        className="px-4 py-16 text-center text-xs text-faint"
+        data-testid="session-loading"
+      >
+        {t("Loading…", "The frog is thinking…")}
+      </p>
+    );
+  }
 
   const setCount = blocks.reduce((n, b) => n + countSets(b.committed), 0);
   const volumeKg = blocks.reduce(
@@ -1372,6 +1515,36 @@ export default function SessionScreen() {
   return (
     <>
       <PrBanner data={prBanner} onDismiss={() => setPrBanner(null)} />
+      {failedSetCount > 0 && (
+        <div
+          className={cn(
+            "pointer-events-none fixed inset-x-0 z-30 flex justify-center px-4",
+            // PrBanner owns top-28 (and auto-dismisses after 4s); sit below it
+            // while both are up rather than painting over it.
+            prBanner ? "top-44" : "top-28",
+          )}
+          role="status"
+          data-testid="set-sync-error"
+        >
+          <div className="pointer-events-auto flex max-w-md items-center gap-2 border border-neg bg-(--color-panel-solid) px-3 py-2 shadow-(--shadow-6)">
+            <span className="min-w-0 text-xs text-neg">
+              {t(
+                `${failedSetCount} set${failedSetCount === 1 ? "" : "s"} didn't save — couldn't reach the server.`,
+                `The frog dropped ${failedSetCount} set${failedSetCount === 1 ? "" : "s"} — couldn't reach the pond.`,
+              )}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={retryFailedSets}
+              disabled={logSet.isPending}
+              data-testid="set-sync-retry"
+            >
+              {logSet.isPending ? "Retrying…" : "Retry"}
+            </Button>
+          </div>
+        </div>
+      )}
       {activeRest && (
         <RestDock
           since={activeRest.state.startedAt}
@@ -1804,7 +1977,12 @@ function ExercisePicker({
   onOpenChange: (open: boolean) => void;
   onPick: (id: string, name: string) => void;
 }) {
-  const { data: exercises = [], isLoading } = useExercises();
+  const { data: exerciseData, isLoading, isError, refetch } = useExercises();
+  // Presence, not query status (same rule as library.tsx): a failed background
+  // refetch on a list we already have is not an error state to show.
+  const exercises = exerciseData ?? [];
+  const exercisesLoaded = exerciseData !== undefined;
+  const { t } = useVoice();
   const { data: machines = [] } = useMachines();
   // A just-created exercise is in the list before its INSERT lands; adding it
   // to the session would violate the session_exercises FK. Leaving the
@@ -1867,6 +2045,26 @@ function ExercisePicker({
           />
           {isLoading ? (
             <p className="px-4 py-6 text-center text-xs text-faint">Loading…</p>
+          ) : isError && !exercisesLoaded ? (
+            <div
+              className="flex flex-col items-center gap-2 px-4 py-6 text-center"
+              data-testid="picker-error"
+            >
+              <p className="text-xs text-neg">
+                {t(
+                  "Couldn't reach the server. Your exercises may still be there.",
+                  "The frog couldn't reach the pond. Your exercises may still be there.",
+                )}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void refetch()}
+                data-testid="picker-retry"
+              >
+                Retry
+              </Button>
+            </div>
           ) : exercises.length === 0 ? (
             <p className="px-4 py-6 text-center text-xs text-faint">
               No exercises yet — add one in Library.
