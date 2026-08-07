@@ -349,10 +349,12 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     expect(updatedRows ?? []).toHaveLength(0);
 
     // The name-heuristic backfill migration (docs/DECISIONS.md 2026-08-01)
-    // tags exactly 67 seed rows unilateral and 16 alternating.
-    expect(seeds.filter((e) => e.laterality === "unilateral")).toHaveLength(67);
+    // tags exactly 67 seed rows unilateral and 16 alternating; the
+    // gimmick-equipment purge (docs/DECISIONS.md 2026-08-07) soft-deleted 18
+    // unilateral and 6 alternating of those, leaving 49 and 10.
+    expect(seeds.filter((e) => e.laterality === "unilateral")).toHaveLength(49);
     expect(seeds.filter((e) => e.laterality === "alternating")).toHaveLength(
-      16,
+      10,
     );
   });
 
