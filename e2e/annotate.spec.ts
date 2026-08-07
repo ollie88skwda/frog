@@ -121,12 +121,15 @@ test("notes can be edited and cleared before sending", async ({ page }) => {
   await expect(page.getByTestId("annotate-list-btn")).toHaveText("0 notes");
 });
 
-test("app single-key hotkeys stay quiet while annotating, and resume after", async ({
+test("bare letter keys never navigate, mode on or off; Ctrl+Shift+A still toggles annotate", async ({
   page,
 }) => {
-  // `h` is one of the app shell's single-key shortcuts (app-shell.tsx).
-  await page.getByTestId("annotate-toggle").click();
-  await page.keyboard.press("h");
+  // Regression guard for the 2026-08-07 removal of the app's bare single-key
+  // shortcuts (`s`/`l`/`h`/`f` on app-shell.tsx, `a`/`e` on session.tsx): none
+  // of them should navigate or open anything, with or without annotate mode on.
+  for (const key of ["h", "l", "f", "s"]) {
+    await page.keyboard.press(key);
+  }
   // Give a navigation every chance to happen before asserting it didn't.
   await page.waitForTimeout(500);
   await expect(page).toHaveURL(/\/train$/);
@@ -134,8 +137,18 @@ test("app single-key hotkeys stay quiet while annotating, and resume after", asy
   await page.getByTestId("annotate-toggle").click();
   await expect(page.getByTestId("annotate-toggle")).toHaveAttribute(
     "aria-pressed",
+    "true",
+  );
+  for (const key of ["h", "l", "f", "s"]) {
+    await page.keyboard.press(key);
+  }
+  await page.waitForTimeout(500);
+  await expect(page).toHaveURL(/\/train$/);
+
+  // Ctrl+Shift+A (a modifier combo) is unaffected and still toggles the mode.
+  await page.keyboard.press("Control+Shift+A");
+  await expect(page.getByTestId("annotate-toggle")).toHaveAttribute(
+    "aria-pressed",
     "false",
   );
-  await page.keyboard.press("h");
-  await expect(page).toHaveURL(/\/history$/);
 });

@@ -109,7 +109,6 @@ import { Input } from "@/components/ui/input";
 import { StatusRing } from "@/components/ui/status-ring";
 import { Toolbar } from "@/components/ui/toolbar";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
-import { useHotkeys } from "@/lib/hotkeys";
 import type { LessonId } from "@/lib/lessons";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
@@ -978,16 +977,6 @@ export default function SessionScreen() {
     });
   }
 
-  useHotkeys(
-    useMemo(
-      () => ({
-        a: () => setPicking(true),
-        e: () => setFinishOpen(true),
-      }),
-      [],
-    ),
-  );
-
   async function pickExercise(exerciseId: string, name: string) {
     // Its row exists locally but not yet in Postgres — the FK would reject it.
     if (pendingExercises.has(exerciseId)) return;
@@ -1596,7 +1585,7 @@ export default function SessionScreen() {
             <Button
               size="lg"
               onClick={() => setFinishOpen(true)}
-              title="Finish session (e)"
+              title="Finish session"
               data-testid="end-session-btn"
             >
               <Square className="size-3" />

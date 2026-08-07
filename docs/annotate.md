@@ -25,8 +25,8 @@ spec drives it). Off by default, every load.
   start annotating or a note exists to review.
 
 While the mode is on, pointer, key and focus events are intercepted at the
-document level, so clicking a button annotates it instead of firing it, and the
-app's single-key hotkeys (`s`/`l`/`h`/`f`) stay quiet. The page still scrolls.
+document level, so clicking a button annotates it instead of firing it, and
+stray keystrokes stay quiet. The page still scrolls.
 Turning the mode off restores everything — no listeners remain except the focus
 guard below.
 
@@ -123,8 +123,9 @@ to trust everywhere.
 - `e2e/annotate.spec.ts` — turns the mode on, clicks a real button, asserts no
   session started, records a note, and asserts the **clipboard** payload carries
   the source path, component, test id, selector, route and viewport; plus edit,
-  reload-persistence, armed clear, and that normal clicks and the app's
-  single-key hotkeys both resume when the mode is off.
+  reload-persistence, armed clear, and that normal clicks resume when the mode
+  is off (and, as a regression guard, that no bare letter key ever navigates
+  the app, mode on or off).
 - `scripts/check-bundle.ts` — the production gate. Prove it still bites by
   inverting it: a `VITE_E2E=1` build must fail the script, a clean build must
   pass.

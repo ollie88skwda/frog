@@ -1,12 +1,10 @@
 import { APP_NAME } from "@frog/core";
 import { Dumbbell, Home, Moon, Sun, User } from "lucide-react";
 import { lazy, Suspense, useMemo } from "react";
-import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { NavLink, Outlet, useLocation } from "react-router";
 import { FrogMark } from "@/components/frog-mark";
 import { useChangelogHasUnseen } from "@/lib/changelog-prefs";
-import { useHotkeys } from "@/lib/hotkeys";
 import { useActiveSession } from "@/lib/queries";
-import { useRepo } from "@/lib/repo";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
@@ -28,8 +26,6 @@ const STROKE = 1.75;
 
 export function AppShell() {
   const { theme, toggle } = useTheme();
-  const navigate = useNavigate();
-  const repo = useRepo();
   const { data: active } = useActiveSession();
   const { pathname } = useLocation();
   // Changelog lives inside Profile → Settings (no 4th tab — 2026-07-14), so
@@ -53,22 +49,6 @@ export function AppShell() {
           : { ...item, active: undefined as boolean | undefined, badge };
       }),
     [active, pathname, hasUnseenChangelog],
-  );
-
-  useHotkeys(
-    useMemo(
-      () => ({
-        s: () => {
-          void repo
-            .startSession()
-            .then((session) => navigate(`/session/${session.id}`));
-        },
-        l: () => navigate("/library"),
-        h: () => navigate("/history"),
-        f: () => navigate("/findings"),
-      }),
-      [navigate, repo],
-    ),
   );
 
   return (
