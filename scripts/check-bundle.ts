@@ -55,10 +55,12 @@ if (kb > BUDGET_KB) {
   process.exit(1);
 }
 
-// Security gate: the Playwright auth bridge (window.__frog, VITE_E2E=1 builds)
-// must never ship — in production it would expose a Supabase-native sign-in
-// path that bypasses Clerk. A stray VITE_E2E=1 in an env file is enough to
-// leak it, so check every emitted chunk for the marker.
+// Security gates: dev/test-only code must never ship. The Playwright auth
+// bridge (window.__frog, VITE_E2E=1 builds) would expose a Supabase-native
+// sign-in path that bypasses Clerk in production; the click-to-comment overlay
+// would ship a document-level event interceptor. A stray VITE_E2E=1 in an env
+// file (or a dead branch that stopped folding) is enough to leak either, so
+// every emitted chunk is checked for each marker.
 //
 // Matches the property-access shape (`.__frog`), not a bare substring: the
 // /changelog lazy chunk embeds docs/DECISIONS.md's own text verbatim (2026-08-04
@@ -67,12 +69,40 @@ if (kb > BUDGET_KB) {
 // positives on that forever, since the entry can't be edited away. The actual
 // leak (confirmed against a VITE_E2E=1 build) always emits `window.__frog=`,
 // so the dot is the reliable discriminator.
-const FROG_MARKER_RE = /\.__frog\b/;
+//
+// The same reasoning covers the click-to-comment overlay's markers below, so
+// they are matched in their emitted shapes too — never as bare names. Each
+// marker name is written out in exactly two places (the source that emits it
+// and this file): rename it in both, or the gate silently passes while
+// protecting nothing. Prove the gates still bite by inverting them — a
+// VITE_E2E=1 build must fail this script, a clean build must pass.
+const MARKERS = [
+  {
+    // Playwright auth bridge (apps/web/src/lib/test-hooks.ts).
+    re: /\.__frog\b/,
+    msg: 'E2E test-hook marker "__frog"',
+  },
+  {
+    // Click-to-comment overlay's window hook (src/dev/annotate/index.tsx).
+    // The `\b` in the pattern above means it does NOT cover this name — these
+    // are two independent gates on purpose, so a failure names the right tool.
+    re: /\.__frogAnnotate\b/,
+    msg: 'dev annotation-overlay marker "__frogAnnotate"',
+  },
+  {
+    // The overlay's build-time JSX source stamps (apps/web/plugins/
+    // annotate-source.ts). Matched in the emitted object-key shape
+    // (`"data-frog-src":`) so the attribute name can still be named in prose.
+    re: /"data-frog-src":/,
+    msg: "dev JSX source stamps (data-frog-src)",
+  },
+] as const;
+
 for (const f of readdirSync(assetsDir).filter((n) => n.endsWith(".js"))) {
-  if (FROG_MARKER_RE.test(readFileSync(join(assetsDir, f), "utf8"))) {
-    console.error(
-      `E2E test-hook marker "__frog" found in ${f} — was the build run with VITE_E2E=1?`,
-    );
+  const code = readFileSync(join(assetsDir, f), "utf8");
+  for (const { re, msg } of MARKERS) {
+    if (!re.test(code)) continue;
+    console.error(`${msg} found in ${f} — was the build run with VITE_E2E=1?`);
     process.exit(1);
   }
 }

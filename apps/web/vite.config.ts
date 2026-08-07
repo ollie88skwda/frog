@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { parseDecisionsLog } from "../../packages/core/src/domain/changelog";
+import { annotateSourceBabelPlugin } from "./plugins/annotate-source";
 
 // docs/DECISIONS.md is the dev changelog's one content source (see
 // docs/DECISIONS.md 2026-08-04, changelog page). Two virtual modules so the
@@ -52,11 +53,33 @@ function changelogPlugin(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [react(), tailwindcss(), changelogPlugin()],
-  resolve: {
-    alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
+const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
+
+export default defineConfig(({ command }) => {
+  // Click-to-comment (src/dev/annotate/) is dev-only. `serve` is the dev
+  // server; VITE_E2E=1 is the Playwright build, which is already a
+  // non-production artifact (it also carries the __frog auth bridge). A plain
+  // `vite build` gets neither the JSX source stamps nor the overlay, and
+  // scripts/check-bundle.ts fails the build if either leaks.
+  const annotate = command === "serve" || process.env.VITE_E2E === "1";
+  return {
+    plugins: [
+      react(
+        annotate
+          ? {
+              babel: {
+                plugins: [[annotateSourceBabelPlugin, { root: REPO_ROOT }]],
+              },
+            }
+          : undefined,
+      ),
+      tailwindcss(),
+      changelogPlugin(),
+    ],
+    resolve: {
+      alias: {
+        "@": fileURLToPath(new URL("./src", import.meta.url)),
+      },
     },
-  },
+  };
 });
