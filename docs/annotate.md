@@ -36,9 +36,11 @@ app — a session row auto-commits its set when you leave a field, and
 `measures`/`conditions`/`exercise-editor`/`machines` all save on blur — but the
 overlay moves focus itself (entering the mode blurs the active element, the
 composer takes focus), so the app must never see a focus change the tool caused.
-The overlay's own buttons also refuse pointer focus for the same reason, mode on
-or off: on WebKit and Gecko a `<button>` isn't focused by a click, so tapping the
-floating toggle would otherwise blur the field you were typing in.
+The overlay's own chrome also refuses pointer focus for the same reason, mode on
+or off: tapping the floating toggle, or any part of the notes panel, would
+otherwise blur the field you were typing in. Everything but text entry is
+covered, so one side effect is that note text in the list can't be
+drag-selected — use **Copy all**, or **Edit** for a real textarea.
 
 Point at an element (hover on desktop, tap on a phone) to outline it and see a
 label; click/tap to open the composer. Write the note, **Add note** (or
