@@ -13,7 +13,7 @@
 // file, no Tailwind/Radix classes, so nothing about this tool can reach a
 // production stylesheet, and nothing about the app's own CSS can distort it.
 
-import { APP_NAME } from "@frog/core";
+import { APP_NAME, newId } from "@frog/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { SRC_ATTR, UI_ATTR } from "./attrs";
@@ -53,6 +53,10 @@ const LINE = "rgba(232,239,232,0.18)";
 const ACCENT = "#5cb86c";
 
 const uiMark: Record<string, string> = { [UI_ATTR]: "" };
+
+/** The overlay's own chrome, which is never annotated and never suppressed. */
+const isOurUi = (t: EventTarget | null) =>
+  t instanceof Element && t.closest(`[${UI_ATTR}]`) !== null;
 
 const panelBase: React.CSSProperties = {
   position: "fixed",
@@ -116,9 +120,11 @@ export default function AnnotateOverlay() {
   const [status, setStatus] = useState<string | null>(null);
 
   const hoveredRef = useRef<Element | null>(null);
+  const onRef = useRef(false);
   const pendingRef = useRef(false);
   const draftRef = useRef("");
   const composerRef = useRef<HTMLTextAreaElement | null>(null);
+  onRef.current = on;
   pendingRef.current = pending !== null;
   draftRef.current = draft;
 
@@ -157,7 +163,10 @@ export default function AnnotateOverlay() {
   }, []);
 
   /* Toggle + escape. On `window` capture so it lands before both the app's
-   * single-key hotkeys and the mode's own document-level suppression. */
+   * single-key hotkeys and the mode's own document-level suppression. A key
+   * the overlay consumes stops dead there: the Escape that closes the composer
+   * must not also dismiss the Radix layer underneath it. An Escape the overlay
+   * has no use for — mode off, nothing pending — is left entirely alone. */
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (
@@ -167,29 +176,34 @@ export default function AnnotateOverlay() {
         e.key.toLowerCase() === "a"
       ) {
         e.preventDefault();
-        setOn((v) => {
-          if (v) {
-            setPending(null);
-            setSpot(null);
-            setListOpen(false);
-            hoveredRef.current = null;
-          }
-          return !v;
-        });
+        e.stopPropagation();
+        setMode(!onRef.current);
         return;
       }
       if (e.key !== "Escape") return;
-      if (pendingRef.current) {
-        setPending(null);
-        return;
-      }
-      setOn((v) => {
-        if (v) setSpot(null);
-        return false;
-      });
+      if (!onRef.current && !pendingRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (pendingRef.current) setPending(null);
+      else setMode(false);
     }
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
+  }, [setMode]);
+
+  /* Focus moves the overlay causes are invisible to the app. Entering the mode
+   * blurs whatever was focused, tapping the floating bar moves focus onto it,
+   * and the composer takes focus outright — each of which the app reads as the
+   * user leaving a field, and a session row auto-commits its set on blur.
+   * Stopping `focusout` at document capture keeps React's delegated listener,
+   * on the #root container below, from ever seeing it. */
+  useEffect(() => {
+    function guardFocus(e: FocusEvent) {
+      if (isOurUi(e.target)) return;
+      if (onRef.current || isOurUi(e.relatedTarget)) e.stopPropagation();
+    }
+    document.addEventListener("focusout", guardFocus, true);
+    return () => document.removeEventListener("focusout", guardFocus, true);
   }, []);
 
   /* Crosshair + no text selection while picking. */
@@ -210,20 +224,18 @@ export default function AnnotateOverlay() {
   /* The whole interception, in one effect. Nothing here names a component. */
   useEffect(() => {
     if (!on) return;
-    const isOurs = (t: EventTarget | null) =>
-      t instanceof Element && t.closest(`[${UI_ATTR}]`) !== null;
 
     function onMove(e: PointerEvent) {
       if (pendingRef.current) return;
       const t = e.target;
-      if (!(t instanceof Element) || isOurs(t) || t === hoveredRef.current)
+      if (!(t instanceof Element) || isOurUi(t) || t === hoveredRef.current)
         return;
       hoveredRef.current = t;
       setSpot(spotFor(t));
     }
 
     function swallow(e: Event) {
-      if (isOurs(e.target)) return;
+      if (isOurUi(e.target)) return;
       e.stopPropagation();
       if (e.cancelable && e.type !== "touchstart" && e.type !== "touchend")
         e.preventDefault();
@@ -239,11 +251,23 @@ export default function AnnotateOverlay() {
       setStatus(null);
     }
 
-    /* App single-key hotkeys (s/l/h/f) must not fire while annotating. */
+    /* App single-key hotkeys (s/l/h/f) must not fire while annotating. Only
+     * propagation is stopped when nothing editable holds focus, so the arrow /
+     * space / page keys still scroll the page — the same bargain the touch
+     * events strike above. */
     function muteKeys(e: KeyboardEvent) {
-      if (isOurs(e.target) || e.key === "Escape") return;
+      if (isOurUi(e.target) || e.key === "Escape") return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       e.stopPropagation();
+      const t = e.target;
+      if (
+        t instanceof HTMLElement &&
+        (t.isContentEditable ||
+          t instanceof HTMLInputElement ||
+          t instanceof HTMLTextAreaElement ||
+          t instanceof HTMLSelectElement)
+      )
+        e.preventDefault();
     }
 
     function refresh() {
@@ -278,7 +302,7 @@ export default function AnnotateOverlay() {
     setNotes((prev) => [
       ...prev,
       {
-        id: crypto.randomUUID(),
+        id: newId(),
         comment,
         createdAt: Date.now(),
         target: pending,
