@@ -52,6 +52,46 @@ export const machines = pgTable(
 
 export type MachineSetting = { label: string; value: number | null };
 
+// Global reference catalog of real gym-machine models (brand/model/specs),
+// distinct from `machines` (a user's owned equipment, owner-scoped, no seed
+// rows — see the comment above that table). Mirrors the `exercises` seed-row
+// pattern: ownerId null = global, readable by all, writable only by
+// migrations. v1 seeds the existing static catalog (411 rows, 16 brands as
+// of 2026-08-07 — see docs/DECISIONS.md for the stale-count correction)
+// (packages/core/src/data/machine-catalog.ts); `category` extends that
+// file's MachineCategory union (app-validated, not a DB enum, same as
+// exercises.exercise_type). No photo/image column — manufacturer photos stay
+// out on copyright grounds (docs/DECISIONS.md 2026-07-12); productUrl links
+// out instead. Not yet wired to any UI or repo query (see docs/DECISIONS.md
+// 2026-08-07) — `machines.catalog_key` still matches the static TS array.
+export const machineCatalog = pgTable(
+  "machine_catalog",
+  {
+    ...base,
+    ownerId: seedableOwner,
+    brand: text("brand").notNull(),
+    model: text("model").notNull(),
+    aliases: jsonb("aliases").$type<string[]>(),
+    category: text("category").notNull(),
+    mechanism: text("mechanism"), // 'selectorized'|'plate-loaded'|'cable'|'pneumatic'|'smith'|'bodyweight'|'electronic'
+    muscleTargets: jsonb("muscle_targets").$type<MuscleTarget[]>(),
+    weightStackKg: real("weight_stack_kg"),
+    plateCapacityKg: real("plate_capacity_kg"),
+    dimensions: jsonb("dimensions").$type<{
+      lengthCm?: number;
+      widthCm?: number;
+      heightCm?: number;
+      weightKg?: number;
+    }>(),
+    productUrl: text("product_url"),
+    introducedYear: integer("introduced_year"),
+    discontinuedYear: integer("discontinued_year"), // null = current line
+    sourceUrl: text("source_url"), // provenance
+    sourceNote: text("source_note"),
+  },
+  (t) => [index("machine_catalog_brand_idx").on(t.brand)],
+);
+
 export const exercises = pgTable(
   "exercises",
   {
@@ -530,6 +570,7 @@ export const apiTokens = pgTable(
 );
 
 export type Machine = typeof machines.$inferSelect;
+export type MachineCatalogRow = typeof machineCatalog.$inferSelect;
 export type Exercise = typeof exercises.$inferSelect;
 export type Metric = typeof metrics.$inferSelect;
 export type TrackedCondition = typeof trackedConditions.$inferSelect;

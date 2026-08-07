@@ -28,6 +28,33 @@ The user's gym equipment — settings entered once, recalled in every session.
 | photo_path | text? | storage path of the user's photo |
 | owner_id | uuid | |
 
+### machine_catalog
+Global reference catalog of real gym-machine models (brand/model/specs) —
+distinct from `machines` (the user's owned equipment above; no seed rows
+there). `owner_id null` = global seed row, same convention as `exercises`/
+`metrics`. v1 is seeded from the static catalog
+(`packages/core/src/data/machine-catalog.ts`, Tier 1 brands); not yet linked
+from `machines.catalog_key` or exposed in any UI/search (see
+`docs/DECISIONS.md` 2026-08-07).
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| brand | text | |
+| model | text | |
+| aliases | jsonb? | string[], alternate names |
+| category | text | extends `machines`' static-catalog `MachineCategory` union (app-validated) |
+| mechanism | text? | `selectorized` \| `plate-loaded` \| `cable` \| `pneumatic` \| `smith` \| `bodyweight` \| `electronic` |
+| muscle_targets | jsonb? | `{muscle, tier, role?}[]`, same shape as `exercises.muscle_targets` |
+| weight_stack_kg | real? | |
+| plate_capacity_kg | real? | |
+| dimensions | jsonb? | `{lengthCm?, widthCm?, heightCm?, weightKg?}` |
+| product_url | text? | link out — no stored photo (copyright, `docs/DECISIONS.md` 2026-07-12) |
+| introduced_year / discontinued_year | integer? | discontinued null = current line |
+| source_url | text? | provenance |
+| source_note | text? | e.g. "migrated from static catalog 2026-08-07" |
+| owner_id | text? | null = global seed |
+| created_at / updated_at / deleted_at | bigint ms | |
+
 ### exercises
 | column | type | notes |
 |---|---|---|
