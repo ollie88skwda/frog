@@ -38,6 +38,13 @@ export function qaDupesPath(brandKey: string): string {
   return join(STAGING_ROOT, "qa", `${brandKey}-dupes.json`);
 }
 
+// The QA-reviewed migration feed: the normalized batch minus rows the
+// phase-1 seed already owns and minus wrong-brand rows. generate-migration.ts
+// prefers this file when present (see its header).
+export function qaReviewPath(brandKey: string): string {
+  return join(STAGING_ROOT, "qa", `${brandKey}-review.json`);
+}
+
 export function migrationOutPath(brandKey: string): string {
   return join(STAGING_ROOT, "migrations", `${brandKey}.sql`);
 }

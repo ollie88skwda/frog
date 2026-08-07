@@ -11,8 +11,15 @@
 // Usage: bun scripts/machine-catalog/qa.ts <brandKey> [--pct 10] [--seed 1]
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { normalizedPath, qaDupesPath, qaSamplePath } from "./paths";
-import { findDupes, sample } from "./qa-lib";
+import { MACHINE_CATALOG } from "../../packages/core/src/data/machine-catalog";
+import { brandConfig } from "./brands";
+import {
+  normalizedPath,
+  qaDupesPath,
+  qaReviewPath,
+  qaSamplePath,
+} from "./paths";
+import { findDupes, findSeedOverlaps, sample } from "./qa-lib";
 import type { ExtractionBatch } from "./types";
 
 const DEFAULT_PCT = 10; // report.md §5: "recommend 5-10%"
@@ -35,14 +42,60 @@ async function main() {
     readFileSync(normalizedPath(brandKey), "utf8"),
   );
 
-  const reviewSample = sample(batch.machines, pct, seed).map((m) => ({
+  // The phase-1 seed (static catalog) already owns these machines — a
+  // re-insert would duplicate a row, so drop them from the migration feed.
+  // Also drop rows that normalized to a *different* brand than this batch
+  // targets (e.g. Hammer Strength products crawled under the shared
+  // life-fitness sitemap land in life-fitness's batch) — they are reported
+  // so the caller can re-home them into their own brand's batch.
+  const seedOverlaps = findSeedOverlaps(batch.machines, MACHINE_CATALOG);
+  const targetBrand = brandConfig(brandKey).brand;
+  const wrongBrand = batch.machines.filter(
+    (m) => m.brand !== targetBrand && !seedOverlaps.includes(m),
+  );
+  const seedOverlapKeys = new Set(seedOverlaps.map((m) => m));
+  const wrongBrandKeys = new Set(wrongBrand.map((m) => m));
+  const reviewRows = batch.machines.filter(
+    (m) => !seedOverlapKeys.has(m) && !wrongBrandKeys.has(m),
+  );
+
+  const reviewPath = qaReviewPath(brandKey);
+  mkdirSync(dirname(reviewPath), { recursive: true });
+  writeFileSync(
+    reviewPath,
+    JSON.stringify(
+      {
+        brandKey,
+        targetBrand,
+        reviewedAt: new Date().toISOString(),
+        // The migration feed: batch minus seed overlaps minus wrong-brand rows.
+        // A human/agent still reviews `sample` below and edits this file (or
+        // drops rows) before generate-migration.ts consumes it.
+        machines: reviewRows,
+        dropped: {
+          seedOverlaps: seedOverlaps.map((m) => ({
+            brand: m.brand,
+            model: m.model,
+          })),
+          wrongBrand: wrongBrand.map((m) => ({
+            brand: m.brand,
+            model: m.model,
+          })),
+        },
+      },
+      null,
+      2,
+    ),
+  );
+
+  const reviewSample = sample(reviewRows, pct, seed).map((m) => ({
     brand: m.brand,
     model: m.model,
     category: m.category,
     sourceUrl: m.sourceUrl,
     sourceNote: m.sourceNote,
   }));
-  const dupeGroups = findDupes(batch.machines);
+  const dupeGroups = findDupes(reviewRows);
 
   const samplePath = qaSamplePath(brandKey);
   mkdirSync(dirname(samplePath), { recursive: true });
@@ -72,11 +125,18 @@ async function main() {
   );
 
   console.error(
-    `QA for "${brandKey}": sampled ${reviewSample.length}/${batch.machines.length} rows (${pct}%) -> ${samplePath}`,
+    `QA for "${brandKey}": ${reviewRows.length}/${batch.machines.length} rows kept (${seedOverlaps.length} dropped as seed dupes, ${wrongBrand.length} dropped as wrong brand) -> ${reviewPath}`,
   );
   console.error(
-    `dedupe check: ${dupeGroups.length} duplicate (brand, model) group(s) -> ${dupesPath}`,
+    `sample: ${reviewSample.length} rows -> ${samplePath}; dedupe: ${dupeGroups.length} group(s) -> ${dupesPath}`,
   );
+  if (wrongBrand.length > 0) {
+    console.error(
+      `wrong-brand rows (re-home into their own brand's batch): ${wrongBrand
+        .map((m) => `${m.brand} ${m.model}`)
+        .join("; ")}`,
+    );
+  }
 }
 
 await main();

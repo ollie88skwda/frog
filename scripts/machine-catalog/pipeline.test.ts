@@ -24,7 +24,7 @@ import {
   dedupeKey,
   normalizeMachine,
 } from "./normalize-lib";
-import { findDupes, sample } from "./qa-lib";
+import { findDupes, findSeedOverlaps, sample } from "./qa-lib";
 import { isAllowed, parseRobots } from "./robots";
 import type { RawDocument, StagingMachine } from "./types";
 
@@ -150,6 +150,42 @@ describe("qa-lib.ts", () => {
     expect(dupes.length).toBe(1);
     expect(dupes[0].length).toBe(2);
   });
+
+  test("findSeedOverlaps flags the three ways seed and official names diverge", () => {
+    const seed = [
+      { brand: "Hammer Strength", model: "Plate Loaded Glute Drive" },
+      { brand: "Life Fitness", model: "Insignia Series Dual Axis Chest Press" },
+      {
+        brand: "Life Fitness",
+        model: "Insignia Series Pectoral Fly/Rear Deltoid",
+      },
+      { brand: "Hammer Strength", model: "Iso-Lateral Leg Press" },
+    ];
+    const rows = [
+      machine({ model: "Glute Drive" }), // seed's "Plate Loaded" prefix is the mechanism, not the name
+      machine({
+        brand: "Life Fitness",
+        model: "Insignia Series Chest Press - Dual Axis",
+      }), // same words, seed order
+      machine({
+        brand: "Life Fitness",
+        model: "Insignia Series Pectoral Fly / Rear Deltoid",
+      }), // separator noise
+      machine({ model: "Iso-Lateral Leg Press" }), // exact
+      machine({ model: "Select Chest Press" }), // genuinely new — no seed match
+      machine({
+        brand: "Life Fitness",
+        model: "Insignia Series Hip Abductor / Adductor",
+      }), // near-dup, NOT auto-dropped (stems differ)
+    ];
+    const overlaps = findSeedOverlaps(rows, seed);
+    expect(overlaps.map((m) => m.model).sort()).toEqual([
+      "Glute Drive",
+      "Insignia Series Chest Press - Dual Axis",
+      "Insignia Series Pectoral Fly / Rear Deltoid",
+      "Iso-Lateral Leg Press",
+    ]);
+  });
 });
 
 describe("extract-lib.ts", () => {
@@ -161,6 +197,28 @@ describe("extract-lib.ts", () => {
       "plate-loaded",
     );
     expect(inferMechanism("no mechanism words here")).toBe(null);
+  });
+
+  test("inferCategory is name-first: noisy description copy can't override the name", () => {
+    // "chest pads" and "activate your glutes" are description noise — the
+    // name is authoritative.
+    expect(inferCategory("Select Leg Curl", "Select Leg Curl")).toBe(
+      "leg-curl",
+    );
+    expect(
+      inferCategory("Plate Loaded Pulldown", "Plate Loaded Pulldown"),
+    ).toBe("pulldown");
+    expect(
+      inferCategory(
+        "Insignia Series Sit / Stand Hip Abductor with glutes copy",
+        "Insignia Series Sit / Stand Hip Abductor",
+      ),
+    ).toBe("hip-abduction");
+    expect(inferCategory("G2 Home Gym", "G2 Home Gym")).toBe("multi-station");
+    // Name has no keyword -> falls back to the full text.
+    expect(
+      inferCategory("A functional trainer that does everything", "SYNRGY360"),
+    ).toBe("functional-trainer");
   });
 
   test("cleanModelName strips a leading plate-loaded/brand prefix", () => {
@@ -233,11 +291,37 @@ describe("extract-lib.ts", () => {
 
 describe("crawl-lib.ts", () => {
   test("decodeEntities handles the entities real product pages emit", () => {
-    // Real Life Fitness product descriptions double-escape ("&amp;nbsp;"),
-    // so decoding must fully resolve to a plain space, not stop at "&nbsp;".
+    expect(decodeEntities("Ground Base&#xAE; Multi-Squat")).toBe(
+      "Ground Base® Multi-Squat",
+    );
+    expect(decodeEntities("Life Fitness&#x2122; On Demand")).toBe(
+      "Life Fitness™ On Demand",
+    );
+    expect(decodeEntities("&#x2019;")).toBe("’");
+    // Double-encoded: must fully resolve to a plain space, not stop at "&nbsp;".
     expect(decodeEntities("Plate&amp;nbsp;loaded &mdash; two patterns")).toBe(
       "Plate loaded — two patterns",
     );
+  });
+
+  test("extractJsonLdProduct survives &quot; inside a JSON-LD description", () => {
+    // A raw &quot; pre-decode turns into an unescaped quote and JSON.parse
+    // throws "Unterminated string" — the parser must not decode entities
+    // before parsing (regression for Life Fitness product pages, whose
+    // descriptions entity-escape quotes).
+    const html = `<script type="application/ld+json">
+      {"@context":"https://schema.org","@type":"Product","name":"Insignia Series Chest Press","brand":{"name":"Life Fitness"},"description":"A &quot;chest press&quot; that pushes."}
+      </script>`;
+    const jsonld = extractJsonLdProduct(html);
+    expect(jsonld).not.toBeNull();
+    expect(jsonld).toContain('"name": "Insignia Series Chest Press"');
+  });
+
+  test("extractJsonLdProduct accepts an @type array containing Product", () => {
+    const html = `<script type="application/ld+json">
+      {"@type":["Product","Thing"],"name":"A Machine","brand":"Brand"}
+      </script>`;
+    expect(extractJsonLdProduct(html)).not.toBeNull();
   });
 
   test("extractJsonLdProduct finds a Product block among other JSON-LD types", () => {
