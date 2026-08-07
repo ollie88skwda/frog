@@ -1,7 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect, useReducer } from "react";
 import { RestTimerIcon } from "@/components/session/rest-timer-icon";
-import { cn } from "@/lib/utils";
 
 export function mmss(totalSec: number): string {
   const s = Math.max(0, totalSec);
@@ -10,42 +9,11 @@ export function mmss(totalSec: number): string {
 }
 
 /**
- * The rest stopwatch's indicator in the exercise block header — a passive
- * badge, not a button: there's no target left to configure (rest has no
- * preset/preview anymore), so it just goes accent while that block's own
- * stopwatch is running. In a superset, more than one block's stopwatch can be
- * running at once even though the dock below only shows the most recent one
- * — this is how the others stay visible.
- */
-export function RestControl({
-  blockName,
-  running,
-}: {
-  blockName: string;
-  running: boolean;
-}) {
-  return (
-    <span
-      title={running ? "Resting" : undefined}
-      className={cn(
-        "flex h-10 shrink-0 items-center justify-center border px-2 transition-colors duration-100 md:h-8",
-        running
-          ? "border-accent bg-accent-soft text-accent"
-          : "border-border bg-surface-2 text-faint",
-      )}
-      data-testid={`block-${blockName}-rest-timer`}
-    >
-      <RestTimerIcon className="size-4 shrink-0" />
-    </span>
-  );
-}
-
-/**
  * The running rest stopwatch, docked as a floating bar above the mobile tab
  * island (bottom of the content column on desktop). One bar per session — it
  * shows the most recently started stopwatch and names its exercise; any older
- * one keeps ticking in the background (see `RestControl`) and takes the dock
- * as it frees up. Presentational: ticking here only drives the display, it
+ * one keeps ticking in the background (the block header's rest icon keeps
+ * glowing while it does) and takes the dock as it frees up. Presentational: ticking here only drives the display, it
  * never times out — there's no target to count down to, just Stop.
  */
 export function RestDock({

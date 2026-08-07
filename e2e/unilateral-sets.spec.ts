@@ -22,9 +22,10 @@ test.beforeEach(async ({ page }) => {
 async function cellX(
   page: import("@playwright/test").Page,
   testId: string,
-  // The draft row's cells are Radix TextField roots: the test id lands on the
-  // inner <input>, which the field's own 1px border insets from the grid cell
-  // around it. Measure that wrapper when comparing against a committed cell.
+  // The draft row's cells are boxless inputs (no wrapper, no border), so the
+  // test id sits directly on the element that fills the grid cell — measure
+  // it directly, like a committed value button. Kept as a parameter so a
+  // future bordered/wrapped field can opt back into measuring its wrapper.
   wrapper = false,
 ): Promise<number> {
   const el = page.getByTestId(testId);
@@ -330,7 +331,7 @@ test("a mirrored pair prints no ᴿ readout; clearing the ᴿ side prints — be
     ["committed-0-right-reps", false],
     ["committed-1-reps", false],
     ["committed-1-right-reps", false],
-    ["set-2-reps", true],
+    ["set-2-reps", false],
   ] as const) {
     expect(
       await cellX(page, id, wrapper),
