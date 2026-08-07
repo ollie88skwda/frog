@@ -458,9 +458,15 @@ export default function SessionScreen() {
   // Routine provenance: template targets + notes for prefill / write-back.
   const routineQuery = useRoutineDetail(session?.routineId ?? null);
   const routineDetail = routineQuery.data ?? null;
-  // isLoading is false for a disabled query (empty workout) and once a routine
-  // resolves — even to null (deleted routine) — so blocks always eventually seed.
-  const routineLoading = routineQuery.isLoading;
+  // Presence, not isLoading (same rule as the session row above): an errored
+  // query reports isLoading false, so it can't hold the gate while the error
+  // branch's Retry refetches it. Only consulted for routine-started sessions
+  // (the query is disabled otherwise), and false once the routine resolves —
+  // even to null (deleted routine) or to a definitive error — so blocks
+  // always eventually seed rather than hanging on the loading branch.
+  const routineLoading =
+    routineQuery.isFetching ||
+    (routineQuery.data === undefined && !routineQuery.isError);
 
   const [blocks, setBlocks] = useState<BlockState[] | null>(null);
   const [picking, setPicking] = useState(false);
@@ -1468,6 +1474,9 @@ export default function SessionScreen() {
             onClick={() => {
               void sessionQuery.refetch();
               void refetchRestored();
+              // The routine template gates the seed too: leaving it errored
+              // seeds every row with no targets, notes or prefill.
+              if (session?.routineId) void routineQuery.refetch();
             }}
             data-testid="session-retry"
           >
@@ -1528,9 +1537,10 @@ export default function SessionScreen() {
               variant="outline"
               size="sm"
               onClick={retryFailedSets}
+              disabled={logSet.isPending}
               data-testid="set-sync-retry"
             >
-              Retry
+              {logSet.isPending ? "Retrying…" : "Retry"}
             </Button>
           </div>
         </div>
