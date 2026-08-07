@@ -170,8 +170,8 @@ export default function AnnotateOverlay() {
     }
   }, []);
 
-  /* Toggle + escape. On `window` capture so it lands before both the app's
-   * single-key hotkeys and the mode's own document-level suppression. A key
+  /* Toggle + escape. On `window` capture so it lands before the mode's own
+   * document-level suppression below. A key
    * the overlay consumes stops dead there: the Escape that closes the composer
    * must not also dismiss the Radix layer underneath it. An Escape the overlay
    * has no use for — mode off, nothing pending — is left entirely alone. */
@@ -292,10 +292,11 @@ export default function AnnotateOverlay() {
       setStatus(null);
     }
 
-    /* App single-key hotkeys (s/l/h/f) must not fire while annotating. Only
-     * propagation is stopped when nothing editable holds focus, so the arrow /
-     * space / page keys still scroll the page — the same bargain the touch
-     * events strike above. */
+    /* Stray keystrokes must not reach the app while annotating (the app has
+     * no bare single-key shortcuts as of 2026-08-07, but this stays as a
+     * general safety net). Only propagation is stopped when nothing editable
+     * holds focus, so the arrow / space / page keys still scroll the page —
+     * the same bargain the touch events strike above. */
     function muteKeys(e: KeyboardEvent) {
       if (isOurUi(e.target) || e.key === "Escape") return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
