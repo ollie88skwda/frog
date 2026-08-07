@@ -54,6 +54,18 @@ const ThemePanel = showThemePanel
     )
   : null;
 
+// Click-to-comment overlay (src/dev/annotate/) — dev-only, off by default,
+// toggled with Ctrl+Shift+A or its floating button. Same dead-branch shape as
+// ThemePanel above: both conditions fold to a literal `false` in a production
+// build, so Rollup drops the dynamic import and the whole subtree with it.
+// VITE_E2E builds keep it so Playwright can drive the real thing; that build
+// is already non-production (it also carries the __frog auth bridge).
+// scripts/check-bundle.ts fails the build if it ever reaches production.
+const AnnotateOverlay =
+  import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
+    ? lazy(() => import("@/dev/annotate"))
+    : null;
+
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -128,6 +140,11 @@ export function App() {
         {ThemePanel && (
           <Suspense fallback={null}>
             <ThemePanel />
+          </Suspense>
+        )}
+        {AnnotateOverlay && (
+          <Suspense fallback={null}>
+            <AnnotateOverlay />
           </Suspense>
         )}
       </Theme>
