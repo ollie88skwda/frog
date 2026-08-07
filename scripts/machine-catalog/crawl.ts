@@ -19,8 +19,16 @@
 // clear note rather than silently dropping it. Wiring real PDF-to-text is
 // flagged as a follow-up in the pipeline doc.
 //
-// Usage: bun scripts/machine-catalog/crawl.ts <brandKey> [--limit N]
-import { mkdirSync, writeFileSync } from "node:fs";
+// Usage: bun scripts/machine-catalog/crawl.ts <brandKey> [--limit N] [--urls-file path]
+//
+// --urls-file: a newline-delimited file of exact URLs to crawl instead of
+// the brand's sitemap/seedUrls. Used when a brand's sitemap is incomplete
+// for the target category (Precor's sitemap omits most of its strength
+// products — a companion discovery script collects them from the category
+// pages instead) or when a storefront's product list needs hand-curation
+// (Hoist's sitemap is 90% spare parts). robots.txt and rate limits still
+// apply to every URL in the file.
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { brandConfig } from "./brands";
 import {
@@ -55,6 +63,9 @@ async function main() {
       : DEFAULT_LIMIT;
   const delayMs = Number(process.env.FROG_CRAWL_DELAY_MS ?? 1000);
 
+  const urlsFileIdx = process.argv.indexOf("--urls-file");
+  const urlsFile = urlsFileIdx !== -1 ? process.argv[urlsFileIdx + 1] : null;
+
   const config = brandConfig(brandKey);
   if (!config.verified) {
     console.error(
@@ -67,15 +78,20 @@ async function main() {
   const policy = await fetchRobots(config.domain);
   const rate = createRateLimiter(delayMs);
 
-  const candidateUrls = config.sitemapUrl
-    ? await collectSitemapUrls(config.sitemapUrl, config.pathPattern)
-    : config.seedUrls;
+  const candidateUrls = urlsFile
+    ? readFileSync(urlsFile, "utf8")
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter((l) => l && !l.startsWith("#"))
+    : config.sitemapUrl
+      ? await collectSitemapUrls(config.sitemapUrl, config.pathPattern)
+      : config.seedUrls;
   const urls = candidateUrls.slice(0, limit);
 
   const manifest: CrawlManifest = {
     brandKey,
     crawledAt: new Date().toISOString(),
-    sourceListUrl: config.sitemapUrl,
+    sourceListUrl: urlsFile ?? config.sitemapUrl,
     documents: [],
     binaries: [],
     skipped: [],

@@ -134,7 +134,11 @@ export const SCHEMA_DESCRIPTION = `Return a JSON object: {"machines": StagingMac
   "sourceUrl": string,             // the page/PDF this row came from — required
   "sourceNote": string | null
 }
-Only extract facts present in the source text. Do not invent specs. If a field
+Rules:
+- "model" is the human-readable product name as the page presents it (e.g. "Leg Press", "Inspiration Chest Press"). Never use a product code/SKU ("PW429", "4384", "DPL0543") as the model; if the page shows a code/SKU, put it in "aliases" instead.
+- "brand" is the manufacturer as the page states it ("Nautilus", "Cybex", "Star Trac", ...).
+- "category" must be one of the listed strength-machine categories; if the machine is a bench, rack, dumbbell, barbell, plate, accessory, or any non-machine (including cardio equipment like treadmills/ellipticals/bikes), use "other".
+- Only extract facts present in the source text. Do not invent specs. If a field
 isn't stated, use null.`;
 
 // Infer a machine's category from a product page's text. Name-first: the
@@ -255,6 +259,7 @@ export function readExtractConfig(
 export async function callModel(
   doc: RawDocument,
   cfg: ExtractConfig,
+  brandHint?: string,
 ): Promise<string> {
   const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
     method: "POST",
@@ -273,7 +278,7 @@ export async function callModel(
         },
         {
           role: "user",
-          content: `Source URL: ${doc.url}\n\nSource text:\n${doc.text}`,
+          content: `Source URL: ${doc.url}\n${brandHint ? `The manufacturer is ${brandHint}. If the page text does not state a brand, use "${brandHint}".\n` : ""}Source text:\n${doc.text}`,
         },
       ],
     }),

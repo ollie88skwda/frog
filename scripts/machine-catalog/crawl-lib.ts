@@ -89,16 +89,42 @@ export function stripHtml(html: string): string {
   return text.length > MAX ? `${text.slice(0, MAX)}…` : text;
 }
 
+// Fetch a sitemap and return its <loc> entries, following nested sitemap
+// indexes (a top-level sitemap.xml that only lists child <sitemap> files is
+// common — every Shopify and WordPress storefront here does it). Child URLs
+// are fetched recursively and deduped; `pathPattern` filters the final URL
+// list, not the index entries (an index's <loc>s are sitemap files, which a
+// product pathPattern should never match anyway).
+//
+// Depth-bounded (sitemaps only ever nest one level in practice) and the
+// recursion is sequential + rate-limited by the caller, so this stays polite.
 export async function collectSitemapUrls(
   sitemapUrl: string,
   pathPattern: RegExp | null,
+  seen: Set<string> = new Set(),
 ): Promise<string[]> {
+  if (seen.has(sitemapUrl)) return [];
+  seen.add(sitemapUrl);
   const res = await fetch(sitemapUrl, {
     headers: { "user-agent": CRAWLER_USER_AGENT },
   });
   if (!res.ok) throw new Error(`sitemap fetch ${sitemapUrl} -> ${res.status}`);
   const xml = await res.text();
   const locs = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  // A sitemapindex's <loc>s are child sitemap files (nested <sitemap> tags);
+  // a urlset's are page URLs. Distinguish by the sibling tag, not the URL
+  // shape — some indexes point at extensionless child files.
+  const childFiles = [...xml.matchAll(/<sitemap>\s*<loc>([^<]+)<\/loc>/gs)].map(
+    (m) => m[1],
+  );
+  if (childFiles.length > 0) {
+    const nested: string[] = [];
+    for (const child of childFiles) {
+      const urls = await collectSitemapUrls(child, pathPattern, seen);
+      nested.push(...urls);
+    }
+    return [...new Set(nested)];
+  }
   return pathPattern ? locs.filter((u) => pathPattern.test(u)) : locs;
 }
 
