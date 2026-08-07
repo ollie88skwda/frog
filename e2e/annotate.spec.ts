@@ -120,3 +120,22 @@ test("notes can be edited and cleared before sending", async ({ page }) => {
   await page.getByTestId("annotate-toggle").click();
   await expect(page.getByTestId("annotate-list-btn")).toHaveText("0 notes");
 });
+
+test("app single-key hotkeys stay quiet while annotating, and resume after", async ({
+  page,
+}) => {
+  // `h` is one of the app shell's single-key shortcuts (app-shell.tsx).
+  await page.getByTestId("annotate-toggle").click();
+  await page.keyboard.press("h");
+  // Give a navigation every chance to happen before asserting it didn't.
+  await page.waitForTimeout(500);
+  await expect(page).toHaveURL(/\/train$/);
+
+  await page.getByTestId("annotate-toggle").click();
+  await expect(page.getByTestId("annotate-toggle")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await page.keyboard.press("h");
+  await expect(page).toHaveURL(/\/history$/);
+});

@@ -123,8 +123,8 @@ to trust everywhere.
 - `e2e/annotate.spec.ts` — turns the mode on, clicks a real button, asserts no
   session started, records a note, and asserts the **clipboard** payload carries
   the source path, component, test id, selector, route and viewport; plus edit,
-  reload-persistence, armed clear, and that normal clicks resume when the mode
-  is off.
+  reload-persistence, armed clear, and that normal clicks and the app's
+  single-key hotkeys both resume when the mode is off.
 - `scripts/check-bundle.ts` — the production gate. Prove it still bites by
   inverting it: a `VITE_E2E=1` build must fail the script, a clean build must
   pass.
