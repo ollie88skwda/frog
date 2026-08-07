@@ -2377,8 +2377,16 @@ function ExerciseBlock({
   const navigate = useNavigate();
   const [plateTarget, setPlateTarget] = useState<number | null>(null);
   const [plateOpen, setPlateOpen] = useState(false);
-  const noteInputRef = useRef<HTMLInputElement>(null);
   const activeIndex = countSets(block.committed);
+  // Whether a draft (active) row is shown for this block right now. The
+  // first set's row is always open (fresh: blank; routine: seeded) so
+  // logging starts instantly; after that a draft only reappears via an
+  // explicit "Add set" tap (handleAddSet below) — or, on reload, when it
+  // restores real in-progress keystrokes rather than fabricating one.
+  const [draftOpen, setDraftOpen] = useState(
+    () => activeIndex === 0 || loadDraft(block.seId) != null,
+  );
+  const activeRowHandleRef = useRef<ActiveRowHandle | null>(null);
   const enabledMetrics = metrics.filter(
     (m) => m.scope === "set" && m.exerciseIds?.includes(block.exerciseId),
   );
@@ -2464,13 +2472,6 @@ function ExerciseBlock({
               <RestTimerIcon className="size-4" />
             </IconButton>
           )}
-          <IconButton
-            onClick={() => noteInputRef.current?.focus()}
-            title="Session note"
-            data-testid={`block-${block.name}-note-btn`}
-          >
-            <StickyNote className="size-4" />
-          </IconButton>
           <BlockMenu
             blockName={block.name}
             unit={blockUnit}
@@ -2516,7 +2517,6 @@ function ExerciseBlock({
         note={block.note ?? ""}
         ghostNote={ghostNote ?? null}
         onCommit={onSetNote}
-        inputRef={noteInputRef}
       />
 
       {machine && <SetupStrip machine={machine} blockName={block.name} />}
@@ -2579,48 +2579,82 @@ function ExerciseBlock({
           />
         ))}
 
-        <ActiveRow
-          key={`${activeIndex}-${seedNonce}`}
-          ref={registerRowRef}
-          seId={block.seId}
-          index={activeIndex}
-          unit={blockUnit}
-          distUnit={distUnit}
-          type={type}
-          columns={columns}
-          showPrevious={showPrevious}
-          previous={cells[activeIndex]?.previous ?? null}
-          seed={seedSets[activeIndex]}
-          nextSeedType={seedSets[activeIndex + 1]?.setType ?? null}
-          ghost={ghostFor(ghost, activeIndex)}
-          hasGhost={ghost.length > 0}
-          enabledMetrics={enabledMetrics}
-          autoFocusWeight={activeIndex > 0}
-          barLoaded={barLoaded}
-          laterality={exercise?.laterality ?? null}
-          onOpenPlates={(target) => {
-            setPlateTarget(target);
-            setPlateOpen(true);
-          }}
-          timerRunning={timerRunning}
-          timerStartedAt={timerStartedAt}
-          onToggleTimer={onToggleTimer}
-          onCommit={onCommit}
-        />
-
-        {seedSets.slice(activeIndex + 1).map((seed, i) => (
-          <UpcomingRow
-            // biome-ignore lint/suspicious/noArrayIndexKey: seed targets carry no id; position is the set number
-            key={activeIndex + 1 + i}
-            index={activeIndex + 1 + i}
-            seed={seed}
+        {draftOpen && (
+          <ActiveRow
+            key={`${activeIndex}-${seedNonce}`}
+            ref={(handle) => {
+              activeRowHandleRef.current = handle;
+              registerRowRef(handle);
+            }}
+            seId={block.seId}
+            index={activeIndex}
             unit={blockUnit}
             distUnit={distUnit}
+            type={type}
             columns={columns}
             showPrevious={showPrevious}
-            previous={cells[activeIndex + 1 + i]?.previous ?? null}
+            previous={cells[activeIndex]?.previous ?? null}
+            seed={seedSets[activeIndex]}
+            nextSeedType={seedSets[activeIndex + 1]?.setType ?? null}
+            ghost={ghostFor(ghost, activeIndex)}
+            hasGhost={ghost.length > 0}
+            enabledMetrics={enabledMetrics}
+            autoFocusWeight={activeIndex > 0}
+            barLoaded={barLoaded}
+            laterality={exercise?.laterality ?? null}
+            onOpenPlates={(target) => {
+              setPlateTarget(target);
+              setPlateOpen(true);
+            }}
+            timerRunning={timerRunning}
+            timerStartedAt={timerStartedAt}
+            onToggleTimer={onToggleTimer}
+            onCommit={(set, ctx) => {
+              // Logging a set never auto-adds the next row — only an
+              // explicit "Add set" tap (handleAddSet) does that.
+              onCommit(set, ctx);
+              setDraftOpen(false);
+            }}
           />
-        ))}
+        )}
+
+        {seedSets.slice(activeIndex + (draftOpen ? 1 : 0)).map((seed, i) => {
+          const idx = activeIndex + (draftOpen ? 1 : 0) + i;
+          return (
+            <UpcomingRow
+              key={idx}
+              index={idx}
+              seed={seed}
+              unit={blockUnit}
+              distUnit={distUnit}
+              columns={columns}
+              showPrevious={showPrevious}
+              previous={cells[idx]?.previous ?? null}
+            />
+          );
+        })}
+
+        {/* The explicit "Add set" affordance — the only way a new draft row
+            appears. Sits below every committed row AND every upcoming
+            (routine-seeded) row, so it never lands between two sets the way
+            the old in-row button did. Commits any open draft first (same
+            path as the row's own check button), then opens the next one. */}
+        <div className="col-span-full mt-2">
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => {
+              if (draftOpen) activeRowHandleRef.current?.commit(true);
+              setDraftOpen(true);
+            }}
+            data-testid={`set-${activeIndex}-add`}
+          >
+            <Plus className="size-3" />
+            Add set
+          </Button>
+        </div>
       </div>
 
       <PlateSheet
@@ -2645,20 +2679,17 @@ function SessionNoteField({
   note,
   ghostNote,
   onCommit,
-  inputRef,
 }: {
   blockName: string;
   note: string;
   ghostNote: string | null;
   onCommit: (note: string) => void;
-  inputRef?: Ref<HTMLInputElement>;
 }) {
   const [value, setValue] = useState(note);
   // Carry-forward ghost: the prior session's note shows greyed as the
   // placeholder until typed over (dropped on save if left untouched).
   return (
     <input
-      ref={inputRef}
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onBlur={() => {
@@ -3258,7 +3289,11 @@ function CommittedRow({
     <div className="relative col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4">
       <div
         className={cn(
-          "relative commit-flash col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 -mx-4 bg-surface px-4 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-8",
+          "relative commit-flash col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 -mx-4 px-4 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-8",
+          // Zebra by physical set (this row's own index — a unilateral pair
+          // is one stripe, since it's one CommittedRow), one quiet sage step;
+          // hover stays the strongest so the interaction still reads.
+          index % 2 === 1 ? "bg-surface-2" : "bg-surface",
           isPaired && "pb-0.5 md:pb-0",
         )}
         data-testid={`committed-${index}`}
@@ -3733,6 +3768,10 @@ type ActiveRowHandle = {
     weightKg: number | null;
     reps: number | null;
   }) => boolean;
+  // Commits the current draft (same path as Enter / the check button) — the
+  // block-level "Add set" button drives this imperatively since it renders
+  // outside the row.
+  commit: (adoptGhost: boolean) => void;
 };
 
 function ActiveRow({
@@ -3920,8 +3959,12 @@ function ActiveRow({
         }
         return applied;
       },
+      commit,
     }),
-    [f.weight, f.reps, unit],
+    // No deps array: `commit` closes over every field's current value and is
+    // a fresh function every render, so memoizing this against a partial dep
+    // list (the old [f.weight, f.reps, unit]) would expose a stale `commit`
+    // to the ref holder whenever some other field changed without those three.
   );
 
   // Live stopwatch readout while this row's timer runs (ticks each second).
@@ -4509,17 +4552,7 @@ function ActiveRow({
           </div>
         </DialogContent>
       </Dialog>
-      <div className="col-span-full mt-2 grid grid-cols-[1fr_auto] items-stretch gap-2">
-        <Button
-          variant="outline"
-          size="lg"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => commit(true)}
-          data-testid={`set-${index}-add`}
-        >
-          <Plus className="size-3" />
-          Add set
-        </Button>
+      <div className="col-span-full mt-2 flex justify-end">
         <Button
           variant="outline"
           size="icon-lg"
