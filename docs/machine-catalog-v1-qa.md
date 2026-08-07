@@ -97,3 +97,29 @@ Full sample/dupe reports: `scripts/machine-catalog/staging/qa/`
 - `bun run typecheck`, `bun run lint`, `bun run test` (all workspaces) green;
   `bun test scripts/machine-catalog` (29 tests, incl. new seed-overlap and
   JSON-LD-entity cases) green.
+
+## ToS gate (all 15 Tier-1 brands, checked 2026-08-07)
+
+| Brand | Domain | Verdict |
+|---|---|---|
+| Life Fitness | lifefitness.com | ✅ verified (this run) |
+| Hammer Strength | lifefitness.com | ✅ verified (this run) |
+| Precor | precor.com | ✅ `Allow: /`, sitemap published |
+| Matrix | matrixfitness.com | ✅ sitemap published, near-zero disallows |
+| Nautilus | nautilus.com | ✅ Shopify, robots.txt declares product pages crawlable |
+| Hoist | hoistfitness.com | ✅ Shopify, same policy |
+| Cybex | **corehandf.com** (cybexintl.com dead) | ✅ Shopify policy; share storefront with Star Trac |
+| Star Trac | **corehandf.com** (startrac.com 301s) | ✅ Shopify policy |
+| Freemotion | freemotionfitness.com | ✅ `Allow: /`, e-commerce paths only disallowed |
+| Atlantis | atlantisstrength.com | ✅ WordPress, wp-admin only disallowed |
+| Gym80 | gym80.com | ✅ `Allow: /` + published llms.txt |
+| Arsenal Strength | arsenalstrength.com | ✅ WordPress, wp-admin only disallowed |
+| Technogym | technogym.com | ❌ CloudFront 403s automated requests (robots.txt unreachable) |
+| Panatta | panatta.com | ❌ redirects to GoDaddy placeholder; panattasport.com 403s |
+| Prime | primefitnessgroup.com | ❌ domain resolves but serves no HTTP response |
+
+12 of 15 verified. The 3 unverified brands stay `verified: false` in
+`brands.ts` with the reason in `tosNote`; `crawl.ts` will keep refusing them.
+Note the two domain corrections: Cybex and Star Trac both live at
+corehandf.com now (Core Health & Fitness) — one crawl target, JSON-LD brand
+splits the rows, same pattern as life-fitness/hammer-strength.
