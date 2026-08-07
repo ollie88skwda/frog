@@ -31,5 +31,8 @@ supabase/.branches/
 .lavish/
 .vercel
 
+# machine-catalog pipeline staging output (raw crawls, extractions, QA reports)
+scripts/machine-catalog/staging/
+
 # local tooling config
 treehouse.toml
