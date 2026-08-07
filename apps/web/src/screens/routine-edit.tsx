@@ -9,9 +9,6 @@ import {
   type ParsedExercise,
   parseRoutineText,
   type RoutineExerciseInput,
-  SET_TYPE_LABELS,
-  SET_TYPE_MARKERS,
-  SET_TYPES,
   type SetType,
   sameExerciseName,
   TYPE_FIELDS,
@@ -35,7 +32,9 @@ import {
 } from "@/components/exercise-filter";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { SetTypeCell } from "@/components/ui/set-type-cell";
 import { formatMMSS, parseDuration, parseIntOrNull } from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import { useExercises } from "@/lib/queries";
@@ -785,30 +784,31 @@ export default function RoutineEditScreen() {
               {d.sets.map((s, si) => (
                 <div
                   key={s.key}
-                  className="mt-1 grid grid-cols-[2.5rem_1fr_1fr_2rem] items-center gap-1"
+                  className={cn(
+                    "-mx-3 grid grid-cols-[2.5rem_1fr_1fr_2rem] items-center gap-1 border-t border-border px-3",
+                    si % 2 === 0 ? "bg-surface" : "bg-surface-2",
+                  )}
                 >
                   <SetTypeCell
-                    value={s.setType}
+                    setType={s.setType}
                     index={si}
                     onChange={(t) => patchSet(i, si, { setType: t })}
                     testId={`routine-ex-${i}-set-${si}-type`}
                   />
                   {fields.reps ? (
                     <div className="flex items-center gap-1">
-                      <Input
-                        size="3"
+                      <Field
                         inputMode="numeric"
                         placeholder="RIR"
                         value={s.rirMin}
                         onChange={(e) =>
                           patchSet(i, si, { rirMin: e.target.value })
                         }
-                        className="num"
+                        className="flex-1 min-w-0"
                         data-testid={`routine-ex-${i}-set-${si}-rirmin`}
                       />
                       <span className="text-2xs text-faint">–</span>
-                      <Input
-                        size="3"
+                      <Field
                         inputMode="numeric"
                         placeholder="RIR"
                         title="Target RIR range max"
@@ -816,37 +816,36 @@ export default function RoutineEditScreen() {
                         onChange={(e) =>
                           patchSet(i, si, { rirMax: e.target.value })
                         }
-                        className="num"
+                        className="flex-1 min-w-0"
                         data-testid={`routine-ex-${i}-set-${si}-rirmax`}
                       />
                     </div>
                   ) : fields.duration && !fields.weight ? (
-                    <Input
+                    <Field
                       inputMode="numeric"
                       placeholder="mm:ss"
                       value={s.duration}
                       onChange={(e) =>
                         patchSet(i, si, { duration: e.target.value })
                       }
-                      className="num h-8"
                     />
                   ) : (
                     <span />
                   )}
                   {fields.reps ? (
                     <div className="flex items-center gap-1">
-                      <Input
+                      <Field
                         inputMode="numeric"
                         placeholder="reps"
                         value={s.reps}
                         onChange={(e) =>
                           patchSet(i, si, { reps: e.target.value })
                         }
-                        className="num h-8"
+                        className="flex-1 min-w-0"
                         data-testid={`routine-ex-${i}-set-${si}-reps`}
                       />
                       <span className="text-2xs text-faint">–</span>
-                      <Input
+                      <Field
                         inputMode="numeric"
                         placeholder="max"
                         title="Optional rep-range max"
@@ -854,29 +853,27 @@ export default function RoutineEditScreen() {
                         onChange={(e) =>
                           patchSet(i, si, { repsMax: e.target.value })
                         }
-                        className="num h-8"
+                        className="flex-1 min-w-0"
                         data-testid={`routine-ex-${i}-set-${si}-repsmax`}
                       />
                     </div>
                   ) : fields.distance ? (
-                    <Input
+                    <Field
                       inputMode="decimal"
                       placeholder="—"
                       value={s.distance}
                       onChange={(e) =>
                         patchSet(i, si, { distance: e.target.value })
                       }
-                      className="num h-8"
                     />
                   ) : fields.weight && fields.duration ? (
-                    <Input
+                    <Field
                       inputMode="numeric"
                       placeholder="mm:ss"
                       value={s.duration}
                       onChange={(e) =>
                         patchSet(i, si, { duration: e.target.value })
                       }
-                      className="num h-8"
                     />
                   ) : (
                     <span />
@@ -1185,56 +1182,6 @@ export default function RoutineEditScreen() {
           </Button>
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
-
-function SetTypeCell({
-  value,
-  index,
-  onChange,
-  testId,
-}: {
-  value: SetType;
-  index: number;
-  onChange: (t: SetType) => void;
-  testId?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const marker = SET_TYPE_MARKERS[value];
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        className={cn(
-          "num flex h-10 w-10 items-center justify-center rounded-md border border-border bg-surface-2 text-xs",
-          value === "warmup" && "text-warn",
-          value === "failure" && "text-neg",
-          value === "drop" && "text-accent",
-        )}
-        onClick={() => setOpen((o) => !o)}
-        data-testid={testId}
-      >
-        {marker || index + 1}
-      </button>
-      {open && (
-        <div className="absolute z-10 mt-1 flex w-32 flex-col rounded-md border border-border bg-surface p-1 shadow-md">
-          {SET_TYPES.map((t) => (
-            <button
-              key={t}
-              type="button"
-              className="flex h-8 items-center px-2 text-left text-xs hover:bg-surface-2"
-              onClick={() => {
-                onChange(t);
-                setOpen(false);
-              }}
-              data-testid={testId ? `${testId}-${t}` : undefined}
-            >
-              {SET_TYPE_LABELS[t]}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
