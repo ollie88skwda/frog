@@ -32,7 +32,11 @@ test("a failed exercise list load shows an error, not an empty library", async (
 
   await page.goto("/library");
 
-  await expect(page.getByTestId("library-error")).toBeVisible();
+  // Queries retry twice with backoff (app.tsx) before the error state is
+  // reached — well past the 5s default expect timeout on a loaded runner.
+  await expect(page.getByTestId("library-error")).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(
     page.getByText(/couldn't reach the (server|pond)/i),
   ).toBeVisible();

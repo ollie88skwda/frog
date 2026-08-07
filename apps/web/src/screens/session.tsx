@@ -442,9 +442,13 @@ export default function SessionScreen() {
   const { t } = useVoice();
   const sessionQuery = useSession(sessionId);
   const session = sessionQuery.data;
-  // Until this resolves, routineId is unknown — the seed gate below can't tell
-  // a routine start from an ad-hoc workout.
-  const sessionLoading = sessionQuery.isLoading;
+  // Until the row itself is in hand, routineId is unknown — the seed gate
+  // below can't tell a routine start from an ad-hoc workout. Presence, not
+  // isLoading: a query in `error` status reports isLoading false even while
+  // the error branch's Retry is refetching it, and it stays false if the
+  // session load failed outright — either way the gate would fall through
+  // with routineId still unknown.
+  const sessionLoaded = session !== undefined;
   const {
     data: restored,
     isError: restoredError,
@@ -847,7 +851,7 @@ export default function SessionScreen() {
     // still undefined and `session?.routineId` reads as "ad-hoc", skipping the
     // routine wait below and mounting the grid unseeded — permanently, since
     // blocks seed once. Wait for the session row before deciding.
-    if (sessionLoading) return;
+    if (!sessionLoaded) return;
     if (session?.routineId && routineLoading) return;
     setBlocks(
       restored.map((se) => ({
@@ -860,7 +864,7 @@ export default function SessionScreen() {
         committed: se.sets,
       })),
     );
-  }, [restored, blocks, sessionLoading, session?.routineId, routineLoading]);
+  }, [restored, blocks, sessionLoaded, session?.routineId, routineLoading]);
 
   // Auto-open the exercise picker once when a session loads with no blocks —
   // but let it be dismissed (Escape/X). Not `open={blocks.length === 0}`, which
@@ -873,15 +877,25 @@ export default function SessionScreen() {
     }
   }, [blocks]);
 
-  // Sets whose write exhausted its retries (app.tsx: mutations retry 3x) and
-  // never persisted — the optimistic row is still on screen looking saved,
-  // which is exactly the silent-data-loss shape from the 2026-08-06 outage.
-  // Keyed by tempId so a later successful retry (below) can clear its own
-  // entry without touching any other pending failure.
-  const [failedSets, setFailedSets] = useState<
+  // Every set write that hasn't landed yet, keyed by tempId so an entry
+  // clears without touching any other one. `failed` flips once the write
+  // exhausts its retries (app.tsx: mutations retry 3x) and never persisted —
+  // the optimistic row is still on screen looking saved, which is exactly the
+  // silent-data-loss shape from the 2026-08-06 outage — and only those are
+  // reported. Entries are registered when the write is dispatched, not when
+  // it fails: the retries take ~7s, and an edit or delete inside that window
+  // has to reach the queued payload too (see saveSet/removeSet/removeBlock)
+  // or a later failure would queue the pre-edit values, or a deleted row.
+  const [queuedSets, setQueuedSets] = useState<
     Record<
       string,
-      { seId: string; set: CommitInput; tempId: string; setNo: number }
+      {
+        seId: string;
+        set: CommitInput;
+        tempId: string;
+        setNo: number;
+        failed: boolean;
+      }
     >
   >({});
 
@@ -896,32 +910,53 @@ export default function SessionScreen() {
     // The committed row keeps its optimistic id, so it never remounts here.
     onSuccess: (realId, { tempId }) => {
       setIdMap((prev) => ({ ...prev, [tempId]: realId }));
-      setFailedSets((prev) => {
+      setQueuedSets((prev) => {
         if (!(tempId in prev)) return prev;
         const next = { ...prev };
         delete next[tempId];
         return next;
       });
     },
-    onError: (_err, variables) => {
-      setFailedSets((prev) => ({ ...prev, [variables.tempId]: variables }));
+    // Only ever marks an entry that is still queued: a set removed while its
+    // write was in flight has no entry left, and must not come back here.
+    onError: (_err, { tempId }) => {
+      setQueuedSets((prev) => {
+        const queued = prev[tempId];
+        if (!queued || queued.failed) return prev;
+        return { ...prev, [tempId]: { ...queued, failed: true } };
+      });
     },
     // A new set can mint a PR — mark the records snapshot stale (no observer is
     // mounted mid-session, so this never refetches on the logging path).
     onSettled: () => qc.invalidateQueries({ queryKey: ["records-data"] }),
   });
 
-  const failedSetCount = Object.keys(failedSets).length;
+  // Track the payload from the moment it is dispatched, so the reconciliation
+  // below covers the whole in-flight window and not just exhausted writes.
+  function queueSet(v: {
+    seId: string;
+    set: CommitInput;
+    tempId: string;
+    setNo: number;
+  }) {
+    setQueuedSets((prev) => ({ ...prev, [v.tempId]: { ...v, failed: false } }));
+  }
+
+  const failedSets = Object.values(queuedSets).filter((v) => v.failed);
+  const failedSetCount = failedSets.length;
+  // The entry stays failed until its write actually lands (onSuccess clears
+  // it), so the banner keeps telling the truth while a retry is in flight.
   function retryFailedSets() {
-    for (const v of Object.values(failedSets)) logSet.mutate(v);
+    for (const { seId, set, tempId, setNo } of failedSets)
+      logSet.mutate({ seId, set, tempId, setNo });
   }
   // A queued payload must never outlive the row it describes: editing or
   // deleting a set that never persisted has to reach its retry entry too,
   // or Retry writes stale values / resurrects a deleted row.
-  function dropFailedSets(
-    match: (tempId: string, v: (typeof failedSets)[string]) => boolean,
+  function dropQueuedSets(
+    match: (tempId: string, v: (typeof queuedSets)[string]) => boolean,
   ) {
-    setFailedSets((prev) => {
+    setQueuedSets((prev) => {
       const next = Object.fromEntries(
         Object.entries(prev).filter(([id, v]) => !match(id, v)),
       );
@@ -1022,9 +1057,14 @@ export default function SessionScreen() {
       ),
     );
     setLastCommitByBlock((prev) => ({ ...prev, [seId]: Date.now() }));
-    logSet.mutate({ seId, set: leftRow, tempId: leftTempId, setNo });
-    if (rightRow)
-      logSet.mutate({ seId, set: rightRow, tempId: rightRow.id, setNo });
+    const leftWrite = { seId, set: leftRow, tempId: leftTempId, setNo };
+    queueSet(leftWrite);
+    logSet.mutate(leftWrite);
+    if (rightRow) {
+      const rightWrite = { seId, set: rightRow, tempId: rightRow.id, setNo };
+      queueSet(rightWrite);
+      logSet.mutate(rightWrite);
+    }
     // The uncommitted row is now saved server-side — drop its local draft.
     clearDraft(seId);
 
@@ -1200,15 +1240,15 @@ export default function SessionScreen() {
           : b,
       ),
     );
-    // A row whose write never landed has no server row for updateSet to match
+    // A row whose write hasn't landed has no server row for updateSet to match
     // (0 rows, no error) — its queued payload is the only thing a retry will
     // write, so the edit has to land there too or Retry rewrites stale values.
-    setFailedSets((prev) => {
-      const failed = prev[setId];
-      if (!failed) return prev;
+    setQueuedSets((prev) => {
+      const queued = prev[setId];
+      if (!queued) return prev;
       return {
         ...prev,
-        [setId]: { ...failed, set: { ...failed.set, ...patch } },
+        [setId]: { ...queued, set: { ...queued.set, ...patch } },
       };
     });
     // setId is the row's stable (optimistic) id — translate to the real server
@@ -1224,14 +1264,14 @@ export default function SessionScreen() {
           : b,
       ),
     );
-    dropFailedSets((id) => id === setId);
+    dropQueuedSets((id) => id === setId);
     void repo.deleteSet(idMap[setId] ?? setId);
   }
 
   function removeBlock(seId: string) {
     setBlocks((prev) => (prev ?? []).filter((b) => b.seId !== seId));
     dismissRest(seId);
-    dropFailedSets((_id, v) => v.seId === seId);
+    dropQueuedSets((_id, v) => v.seId === seId);
     void repo.deleteSessionExercise(seId);
   }
 

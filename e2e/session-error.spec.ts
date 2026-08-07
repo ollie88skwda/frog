@@ -34,7 +34,11 @@ test("a failed session-exercises load shows an error, never a blank screen", asy
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
 
-  await expect(page.getByTestId("session-error")).toBeVisible();
+  // Queries retry twice with backoff (app.tsx) before the error state is
+  // reached — well past the 5s default expect timeout on a loaded runner.
+  await expect(page.getByTestId("session-error")).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.getByTestId("session-loading")).not.toBeVisible();
   // The pre-fix bug: a blank screen with no header, no finish button, no
   // text of any kind — assert the page actually says something.
@@ -74,7 +78,9 @@ test("a failed exercise load in the in-session picker shows an error, not an emp
 
   // The picker auto-opens on a session with no blocks — this is the first
   // thing the user sees under exactly the drift being guarded against.
-  await expect(page.getByTestId("picker-error")).toBeVisible();
+  await expect(page.getByTestId("picker-error")).toBeVisible({
+    timeout: 15_000,
+  });
   await expect(page.getByText("No exercises yet")).not.toBeVisible();
   await expect(
     page.getByText(/couldn't reach the (server|pond)/i),

@@ -30,6 +30,11 @@
 //
 //   postgresql://drift_check_ro.<project_ref>:<password>@<pooler-host>:5432/postgres
 //
+// Percent-encode the password (`--db-url` takes a URL, so a literal @ / : /
+// or # in it produces a malformed URL that fails as an unreachable-database
+// error below, pointing at the wrong cause) — or just pick a password with
+// none of those characters.
+//
 // (session mode, port 5432 — take the exact pooler host, e.g.
 // `aws-0-<region>.pooler.supabase.com`, from the project's Connect dialog and
 // swap in the role above for `postgres`. The direct URL works only if the
