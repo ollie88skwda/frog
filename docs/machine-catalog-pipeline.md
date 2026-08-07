@@ -198,23 +198,41 @@ bun test scripts/machine-catalog
 ## Known gaps / follow-ups
 
 - **PDF text extraction is unimplemented** (see stage 1 above) — the
-  biggest gap before this pipeline can use official PDF spec sheets the way
-  report.md §4 prefers.
-- **Only `life-fitness` and `hammer-strength` are `verified: true`** in
-  `brands.ts` (both checked 2026-08-07, and both fully crawled + migrated
-  for the phase-2 batch — see `docs/machine-catalog-v1-qa.md`). Every other
-  Tier 1 brand needs its own robots.txt/ToS check before `crawl.ts` will
-  run against it.
-- **The phase-2 batch ran in deterministic mock mode** (`extract.ts`
-  `--dry-run`; no `FROG_EXTRACT_API_KEY` in that environment). The real
-  deepseek-v4-flash-class round trip is still unverified end-to-end —
-  `extract-lib.ts`'s `toStagingMachine` validator and `callModel`'s request
-  shape are unit-tested against synthetic input, but no live model call has
-  been made. Report.md itself flags this as an open question ("What I could
-  not verify").
+  biggest gap before this pipeline can use official PDF spec sheets the
+  way report.md §4 prefers.
+- **`collectSitemapUrls` follows sitemap indexes** (since the phase-2b
+  batch, 2026-08): Shopify/WordPress storefronts publish `sitemap.xml` as
+  an index of child sitemaps, and the recursion + pathPattern handles it.
+  `crawl.ts` also accepts `--urls-file <path>` for brands whose sitemap is
+  incomplete for the target category — see `discover-precor.ts`, the
+  companion script that reads precor.com's strength products out of its
+  category pages' embedded Contentful JSON.
+- **Live-model extraction is validated** (phase-2b ran live against
+  `deepseek-chat` with `FROG_EXTRACT_API_KEY` set — see
+  `docs/machine-catalog-v2-qa.md`). Two fixes from that run are worth
+  knowing: (1) `extract.ts` passes a brand hint to the model — several
+  storefronts (Precor, corehandf, gym80.de) never state the manufacturer
+  in page text/JSON-LD; (2) the prompt tells the model that a SKU/code is
+  an alias, never the model name.
+- **Domain moves to re-check per batch**: nautilus.com is now the *home*
+  brand (commercial Nautilus lives on corehandf.com, with Star Trac;
+  Cybex has no current official catalog at all); gym80.com lapsed into a
+  GoDaddy parking page (gym80.de is the live site). Matrix
+  (world.matrixfitness.com) is a fully client-rendered SPA — its product
+  pages ship no server-side content, so it is not crawlable by this
+  pipeline without reverse-engineering its data API.
+- **Only `life-fitness`, `hammer-strength` and the six phase-2b brands are
+  `verified: true`** in `brands.ts`. Technogym (CloudFront 403),
+  Panatta/Prime (dead domains) and Matrix/Arsenal/Cybex/Star-Trac (no
+  crawlable product catalog on the current site) stay unverified or
+  gapped; each entry's tosNote records why.
 - **QA review feed**: `qa.ts` writes `staging/qa/<brand>-review.json` (batch
   minus phase-1-seed overlaps — `findSeedOverlaps`, see `qa-lib.ts` — minus
   wrong-brand rows) and `generate-migration.ts` consumes it; edit that file
-  during review (drop rows, fix categories/names) before generating.
+  during review (drop rows, fix categories/names) before generating. The
+  seed-overlap dedupe is bag-of-words on the model string, which misses
+  systematic renames (Freemotion's EPIC line -> short names, Hoist's
+  ROC-IT, Atlantis's code-first names) — those batches were deduped by
+  slug in review (see the v2 QA doc).
 - **`BRAND_CANONICAL` and `MODEL_ALIASES` are starter sets**, not an
   exhaustive pass over every current Tier 1 line.

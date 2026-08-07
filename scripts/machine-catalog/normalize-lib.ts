@@ -14,12 +14,18 @@ export function canonicalizeBrand(raw: string): string {
 
 export function normalizeMachine(m: StagingMachine): StagingMachine {
   const brand = canonicalizeBrand(m.brand);
-  const derivedAliases = aliasesForModel(m.model);
+  // Live-model rows keep the page's literal name, which carries bare
+  // trademark marks ("Inspiration® Triceps Extension"); the static seed
+  // writes the plain form — strip them so the two sets match for
+  // seed-overlap dedupe and search.
+  const model = m.model.replace(/[®™]/g, "").trim();
+  const derivedAliases = aliasesForModel(model);
   const existing = m.aliases ?? [];
   const aliases = [...new Set([...existing, ...derivedAliases])];
   return {
     ...m,
     brand,
+    model,
     aliases: aliases.length > 0 ? aliases : null,
   };
 }

@@ -21,6 +21,7 @@
 // Usage: bun scripts/machine-catalog/extract.ts <brandKey> [--dry-run]
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { brandConfig } from "./brands";
 import {
   callModel,
   mockExtractOne,
@@ -52,6 +53,10 @@ async function main() {
   const manifest: CrawlManifest = JSON.parse(
     readFileSync(manifestFile, "utf8"),
   );
+  // Brand hint: many storefronts' product JSON-LD omits the manufacturer
+  // (Precor, corehandf, gym80.de all do), and a page's own text may never
+  // name it either — the model is told the brand instead of guessing.
+  const brandHint = brandConfig(brandKey).brand;
 
   const machines: StagingMachine[] = [];
   const failures: { url: string; reason: string }[] = [];
@@ -68,7 +73,7 @@ async function main() {
       continue;
     }
     try {
-      const raw = await callModel(doc, liveConfig!);
+      const raw = await callModel(doc, liveConfig!, brandHint);
       const parsed = JSON.parse(raw);
       const rows = Array.isArray(parsed.machines) ? parsed.machines : [parsed];
       for (const r of rows) machines.push(toStagingMachine(r, doc.url));

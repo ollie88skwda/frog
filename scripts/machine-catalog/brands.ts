@@ -69,7 +69,7 @@ export const TIER1_BRANDS: readonly BrandConfig[] = [
     seedUrls: [],
     verified: true,
     tosNote:
-      "robots.txt: `Allow: /`, only /api/ + a pki-validation path disallowed; sitemap.xml published. No anti-scraping clause found in the ToS page skim. Confirmed 2026-08-07 by this task.",
+      "robots.txt: `Allow: /`, only /api/ + a pki-validation path disallowed; sitemap.xml published. No anti-scraping clause found in the ToS page skim. Confirmed 2026-08-07 by this task. NOTE (2026-08): precor.com's sitemap omits most of its strength products (only ~12 strength SKUs listed of 95 products); the rest are only reachable via category pages, which a companion discovery script + crawl.ts --urls-file handles (see scripts/machine-catalog/discover-precor.ts).",
   },
   {
     key: "technogym",
@@ -85,13 +85,32 @@ export const TIER1_BRANDS: readonly BrandConfig[] = [
   {
     key: "nautilus",
     brand: "Nautilus",
-    domain: "www.nautilus.com",
-    sitemapUrl: "https://www.nautilus.com/sitemap.xml",
-    pathPattern: null,
+    // The commercial Nautilus line lives on corehandf.com (Core Health &
+    // Fitness, same Shopify storefront as Cybex/Star Trac — Core bought the
+    // Nautilus commercial business). nautilus.com itself is now the *home*
+    // brand (vibration boards, supplements — zero strength machines), so it
+    // is NOT the crawl target; batch A's nautilus.com verification was
+    // correct for that domain but the products moved. Confirmed 2026-08 by
+    // this task: corehandf.com's EN products sitemap carries ~140 nautilus-*
+    // products (Impact/Inspiration/Leverage/Instinct/HumanSport/Plate
+    // Loaded/Multi-Station lines).
+    domain: "www.corehandf.com",
+    // The EN products sitemap directly (not the parent index, which also
+    // lists de/es/fr/pt-br products — the same machines under
+    // locale-prefixed URLs, which would crawl them 5x).
+    sitemapUrl:
+      "https://www.corehandf.com/sitemap_products_1.xml?from=7385141248066&to=8324018110530",
+    // Strength machines only: the nautilus-* product families (excludes the
+    // benches-racks/benchesandracks families, SVA/bamboo platforms, half
+    // racks and power cages — those are furniture/rigs, not machines; a
+    // handful of Instinct benches slip through the slug test and are dropped
+    // in QA review instead).
+    pathPattern:
+      /\/products\/nautilus-(?:impact|inspiration|leverage|instinct|humansport|plate-loaded|multi-stations|belt-squat)-/,
     seedUrls: [],
     verified: true,
     tosNote:
-      'Shopify storefront; robots.txt explicitly declares "Public product, collection, page, blog, policy, cart ... is crawlable" and points agents at its UCP/MCP endpoints (nautilus.com/agents.md). sitemap.xml confirmed. ToS skim: no anti-scraping clause. Confirmed 2026-08-07 by this task.',
+      "Shopify storefront on corehandf.com (Core Health & Fitness); robots.txt explicitly declares public product pages crawlable (same agents.md/UCP policy as nautilus.com). Sitemap confirmed; strength products confirmed by crawling a sample page (2026-08, this task). Domain moved from nautilus.com (home brand, no strength machines) to corehandf.com.",
   },
   {
     key: "cybex",
@@ -120,7 +139,15 @@ export const TIER1_BRANDS: readonly BrandConfig[] = [
     brand: "Hoist",
     domain: "www.hoistfitness.com",
     sitemapUrl: "https://www.hoistfitness.com/sitemap.xml",
-    pathPattern: null,
+    // The Shopify sitemap is ~530 URLs of which ~90% are spare parts
+    // (screw/cover/washer/...) and benches/racks (cf-*). Narrow to the
+    // machine families: RS (ROC-IT selectorized), RPL (plate-loaded), HD
+    // (dual-function selectorized), H (multi-gyms), MI (functional
+    // trainers), V/V1/V4 (elite gyms), VR/HV (leg presses), CMJ/CMD/CMS
+    // (multi-station/cable), HF-43/HF-OPT (a few machines; benches are
+    // cf-*/hf-5*, excluded).
+    pathPattern:
+      /\/products\/(?:rs-|rpl-|hd-|h-|cmj-|cmd-|cms-|vr-|hv-|hf-opt-|hf-43|mi[1-7]|mismith|v[1-4]-|v-hilo)/,
     seedUrls: [],
     verified: true,
     tosNote:
@@ -131,7 +158,8 @@ export const TIER1_BRANDS: readonly BrandConfig[] = [
     brand: "Atlantis",
     domain: "www.atlantisstrength.com",
     sitemapUrl: "https://atlantisstrength.com/wp-sitemap.xml",
-    pathPattern: null,
+    // WordPress; equipment pages live under /gym-equipment/<model-code>.
+    pathPattern: /\/gym-equipment\//,
     seedUrls: [],
     verified: true,
     tosNote:
@@ -142,7 +170,11 @@ export const TIER1_BRANDS: readonly BrandConfig[] = [
     brand: "Freemotion",
     domain: "www.freemotionfitness.com",
     sitemapUrl: "https://www.freemotionfitness.com/sitemap.xml",
-    pathPattern: null,
+    // The sitemap repeats every page across ~10 locales; anchor to the
+    // default-locale strength-machine URLs only (locale-prefixed twins like
+    // /es/strength-machine/... are the same machines). Racks/benches sit
+    // under this path too and are dropped in QA (category "other").
+    pathPattern: /^https:\/\/www\.freemotionfitness\.com\/strength-machine\//,
     seedUrls: [],
     verified: true,
     tosNote:
@@ -184,13 +216,18 @@ export const TIER1_BRANDS: readonly BrandConfig[] = [
   {
     key: "gym80",
     brand: "Gym80",
-    domain: "www.gym80.com",
-    sitemapUrl: "https://www.gym80.com/sitemap.xml",
-    pathPattern: null,
+    // gym80.com lapsed and is now a GoDaddy aftermarket parking page (the
+    // batch-A verification hit the real site; it has since lapsed). The
+    // company's live site is gym80.de — WordPress, products under
+    // /en/product/<id>/ (German /produkt/<id>/ twins excluded via
+    // pathPattern). Confirmed 2026-08 by this task.
+    domain: "gym80.de",
+    sitemapUrl: "https://gym80.de/sitemap.xml",
+    pathPattern: /\/en\/product\/\d+\//,
     seedUrls: [],
     verified: true,
     tosNote:
-      "robots.txt: `Allow: /` plus an LLM-Policy (llms.txt) — explicitly agent-friendly; sitemap.xml published. Confirmed 2026-08-07 by this task.",
+      "gym80.de (gym80.com lapsed — GoDaddy parking page, see tosNote history). WordPress; robots.txt disallows only wp-admin; publishes sitemap.xml with fitness_equipment sitemaps. Product pages carry model name + technical data (dimensions/weight/load) in HTML. ToS page skim: no anti-scraping clause. Confirmed 2026-08 by this task.",
   },
   {
     key: "arsenal-strength",

@@ -5,6 +5,7 @@
 //   bun test scripts/machine-catalog
 import { describe, expect, test } from "bun:test";
 import {
+  collectSitemapUrls,
   decodeEntities,
   extractJsonLdProduct,
   slugFor,
@@ -104,6 +105,13 @@ describe("normalize-lib.ts", () => {
     const out = normalizeMachine(m);
     expect(out.brand).toBe("Hammer Strength");
     expect(out.aliases).toEqual(["ISO-Lateral"]);
+  });
+
+  test("normalizeMachine strips bare trademark marks live pages keep", () => {
+    const out = normalizeMachine(
+      machine({ model: "Inspiration® Triceps Extension™" }),
+    );
+    expect(out.model).toBe("Inspiration Triceps Extension");
   });
 
   test("dedupeKey is case/whitespace-insensitive on (brand, model)", () => {
@@ -352,6 +360,88 @@ describe("crawl-lib.ts", () => {
         "https://example.com/en-us/catalog/strength-training/plate-loaded/reverse-v-squat",
       ),
     ).toBe("en-us-catalog-strength-training-plate-loaded-reverse-v-squat");
+  });
+
+  test("collectSitemapUrls follows a sitemapindex into its children and dedupes", async () => {
+    const pages = new Map<string, string>([
+      [
+        "https://example.com/sitemap.xml",
+        `<?xml version="1.0"?>
+        <sitemapindex>
+          <sitemap><loc>https://example.com/sitemap_products.xml</loc></sitemap>
+          <sitemap><loc>https://example.com/sitemap_pages.xml</loc></sitemap>
+        </sitemapindex>`,
+      ],
+      [
+        "https://example.com/sitemap_products.xml",
+        `<urlset>
+          <url><loc>https://example.com/products/a</loc></url>
+          <url><loc>https://example.com/products/b</loc></url>
+          <url><loc>https://example.com/products/a</loc></url>
+        </urlset>`,
+      ],
+      [
+        "https://example.com/sitemap_pages.xml",
+        `<urlset>
+          <url><loc>https://example.com/about</loc></url>
+        </urlset>`,
+      ],
+    ]);
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const body = pages.get(url);
+      if (!body) return new Response("", { status: 404 });
+      return new Response(body, {
+        status: 200,
+        headers: { "content-type": "application/xml" },
+      });
+    }) as typeof fetch;
+    try {
+      const urls = await collectSitemapUrls(
+        "https://example.com/sitemap.xml",
+        null,
+      );
+      expect(urls.sort()).toEqual([
+        "https://example.com/about",
+        "https://example.com/products/a",
+        "https://example.com/products/b",
+      ]);
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+
+  test("collectSitemapUrls applies pathPattern to the final URL list, not the index", async () => {
+    const pages = new Map<string, string>([
+      [
+        "https://example.com/sitemap.xml",
+        `<sitemapindex><sitemap><loc>https://example.com/sitemap_urls.xml</loc></sitemap></sitemapindex>`,
+      ],
+      [
+        "https://example.com/sitemap_urls.xml",
+        `<urlset>
+          <url><loc>https://example.com/products/strength-press</loc></url>
+          <url><loc>https://example.com/products/cardio-bike</loc></url>
+        </urlset>`,
+      ],
+    ]);
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      const body = pages.get(String(input));
+      return body
+        ? new Response(body, { status: 200 })
+        : new Response("", { status: 404 });
+    }) as typeof fetch;
+    try {
+      const urls = await collectSitemapUrls(
+        "https://example.com/sitemap.xml",
+        /\/products\/strength-/, // must not match the index child's own path
+      );
+      expect(urls).toEqual(["https://example.com/products/strength-press"]);
+    } finally {
+      globalThis.fetch = original;
+    }
   });
 });
 
