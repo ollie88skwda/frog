@@ -33,15 +33,17 @@ test("edit a committed set; delete a set; both survive reload", async ({
   const before = await rowCount(page, "set_logs");
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
-  // Log two sets.
+  // Log two sets — with no auto-advance, the block-level "Add set" button
+  // opens the next draft between commits.
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-reps").press("Enter");
-  await expect(page.getByTestId("set-1-weight")).toBeVisible();
+  await expect(page.getByTestId("committed-0-type")).toBeVisible();
+  await page.getByTestId("set-1-add").click();
   await page.getByTestId("set-1-weight").fill("110");
   await page.getByTestId("set-1-reps").fill("3");
   await page.getByTestId("set-1-reps").press("Enter");
-  await expect(page.getByTestId("set-2-weight")).toBeVisible();
+  await expect(page.getByTestId("committed-1-type")).toBeVisible();
   // Both rows persisted → the optimistic temp ids have been swapped for real
   // ones, so edit/delete below target actual rows.
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 2);

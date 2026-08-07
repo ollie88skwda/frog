@@ -149,6 +149,9 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
   });
   await page.reload();
   const blockA2 = page.getByTestId(`block-${A}`);
+  // No auto-advance: the reloaded block has one committed set and no open
+  // draft (nothing was typed into one before reloading) — open it explicitly.
+  await blockA2.getByTestId("set-1-add").click();
   await blockA2.getByTestId("set-1-weight").fill("100");
   await blockA2.getByTestId("set-1-reps").fill("5");
   // Re-install the spy (reload cleared it).

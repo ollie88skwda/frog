@@ -133,8 +133,10 @@ test("logs a unilateral set as two rows sharing one set_no, and counts it once",
   expect(rows[0].rest_sec).toBeNull(); // first set of the session
   expect(rows[1].rest_sec).toBeNull(); // right side never carries rest_sec
 
-  // Draft advances to physical set 2 (not 3) — the same countSets() the
+  // Logging a set never auto-adds the next draft; "Add set" opens it
+  // explicitly, seeded at physical set 2 (not 3) — the same countSets() the
   // header uses, not a raw committed.length.
+  await page.getByTestId("set-1-add").click();
   await expect(page.getByTestId("set-1-type")).toContainText("2ᴸ");
 
   // An uneven pair (override the ᴿ line) — volume sums both sides, and
@@ -319,12 +321,16 @@ test("a mirrored pair prints no ᴿ readout; clearing the ᴿ side prints — be
   // second, badge-free set. Every row of one exercise shares one grid, so the
   // widest badge in the block sizes the auto menu gutter once. Sized per row,
   // set 1's values would sit left of set 2's and of the draft row's.
+  await page.getByTestId("set-1-add").click();
   await page.getByTestId("set-1-weight").fill("20");
   await page.getByTestId("set-1-reps").fill("8");
   await page.getByTestId("set-1-done").click();
   await expect(page.getByTestId("committed-1-right-weight")).toContainText(
     "20",
   );
+  // Open the next draft too — the alignment assertions below include its
+  // cells (set-2-*).
+  await page.getByTestId("set-2-add").click();
 
   const repsX = await cellX(page, "committed-0-reps");
   for (const [id, wrapper] of [

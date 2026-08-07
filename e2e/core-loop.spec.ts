@@ -67,8 +67,11 @@ test("log sets persists to set_logs, and ghost prefill shows the prior session",
   await page.getByTestId("set-0-reps").press("Enter");
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
 
-  // The committed row renders and the next active row appears.
-  await expect(page.getByTestId("set-1-weight")).toBeVisible();
+  // The committed row renders; no new draft row auto-spawns — logging a set
+  // never auto-adds the next one, only an explicit "Add set" tap does.
+  await expect(page.getByTestId("committed-0-type")).toBeVisible();
+  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
+  await expect(page.getByTestId("set-1-add")).toBeVisible();
 
   // Session 2: ghost prefill surfaces the prior session's values as placeholders.
   await page.goto("/train");

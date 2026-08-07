@@ -241,7 +241,7 @@
    on iOS). Shared by DialogContent's mobile sheet footer; reuse this instead
    of a one-off pb-* value anywhere else content sits at the bottom edge. */
 @utility pb-safe-footer {
-  padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem);
 }
 
 @layer base {

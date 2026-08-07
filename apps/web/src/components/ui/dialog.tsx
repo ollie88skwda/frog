@@ -15,6 +15,7 @@ export function DialogContent({
   ...props
 }: ComponentProps<typeof DialogPrimitive.Content> & { title: ReactNode }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // The on-screen keyboard shrinks the *visual* viewport without resizing the
   // layout viewport, so a focused field near the bottom of the sheet can end
@@ -32,6 +33,19 @@ export function DialogContent({
       ) {
         active.scrollIntoView({ block: "center", behavior: "smooth" });
       }
+      // Mobile's sheet is `position: fixed; bottom: 0` against the *layout*
+      // viewport — iOS's on-screen keyboard overlays that instead of resizing
+      // it, so the sheet (and its Discard/Save-style footer) stays pinned
+      // underneath. There's no pure-CSS fix for a fixed element against a
+      // viewport CSS never sees shrink, so translate it up by the keyboard's
+      // own height instead. Desktop's centered card has no on-screen keyboard
+      // to dodge (and already owns the transform for centering), so this is
+      // mobile-only.
+      if (window.innerWidth < 768 && contentRef.current) {
+        const keyboardHeight = Math.max(0, window.innerHeight - vv.height);
+        contentRef.current.style.transform =
+          keyboardHeight > 0 ? `translateY(-${keyboardHeight}px)` : "";
+      }
     };
     vv.addEventListener("resize", onResize);
     return () => vv.removeEventListener("resize", onResize);
@@ -43,6 +57,7 @@ export function DialogContent({
     <DialogPrimitive.Portal container={themePortalContainer()}>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-(--overlay)" />
       <DialogPrimitive.Content
+        ref={contentRef}
         className={cn(
           "float-in fixed z-50 flex w-full flex-col border border-border bg-(--color-panel-solid) shadow-(--shadow-6)",
           // Never taller than the viewport; the body scrolls inside.

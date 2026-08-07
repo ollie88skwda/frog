@@ -73,7 +73,8 @@ test("filling weight+reps then tapping away auto-checks off the set", async ({
 
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
   await expect(page.getByTestId("committed-0")).toBeVisible();
-  await expect(page.getByTestId("set-1-weight")).toBeVisible();
+  // Auto-checkoff commits the set but does not auto-spawn the next draft.
+  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
 });
 
 test("the checkmark commits the filled draft row", async ({ page }) => {
@@ -96,9 +97,9 @@ test("the checkmark commits the filled draft row", async ({ page }) => {
   await page.getByTestId("set-0-done").click();
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
 
-  // The committed row renders and the next active row appears.
+  // The committed row renders; no new draft row auto-spawns.
   await expect(page.getByTestId("committed-0")).toBeVisible();
-  await expect(page.getByTestId("set-1-weight")).toBeVisible();
+  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
 });
 
 test("opening the set-details sheet does not auto-check the set off", async ({
@@ -237,7 +238,7 @@ test("a set-details sheet opened with no field focused still allows a later chec
 
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
   await expect(page.getByTestId("committed-0")).toBeVisible();
-  await expect(page.getByTestId("set-1-weight")).toBeVisible();
+  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
 });
 
 test("closing the set-details sheet from inside it still allows a later checkoff", async ({
@@ -292,5 +293,5 @@ test("tapping the checkmark on a touch device commits exactly one set", async ({
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
   await expect(page.getByTestId("committed-0")).toBeVisible();
   await expect(page.getByTestId("committed-1")).not.toBeVisible();
-  await expect(page.getByTestId("set-1-weight")).toBeVisible();
+  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
 });
