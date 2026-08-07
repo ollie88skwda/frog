@@ -31,11 +31,16 @@ export const TIER1_BRANDS: readonly BrandConfig[] = [
     brand: "Life Fitness",
     domain: "www.lifefitness.com",
     sitemapUrl: "https://www.lifefitness.com/en-us/sitemap.xml",
-    pathPattern: /\/en-us\/catalog\/strength-training\//,
+    // Phase-2 full-line crawl: Life Fitness selectorized lines (insignia/circuit/axiom), its
+    // plate-loaded line, and cable machines/functional trainers. Hammer Strength pages
+    // (selectorized/hammer-strength-* and mts-*, and all of plate-loaded except life-fitness-*) are
+    // excluded here — hammer-strength's own crawl owns them, so the two batches don't overlap.
+    pathPattern:
+      /\/en-us\/catalog\/strength-training\/(?:selectorized\/(?!hammer-strength|mts-)|plate-loaded\/life-fitness|cable-machines-functional-trainers)/,
     seedUrls: [],
     verified: true,
     tosNote:
-      "robots.txt allows all but one search path, publishes per-locale sitemaps. Confirmed 2026-08 by this task.",
+      "robots.txt allows all but one search path, publishes per-locale sitemaps. Confirmed 2026-08 by this task; pathPattern widened for the phase-2 full-line crawl (same check), 2026-08.",
   },
   {
     key: "hammer-strength",
@@ -45,11 +50,15 @@ export const TIER1_BRANDS: readonly BrandConfig[] = [
     // recommendation is to keep them as two catalog brands, one crawl target.
     domain: "www.lifefitness.com",
     sitemapUrl: "https://www.lifefitness.com/en-us/sitemap.xml",
-    pathPattern: /\/en-us\/catalog\/strength-training\/plate-loaded\//,
+    // Phase-2 full-line crawl: Hammer Strength's whole footprint on the shared storefront —
+    // the plate-loaded line plus the selectorized Hammer Strength Select, MTS, and MTS
+    // Iso-Lateral (mts-*) lines.
+    pathPattern:
+      /\/en-us\/catalog\/strength-training\/(?:plate-loaded\/(?!life-fitness)|selectorized\/(?:hammer-strength|mts-))/,
     seedUrls: [],
     verified: true,
     tosNote:
-      "Same domain/robots.txt as life-fitness. Product pages embed schema.org Product JSON-LD with a brand field — used to attribute rows to Hammer Strength vs. Life Fitness within the shared plate-loaded category. Confirmed 2026-08 by this task (see committed sample).",
+      "Same domain/robots.txt as life-fitness. Product pages embed schema.org Product JSON-LD with a brand field — used to attribute rows to Hammer Strength vs. Life Fitness within the shared plate-loaded category. Confirmed 2026-08 by this task (see committed sample); pathPattern widened to cover Select + MTS selectorized lines for the phase-2 full-line crawl, 2026-08.",
   },
   {
     key: "precor",

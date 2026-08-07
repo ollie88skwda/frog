@@ -44,3 +44,58 @@ export function findDupes(
   }
   return [...groups.values()].filter((g) => g.length > 1);
 }
+
+// ---- seed-overlap detection --------------------------------------------
+// The phase-1 seed (migrated from the static catalog) already owns one row
+// per machine; a phase-2 batch must not re-insert a machine the seed
+// already has. Exact (brand, model) is the obvious key, but the static
+// catalog's hand-written names differ from the official product names the
+// crawler picks up in three systematic ways, all handled here:
+//   - "Plate Loaded"/"Plate-Loaded" prefix: seed "Plate Loaded Glute
+//     Drive" vs official "Glute Drive" (the prefix is the mechanism, not
+//     the name);
+//   - word order: seed "Insignia Series Dual Axis Chest Press" vs official
+//     "Insignia Series Chest Press - Dual Axis";
+//   - separator noise: "Pec Fly/Rear Deltoid" vs "Pec Fly / Rear Deltoid".
+// Comparison is a sorted bag of alphanumeric words (case-insensitive,
+// separators dropped) — deliberately NOT fuzzy (no stemming, no typo
+// tolerance): near-dups it can't prove (e.g. "Hip Abductor / Adductor" vs
+// seed "Hip Abduction/Adduction") are left for the human QA review, not
+// auto-dropped.
+
+export function seedCompareWords(model: string): string[] {
+  const stripped = model.replace(/^plate[- ]loaded\s+/i, "");
+  return stripped
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .sort();
+}
+
+export function sameSeedMachine(modelA: string, modelB: string): boolean {
+  const wa = seedCompareWords(modelA);
+  const wb = seedCompareWords(modelB);
+  return wa.length === wb.length && wa.every((w, i) => w === wb[i]);
+}
+
+// Rows of `machines` whose (brand, model) already exists in `seedRows`
+// (the static-catalog seed set) under a same-machine name. Returns the
+// overlapping staging rows — the caller drops them before the migration.
+export function findSeedOverlaps(
+  machines: readonly StagingMachine[],
+  seedRows: readonly { brand: string; model: string }[],
+): StagingMachine[] {
+  const seedByBrand = new Map<string, string[][]>();
+  for (const s of seedRows) {
+    const words = seedCompareWords(s.model);
+    const list = seedByBrand.get(s.brand) ?? [];
+    list.push(words);
+    seedByBrand.set(s.brand, list);
+  }
+  return machines.filter((m) => {
+    const words = seedCompareWords(m.model);
+    return (seedByBrand.get(m.brand) ?? []).some(
+      (sw) => sw.length === words.length && sw.every((w, i) => w === words[i]),
+    );
+  });
+}

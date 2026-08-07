@@ -10,11 +10,25 @@ export function decodeEntities(s: string): string {
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#x9;/gi, "\t")
     .replace(/&#xD;/gi, "")
     .replace(/&#xA;/gi, "\n")
     .replace(/&nbsp;/gi, " ")
     .replace(/&mdash;/gi, "—")
-    .replace(/&rsquo;/gi, "’");
+    .replace(/&#x2014;/gi, "—")
+    .replace(/&ndash;/gi, "–")
+    .replace(/&#x2013;/gi, "–")
+    .replace(/&rsquo;/gi, "’")
+    .replace(/&#x2019;/gi, "’")
+    .replace(/&#x201C;/gi, '"')
+    .replace(/&#x201D;/gi, '"')
+    .replace(/&reg;/gi, "®")
+    .replace(/&#xAE;/gi, "®")
+    .replace(/&trade;/gi, "™")
+    .replace(/&#x2122;/gi, "™")
+    .replace(/&deg;/gi, "°")
+    .replace(/&#xB0;/gi, "°");
 }
 
 // Prefer schema.org Product JSON-LD when a page has it — structured,
@@ -24,14 +38,38 @@ export function extractJsonLdProduct(html: string): string | null {
     /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi,
   );
   for (const block of blocks) {
-    const raw = decodeEntities(block[1].trim());
+    const raw = block[1].trim();
     try {
       const parsed = JSON.parse(raw);
       const candidates = Array.isArray(parsed) ? parsed : [parsed];
       const product = candidates.find(
-        (c) => c && typeof c === "object" && c["@type"] === "Product",
+        (c) =>
+          c &&
+          typeof c === "object" &&
+          (c["@type"] === "Product" ||
+            (Array.isArray(c["@type"]) &&
+              (c["@type"] as string[]).includes("Product"))),
       );
-      if (product) return JSON.stringify(product, null, 2);
+      if (product) {
+        // JSON-LD script bodies may entity-encode their string values
+        // (&lt;, &amp;, &quot;, ...) — decode AFTER parsing, never before:
+        // pre-decoding turns a &quot; inside a string value into a raw quote
+        // and JSON.parse throws "Unterminated string".
+        for (const key of ["name", "description"]) {
+          const v = (product as Record<string, unknown>)[key];
+          if (typeof v === "string")
+            (product as Record<string, unknown>)[key] = decodeEntities(v);
+        }
+        const brand = (product as Record<string, unknown>).brand;
+        if (typeof brand === "string") {
+          (product as Record<string, unknown>).brand = decodeEntities(brand);
+        } else if (brand && typeof brand === "object") {
+          const bname = (brand as { name?: unknown }).name;
+          if (typeof bname === "string")
+            (brand as { name: string }).name = decodeEntities(bname);
+        }
+        return JSON.stringify(product, null, 2);
+      }
     } catch {
       // Not valid JSON (or not the block we want) — try the next one.
     }

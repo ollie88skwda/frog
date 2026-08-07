@@ -23,8 +23,11 @@ export const CATEGORY_KEYWORDS: {
   keywords: string[];
   category: MachineCategory;
 }[] = [
-  { keywords: ["chest press", "bench press"], category: "chest-press" },
-  { keywords: ["incline press"], category: "incline-press" },
+  {
+    keywords: ["chest press", "bench press", "chest", "decline"],
+    category: "chest-press",
+  },
+  { keywords: ["incline press", "incline"], category: "incline-press" },
   {
     keywords: ["shoulder press", "overhead press"],
     category: "shoulder-press",
@@ -35,9 +38,12 @@ export const CATEGORY_KEYWORDS: {
   { keywords: ["t-bar row", "row"], category: "row" },
   { keywords: ["pulldown", "lat pull"], category: "pulldown" },
   { keywords: ["pullover"], category: "pullover" },
-  { keywords: ["bicep curl", "preacher curl"], category: "bicep-curl" },
   {
-    keywords: ["tricep extension", "tricep pushdown"],
+    keywords: ["bicep curl", "preacher curl", "biceps", "bicep"],
+    category: "bicep-curl",
+  },
+  {
+    keywords: ["tricep extension", "tricep pushdown", "triceps", "tricep"],
     category: "tricep-extension",
   },
   { keywords: ["dip"], category: "dip" },
@@ -47,24 +53,49 @@ export const CATEGORY_KEYWORDS: {
   { keywords: ["belt squat"], category: "belt-squat" },
   { keywords: ["smith machine", "smith"], category: "smith" },
   {
-    keywords: ["v-squat", "squat press", "squat machine"],
+    keywords: ["v-squat", "squat press", "squat machine", "squat"],
     category: "squat-machine",
   },
   { keywords: ["leg extension"], category: "leg-extension" },
-  { keywords: ["leg curl"], category: "leg-curl" },
-  { keywords: ["hip thrust"], category: "hip-thrust" },
-  { keywords: ["glute kickback"], category: "glute-kickback" },
-  { keywords: ["hip adduction"], category: "hip-adduction" },
-  { keywords: ["hip abduction"], category: "hip-abduction" },
-  { keywords: ["calf raise"], category: "calf-raise" },
-  { keywords: ["back extension"], category: "back-extension" },
-  { keywords: ["ab crunch", "abdominal"], category: "ab-crunch" },
-  { keywords: ["torso rotation"], category: "torso-rotation" },
+  { keywords: ["leg curl", "nordic"], category: "leg-curl" },
+  { keywords: ["hip thrust", "glute drive"], category: "hip-thrust" },
   {
-    keywords: ["multi-station", "multi station", "multi-gym"],
+    keywords: ["back extension", "glute ham", "reverse hyper"],
+    category: "back-extension",
+  },
+  { keywords: ["glute kickback", "glute"], category: "glute-kickback" },
+  {
+    keywords: ["hip adduction", "hip adductor", "hip adductors"],
+    category: "hip-adduction",
+  },
+  {
+    keywords: ["hip abduction", "hip abductor", "hip abductors"],
+    category: "hip-abduction",
+  },
+  { keywords: ["calf raise", "calf"], category: "calf-raise" },
+  { keywords: ["ab crunch", "abdominal", "ab curl"], category: "ab-crunch" },
+  { keywords: ["torso rotation", "twist"], category: "torso-rotation" },
+  {
+    keywords: [
+      "multi-station",
+      "multi station",
+      "multi-gym",
+      "multi-jungle",
+      "home gym",
+    ],
     category: "multi-station",
   },
-  { keywords: ["functional trainer"], category: "functional-trainer" },
+  {
+    keywords: [
+      "functional trainer",
+      "functional training",
+      "pulley",
+      "cable crossover",
+      "cable column",
+      "universal cable",
+    ],
+    category: "functional-trainer",
+  },
   {
     keywords: ["assisted pull", "assisted pull-up", "assisted chin"],
     category: "assisted-pullup",
@@ -106,12 +137,26 @@ export const SCHEMA_DESCRIPTION = `Return a JSON object: {"machines": StagingMac
 Only extract facts present in the source text. Do not invent specs. If a field
 isn't stated, use null.`;
 
-export function inferCategory(text: string): MachineCategory {
+// Infer a machine's category from a product page's text. Name-first: the
+// model name is usually the most descriptive, authoritative string ("Select
+// Leg Curl" is a leg curl even when the blurb mentions "chest pads";
+// "Sit / Stand Hip Abductor" is an abductor even when the copy says
+// "activate your glutes"). Only when the name matches nothing do we fall
+// back to the full name+description text — that fallback is where noisy
+// copy (chest pads, glute activation, marketing prose) used to cause
+// misclassification.
+export function inferCategory(text: string, name?: string): MachineCategory {
+  const fromName = matchCategory(name ?? "");
+  if (fromName) return fromName;
+  return matchCategory(text) ?? "other";
+}
+
+function matchCategory(text: string): MachineCategory | null {
   const lower = text.toLowerCase();
   for (const { keywords, category } of CATEGORY_KEYWORDS) {
     if (keywords.some((k) => lower.includes(k))) return category;
   }
-  return "other";
+  return null;
 }
 
 export function inferMechanism(text: string): Mechanism | null {
@@ -122,11 +167,14 @@ export function inferMechanism(text: string): Mechanism | null {
   return null;
 }
 
-// Strip a leading "Plate Loaded"/"Plate-Loaded" marketing prefix — it's the
-// mechanism, not part of the model name, and stripped brand/mechanism
-// prefixes generally read cleaner as a catalog model string.
+// Strip a leading "Plate Loaded"/"Plate-Loaded" marketing prefix (it's the
+// mechanism, not part of the model name), bare trademark symbols
+// ("Ground Base® Multi-Squat" → "Ground Base Multi-Squat" — the static
+// seed writes the plain form), and a leading brand name — these generally
+// read cleaner as a catalog model string.
 export function cleanModelName(name: string, brand: string): string {
   return name
+    .replace(/[®™]/g, "")
     .replace(/^plate[- ]loaded\s+/i, "")
     .replace(new RegExp(`^${brand}\\s+`, "i"), "")
     .trim();
@@ -160,7 +208,7 @@ export function mockExtractOne(
       brand: rawBrand,
       model: cleanModelName(name, rawBrand),
       aliases: null,
-      category: inferCategory(searchText),
+      category: inferCategory(searchText, name),
       mechanism: inferMechanism(searchText),
       muscleTargets: null,
       weightStackKg: null,

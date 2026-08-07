@@ -127,14 +127,19 @@ Output: `staging/qa/<brand>-sample.json`, `staging/qa/<brand>-dupes.json`.
 bun scripts/machine-catalog/generate-migration.ts <brandKey> [-o path]
 ```
 
-Turns a **reviewed** normalized batch (i.e. one that's been through QA —
-this script doesn't gate on that itself, it trusts the caller) into SQL
-matching `supabase/migrations/20260715055811_seed_free_exercise_db.sql`'s
-shape exactly: deterministic uuids (sha1 of `brand::model`, so a re-run is a
+Turns a **reviewed** batch into SQL matching
+`supabase/migrations/20260715055811_seed_free_exercise_db.sql`'s shape
+exactly: deterministic uuids (sha1 of `brand::model`, so a re-run is a
 no-op), `insert ... on conflict (id) do nothing`, `owner_id null` (global
 seed row). Prints to stdout by default (redirect straight into
 `supabase/migrations/` once that table exists), or `-o path` to write a
 file — never writes into `supabase/migrations/` on its own.
+
+**Input:** prefers `staging/qa/<brand>-review.json` — the QA-reviewed
+migration feed that `qa.ts` writes (batch minus phase-1-seed overlaps and
+wrong-brand rows) — falling back to `staging/normalized/<brand>.json`.
+This script doesn't gate on the review having happened; it trusts the
+caller, same as before.
 
 ## Reference example (committed, real crawl + dry-run extraction)
 
@@ -195,14 +200,21 @@ bun test scripts/machine-catalog
 - **PDF text extraction is unimplemented** (see stage 1 above) — the
   biggest gap before this pipeline can use official PDF spec sheets the way
   report.md §4 prefers.
-- **Only `hammer-strength` (via `life-fitness`) is `verified: true`** in
-  `brands.ts`. Every other Tier 1 brand needs its own robots.txt/ToS check
-  before `crawl.ts` will run against it.
+- **Only `life-fitness` and `hammer-strength` are `verified: true`** in
+  `brands.ts` (both checked 2026-08-07, and both fully crawled + migrated
+  for the phase-2 batch — see `docs/machine-catalog-v1-qa.md`). Every other
+  Tier 1 brand needs its own robots.txt/ToS check before `crawl.ts` will
+  run against it.
+- **The phase-2 batch ran in deterministic mock mode** (`extract.ts`
+  `--dry-run`; no `FROG_EXTRACT_API_KEY` in that environment). The real
+  deepseek-v4-flash-class round trip is still unverified end-to-end —
+  `extract-lib.ts`'s `toStagingMachine` validator and `callModel`'s request
+  shape are unit-tested against synthetic input, but no live model call has
+  been made. Report.md itself flags this as an open question ("What I could
+  not verify").
+- **QA review feed**: `qa.ts` writes `staging/qa/<brand>-review.json` (batch
+  minus phase-1-seed overlaps — `findSeedOverlaps`, see `qa-lib.ts` — minus
+  wrong-brand rows) and `generate-migration.ts` consumes it; edit that file
+  during review (drop rows, fix categories/names) before generating.
 - **`BRAND_CANONICAL` and `MODEL_ALIASES` are starter sets**, not an
   exhaustive pass over every current Tier 1 line.
-- **No real-model extraction has been run** — this task had no
-  `FROG_EXTRACT_API_KEY` in its environment. `extract-lib.ts`'s
-  `toStagingMachine` validator and `callModel`'s request shape are
-  unit-tested against synthetic input, but the real deepseek-v4-flash-class
-  round trip is unverified end-to-end. Report.md itself flags this as an
-  open question ("What I could not verify").
