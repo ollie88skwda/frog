@@ -122,7 +122,7 @@ Extended: `session-reducer.ts` (set types, duration/distance drafts, superset or
 
 ## D. Screens (3-tab shell; all new routes lazy)
 
-**Chart kit** `apps/web/src/components/charts/` — in-house SVG only (line, bars, grouped-bars, sparkline, body-heatmap), zero deps, theme tokens, tabular numerals, only in lazy chunks. Body heat map = hand-built front/back SVG, 6–10 region paths per view keyed to `MUSCLE_REGION`, neutral figure v1.
+**Chart kit** `apps/web/src/components/charts/` — in-house SVG only (line, bars, grouped-bars, sparkline, body-heatmap), zero deps, theme tokens, tabular numerals, only in lazy chunks. Body heat map = hand-built front/back SVG, 6–10 region paths per view keyed to `MUSCLE_REGION`, neutral figure v1 — **figure superseded, see DECISIONS.md 2026-08-08 (frog heatmap)**.
 
 | Route | Work |
 |---|---|

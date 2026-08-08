@@ -508,7 +508,7 @@ function DisplaySection() {
             value={bodyDiagram}
             onChange={(v) => updatePrefs.mutate({ bodyDiagram: v })}
             testid="body-diagram-select"
-            options={[{ value: "neutral", label: "Neutral" }]}
+            options={[{ value: "neutral", label: "Frog" }]}
           />
         </Row>
       </div>

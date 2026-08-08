@@ -33,9 +33,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
+      # Pin the CLI version instead of `latest`: resolving `latest` hits the
+      # unauthenticated GitHub API (api.github.com/repos/supabase/cli/releases/latest),
+      # which rate-limits shared runner IPs ("rate limit exceeded" flake). A
+      # pinned version downloads the release asset directly. Bump deliberately.
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: v2.112.0
       - run: bun install --frozen-lockfile
       - run: supabase start
       - run: bun run test:integration
@@ -78,7 +82,8 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Pinned — see the integration-e2e job above for why (rate limit on `latest`).
+          version: v2.112.0
       - run: bun scripts/check-migration-drift.ts
         env:
           SUPABASE_DRIFT_DB_URL: ${{ secrets.SUPABASE_DRIFT_DB_URL }}
