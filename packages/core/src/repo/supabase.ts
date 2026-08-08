@@ -1751,6 +1751,7 @@ export class SupabaseRepo implements Repo {
       bodyDiagram: (r.body_diagram as string) ?? "neutral",
       plateConfig: (r.plate_config as UserPrefs["plateConfig"]) ?? null,
       displayName: (r.display_name as string | null) ?? null,
+      bio: (r.bio as string | null) ?? null,
     };
   }
 
@@ -1765,6 +1766,7 @@ export class SupabaseRepo implements Repo {
     if ("bodyDiagram" in patch) row.body_diagram = patch.bodyDiagram;
     if ("plateConfig" in patch) row.plate_config = patch.plateConfig ?? null;
     if ("displayName" in patch) row.display_name = patch.displayName ?? null;
+    if ("bio" in patch) row.bio = patch.bio ?? null;
 
     const now = Date.now();
     const { data: updated, error: updateError } = await this.client

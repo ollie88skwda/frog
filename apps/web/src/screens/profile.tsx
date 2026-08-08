@@ -82,6 +82,7 @@ export default function ProfileScreen() {
         displayName={displayName}
         email={email}
         initial={initial}
+        bio={prefs?.bio ?? null}
       />
 
       {/* Workout count + streak. */}
@@ -177,59 +178,86 @@ export default function ProfileScreen() {
   );
 }
 
+// Short self-description shown under the name; capped so the header stays
+// compact on a phone.
+const MAX_BIO_LENGTH = 160;
+
 function ProfileHeader({
   displayName,
   email,
   initial,
+  bio,
 }: {
   displayName: string;
   email: string;
   initial: string;
+  bio: string | null;
 }) {
   const update = useUpdateUserPrefs();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(displayName);
+  const [draftBio, setDraftBio] = useState(bio ?? "");
 
   function save() {
     const next = draft.trim();
-    update.mutate({ displayName: next || null });
+    const nextBio = draftBio.trim();
+    update.mutate({
+      displayName: next || null,
+      bio: nextBio || null,
+    });
     setEditing(false);
   }
 
   return (
     <div className="mt-6 border border-border bg-surface p-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <span className="flex size-12 shrink-0 items-center justify-center bg-accent text-lg font-semibold text-accent-fg">
           {initial}
         </span>
         {editing ? (
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <Input
-              autoFocus
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <Input
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") save();
+                  if (e.key === "Escape") setEditing(false);
+                }}
+                className="h-9 flex-1"
+                data-testid="profile-name-input"
+              />
+              <Button
+                variant="primary"
+                size="icon"
+                onClick={save}
+                data-testid="profile-name-save"
+              >
+                <Check className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setEditing(false)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
+            <textarea
+              value={draftBio}
+              onChange={(e) => setDraftBio(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") save();
+                // Enter inserts a newline; ⌘/Ctrl+Enter saves, Escape cancels.
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) save();
                 if (e.key === "Escape") setEditing(false);
               }}
-              className="h-9 flex-1"
-              data-testid="profile-name-input"
+              placeholder="Short bio — lifts, goals, noise"
+              rows={2}
+              maxLength={MAX_BIO_LENGTH}
+              className="w-full border border-border bg-surface px-2 py-2 text-sm text-ink placeholder:text-faint"
+              data-testid="profile-bio-input"
             />
-            <Button
-              variant="primary"
-              size="icon"
-              onClick={save}
-              data-testid="profile-name-save"
-            >
-              <Check className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setEditing(false)}
-            >
-              <X className="size-4" />
-            </Button>
           </div>
         ) : (
           <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -241,12 +269,21 @@ function ProfileHeader({
                 {displayName}
               </p>
               <p className="truncate text-2xs text-faint">{email}</p>
+              {bio && (
+                <p
+                  className="mt-0.5 whitespace-pre-line text-xs text-soft"
+                  data-testid="profile-bio"
+                >
+                  {bio}
+                </p>
+              )}
             </div>
             <button
               type="button"
-              title="Edit name"
+              title="Edit profile"
               onClick={() => {
                 setDraft(displayName);
+                setDraftBio(bio ?? "");
                 setEditing(true);
               }}
               className="ml-auto flex size-8 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"

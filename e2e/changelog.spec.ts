@@ -30,7 +30,10 @@ test("nav badge shows an unseen entry, /changelog surfaces it in order, and visi
   await page.reload();
   await expect(page.getByTestId("start-session-btn")).toBeVisible();
 
-  const profileTab = page.getByTitle("Profile");
+  // Exact-match the nav item's title: the profile screen's Edit button is
+  // titled "Edit profile" (which contains "Profile" as a substring), and
+  // Playwright's default getByTitle matching is case-insensitive substring.
+  const profileTab = page.getByTitle("Profile", { exact: true });
   await expect(profileTab.locator("span.bg-accent")).toBeVisible();
   await shot(page, "1-profile-badge-unseen");
 
@@ -78,9 +81,9 @@ test("nav badge shows an unseen entry, /changelog surfaces it in order, and visi
   await page.goto("/profile");
   // Wait for the nav to actually paint first — a `toHaveCount(0)` on a shell
   // that hasn't booted yet passes for the wrong reason.
-  await expect(page.getByTitle("Profile")).toBeVisible();
+  await expect(page.getByTitle("Profile", { exact: true })).toBeVisible();
   await expect(
-    page.getByTitle("Profile").locator("span.bg-accent"),
+    page.getByTitle("Profile", { exact: true }).locator("span.bg-accent"),
   ).toHaveCount(0);
   await shot(page, "4-profile-badge-cleared");
 

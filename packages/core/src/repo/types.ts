@@ -611,4 +611,5 @@ export type UserPrefsPatch = Partial<{
   bodyDiagram: string;
   plateConfig: PlateConfig | null;
   displayName: string | null;
+  bio: string | null;
 }>;

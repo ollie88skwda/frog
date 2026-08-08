@@ -511,6 +511,7 @@ export const userPrefs = pgTable(
     bodyDiagram: text("body_diagram").notNull().default("neutral"),
     plateConfig: jsonb("plate_config").$type<PlateConfig>(),
     displayName: text("display_name"),
+    bio: text("bio"),
   },
   (t) => [uniqueIndex("user_prefs_owner_idx").on(t.ownerId)],
 );
