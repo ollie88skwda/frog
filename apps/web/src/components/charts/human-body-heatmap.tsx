@@ -105,11 +105,13 @@ export function HumanBodyHeatmap({
 
   const data: IExerciseData[] = (
     Object.entries(REGION_MUSCLES) as [MuscleRegion, Muscle[]][]
-  ).map(([region, muscles]) => ({
-    name: region,
-    muscles,
-    frequency: freq(regionSets[region]),
-  }));
+  )
+    .filter(([region]) => regionSets[region] > 0)
+    .map(([region, muscles]) => ({
+      name: region,
+      muscles,
+      frequency: freq(regionSets[region]),
+    }));
 
   const selectedValue = selected ? regionSets[selected] : null;
 

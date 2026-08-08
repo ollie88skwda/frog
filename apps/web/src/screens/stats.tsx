@@ -344,10 +344,15 @@ function SetsPerMuscleSection({ history, muscleMap, opts }: SectionProps) {
   const chartData = useMemo(
     () =>
       buckets.map((b) => ({
+        start: b.start,
         label: bucketLabel(b.start, gran),
         sets: Object.values(b.counts).reduce((a, n) => a + n, 0),
       })),
     [buckets, gran],
+  );
+  const labelOf = useMemo(
+    () => new Map(chartData.map((b) => [b.start, b.label])),
+    [chartData],
   );
 
   return (
@@ -393,13 +398,22 @@ function SetsPerMuscleSection({ history, muscleMap, opts }: SectionProps) {
             >
               <CartesianGrid vertical={false} />
               <XAxis
-                dataKey="label"
+                dataKey="start"
+                type="category"
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
+                tickFormatter={(v) => labelOf.get(Number(v)) ?? ""}
               />
               <YAxis tickLine={false} axisLine={false} width={26} />
-              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(v) => bucketLabel(Number(v), gran)}
+                  />
+                }
+              />
               <RechartsBar
                 dataKey="sets"
                 fill="var(--color-sets)"
