@@ -48,6 +48,7 @@ Web-first rewrite (the original Expo/React Native app is archived on branch `leg
 
 ## Conventions
 
+- **`docs/DECISIONS.md` is a merge magnet**: every PR appends a top-level bullet, so any main merge into a PR branch conflicts there (append-vs-append, occasionally plus an in-place SUPERSEDED edit elsewhere). That is the expected shape, not a semantic clash — resolve by keeping **both** entries as top-level bullets (the `/changelog` parser silently drops anything else) newest-added first, and let git auto-merge everything else.
 - **Library components first — Radix UI or shadcn — for all UI components and charts.** Never hand-roll a component or graph when a maintained library component exists (Radix primitives via the vendored shadcn/ui in `apps/web/src/components/ui/`, direct `@radix-ui/*`, shadcn charts, lucide-react icons). Custom code only when no library component fits — and say why (the PR body; a lasting call goes in `docs/DECISIONS.md`). Hand-drawn code that predates this rule (the in-house chart kit, `components/charts/`) stays as a deliberate zero-dep/bundle-budget call, not a license for new hand-rolled components.
 - **IDs:** uuid v4, generated client-side via `newId()` from `@frog/core`.
 - **Timestamps:** `created_at` / `updated_at` / `deleted_at` are bigint millisecond epochs, app-managed (`Date.now()`).

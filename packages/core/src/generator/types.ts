@@ -10,7 +10,8 @@ export type GeneratorExperience = "beginner" | "intermediate" | "advanced";
 export type GeneratorConfig = {
   goal: GeneratorGoal;
   experience: GeneratorExperience;
-  /** Equipment available to the user (EquipmentKind values). */
+  /** Equipment available to the user (values from `EQUIPMENT_KINDS`; legacy
+   *  removed kinds may appear in configs saved before 2026-08-08). */
   equipment: string[];
   daysPerWeek: 2 | 3 | 4 | 5 | 6;
   minutesPerWorkout: 30 | 45 | 60 | 75 | 90;

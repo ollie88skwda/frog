@@ -117,9 +117,11 @@ export const exercises = pgTable(
     // (domain/exercise-types.ts). App-enforced immutable once sets exist;
     // duplicate-as-custom is the reset path (docs/hevy-parity plan §B).
     exerciseType: text("exercise_type").notNull().default("weight_reps"),
-    // 'barbell' | 'ez_bar' | 'dumbbell' | 'kettlebell' | 'machine' | 'cable'
-    // | 'band' | 'suspension' | 'bodyweight' | 'plate' | 'other'
+    // 'barbell' | 'ez_bar' | 'dumbbell' | 'machine' | 'cable'
+    // | 'bodyweight' | 'plate' | 'other'
     // Drives picker filters, plate-calc eligibility, generator matching.
+    // kettlebell/band/suspension were removed from the picker 2026-08-08
+    // (docs/DECISIONS.md) but legacy rows may still carry those values.
     equipment: text("equipment"),
     instructions: jsonb("instructions").$type<string[]>(), // how-to steps
     imageUrls: jsonb("image_urls").$type<string[]>(), // how-to frames (detail screen)

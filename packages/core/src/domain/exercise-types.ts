@@ -114,15 +114,19 @@ export function isCompletableSet(
   return true;
 }
 
+// Gimmick kinds (kettlebell/band/suspension) were removed 2026-08-08 — the
+// picker side of the 2026-08-07 gimmick-exercise purge (docs/DECISIONS.md):
+// the captain's call that bands, kettlebells, balls, ropes and similar
+// novelty equipment aren't real training apparatus for this app. The labels
+// stay in EQUIPMENT_LABELS so exercises that predate the purge (user customs
+// created while the options still existed) keep rendering their equipment
+// instead of a blank — the kind is just no longer selectable or generator-usable.
 export const EQUIPMENT_KINDS = [
   "barbell",
   "ez_bar",
   "dumbbell",
-  "kettlebell",
   "machine",
   "cable",
-  "band",
-  "suspension",
   "bodyweight",
   "plate",
   "other",
@@ -130,7 +134,14 @@ export const EQUIPMENT_KINDS = [
 
 export type EquipmentKind = (typeof EQUIPMENT_KINDS)[number];
 
-export const EQUIPMENT_LABELS: Record<EquipmentKind, string> = {
+// Legacy display-only kinds, kept so pre-purge rows still resolve a label.
+export type EquipmentDisplayKind =
+  | EquipmentKind
+  | "kettlebell"
+  | "band"
+  | "suspension";
+
+export const EQUIPMENT_LABELS: Record<EquipmentDisplayKind, string> = {
   barbell: "Barbell",
   ez_bar: "EZ bar",
   dumbbell: "Dumbbell",

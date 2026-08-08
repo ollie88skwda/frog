@@ -27,14 +27,7 @@ export type ProgramCatalogEntry = {
 
 // A full commercial-gym kit. Bodyweight is always available to the generator,
 // so it isn't listed here.
-const FULL_GYM = [
-  "barbell",
-  "ez_bar",
-  "dumbbell",
-  "kettlebell",
-  "machine",
-  "cable",
-];
+const FULL_GYM = ["barbell", "ez_bar", "dumbbell", "machine", "cable"];
 const DUMBBELL = ["dumbbell"];
 const BODYWEIGHT: string[] = [];
 
