@@ -106,10 +106,12 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await expect(page).toHaveURL(/\/session\//);
 
   // Set 0 draft: reps seeded from the fixed target, weight blank (never
-  // authored). PREVIOUS is blank too (never logged).
+  // authored). No "last" tag — the exercise was never logged, so there's no
+  // prior value to label inside the inputs.
   await expect(page.getByTestId("set-0-weight")).toHaveValue("");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
-  await expect(page.getByTestId("set-0-previous")).toHaveText("—");
+  await expect(page.getByTestId("set-0-last-weight")).toHaveCount(0);
+  await expect(page.getByTestId("set-0-last-reps")).toHaveCount(0);
 
   // Perform set 0 at 65.
   await page.getByTestId("set-0-weight").fill("65");

@@ -51,8 +51,10 @@ test("mid-logging: an RIR range fills the collapsed badge and commits as a pair"
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-add").click();
 
-  // Committed row's own edit sheet reads the range back unchanged.
-  await page.getByTestId("committed-0-weight").click();
+  // Committed row's own edit sheet reads the range back unchanged (the
+  // row's ⋯ opens it — tapping a committed value cell now edits that
+  // value in place instead).
+  await page.getByTestId("set-menu-0").click();
   await expect(page.getByTestId("edit-0-rirmin")).toHaveValue("1");
   await expect(page.getByTestId("edit-0-rirmax")).toHaveValue("2");
 });
@@ -131,7 +133,7 @@ test("read-time compat: a legacy scalar-only rir reads back as min=max, never a 
   await expect(row).toContainText("@2");
   await expect(row).not.toContainText("@2-2");
 
-  await page.getByTestId("committed-0-weight").click();
+  await page.getByTestId("set-menu-0").click();
   await expect(page.getByTestId("edit-0-rirmin")).toHaveValue("2");
   await expect(page.getByTestId("edit-0-rirmax")).toHaveValue("2");
 });

@@ -412,14 +412,13 @@ test("a legacy alternating exercise reads as bilateral (note 5)", async ({
   await expect(block).not.toContainText("total reps");
   // No paired ᴿ line — it logs identically to bilateral.
   await expect(page.getByTestId("set-0-right-weight")).toHaveCount(0);
-  // And the per-set Unilateral toggle IS available — legacy alternating reads
-  // as bilateral, so nothing contradicts a per-set override anymore.
-  await page.getByTestId("set-0-more").click();
-  await expect(page.getByTestId("set-0-unilateral")).toBeVisible();
-  await page.keyboard.press("Escape");
+  // And the per-set Unilateral toggle IS available on the row — legacy
+  // alternating reads as bilateral, so nothing contradicts a per-set override
+  // anymore.
+  await expect(page.getByTestId("set-0-laterality-unilateral")).toBeVisible();
 });
 
-test("a single set's menu makes just that one set unilateral (note 1)", async ({
+test("a single set's in-row L·R toggle makes just that one set unilateral (note 1)", async ({
   page,
 }) => {
   const EX = `One-Off Curl ${Date.now()}`;
@@ -437,13 +436,11 @@ test("a single set's menu makes just that one set unilateral (note 1)", async ({
   // No ᴿ line by default.
   await expect(page.getByTestId("set-0-right-reps")).toHaveCount(0);
 
-  // The set's ⋯ menu (details sheet) carries the Unilateral toggle. Weight
-  // only so far, so opening the sheet can't race auto-checkoff.
+  // The row's B / L·R control carries the per-set toggle — no menu, no sheet.
+  // Weight only so far, so flipping can't race auto-checkoff.
   await page.getByTestId("set-0-weight").fill("20");
-  await page.getByTestId("set-0-more").click();
-  await expect(page.getByTestId("set-0-unilateral")).toBeVisible();
-  await page.getByTestId("set-0-unilateral").check();
-  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("set-0-laterality-unilateral")).toBeVisible();
+  await page.getByTestId("set-0-laterality-unilateral").click();
 
   // Just this set gained its ᴿ line.
   await expect(page.getByTestId("set-0-right-reps")).toBeVisible();
@@ -537,7 +534,7 @@ test("library last-set summary shows both sides of a divergent unilateral pair",
   );
 });
 
-test("the committed set's ⋯ flips the set to unilateral and back (note 7)", async ({
+test("the committed set's in-row L·R toggle flips it to unilateral and back (note 7)", async ({
   page,
 }) => {
   const EX = `Committed Toggle ${Date.now()}`;
@@ -583,12 +580,10 @@ test("the committed set's ⋯ flips the set to unilateral and back (note 7)", as
       return count ?? 0;
     }, EX);
 
-  // The ⋯ → details sheet carries the unilateral toggle; flipping it adds
-  // the paired ᴿ row mirroring the ᴸ values — nothing else changes.
-  await page.getByTestId("set-menu-0").click();
-  await expect(page.getByTestId("set-menu-0-unilateral")).toBeVisible();
-  await page.getByTestId("set-menu-0-unilateral").check();
-  await page.keyboard.press("Escape");
+  // The in-row B / L·R toggle flips the set structurally (no sheet checkbox);
+  // flipping it adds the paired ᴿ row mirroring the ᴸ values — nothing else
+  // changes.
+  await page.getByTestId("committed-0-laterality-unilateral").click();
   await expect(page.getByTestId("committed-0-right-reps")).toContainText("10");
   await expect.poll(liveRows).toBe(2);
 
@@ -600,10 +595,7 @@ test("the committed set's ⋯ flips the set to unilateral and back (note 7)", as
   await expect(page.getByTestId("committed-1")).toHaveCount(0);
 
   // Flip it back — the ᴿ row is soft-deleted and the set is one row again.
-  await page.getByTestId("set-menu-0").click();
-  await expect(page.getByTestId("set-menu-0-unilateral")).toBeVisible();
-  await page.getByTestId("set-menu-0-unilateral").uncheck();
-  await page.keyboard.press("Escape");
+  await page.getByTestId("committed-0-laterality-bilateral").click();
   await expect(page.getByTestId("committed-0-right-weight")).toHaveCount(0);
   await expect.poll(liveRows).toBe(1);
 
