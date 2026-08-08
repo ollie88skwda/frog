@@ -44,8 +44,10 @@ test("link two exercises into a superset, persist across reload, unlink dissolve
     "1",
   );
 
-  // Link A with B via A's overflow menu.
+  // Link A with B via A's overflow menu → the Superset option opens the
+  // partner picker sheet (note 14), which lists every other exercise.
   await page.getByTestId(`block-${A}-menu`).click();
+  await page.getByTestId(`block-${A}-superset`).click();
   await page.getByTestId(`block-${A}-superset-${B}`).click();
 
   await expect(page.getByTestId(`block-${A}`)).toHaveAttribute(
@@ -57,7 +59,25 @@ test("link two exercises into a superset, persist across reload, unlink dissolve
     "1",
   );
 
-  // The grouping is persisted (session_exercises.superset_group) — reload keeps it.
+  // The grouping is persisted (session_exercises.superset_group) — the link
+  // write is fire-and-forget, so wait for it to land before reloading (under
+  // full-suite load the reload can otherwise win the race and read a session
+  // that was never grouped). Scoped to THIS session: earlier specs leave their
+  // own active sessions open, so a bare ended_at-null filter would mix users.
+  const sessionId = await page.evaluate(() =>
+    location.pathname.split("/").pop(),
+  );
+  await expect
+    .poll(() =>
+      page.evaluate(async (sid) => {
+        const { data } = await window.__frog.supabase
+          .from("session_exercises")
+          .select("superset_group")
+          .eq("session_id", sid);
+        return data?.every((r) => r.superset_group != null) ?? false;
+      }, sessionId),
+    )
+    .toBe(true);
   await page.reload();
   await expect(page.getByTestId(`block-${A}`)).toHaveAttribute(
     "data-superset",
@@ -96,6 +116,8 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
   await page.getByTestId(`pick-exercise-${B}`).click();
 
   await page.getByTestId(`block-${A}-menu`).click();
+  // Superset opens the partner picker sheet; the member is chosen there.
+  await page.getByTestId(`block-${A}-superset`).click();
   await page.getByTestId(`block-${A}-superset-${B}`).click();
 
   // Spy on scrollIntoView so the assertion is deterministic (headless can't

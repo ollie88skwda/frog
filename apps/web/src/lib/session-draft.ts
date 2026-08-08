@@ -1,4 +1,4 @@
-import type { SetType } from "@frog/core";
+import type { Laterality, SetType } from "@frog/core";
 
 // Per-block uncommitted draft persistence. The active (unlogged) row's
 // keystrokes are mirrored to localStorage keyed by session_exercise id, so a
@@ -25,6 +25,10 @@ export type DraftSnapshot = {
   rReps?: string;
   rDuration?: string;
   rDistance?: string;
+  // Per-set laterality override ("just this one set") — persisted so a reload
+  // restores the ᴿ line and the right-side keystrokes it protects. Null = no
+  // override, the exercise's own laterality applies.
+  laterality?: Laterality | null;
 };
 
 const PREFIX = "frog.sdraft.";
@@ -66,7 +70,8 @@ export function saveDraft(seId: string, snapshot: DraftSnapshot): void {
       !snapshot.rWeight &&
       !snapshot.rReps &&
       !snapshot.rDuration &&
-      !snapshot.rDistance;
+      !snapshot.rDistance &&
+      !snapshot.laterality;
     if (empty) {
       clearDraft(seId);
       return;

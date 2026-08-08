@@ -531,7 +531,7 @@ export function ExerciseEditor({
                 label: MOVEMENT_PATTERN_LABELS[p],
               }))}
             />
-            <SegmentedField label="Sides">
+            <SegmentedField label="Laterality">
               {LATERALITY.map((l) => (
                 <SegmentedButton
                   key={l}

@@ -19,6 +19,7 @@ import {
   kgToLb,
   kmToM,
   LATERALITY,
+  LATERALITY_EXPLAINERS,
   LATERALITY_LABELS,
   type Laterality,
   type LoggedSet,
@@ -288,10 +289,11 @@ function columnsFor(
 // `2.5rem` set-number + optional PREVIOUS reference + one flexible column each +
 // a FIXED `2.5rem` commit track + a FIXED `2.5rem` menu-gutter track — the one
 // column template shared by the column-header row, every committed row, the
-// active row and the upcoming rows, so every ⋯ lands at the same x-position
-// and every value column stays a straight line regardless of type. The commit
-// track carries the draft row's "Mark set done" button (its own 2.5rem so the
-// 40px tap target never crowds the ⋯); committed/upcoming rows leave it empty.
+// active row and the upcoming rows, so every value column stays a straight line
+// regardless of type. The commit track carries the draft row's ⋯; the
+// menu-gutter carries its "Mark set done" button (note 2: the check sits at the
+// far right, right of the ⋯), so the draft's ✓ lands at the same x as every
+// committed row's ⋯; committed/upcoming rows leave the commit track empty.
 // The gutter is fixed, not auto: the RIR/RPE modifier readout lives as a badge
 // OUT of the grid flow (see CommittedRow/ActiveRow), so no row content can
 // ever widen the track and nudge its siblings. PREVIOUS only claims space when
@@ -2387,7 +2389,7 @@ function ExerciseBlock({
   // duplicate library row), resolves by read again, never mints a second
   // copy while the row already points at one, and a fork whose create never
   // resolved starts over from the seed instead of re-pointing at a copy that
-  // was never inserted. The Sides/Attach items stay disabled while a
+  // was never inserted. The Laterality/Attach items stay disabled while a
   // copy-on-write is in flight or its failure banner is up, so a rapid
   // re-toggle can't target the not-yet-inserted copy id or bypass the orphan
   // cleanup.
@@ -2607,7 +2609,7 @@ function ExerciseBlock({
             )}
           </span>
         </span>
-        {/* Rest + options only — remove, machine-attach and the sides
+        {/* Rest + options only — remove, machine-attach and the laterality
             toggle live inside the options ⋯ menu, so the header stays one
             row of uniform icon buttons and nothing claims its own row. */}
         <Toolbar>
@@ -2788,7 +2790,10 @@ function ExerciseBlock({
             enabledMetrics={enabledMetrics}
             autoFocusWeight={activeIndex > 0}
             barLoaded={barLoaded}
-            laterality={exercise?.laterality ?? null}
+            // The exercise-level laterality default; the per-set override
+            // lives in the row itself (seeded from the draft snapshot), so
+            // it dies with the row on commit and survives reloads.
+            exerciseLaterality={exercise?.laterality ?? null}
             onOpenPlates={(target) => {
               setPlateTarget(target);
               setPlateOpen(true);
@@ -2805,8 +2810,12 @@ function ExerciseBlock({
           />
         )}
 
-        {seedSets.slice(activeIndex + (draftOpen ? 1 : 0)).map((seed, i) => {
-          const idx = activeIndex + (draftOpen ? 1 : 0) + i;
+        {/* Only sets beyond the active row render as upcoming previews — the
+            current index with no draft open is never a row you can't type
+            into (note 3: no phantom upcoming rows). The plan preview for the
+            rest of the routine stays (2026-07-30). */}
+        {seedSets.slice(activeIndex + 1).map((seed, i) => {
+          const idx = activeIndex + 1 + i;
           return (
             <UpcomingRow
               key={idx}
@@ -2890,9 +2899,10 @@ function SessionNoteField({
 }
 
 // Per-exercise overflow menu (Hevy three-dots): superset link/unlink, warm-up
-// insert, machine attach (when none is set), the sides (laterality) toggle and
+// insert, machine attach (when none is set), the laterality toggle and
 // remove-exercise — the header keeps only rest + ⋯, so no per-exercise action
-// claims its own full row.
+// claims its own full row. Superset opens a separate picker sheet (note 14:
+// choosing the partner from all exercises, not an inline list).
 function BlockMenu({
   blockName,
   unit,
@@ -2927,6 +2937,7 @@ function BlockMenu({
   onAddWarmup: (displayWeight: number) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [supersetOpen, setSupersetOpen] = useState(false);
   const [warmupOpen, setWarmupOpen] = useState(false);
   const labelCls =
     "px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase";
@@ -2957,28 +2968,28 @@ function BlockMenu({
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-10 cursor-default"
           />
-          <div className="floating absolute top-full right-0 z-20 mt-1 max-h-80 min-w-48 overflow-y-auto py-1">
+          <div
+            className="floating absolute top-full right-0 z-20 mt-1 max-h-80 min-w-48 overflow-y-auto py-1"
+            data-testid={`block-${blockName}-menu-popup`}
+          >
             <p className={labelCls}>Superset</p>
             {otherBlocks.length === 0 ? (
               <p className="px-3 pb-2 text-2xs text-faint">
                 Add another exercise to link.
               </p>
             ) : (
-              otherBlocks.map((b) => (
-                <button
-                  key={b.seId}
-                  type="button"
-                  onClick={() => {
-                    onLinkSuperset(b.seId);
-                    setOpen(false);
-                  }}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
-                  data-testid={`block-${blockName}-superset-${b.name}`}
-                >
-                  <Link2 className="size-3.5 shrink-0 text-faint" />
-                  <span className="truncate">Superset with {b.name}</span>
-                </button>
-              ))
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  setSupersetOpen(true);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+                data-testid={`block-${blockName}-superset`}
+              >
+                <Link2 className="size-3.5 shrink-0 text-faint" />
+                Link superset…
+              </button>
             )}
             {inSuperset && (
               <button
@@ -3031,7 +3042,11 @@ function BlockMenu({
               </>
             )}
             <div className="border-t border-border" />
-            <p className={labelCls}>Sides</p>
+            <p className={labelCls}>Laterality</p>
+            <p className="px-3 pb-1 text-2xs text-faint">
+              Unilateral: each side does the reps, logged as two rows.
+              Alternating: sides take turns, reps count both sides combined.
+            </p>
             {LATERALITY.map((l) => (
               <button
                 key={l}
@@ -3044,9 +3059,14 @@ function BlockMenu({
                 className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
                 data-testid={`block-${blockName}-laterality-${l}`}
               >
-                {LATERALITY_LABELS[l]}
+                <span className="flex flex-col">
+                  {LATERALITY_LABELS[l]}
+                  <span className="text-2xs font-normal normal-case tracking-normal text-faint">
+                    {LATERALITY_EXPLAINERS[l]}
+                  </span>
+                </span>
                 {currentLaterality === l && (
-                  <Check className="size-3.5 text-accent" />
+                  <Check className="size-3.5 shrink-0 text-accent" />
                 )}
               </button>
             ))}
@@ -3068,6 +3088,17 @@ function BlockMenu({
         </>
       )}
 
+      <SupersetPickerDialog
+        open={supersetOpen}
+        onOpenChange={setSupersetOpen}
+        blockName={blockName}
+        otherBlocks={otherBlocks}
+        onPick={(target) => {
+          onLinkSuperset(target);
+          setSupersetOpen(false);
+        }}
+      />
+
       <WarmupDialog
         open={warmupOpen}
         onOpenChange={setWarmupOpen}
@@ -3077,6 +3108,55 @@ function BlockMenu({
         onInsert={onAddWarmup}
       />
     </span>
+  );
+}
+
+// Superset partner picker (note 14): the block ⋯ menu's Superset option opens
+// this separate bottom sheet listing every other exercise in the session,
+// instead of inlining the whole list in the menu. Tapping one links the two.
+function SupersetPickerDialog({
+  open,
+  onOpenChange,
+  blockName,
+  otherBlocks,
+  onPick,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  blockName: string;
+  otherBlocks: { seId: string; name: string }[];
+  onPick: (seId: string) => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent title="Link superset" className="md:max-w-sm">
+        <p className="text-2xs text-faint">
+          Choose an exercise to pair {blockName} with — you'll alternate between
+          them, one set at a time.
+        </p>
+        {otherBlocks.length === 0 ? (
+          <p className="px-1 py-4 text-center text-xs text-faint">
+            Add another exercise to link.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border overflow-hidden border border-border bg-surface">
+            {otherBlocks.map((b) => (
+              <li key={b.seId}>
+                <button
+                  type="button"
+                  onClick={() => onPick(b.seId)}
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
+                  data-testid={`block-${blockName}-superset-${b.name}`}
+                >
+                  <Link2 className="size-4 shrink-0 text-faint" />
+                  <span className="truncate">{b.name}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -3539,6 +3619,19 @@ function CommittedRow({
       : null;
   const labelCls = "text-2xs font-medium tracking-wide text-faint uppercase";
 
+  // The ᴿ line's weight cell (note 1: same weight both sides is the norm, the
+  // unilateral part is only the reps). A right weight matching the left
+  // renders blank — reading as "same as left" — and only a divergent right
+  // weight (legacy data, or a post-commit edit via the details sheet) prints
+  // its own value. A null right weight with a non-null left is "no value"
+  // ("—"), never an implied mirror.
+  function rightWeightText(): string {
+    if (secondary.weightKg == null) return "—";
+    if (primary.weightKg != null && secondary.weightKg === primary.weightKg)
+      return "";
+    return String(toDisplayWeight(secondary.weightKg, unit));
+  }
+
   return (
     // The row is itself a `subgrid` of the block's grid, and so is each of its
     // ᴸ/ᴿ lines: every line in the block resolves its columns from the same
@@ -3663,11 +3756,13 @@ function CommittedRow({
               key={c.key}
               type="button"
               onClick={() => openDetails(secondary)}
-              className="num cursor-pointer text-left text-sm text-soft"
+              className="num min-h-5 cursor-pointer text-left text-sm text-soft"
               title="Set details"
               data-testid={`committed-${index}-right-${c.key}`}
             >
-              {committedText(c.key, secondary, unit, distUnit)}
+              {c.key === "weight"
+                ? rightWeightText()
+                : committedText(c.key, secondary, unit, distUnit)}
             </button>
           ))}
           {(effort && secondaryEffortDiffers) ||
@@ -4052,7 +4147,7 @@ function ActiveRow({
   enabledMetrics,
   autoFocusWeight,
   barLoaded,
-  laterality,
+  exerciseLaterality,
   onOpenPlates,
   timerRunning,
   timerStartedAt,
@@ -4075,7 +4170,7 @@ function ActiveRow({
   enabledMetrics: Metric[];
   autoFocusWeight: boolean;
   barLoaded: boolean;
-  laterality?: string | null;
+  exerciseLaterality: string | null;
   onOpenPlates: (target: number | null) => void;
   timerRunning: boolean;
   timerStartedAt: number | null;
@@ -4083,12 +4178,24 @@ function ActiveRow({
   onCommit: (set: CommitInput, ctx: CommitCtx) => void;
   ref: Ref<ActiveRowHandle>;
 }) {
-  const isUnilateral = laterality === "unilateral";
   // Restore any uncommitted keystrokes persisted for this block (draft wins over
   // the routine/copy seed once the user has started typing).
   const [draft] = useState<Partial<DraftSnapshot> | null>(() =>
     loadDraft(seId),
   );
+  // Per-set laterality override ("just this one set", note 1): toggled from
+  // the details sheet, seeded from the draft snapshot so a reload restores
+  // the ᴿ line and the right-side keystrokes it protects. Local to this row,
+  // so it dies on commit or remount — the next draft at the same index
+  // starts from the exercise default again.
+  const [lateralityOverride, setLateralityOverride] =
+    useState<Laterality | null>(() => draft?.laterality ?? null);
+  // Override wins over the exercise default.
+  const laterality = lateralityOverride ?? exerciseLaterality;
+  const isUnilateral = laterality === "unilateral";
+  // Hidden for alternating exercises — their sets are all alternating, so a
+  // per-set unilateral override would contradict the exercise-level semantics.
+  const lateralityEditable = exerciseLaterality !== "alternating";
   // Seed the draft from the routine target / copied set for this index. A rep
   // range seeds only a placeholder (never a concrete reps value).
   const [weight, setWeight] = useState(
@@ -4122,8 +4229,10 @@ function ActiveRow({
   const [rpe, setRpe] = useState(() => draft?.rpe ?? "");
   const [note, setNote] = useState(() => draft?.note ?? "");
   // Right side of a unilateral pair. Blank means "mirror the left value" —
-  // the input shows it as a faint placeholder; typing here overrides it.
-  const [rWeight, setRWeight] = useState(() => draft?.rWeight ?? "");
+  // the input shows it as a faint placeholder; typing here overrides it. The
+  // right side has NO weight field (note 1: same weight both sides — the
+  // unilateral part is only the reps), so only reps/duration/distance live
+  // here.
   const [rReps, setRReps] = useState(() => draft?.rReps ?? "");
   const [rDuration, setRDuration] = useState(() => draft?.rDuration ?? "");
   const [rDistance, setRDistance] = useState(() => draft?.rDistance ?? "");
@@ -4154,6 +4263,8 @@ function ActiveRow({
   const [, tick] = useReducer((n: number) => n + 1, 0);
 
   // Mirror uncommitted keystrokes to localStorage so a reload restores them.
+  // rWeight deliberately isn't saved: the right side has no weight input (note
+  // 1) — legacy drafts that carry one are read for nothing.
   useEffect(() => {
     saveDraft(seId, {
       weight,
@@ -4167,10 +4278,10 @@ function ActiveRow({
       setType,
       extras: [...extras],
       metricDraft,
-      rWeight,
       rReps,
       rDuration,
       rDistance,
+      laterality: lateralityOverride,
     });
   }, [
     seId,
@@ -4185,10 +4296,10 @@ function ActiveRow({
     setType,
     extras,
     metricDraft,
-    rWeight,
     rReps,
     rDuration,
     rDistance,
+    lateralityOverride,
   ]);
 
   // Closing without a field blur ever landing (e.g. the sheet opened while
@@ -4287,11 +4398,11 @@ function ActiveRow({
     if (f.distance && previous.distanceM != null)
       setDistance(String(toDisplayDistance(previous.distanceM, distUnit)));
     // An uneven pair last time restores uneven — otherwise the left fill
-    // above already mirrors across as a placeholder.
+    // above already mirrors across as a placeholder. The right side has no
+    // weight field (note 1: same weight both sides), so only a divergent
+    // right REP is restored; a legacy divergent weight is dropped on fill.
     const other = previous.otherSide;
     if (isUnilateral && other) {
-      if (f.weight && other.weightKg != null)
-        setRWeight(String(toDisplayWeight(other.weightKg, unit)));
       if (f.reps && other.reps != null) setRReps(String(other.reps));
       if (f.duration && other.durationSec != null)
         setRDuration(formatMMSS(other.durationSec));
@@ -4349,18 +4460,15 @@ function ActiveRow({
     return { weightKg, reps: repsN, durationSec, distanceM };
   }
 
-  // Right side of a unilateral pair: defaults to the left's own resolved
-  // values (symmetric by default) — only a field actually typed into here
-  // overrides its left counterpart.
+  // Right side of a unilateral pair: mirrors the left's resolved values
+  // (symmetric by default) — only a field actually typed into here overrides
+  // its left counterpart. Weight has no right-side input (note 1: same weight
+  // both sides); the right row copies the left's weight at commit.
   function parseRightFields(left: ReturnType<typeof parseFields>) {
-    let weightKg = left.weightKg;
+    const weightKg = left.weightKg;
     let repsN = left.reps;
     let durationSec = left.durationSec;
     let distanceM = left.distanceM;
-    if (f.weight && rWeight.trim() !== "") {
-      const d = Number.parseFloat(rWeight);
-      weightKg = Number.isNaN(d) ? null : unit === "lb" ? lbToKg(d) : d;
-    }
     if (f.reps && rReps.trim() !== "") {
       const r = Number.parseInt(rReps, 10);
       repsN = Number.isNaN(r) ? null : r;
@@ -4447,10 +4555,12 @@ function ActiveRow({
     if (weight.trim() !== "" && reps.trim() !== "") commit(false);
   }
 
-  // Guards against committing mid-override: tabbing from the ᴿ weight field
-  // to the ᴿ reps field blurs the former while the ᴸ line is already
-  // complete, which would otherwise auto-commit before the reps override is
-  // even typed. Only fires once focus actually leaves this row.
+  // Guards against committing mid-override: tabbing from one ᴿ field to the
+  // next (e.g. reps → duration) blurs the former while the ᴸ line is already
+  // complete, which would otherwise auto-commit before the override is even
+  // typed. (The ᴿ weight input this guard originally described is gone —
+  // same weight both sides, note 1.) Only fires once focus actually leaves
+  // this row.
   function onRightFieldBlur(e: React.FocusEvent<HTMLInputElement>) {
     if (suppressCheckoffRef.current) {
       suppressCheckoffRef.current = false;
@@ -4557,28 +4667,11 @@ function ActiveRow({
 
   // Right-side input for a unilateral pair. Placeholder mirrors the left
   // line's own typed value (live, as faint text) so the pair reads as
-  // symmetric until overridden — typing here just makes the row uneven.
+  // symmetric until overridden — typing here just makes the row uneven. No
+  // weight field: the weight is shared (note 1), so the ᴿ line's weight cell
+  // is an empty span that keeps the columns aligned.
   function rDataCell(key: ColKey) {
-    if (key === "weight")
-      return (
-        <Field
-          key={key}
-          className="px-0 leading-5"
-          inputMode="decimal"
-          placeholder={
-            weight.trim() !== ""
-              ? weight
-              : ghostWeight != null
-                ? String(ghostWeight)
-                : unitLabel(unit)
-          }
-          value={rWeight}
-          onChange={(e) => setRWeight(e.target.value)}
-          onKeyDown={onKeyDown}
-          onBlur={onRightFieldBlur}
-          data-testid={`set-${index}-right-weight`}
-        />
-      );
+    if (key === "weight") return <span key={key} aria-hidden="true" />;
     if (key === "reps")
       return (
         <Field
@@ -4680,12 +4773,13 @@ function ActiveRow({
         )}
         {/* Commit + details share the two right-most fixed tracks (commit +
             menu-gutter) inside one guard span, so tabbing into either button
-            can't check the set off. ⋯ is first in DOM (Tab from the last
-            input lands on details) and rendered right-most via row-reverse,
-            so it keeps the exact x of every committed row's ⋯. */}
+            can't check the set off. The check sits at the far right, right of
+            the ⋯ (note 2) — the ⋯ claims the commit track so the ✓ lands at
+            the same x as every committed row's ⋯. ⋯ is first in DOM (Tab
+            from the last input lands on details). */}
         <span
           ref={moreCellRef}
-          className="col-span-2 flex flex-row-reverse items-center justify-start gap-1"
+          className="col-span-2 flex items-center justify-end gap-1"
         >
           <Dots
             onClick={() => {
@@ -4742,6 +4836,27 @@ function ActiveRow({
           className="md:max-w-sm"
         >
           <div className="flex flex-col gap-4">
+            {lateralityEditable && (
+              <label className="flex items-start gap-2 rounded-md border border-border bg-surface-2 p-2">
+                <input
+                  type="checkbox"
+                  checked={isUnilateral}
+                  onChange={(e) =>
+                    setLateralityOverride(
+                      e.target.checked ? "unilateral" : "bilateral",
+                    )
+                  }
+                  className="mt-0.5 size-4 shrink-0 accent-(--accent)"
+                  data-testid={`set-${index}-unilateral`}
+                />
+                <span className="text-xs text-soft">
+                  <span className="font-medium text-ink">Unilateral</span>
+                  <br />
+                  Just this set: same weight both sides, log each side's reps
+                  separately.
+                </span>
+              </label>
+            )}
             {effort && (
               <div className="flex flex-col gap-3">
                 {modifierBindings({

@@ -50,7 +50,15 @@ export const machines = pgTable(
   (t) => [index("machines_owner_idx").on(t.ownerId)],
 );
 
-export type MachineSetting = { label: string; value: number | null };
+export type MachineSetting = {
+  label: string;
+  value: number | null;
+  /** Path in the machine-photos bucket of a photo of THIS setting (e.g. the
+   * notch/seat position it refers to). Optional — most settings are plain
+   * numbers; the path rides in the jsonb so it survives setting reorders and
+   * removals intact (see docs/DECISIONS.md 2026-08-08, note 16). */
+  photoPath?: string | null;
+};
 
 // Global reference catalog of real gym-machine models (brand/model/specs),
 // distinct from `machines` (a user's owned equipment, owner-scoped, no seed

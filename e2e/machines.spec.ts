@@ -118,3 +118,82 @@ test("RIR InfoTip opens the lesson", async ({ page }) => {
   await expect(page.getByText("RIR — reps in reserve")).toBeVisible();
   await expect(page.getByText(/reps you could still do/i)).toBeVisible();
 });
+
+test("setup values each carry an optional photo (note 16)", async ({
+  page,
+}) => {
+  const MACHINE = `Photo Row ${Date.now()}`;
+
+  await page.goto("/library");
+  // A custom machine avoids colliding with the catalog-row machine the
+  // settings-memory test creates (same model name).
+  await page.getByTestId("machine-name-input").fill(MACHINE);
+  await page.getByTestId("add-machine-btn").click();
+  await expect(page.getByTestId(`machine-row-${MACHINE}`)).toBeVisible();
+
+  // Two settings, each with its own photo affordance.
+  await page.getByTestId(`machine-row-${MACHINE}`).click();
+  await page.getByTestId(`add-setting-${MACHINE}`).fill("Seat height");
+  await page.getByTestId(`add-setting-${MACHINE}`).press("Enter");
+  await page.getByTestId(`add-setting-${MACHINE}`).fill("Pad height");
+  await page.getByTestId(`add-setting-${MACHINE}`).press("Enter");
+  await expect(
+    page.getByTestId(`setting-photo-${MACHINE}-Seat height`),
+  ).toBeVisible();
+  await expect(
+    page.getByTestId(`setting-photo-${MACHINE}-Pad height`),
+  ).toBeVisible();
+  await expect(
+    page.getByTestId(`setting-photo-img-${MACHINE}-Seat height`),
+  ).toHaveCount(0);
+
+  // Upload a photo to the Seat height setting — the thumbnail appears, and
+  // the path lands in the machine's settings jsonb (same storage bucket as
+  // the machine photo, per-setting key).
+  await page
+    .getByTestId(`setting-photo-input-${MACHINE}-Seat height`)
+    .setInputFiles({
+      name: "seat.png",
+      mimeType: "image/png",
+      buffer: Buffer.from(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+        "base64",
+      ),
+    });
+  await expect(
+    page.getByTestId(`setting-photo-img-${MACHINE}-Seat height`),
+  ).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(async (name) => {
+        const { data } = await window.__frog.supabase
+          .from("machines")
+          .select("settings")
+          .eq("name", name)
+          .single();
+        const settings = (data?.settings ?? []) as {
+          label: string;
+          photoPath?: string | null;
+        }[];
+        return (
+          (settings.find((s) => s.label === "Seat height")?.photoPath ??
+            null) !== null
+        );
+      }, MACHINE),
+    )
+    .toBe(true);
+  // The untouched setting keeps no photo path.
+  const hasPadPhoto = await page.evaluate(async (name) => {
+    const { data } = await window.__frog.supabase
+      .from("machines")
+      .select("settings")
+      .eq("name", name)
+      .single();
+    const settings = (data?.settings ?? []) as {
+      label: string;
+      photoPath?: string | null;
+    }[];
+    return settings.find((s) => s.label === "Pad height")?.photoPath;
+  }, MACHINE);
+  expect(hasPadPhoto).toBeUndefined();
+});

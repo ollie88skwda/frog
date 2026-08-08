@@ -500,6 +500,44 @@ export function useMachinePhotoUrl(machine: Machine | null | undefined) {
   });
 }
 
+export function useUploadMachineSettingPhoto() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      machineId: string;
+      file: Blob;
+      existingPath: string | null;
+    }) =>
+      repo.uploadMachineSettingPhoto(
+        input.machineId,
+        input.file,
+        input.existingPath,
+      ),
+    // Replacing a setting photo upserts the same object path, so the
+    // signed-URL query (keyed on path alone) would keep serving its cached
+    // URL — and the browser-cached image bytes under it — until the 45-min
+    // staleTime refetch. The mutation resolves the path; invalidate on it.
+    onSettled: (path) => {
+      if (path) {
+        void qc.invalidateQueries({
+          queryKey: ["machine-setting-photo", path],
+        });
+      }
+    },
+  });
+}
+
+export function useMachineSettingPhotoUrl(path: string | null | undefined) {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["machine-setting-photo", path],
+    queryFn: () => (path ? repo.machineSettingPhotoUrl(path) : null),
+    enabled: !!path,
+    staleTime: 45 * 60_000, // signed URLs live an hour
+  });
+}
+
 export function useUploadExerciseMedia() {
   const repo = useRepo();
   const qc = useQueryClient();
