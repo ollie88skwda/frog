@@ -311,15 +311,33 @@
 
 /* Prevent mobile zoom on input focus. iOS/WebKit (incl. Arc) auto-zooms any
    focused form control whose font-size resolves < 16px, and `user-scalable=no`
-   is ignored. Radix's reset applies `all: unset` to inputs in the `radix`
-   layer, which forces `font-size: inherit` (14px from --font-size-2) and beats
-   a `@layer base` rule. The `utilities` layer is the documented escape hatch
-   that outranks `radix`, so the 16px minimum has to live here to actually win. */
+   / maximum-scale viewport lockdown is deliberately not used to work around it
+   (it would also disable pinch-zoom for everyone, an accessibility regression
+   worse than the bug — see https://www.smashingmagazine.com/2023/09/prevent-safari-zooming-form-inputs/
+   and the WebKit behavior described at https://css-tricks.com/16px-or-larger-text-prevents-ios-form-zoom/).
+   Radix's reset applies `all: unset` to inputs in the `radix` layer, which
+   forces `font-size: inherit` (14px from --font-size-2) and beats a
+   `@layer base` rule. The `utilities` layer is the documented escape hatch
+   that outranks `radix` — but call sites routinely put a Tailwind text-size
+   utility (`.text-sm` = 15px, `.text-xs` = 13px — see field.tsx, and every
+   boxed Input's className) directly on the same `<input>`, and a class
+   selector (0,1,0) always outranks the bare-tag selector (0,0,1) here
+   regardless of source order within the layer, so those calls were still
+   zooming. `!important`, scoped to `pointer: coarse` (the actual touch/mouse
+   distinction the bug depends on, rather than a viewport-width guess that a
+   narrow desktop window or a landscape phone could get wrong either way),
+   wins over any non-important rule regardless of specificity while leaving
+   desktop's smaller `text-sm`/`text-xs` sizing on mouse-driven pointers alone.
+   The `:not()` chain keeps file/checkbox/radio out: none of them takes text
+   entry, so none can trigger the focus zoom, and forcing a font-size on them
+   only risks resizing the control's own chrome (a file input's button label). */
 @layer utilities {
-  input,
-  textarea,
-  select {
-    font-size: 16px;
+  @media (pointer: coarse) {
+    input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+    textarea,
+    select {
+      font-size: 16px !important;
+    }
   }
 }
 
