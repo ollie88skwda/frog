@@ -39,7 +39,11 @@ import { ExerciseEditor } from "@/components/exercise-editor";
 import { ShareButton } from "@/components/share-sheet";
 import { formatDate, formatDateTime, formatMMSS } from "@/lib/format";
 import { useUserPrefs } from "@/lib/profile-queries";
-import { useCreateExercise, useExercise } from "@/lib/queries";
+import {
+  copyExerciseOpts,
+  useCreateExercise,
+  useExercise,
+} from "@/lib/queries";
 import { type RecordsData, useRecordsData } from "@/lib/records-queries";
 import {
   type DistanceUnit,
@@ -687,22 +691,7 @@ function MoreMenu({
     setOpen(false);
     const copy = await create.mutateAsync({
       name: `${exercise.name} (copy)`,
-      opts: {
-        muscleTargets: exercise.muscleTargets,
-        jointActions: exercise.jointActions,
-        exerciseType: exercise.exerciseType,
-        equipment: exercise.equipment,
-        machineId: exercise.machineId,
-        mechanic: exercise.mechanic,
-        movementPattern: exercise.movementPattern,
-        laterality: exercise.laterality,
-        defaultRepsMin: exercise.defaultRepsMin,
-        defaultRepsMax: exercise.defaultRepsMax,
-        defaultRestSec: exercise.defaultRestSec,
-        notes: exercise.notes,
-        instructions: exercise.instructions,
-        imageUrls: exercise.imageUrls,
-      },
+      opts: copyExerciseOpts(exercise),
     });
     navigate(`/exercises/${copy.id}`);
   }

@@ -1,35 +1,33 @@
 import type { Machine, MachineCatalogEntry } from "@frog/core";
-import { Wrench } from "lucide-react";
-import { useState } from "react";
 import { MachineCatalogPicker } from "@/components/machine-catalog-picker";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import {
-  useCreateMachine,
-  useMachines,
-  useUpdateExercise,
-} from "@/lib/queries";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useCreateMachine, useMachines } from "@/lib/queries";
 
-// In-workout machine attach (machine-DB plan §6, phase 3): the block header
-// shows this strip when the exercise has no machine set, instead of nothing —
-// the SetupStrip slot. Tapping it opens the catalog-search dialog (same
-// picker AddMachine uses) plus the user's own machines, so the remembered
-// setup ("my gym" settings) is one tap away rather than forcing a fresh
-// catalog create.
-export function AttachMachineStrip({
-  exerciseId,
+// In-workout machine attach (machine-DB plan §6, phase 3): when the exercise
+// has no machine set, the block's options ⋯ menu opens this dialog (the same
+// catalog search AddMachine uses) plus the user's own machines, so the
+// remembered setup ("my gym" settings) is one tap away rather than forcing a
+// fresh catalog create. Controlled — the trigger lives in the session block
+// menu, which owns `open`, so the affordance no longer claims a full row of
+// its own under the header. The write (and the seed-exercise copy-on-write)
+// lives in the session block: this dialog only reports the picked machine id.
+export function MachineAttachDialog({
   blockName,
+  open,
+  onOpenChange,
+  onAttach,
 }: {
-  exerciseId: string;
   blockName: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAttach: (machineId: string) => void;
 }) {
   const { data: machines = [] } = useMachines();
   const createMachine = useCreateMachine();
-  const updateExercise = useUpdateExercise();
-  const [open, setOpen] = useState(false);
 
   function attach(machineId: string) {
-    updateExercise.mutate({ exerciseId, patch: { machineId } });
-    setOpen(false);
+    onAttach(machineId);
+    onOpenChange(false);
   }
 
   // Catalog pick: reuse the user's existing row when it's already in "my
@@ -52,15 +50,7 @@ export function AttachMachineStrip({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        className="flex h-10 w-full items-center gap-2 border-b border-border bg-surface-2 px-4 text-left text-2xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover md:h-8"
-        data-testid={`setup-attach-${blockName}`}
-      >
-        <Wrench className="size-4 shrink-0 text-faint" />
-        <span className="truncate">Attach machine</span>
-        <span className="ml-auto shrink-0 text-faint">set up…</span>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title={`Attach a machine — ${blockName}`}>
         {machines.length > 0 && (
           <>

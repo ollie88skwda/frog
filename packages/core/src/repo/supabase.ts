@@ -1062,6 +1062,7 @@ export class SupabaseRepo implements Repo {
       supersetGroup?: number | null;
       restSec?: number | null;
       note?: string | null;
+      exerciseId?: string;
     },
   ): Promise<void> {
     const row: Row = { updated_at: Date.now() };
@@ -1069,11 +1070,24 @@ export class SupabaseRepo implements Repo {
       row.superset_group = patch.supersetGroup ?? null;
     if ("restSec" in patch) row.rest_sec = patch.restSec ?? null;
     if ("note" in patch) row.note = patch.note ?? null;
+    if ("exerciseId" in patch) row.exercise_id = patch.exerciseId;
     const { error } = await this.client
       .from("session_exercises")
       .update(row)
       .eq("id", sessionExerciseId);
     throwIf(error);
+  }
+
+  async getSessionExercise(
+    sessionExerciseId: string,
+  ): Promise<{ exerciseId: string } | null> {
+    const { data, error } = await this.client
+      .from("session_exercises")
+      .select("exercise_id")
+      .eq("id", sessionExerciseId)
+      .maybeSingle();
+    throwIf(error);
+    return data ? { exerciseId: data.exercise_id as string } : null;
   }
 
   async recordsData(): Promise<RecordsSessionInput[]> {

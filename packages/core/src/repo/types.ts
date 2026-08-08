@@ -398,6 +398,10 @@ export interface Repo {
    * Per-block session fields: superset grouping, per-exercise rest seconds
    * (dormant — nothing writes it since rest became an untargeted stopwatch),
    * and the per-exercise session note. Only provided fields are written.
+   * `exerciseId` repoints the block at a different exercise row (the
+   * session-side copy-on-write: a seed exercise is RLS-read-only, so an
+   * in-session laterality/machine edit clones it into a private custom
+   * exercise and the session_exercise follows the copy).
    */
   updateSessionExercise(
     sessionExerciseId: string,
@@ -405,8 +409,20 @@ export interface Repo {
       supersetGroup?: number | null;
       restSec?: number | null;
       note?: string | null;
+      exerciseId?: string;
     },
   ): Promise<void>;
+
+  /**
+   * Reads one session_exercise row's current exercise id — the
+   * resolve-by-read for the copy-on-write repoint's ambiguous-failure path
+   * (the PATCH can have committed with its response lost, so cleanup must
+   * confirm the row no longer points at the seed before soft-deleting the
+   * copy). Null when the row is gone.
+   */
+  getSessionExercise(
+    sessionExerciseId: string,
+  ): Promise<{ exerciseId: string } | null>;
 
   /**
    * Previous session's per-exercise note (carry-forward ghost). Latest prior

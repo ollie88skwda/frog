@@ -123,6 +123,31 @@ function optimisticExercise(
   };
 }
 
+// The duplicate-exercise field contract (DECISIONS.md 2026-07-30): every field
+// the editor writes is carried except `aliases` — two rows sharing an alias
+// would make `matchExerciseName` ambiguous for voice/paste logging. One list
+// shared by the detail screen's Duplicate action and the session's
+// copy-on-write (laterality/machine edits on RLS-read-only seed rows), so the
+// two can't drift.
+export function copyExerciseOpts(ex: Exercise): NewExerciseOpts {
+  return {
+    muscleTargets: ex.muscleTargets,
+    jointActions: ex.jointActions,
+    exerciseType: ex.exerciseType,
+    equipment: ex.equipment,
+    machineId: ex.machineId,
+    mechanic: ex.mechanic,
+    movementPattern: ex.movementPattern,
+    laterality: ex.laterality,
+    defaultRepsMin: ex.defaultRepsMin,
+    defaultRepsMax: ex.defaultRepsMax,
+    defaultRestSec: ex.defaultRestSec,
+    notes: ex.notes,
+    instructions: ex.instructions,
+    imageUrls: ex.imageUrls,
+  };
+}
+
 // An optimistic write updates the library; it never *creates* it. A `(old = [])`
 // updater would build the cache entry out of one optimistic row during the cold
 // ~1 MB load — which reads downstream as a loaded library (bulk add gates its

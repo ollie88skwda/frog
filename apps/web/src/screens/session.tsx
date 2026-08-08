@@ -3,6 +3,7 @@ import {
   computeRecords,
   countSets,
   type Exercise,
+  type ExercisePatch,
   type ExercisePref,
   type ExerciseRecords,
   type ExerciseType,
@@ -17,6 +18,9 @@ import {
   isConfidentMatch,
   kgToLb,
   kmToM,
+  LATERALITY,
+  LATERALITY_LABELS,
+  type Laterality,
   type LoggedSet,
   lbToKg,
   type Machine,
@@ -69,7 +73,7 @@ import {
   Timer,
   Trash2,
   Unlink,
-  X,
+  Wrench,
 } from "lucide-react";
 import {
   type Ref,
@@ -83,7 +87,7 @@ import {
 } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { ExerciseRibbon, ExerciseThumb } from "@/components/anatomy-ui";
-import { AttachMachineStrip } from "@/components/attach-machine";
+import { MachineAttachDialog } from "@/components/attach-machine";
 import { ConditionsChip } from "@/components/conditions";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import {
@@ -114,6 +118,9 @@ import type { LessonId } from "@/lib/lessons";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
 import {
+  copyExerciseOpts,
+  useCreateExercise,
+  useDeleteExercise,
   useExercisePrefs,
   useExercises,
   useGhost,
@@ -124,6 +131,7 @@ import {
   useSession,
   useSessionExercises,
   useSetExerciseWeightUnit,
+  useUpdateExercise,
 } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
 import {
@@ -158,6 +166,11 @@ type BlockState = {
   seId: string;
   exerciseId: string;
   name: string;
+  // The exercise the PREVIOUS/last-note lookups key on. Set by the
+  // copy-on-write swap (a seed exercise cloned into a private custom copy)
+  // so a fresh copy's empty history doesn't blank the reference column
+  // mid-session; null = the block has never been swapped.
+  ghostExerciseId?: string;
   // Provenance from a routine-started session (null = ad-hoc / empty workout).
   routineExerciseId: string | null;
   // Superset grouping (int id shared by members; null = solo). Per-exercise
@@ -273,17 +286,20 @@ function columnsFor(
 }
 
 // `2.5rem` set-number + optional PREVIOUS reference + one flexible column each +
-// a FIXED `2.5rem` menu-gutter track — the one column template shared by the
-// column-header row, every committed row, the active row and the upcoming
-// rows, so every ⋯ lands at the same x-position and every value column stays a
-// straight line regardless of type. The gutter is fixed, not auto: the
-// RIR/RPE modifier readout lives as a badge OUT of the grid flow (see
-// CommittedRow/ActiveRow), so no row content can ever widen the track and
-// nudge its siblings. PREVIOUS only claims space when there's prior/target
-// data to show (blank column suppressed for a brand-new exercise).
+// a FIXED `2.5rem` commit track + a FIXED `2.5rem` menu-gutter track — the one
+// column template shared by the column-header row, every committed row, the
+// active row and the upcoming rows, so every ⋯ lands at the same x-position
+// and every value column stays a straight line regardless of type. The commit
+// track carries the draft row's "Mark set done" button (its own 2.5rem so the
+// 40px tap target never crowds the ⋯); committed/upcoming rows leave it empty.
+// The gutter is fixed, not auto: the RIR/RPE modifier readout lives as a badge
+// OUT of the grid flow (see CommittedRow/ActiveRow), so no row content can
+// ever widen the track and nudge its siblings. PREVIOUS only claims space when
+// there's prior/target data to show (blank column suppressed for a brand-new
+// exercise).
 function gridTemplate(cols: Column[], showPrevious: boolean): string {
   const prev = showPrevious ? "3.5rem " : "";
-  return `2.5rem ${prev}${cols.map(() => "1fr").join(" ")} 2.5rem`;
+  return `2.5rem ${prev}${cols.map(() => "1fr").join(" ")} 2.5rem 2.5rem`;
 }
 
 // Compact previous-performance string for the PREVIOUS column: weight sans unit
@@ -1178,6 +1194,23 @@ export default function SessionScreen() {
     void repo.deleteSessionExercise(seId);
   }
 
+  // Repoint a block at a different exercise row (copy-on-write: a seed
+  // exercise is RLS-read-only, so an in-session laterality/machine edit is
+  // applied to a private custom copy and the block follows it). `ghostId`
+  // pins the PREVIOUS/last-note lookups to the original exercise, so the
+  // copy's empty history doesn't blank the reference column mid-session.
+  function swapBlockExercise(
+    seId: string,
+    exerciseId: string,
+    ghostExerciseId: string,
+  ) {
+    setBlocks((prev) =>
+      (prev ?? []).map((b) =>
+        b.seId === seId ? { ...b, exerciseId, ghostExerciseId } : b,
+      ),
+    );
+  }
+
   // Per-block seed sets for the draft grid: routine targets (matched by
   // routine_exercise id) win; otherwise the copy-workout seed; otherwise none.
   const seedFor = useCallback(
@@ -1595,6 +1628,7 @@ export default function SessionScreen() {
               onSaveSet={(setId, patch) => saveSet(block.seId, setId, patch)}
               onRemoveSet={(setId) => removeSet(block.seId, setId)}
               onRemoveBlock={() => removeBlock(block.seId)}
+              onSwapExercise={swapBlockExercise}
             />
           ))}
 
@@ -2250,6 +2284,7 @@ function ExerciseBlock({
   onSaveSet,
   onRemoveSet,
   onRemoveBlock,
+  onSwapExercise,
 }: {
   block: BlockState;
   unit: Unit;
@@ -2279,20 +2314,30 @@ function ExerciseBlock({
   onSaveSet: (setId: string, patch: SetPatch) => void;
   onRemoveSet: (setId: string) => void;
   onRemoveBlock: () => void;
+  onSwapExercise: (seId: string, exerciseId: string, ghostId: string) => void;
 }) {
   const { data: ghost = [] } = useGhost(
-    block.exerciseId,
+    block.ghostExerciseId ?? block.exerciseId,
     block.seId,
     previousRoutineId,
   );
-  const { data: ghostNote } = useLastNote(block.exerciseId, block.seId);
+  const { data: ghostNote } = useLastNote(
+    block.ghostExerciseId ?? block.exerciseId,
+    block.seId,
+  );
   const { data: exercises = [] } = useExercises();
   const { data: machines = [] } = useMachines();
   const { data: prefs = [] } = useExercisePrefs();
   const setWeightUnit = useSetExerciseWeightUnit();
+  const createExercise = useCreateExercise();
+  const updateExercise = useUpdateExercise();
+  const deleteExercise = useDeleteExercise();
+  const repo = useRepo();
   const navigate = useNavigate();
+  const { t } = useVoice();
   const [plateTarget, setPlateTarget] = useState<number | null>(null);
   const [plateOpen, setPlateOpen] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
   const activeIndex = countSets(block.committed);
   // Whether a draft (active) row is shown for this block right now. The
   // first set's row is always open (fresh: blank; routine: seeded) so
@@ -2308,6 +2353,181 @@ function ExerciseBlock({
   );
   const exercise = exercises.find((e) => e.id === block.exerciseId);
   const machine = machines.find((m) => m.id === exercise?.machineId);
+
+  // In-session exercise edit (laterality toggle / machine attach). Custom
+  // rows patch in place; seed rows are RLS-read-only (repo/types.ts), so the
+  // change goes onto a private custom copy — the duplicate field contract,
+  // minus aliases so the matcher stays unambiguous — and the block swaps
+  // onto it. The swap is optimistic: the copy is already in the exercises
+  // cache from the create's onMutate, and the session_exercises repoint
+  // waits for the insert so the FK can't race it. The repoint runs through a
+  // retrying mutation (the logSet contract); when its retries exhaust, the
+  // failure is resolved by reading the row before any cleanup — the PATCH
+  // can have committed with its response lost, so the orphan copy is
+  // soft-deleted only when the row still points at the seed; a row already
+  // on the copy means the edit landed and nothing is deleted. If the
+  // resolution read itself fails, the copy is never deleted (deleting could
+  // destroy a committed repoint) and the block stays on the copy with a
+  // couldn't-confirm banner. Retry re-attempts the orphan copy's idempotent
+  // soft-delete first (a cleanup delete can itself fail and leave a live
+  // duplicate library row), resolves by read again, never mints a second
+  // copy while the row already points at one, and a fork whose create never
+  // resolved starts over from the seed instead of re-pointing at a copy that
+  // was never inserted. The Sides/Attach items stay disabled while a
+  // copy-on-write is in flight or its failure banner is up, so a rapid
+  // re-toggle can't target the not-yet-inserted copy id or bypass the orphan
+  // cleanup.
+  const [copying, setCopying] = useState(false);
+  const [copyError, setCopyError] = useState<{
+    patch: ExercisePatch;
+    unresolved?: boolean;
+    created?: boolean;
+    orphanId?: string;
+    originalId: string;
+  } | null>(null);
+  const repoint = useMutation({
+    mutationFn: ({ seId, copyId }: { seId: string; copyId: string }) =>
+      repo.updateSessionExercise(seId, { exerciseId: copyId }),
+  });
+  function settleRepointFailure(
+    seId: string,
+    copyId: string,
+    originalId: string,
+    patch: ExercisePatch,
+    created: boolean,
+  ) {
+    void (async () => {
+      let state: "committed" | "not-committed" | "unresolved";
+      try {
+        const row = await repo.getSessionExercise(seId);
+        state = row?.exerciseId === copyId ? "committed" : "not-committed";
+      } catch {
+        state = "unresolved";
+      }
+      if (state === "committed") {
+        setCopying(false);
+        return;
+      }
+      if (state === "unresolved") {
+        setCopying(false);
+        setCopyError({ patch, unresolved: true, created, originalId });
+        return;
+      }
+      onSwapExercise(seId, originalId, originalId);
+      setCopying(false);
+      setCopyError({ patch, created, orphanId: copyId, originalId });
+      deleteExercise.mutate(copyId);
+    })();
+  }
+  function forkExercise(ex: Exercise, patch: ExercisePatch) {
+    if (ex.isCustom) {
+      updateExercise.mutate({ exerciseId: ex.id, patch });
+      return;
+    }
+    setCopyError(null);
+    const originalId = ex.id;
+    const copyId = newId();
+    const creating = createExercise.mutateAsync({
+      name: `${ex.name} (copy)`,
+      opts: { id: copyId, ...copyExerciseOpts(ex), ...patch },
+    });
+    onSwapExercise(block.seId, copyId, originalId);
+    setCopying(true);
+    void (async () => {
+      let created = false;
+      try {
+        await creating;
+        created = true;
+      } catch {
+        // The create's failure is itself ambiguous (the row can have landed
+        // with the response lost) — settleRepointFailure resolves it by read.
+      }
+      if (!created) {
+        settleRepointFailure(block.seId, copyId, originalId, patch, false);
+        return;
+      }
+      try {
+        await repoint.mutateAsync({ seId: block.seId, copyId });
+        setCopying(false);
+      } catch {
+        settleRepointFailure(block.seId, copyId, originalId, patch, true);
+      }
+    })();
+  }
+  function editOrCopy(patch: ExercisePatch) {
+    if (!exercise) return;
+    forkExercise(exercise, patch);
+  }
+  function retryCopy() {
+    if (!copyError) return;
+    const err = copyError;
+    setCopyError(null);
+    setCopying(true);
+    void (async () => {
+      if (err.orphanId) {
+        // The block was swapped back to the seed and the previous copy may
+        // still exist (its cleanup delete can have failed) — re-attempt the
+        // idempotent soft-delete first. The row no longer references it, so
+        // this cannot destroy a committed repoint.
+        try {
+          await deleteExercise.mutateAsync(err.orphanId);
+        } catch {
+          setCopying(false);
+          setCopyError(err);
+          return;
+        }
+      }
+      if (!err.unresolved) {
+        setCopying(false);
+        editOrCopy(err.patch);
+        return;
+      }
+      let state: "committed" | "not-committed" | "unresolved";
+      try {
+        const row = await repo.getSessionExercise(block.seId);
+        state =
+          row?.exerciseId === block.exerciseId ? "committed" : "not-committed";
+      } catch {
+        state = "unresolved";
+      }
+      if (state === "committed") {
+        setCopying(false);
+        return;
+      }
+      if (state === "unresolved") {
+        setCopying(false);
+        setCopyError(err);
+        return;
+      }
+      if (err.created) {
+        // The copy exists but the repoint never confirmed; the block is
+        // still on the copy — re-attempt the repoint on it.
+        void repoint
+          .mutateAsync({ seId: block.seId, copyId: block.exerciseId })
+          .then(() => setCopying(false))
+          .catch(() =>
+            settleRepointFailure(
+              block.seId,
+              block.exerciseId,
+              err.originalId,
+              err.patch,
+              true,
+            ),
+          );
+        return;
+      }
+      // The copy create never resolved — the block may be pinned to a
+      // nonexistent copy id; start a fresh copy from the seed exercise.
+      const original = exercises.find((e) => e.id === err.originalId);
+      if (!original) {
+        setCopying(false);
+        setCopyError(err);
+        return;
+      }
+      setCopying(false);
+      forkExercise(original, err.patch);
+    })();
+  }
 
   const type = (exercise?.exerciseType as ExerciseType) ?? "weight_reps";
   // Per-exercise weight-unit override falls back to the global display unit.
@@ -2339,7 +2559,7 @@ function ExerciseBlock({
   return (
     <section
       ref={registerRef}
-      className="rounded-lg border border-border bg-surface"
+      className="rounded-lg border border-border bg-surface pb-4"
       style={
         supersetColor ? { borderLeft: `3px solid ${supersetColor}` } : undefined
       }
@@ -2373,10 +2593,9 @@ function ExerciseBlock({
             )}
           </span>
         </span>
-        {/* One row of four uniform icon buttons — rest, note, options,
-            remove. Same size, same border+fill; the rest timer glows while
-            that block's stopwatch runs (and taps stop it), remove turns red
-            on hover instead of disappearing. */}
+        {/* Rest + options only — remove, machine-attach and the sides
+            toggle live inside the options ⋯ menu, so the header stays one
+            row of uniform icon buttons and nothing claims its own row. */}
         <Toolbar>
           {supportsEffort(type) && (
             <IconButton
@@ -2397,6 +2616,12 @@ function ExerciseBlock({
             heaviestDisplay={
               heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
             }
+            machineAttached={machine != null}
+            busy={copying || copyError != null}
+            onAttachMachine={() => setAttachOpen(true)}
+            laterality={exercise?.laterality ?? null}
+            onLateralityChange={(l) => editOrCopy({ laterality: l })}
+            onRemoveBlock={onRemoveBlock}
             onLinkSuperset={onLinkSuperset}
             onUnlinkSuperset={onUnlinkSuperset}
             onAddWarmup={(displayWeight) =>
@@ -2405,16 +2630,37 @@ function ExerciseBlock({
               )
             }
           />
-          <IconButton
-            danger
-            onClick={onRemoveBlock}
-            title="Remove exercise"
-            data-testid={`remove-block-${block.name}`}
-          >
-            <X className="size-4" />
-          </IconButton>
         </Toolbar>
       </header>
+
+      {copyError && (
+        <div
+          role="status"
+          data-testid={`block-${block.name}-copy-error`}
+          className="flex items-center justify-between gap-2 border-b border-border px-4 py-2"
+        >
+          <span className="min-w-0 text-xs text-neg">
+            {copyError.unresolved
+              ? t(
+                  "Couldn't confirm that change — check your connection and retry.",
+                  "The frog can't tell if that landed — check the pond and retry.",
+                )
+              : t(
+                  "Couldn't update this exercise — couldn't reach the server.",
+                  "The frog couldn't reach the pond — that change didn't land.",
+                )}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={retryCopy}
+            disabled={copying}
+            data-testid={`block-${block.name}-copy-retry`}
+          >
+            {copying ? "Retrying…" : "Retry"}
+          </Button>
+        </div>
+      )}
 
       {/* The exercise's own cue ("brace before you unrack") — set once in
           the exercise editor, read-only here, distinct from this session's
@@ -2441,9 +2687,11 @@ function ExerciseBlock({
       {machine ? (
         <SetupStrip machine={machine} blockName={block.name} />
       ) : (
-        <AttachMachineStrip
-          exerciseId={block.exerciseId}
+        <MachineAttachDialog
           blockName={block.name}
+          open={attachOpen}
+          onOpenChange={setAttachOpen}
+          onAttach={(machineId) => editOrCopy({ machineId })}
         />
       )}
 
@@ -2480,7 +2728,6 @@ function ExerciseBlock({
               <span key={c.key}>{c.header}</span>
             ),
           )}
-          <span className="justify-self-end">···</span>
         </div>
 
         {groupSetsBySetNo(block.committed).map((rows, i) => (
@@ -2628,9 +2875,10 @@ function SessionNoteField({
   );
 }
 
-// Per-exercise overflow menu (Hevy three-dots): superset link/unlink and
-// warm-up insert. Remove-exercise stays as the header ✕ (its test id is
-// unchanged); the rest-timer target moved out to its own header control.
+// Per-exercise overflow menu (Hevy three-dots): superset link/unlink, warm-up
+// insert, machine attach (when none is set), the sides (laterality) toggle and
+// remove-exercise — the header keeps only rest + ⋯, so no per-exercise action
+// claims its own full row.
 function BlockMenu({
   blockName,
   unit,
@@ -2638,6 +2886,12 @@ function BlockMenu({
   inSuperset,
   warmupEligible,
   heaviestDisplay,
+  machineAttached,
+  busy,
+  onAttachMachine,
+  laterality,
+  onLateralityChange,
+  onRemoveBlock,
   onLinkSuperset,
   onUnlinkSuperset,
   onAddWarmup,
@@ -2648,6 +2902,12 @@ function BlockMenu({
   inSuperset: boolean;
   warmupEligible: boolean;
   heaviestDisplay: number | null;
+  machineAttached: boolean;
+  busy: boolean;
+  onAttachMachine: () => void;
+  laterality: string | null;
+  onLateralityChange: (l: Laterality) => void;
+  onRemoveBlock: () => void;
   onLinkSuperset: (targetSeId: string) => void;
   onUnlinkSuperset: () => void;
   onAddWarmup: (displayWeight: number) => void;
@@ -2656,6 +2916,14 @@ function BlockMenu({
   const [warmupOpen, setWarmupOpen] = useState(false);
   const labelCls =
     "px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase";
+  // null (never set) and any legacy value read as bilateral — the same
+  // default the editor and the session's pairing logic use.
+  const currentLaterality: Laterality =
+    laterality === "unilateral" ||
+    laterality === "alternating" ||
+    laterality === "bilateral"
+      ? laterality
+      : "bilateral";
 
   return (
     <span className="relative">
@@ -2713,6 +2981,24 @@ function BlockMenu({
               </button>
             )}
 
+            {!machineAttached && (
+              <>
+                <div className="border-t border-border" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onAttachMachine();
+                  }}
+                  disabled={busy}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
+                  data-testid={`setup-attach-${blockName}`}
+                >
+                  <Wrench className="size-3.5 shrink-0 text-faint" />
+                  Attach machine
+                </button>
+              </>
+            )}
             {warmupEligible && (
               <>
                 <div className="border-t border-border" />
@@ -2730,6 +3016,40 @@ function BlockMenu({
                 </button>
               </>
             )}
+            <div className="border-t border-border" />
+            <p className={labelCls}>Sides</p>
+            {LATERALITY.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  onLateralityChange(l);
+                }}
+                disabled={busy}
+                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
+                data-testid={`block-${blockName}-laterality-${l}`}
+              >
+                {LATERALITY_LABELS[l]}
+                {currentLaterality === l && (
+                  <Check className="size-3.5 text-accent" />
+                )}
+              </button>
+            ))}
+            <div className="border-t border-border" />
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onRemoveBlock();
+              }}
+              disabled={busy}
+              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
+              data-testid={`remove-block-${blockName}`}
+            >
+              <Trash2 className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
+              Remove exercise
+            </button>
           </div>
         </>
       )}
@@ -3048,7 +3368,7 @@ function PreviousCell({
   const text = previous ? previousText(previous, unit) : null;
   return (
     <span
-      className="num truncate text-2xs text-faint"
+      className="num truncate text-sm text-faint"
       data-testid={testId}
       title={text ?? undefined}
     >
@@ -3251,10 +3571,12 @@ function CommittedRow({
             {committedText(c.key, primary, unit, distUnit)}
           </button>
         ))}
-        {/* The ⋯ is a quiet fixed-track button: right-anchored so every row's
-            dots land at the same x (the track is fixed at 2.5rem), and small
-            enough (24px visual) to stay visible at all times without
-            dominating the row. */}
+        {/* A fixed empty cell keeps the ⋯ right-anchored in the last
+            (menu-gutter) track — the ActiveRow's commit button owns the
+            track immediately to its left, and every row shares the one
+            column template (gridTemplate above), so the draft row's actions
+            sit on the same x as every committed row's ⋯. */}
+        <span />
         <span className="flex items-center justify-end">
           <Dots
             onClick={() => openDetails(primary)}
@@ -4137,6 +4459,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="decimal"
           enterKeyHint={enterKeyHint}
           placeholder={
@@ -4155,6 +4478,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="numeric"
           enterKeyHint={enterKeyHint}
           placeholder={repRangePlaceholder ?? ghostReps ?? "reps"}
@@ -4170,6 +4494,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="decimal"
           enterKeyHint={enterKeyHint}
           placeholder={ghostDistance ?? distUnit}
@@ -4184,6 +4509,7 @@ function ActiveRow({
     return (
       <span key={key} className="flex items-center gap-1">
         <Field
+          className="px-0 leading-5"
           inputMode="text"
           enterKeyHint={enterKeyHint}
           placeholder={ghostDuration ?? "m:ss"}
@@ -4223,6 +4549,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="decimal"
           placeholder={
             weight.trim() !== ""
@@ -4242,6 +4569,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="numeric"
           placeholder={
             reps.trim() !== ""
@@ -4259,6 +4587,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="decimal"
           placeholder={
             distance.trim() !== "" ? distance : (ghostDistance ?? distUnit)
@@ -4273,6 +4602,7 @@ function ActiveRow({
     return (
       <Field
         key={key}
+        className="px-0 leading-5"
         inputMode="text"
         placeholder={
           duration.trim() !== "" ? duration : (ghostDuration ?? "m:ss")
@@ -4300,7 +4630,15 @@ function ActiveRow({
       ref={rowRef}
       className="relative col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4"
     >
-      <div className="col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 md:h-8">
+      <div
+        className={cn(
+          "col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 -mx-4 px-4 md:h-8",
+          // Zebra continues the committed rows' alternation by physical-set
+          // index, so the draft row reads as the next stripe in the block —
+          // one quiet sage step; committed rows keep the stronger hover.
+          index % 2 === 1 ? "bg-surface-2" : "bg-surface",
+        )}
+      >
         <SetTypeCell
           index={index}
           setType={setType}
@@ -4317,7 +4655,7 @@ function ActiveRow({
             onClick={fillFromPrevious}
             disabled={!previous}
             title={previous ? "Fill from last time" : undefined}
-            className="num truncate text-left text-2xs text-faint transition-colors duration-100 enabled:hover:text-ink disabled:cursor-default"
+            className="num truncate text-left text-sm text-faint transition-colors duration-100 enabled:hover:text-ink disabled:cursor-default"
             data-testid={`set-${index}-previous`}
           >
             {previous ? (previousText(previous, unit) ?? "—") : "—"}
@@ -4326,7 +4664,15 @@ function ActiveRow({
         {columns.map((c, i) =>
           dataCell(c.key, autoFocusWeight && i === 0, i === columns.length - 1),
         )}
-        <span ref={moreCellRef} className="flex items-center justify-end">
+        {/* Commit + details share the two right-most fixed tracks (commit +
+            menu-gutter) inside one guard span, so tabbing into either button
+            can't check the set off. ⋯ is first in DOM (Tab from the last
+            input lands on details) and rendered right-most via row-reverse,
+            so it keeps the exact x of every committed row's ⋯. */}
+        <span
+          ref={moreCellRef}
+          className="col-span-2 flex flex-row-reverse items-center justify-start gap-1"
+        >
           <Dots
             onClick={() => {
               // Opening the sheet is about to steal focus from weight/reps
@@ -4341,6 +4687,15 @@ function ActiveRow({
             title="Set details"
             data-testid={`set-${index}-more`}
           />
+          <IconButton
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => commit(true)}
+            title="Mark set done"
+            className="text-ink"
+            data-testid={`set-${index}-done`}
+          >
+            <Check className="size-4" />
+          </IconButton>
         </span>
       </div>
 
@@ -4478,18 +4833,6 @@ function ActiveRow({
           </div>
         </DialogContent>
       </Dialog>
-      <div className="col-span-full mt-2 flex justify-end">
-        <Button
-          variant="outline"
-          size="icon-lg"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => commit(true)}
-          title="Mark set done"
-          data-testid={`set-${index}-done`}
-        >
-          <Check className="size-4" />
-        </Button>
-      </div>
     </div>
   );
 }
