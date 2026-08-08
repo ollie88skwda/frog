@@ -327,7 +327,10 @@
    distinction the bug depends on, rather than a viewport-width guess that a
    narrow desktop window or a landscape phone could get wrong either way),
    wins over any non-important rule regardless of specificity while leaving
-   desktop's smaller `text-sm`/`text-xs` sizing on mouse-driven pointers alone. */
+   desktop's smaller `text-sm`/`text-xs` sizing on mouse-driven pointers alone.
+   The `:not()` chain keeps file/checkbox/radio out: none of them takes text
+   entry, so none can trigger the focus zoom, and forcing a font-size on them
+   only risks resizing the control's own chrome (a file input's button label). */
 @layer utilities {
   @media (pointer: coarse) {
     input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),

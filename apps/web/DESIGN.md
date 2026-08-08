@@ -117,7 +117,11 @@ must portal into the theme root via `themePortalContainer()`
   `danger` = soft red. `ghost` uses Radix **soft** (a resting fill), never Radix
   `ghost` — no bare text-only buttons (every control keeps a visible surface).
 - **Inputs**: `ui/input` maps to Radix `TextField`; call-site classes
-  (`num`, `h-8`, `flex-1`) land correctly (the input fills the wrapper).
+  (`num`, `h-8`, `flex-1`) land correctly (the input fills the wrapper). A
+  **text-size** class is the one exception: it applies on mouse pointers only —
+  `styles/theme.css` forces every text-entry control to 16px on
+  `(pointer: coarse)` so iOS never zooms on focus (rationale in that file's
+  comment; brand spec § Accessibility).
 - **Status rings**: `<StatusRing state=… progress=… />` — empty ring = pending,
   partial pie = in-progress, filled grass + check = done.
 - **Empty states**: centered, small muted icon, one primary line, one

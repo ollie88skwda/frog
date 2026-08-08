@@ -1116,7 +1116,7 @@ m-1382 -34 c164 -114 147 -338 -33 -430 -258 -132 -493 223 -271 409 84 71
             <button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button>.</button><button>0</button><button>⌫</button>
           </div>
         </div>
-        <p class="note">Inputs are 16px min (no iOS zoom), mono, no spinners on the logging path. Focus = accent ring.</p>
+        <p class="note">Inputs are 16px min <b>on touch</b> (no iOS zoom); mouse-pointer desktop keeps the denser <code>text-sm</code>/<code>text-xs</code> sizing. Mono, no spinners on the logging path. Focus = accent ring.</p>
       </div>
       <div class="comp">
         <h3 class="blk">Table — tabular data</h3>
@@ -1259,7 +1259,7 @@ m-1382 -34 c164 -114 147 -338 -33 -430 -258 -132 -493 223 -271 409 84 71
           <li><b style="color:var(--text)">Contrast</b> — body text ≥ 4.5:1, large ≥ 3:1, on both themes (Radix step 11/12 guarantees it).</li>
           <li><b style="color:var(--text)">Focus visible</b> — 2px accent ring, 2px offset, on every interactive element.</li>
           <li><b style="color:var(--text)">Tap targets</b> — ≥ 44px on the logging path.</li>
-          <li><b style="color:var(--text)">16px inputs</b> — never smaller (blocks iOS zoom).</li>
+          <li><b style="color:var(--text)">16px inputs on touch</b> — never smaller on a coarse pointer (blocks iOS zoom); enforced globally in <code>apps/web/src/styles/theme.css</code>, not per call site, so a <code>text-sm</code>/<code>text-xs</code> class on an input still computes to 16px on a phone. Pinch-zoom stays enabled — no <code>user-scalable=no</code>/<code>maximum-scale</code> lockdown.</li>
           <li><b style="color:var(--text)">Never color alone</b> — semantics carry a glyph + word too.</li>
           <li><b style="color:var(--text)">Reduced motion</b> — honored; nothing essential lives in animation.</li>
         </ul>
