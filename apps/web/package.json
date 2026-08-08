@@ -12,17 +12,19 @@
   },
   "dependencies": {
     "@clerk/react": "^6.12.4",
+    "@frog/core": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/themes": "^3.3.0",
-    "@frog/core": "workspace:*",
     "@supabase/supabase-js": "^2.110.2",
     "@tanstack/react-query": "^5.90.5",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "lucide-react": "^0.545.0",
     "react": "^19.2.0",
+    "react-body-highlighter": "2.0.5",
     "react-dom": "^19.2.0",
     "react-router": "^7.9.4",
+    "recharts": "3.8.0",
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {

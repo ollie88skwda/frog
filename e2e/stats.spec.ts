@@ -63,17 +63,19 @@ test("stats hub aggregates two sessions across muscle groups", async ({
   await expect(page.getByTestId("consistency-bars")).toBeVisible();
   await expect(page.getByTestId("seven-day-heatmap")).toBeVisible();
 
-  // Heat-map region paths exist for both trained regions (multiple heat maps on
-  // the page render each region, so scope to the first).
-  await expect(page.getByTestId("heatmap-front-chest").first()).toBeVisible();
-  await expect(page.getByTestId("heatmap-front-legs").first()).toBeVisible();
-  await expect(page.getByTestId("heatmap-back-back").first()).toBeVisible();
+  // Heat maps render the library human-body figure (react-body-highlighter):
+  // each map holds an anterior + posterior SVG, and the region chips expose
+  // the trained regions (Squat → legs, Bench → chest).
+  const sevenDay = page.getByTestId("seven-day-heatmap");
+  await expect(sevenDay.locator(".rbh")).toHaveCount(2);
+  await expect(sevenDay.getByTestId("heatmap-chip-chest")).toBeVisible();
+  await expect(sevenDay.getByTestId("heatmap-chip-legs")).toBeVisible();
 
-  // Sets-per-muscle chart renders; the muscle multi-select exposes trained
-  // muscles (Squat → quads, Bench → pecs).
+  // Sets-per-muscle chart renders; the ranked breakdown exposes trained
+  // muscles (Squat → quads, Bench → pecs) without per-muscle colors.
   await expect(page.getByTestId("sets-per-muscle-chart")).toBeVisible();
-  await expect(page.getByTestId("spm-muscle-quads")).toBeVisible();
-  await expect(page.getByTestId("spm-muscle-pecs")).toBeVisible();
+  await expect(page.getByTestId("spm-row-quads")).toBeVisible();
+  await expect(page.getByTestId("spm-row-pecs")).toBeVisible();
 
   // Distribution totals: two workouts counted this period.
   await expect(page.getByTestId("distribution-chart")).toBeVisible();
@@ -108,9 +110,7 @@ test("range and granularity controls re-bucket the sets-per-muscle chart", async
   // to yearly re-buckets so a single bar labeled with the current year appears.
   const year = String(new Date().getFullYear());
   await page.getByTestId("spm-gran-year").click();
-  await expect(
-    page.getByTestId(`sets-per-muscle-chart-bar-${year}`),
-  ).toBeVisible();
+  await expect(page.getByTestId("sets-per-muscle-chart")).toContainText(year);
 
   // Distribution range chip stays interactive across all four ranges.
   await page.getByTestId("dist-range-all").click();
