@@ -120,6 +120,7 @@ import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
 import {
   copyExerciseOpts,
   useCreateExercise,
+  useDeleteExercise,
   useExercisePrefs,
   useExercises,
   useGhost,
@@ -2330,8 +2331,10 @@ function ExerciseBlock({
   const setWeightUnit = useSetExerciseWeightUnit();
   const createExercise = useCreateExercise();
   const updateExercise = useUpdateExercise();
+  const deleteExercise = useDeleteExercise();
   const repo = useRepo();
   const navigate = useNavigate();
+  const { t } = useVoice();
   const [plateTarget, setPlateTarget] = useState<number | null>(null);
   const [plateOpen, setPlateOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
@@ -2357,14 +2360,28 @@ function ExerciseBlock({
   // minus aliases so the matcher stays unambiguous — and the block swaps
   // onto it. The swap is optimistic: the copy is already in the exercises
   // cache from the create's onMutate, and the session_exercises repoint
-  // waits for the insert so the FK can't race it. A failed create (or
-  // repoint) swaps the block back to the original row.
+  // waits for the insert so the FK can't race it. The repoint runs through a
+  // retrying mutation (the logSet contract); when its retries exhaust, the
+  // orphan copy is soft-deleted and the failure is surfaced with a retry
+  // affordance instead of silently reverting. The Sides/Attach items stay
+  // disabled while a copy-on-write is in flight so a rapid re-toggle can't
+  // target the not-yet-inserted copy id.
+  const [copying, setCopying] = useState(false);
+  const [copyError, setCopyError] = useState<ExercisePatch | null>(null);
+  const repoint = useMutation({
+    mutationFn: ({ seId, copyId }: { seId: string; copyId: string }) =>
+      repo.updateSessionExercise(seId, { exerciseId: copyId }),
+    onError: (_err, { copyId }) => {
+      deleteExercise.mutate(copyId);
+    },
+  });
   function editOrCopy(patch: ExercisePatch) {
     if (!exercise) return;
     if (exercise.isCustom) {
       updateExercise.mutate({ exerciseId: exercise.id, patch });
       return;
     }
+    setCopyError(null);
     const originalId = exercise.id;
     const copyId = newId();
     const creating = createExercise.mutateAsync({
@@ -2372,11 +2389,15 @@ function ExerciseBlock({
       opts: { id: copyId, ...copyExerciseOpts(exercise), ...patch },
     });
     onSwapExercise(block.seId, copyId, originalId);
+    setCopying(true);
     void creating
-      .then(() =>
-        repo.updateSessionExercise(block.seId, { exerciseId: copyId }),
-      )
-      .catch(() => onSwapExercise(block.seId, originalId, originalId));
+      .then(() => repoint.mutateAsync({ seId: block.seId, copyId }))
+      .then(() => setCopying(false))
+      .catch(() => {
+        onSwapExercise(block.seId, originalId, originalId);
+        setCopying(false);
+        setCopyError(patch);
+      });
   }
 
   const type = (exercise?.exerciseType as ExerciseType) ?? "weight_reps";
@@ -2467,6 +2488,7 @@ function ExerciseBlock({
               heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
             }
             machineAttached={machine != null}
+            busy={copying}
             onAttachMachine={() => setAttachOpen(true)}
             laterality={exercise?.laterality ?? null}
             onLateralityChange={(l) => editOrCopy({ laterality: l })}
@@ -2481,6 +2503,34 @@ function ExerciseBlock({
           />
         </Toolbar>
       </header>
+
+      {copyError && (
+        <div
+          role="status"
+          data-testid={`block-${block.name}-copy-error`}
+          className="flex items-center justify-between gap-2 border-b border-border px-4 py-2"
+        >
+          <span className="min-w-0 text-xs text-neg">
+            {t(
+              "Couldn't update this exercise — couldn't reach the server.",
+              "The frog couldn't reach the pond — that change didn't land.",
+            )}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const patch = copyError;
+              setCopyError(null);
+              editOrCopy(patch);
+            }}
+            disabled={copying}
+            data-testid={`block-${block.name}-copy-retry`}
+          >
+            {copying ? "Retrying…" : "Retry"}
+          </Button>
+        </div>
+      )}
 
       {/* The exercise's own cue ("brace before you unrack") — set once in
           the exercise editor, read-only here, distinct from this session's
@@ -2707,6 +2757,7 @@ function BlockMenu({
   warmupEligible,
   heaviestDisplay,
   machineAttached,
+  busy,
   onAttachMachine,
   laterality,
   onLateralityChange,
@@ -2722,6 +2773,7 @@ function BlockMenu({
   warmupEligible: boolean;
   heaviestDisplay: number | null;
   machineAttached: boolean;
+  busy: boolean;
   onAttachMachine: () => void;
   laterality: string | null;
   onLateralityChange: (l: Laterality) => void;
@@ -2808,7 +2860,8 @@ function BlockMenu({
                     setOpen(false);
                     onAttachMachine();
                   }}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+                  disabled={busy}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
                   data-testid={`setup-attach-${blockName}`}
                 >
                   <Wrench className="size-3.5 shrink-0 text-faint" />
@@ -2843,7 +2896,8 @@ function BlockMenu({
                   setOpen(false);
                   onLateralityChange(l);
                 }}
-                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+                disabled={busy}
+                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
                 data-testid={`block-${blockName}-laterality-${l}`}
               >
                 {LATERALITY_LABELS[l]}
