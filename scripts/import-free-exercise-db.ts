@@ -76,13 +76,14 @@ const MUSCLE_MAP: Record<string, string> = {
 
 // free-exercise-db equipment string -> Frog EQUIPMENT_KINDS. null equipment
 // stays null (unknown); unlisted kinds (medicine ball, foam roll, …) -> "other".
+// bands/kettlebells are deliberately absent (mapped to nothing, rows dropped in
+// main()): gimmick apparatus purged from the catalog 2026-08-07, removed from
+// the picker 2026-08-08 (docs/DECISIONS.md) — a re-import must not re-emit them.
 const EQUIPMENT_MAP: Record<string, string> = {
   barbell: "barbell",
   dumbbell: "dumbbell",
   machine: "machine",
   cable: "cable",
-  bands: "band",
-  kettlebells: "kettlebell",
   "body only": "bodyweight",
   "e-z curl bar": "ez_bar",
 };
@@ -181,7 +182,12 @@ async function main() {
       });
   const all = JSON.parse(raw) as SourceExercise[];
 
-  const rows = all.filter((e) => !CURATED_NAMES.has(e.name.toLowerCase()));
+  const rows = all
+    .filter((e) => !CURATED_NAMES.has(e.name.toLowerCase()))
+    // Gimmick apparatus (bands/kettlebells) — purged from the catalog
+    // 2026-08-07 and removed from the picker 2026-08-08 (docs/DECISIONS.md);
+    // a re-import must not re-emit rows the captain already deleted.
+    .filter((e) => e.equipment !== "bands" && e.equipment !== "kettlebells");
 
   // Guard: derived ids must be unique (48-bit slug hash — collision would
   // silently drop a row under `on conflict do nothing`).

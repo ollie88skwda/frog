@@ -70,7 +70,7 @@ machine picker has its uuid stored in `machines.catalog_key`. See AGENTS.md's
 | image_url | text? | reference diagram (seed rows only) |
 | image_attribution | text? | image credit |
 | exercise_type | text | measurement type (`domain/exercise-types.ts`); immutable once sets exist |
-| equipment | text? | `barbell` \| `ez_bar` \| `dumbbell` \| `kettlebell` \| `machine` \| `cable` \| `band` \| `suspension` \| `bodyweight` \| `plate` \| `other` |
+| equipment | text? | `barbell` \| `ez_bar` \| `dumbbell` \| `machine` \| `cable` \| `bodyweight` \| `plate` \| `other` (kettlebell/band/suspension removed from the picker 2026-08-08; legacy rows may still carry them) |
 | instructions | jsonb? | string[], how-to steps (detail screen only) |
 | image_urls | jsonb? | string[], how-to frames (detail screen only) |
 | mechanic | text? | `compound` \| `isolation`; explicit, overrides the muscle-count proxy in `generator/generate.ts` |

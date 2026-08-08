@@ -1,6 +1,8 @@
 import {
   EQUIPMENT_KINDS,
   EQUIPMENT_LABELS,
+  type EquipmentDisplayKind,
+  type EquipmentKind,
   EXERCISE_TYPE_LABELS,
   EXERCISE_TYPES,
   type Exercise,
@@ -291,6 +293,27 @@ export function ExerciseEditor({
     }
   }
 
+  // Select options for the Equipment field: the current kinds plus, when the
+  // exercise already carries a removed gimmick kind (kettlebell/band/suspension
+  // — pre-purge customs, docs/DECISIONS.md 2026-08-08), a disabled option with
+  // its legacy label so the field renders the real value instead of a blank.
+  // A disabled item can't be re-picked; saving untouched keeps the stored value.
+  function equipmentOptions() {
+    const opts: { value: string; label: string; disabled?: boolean }[] =
+      EQUIPMENT_KINDS.map((k) => ({
+        value: k,
+        label: EQUIPMENT_LABELS[k],
+      }));
+    if (equipment && !EQUIPMENT_KINDS.includes(equipment as EquipmentKind)) {
+      opts.push({
+        value: equipment,
+        label: EQUIPMENT_LABELS[equipment as EquipmentDisplayKind] ?? "Other",
+        disabled: true,
+      });
+    }
+    return opts;
+  }
+
   function buildOpts() {
     return {
       muscleTargets: draftMuscleTargets.length ? draftMuscleTargets : null,
@@ -460,10 +483,7 @@ export function ExerciseEditor({
               onChange={setEquipment}
               placeholder="No equipment"
               testId="exercise-editor-equipment"
-              options={EQUIPMENT_KINDS.map((k) => ({
-                value: k,
-                label: EQUIPMENT_LABELS[k],
-              }))}
+              options={equipmentOptions()}
             />
             <LabeledSelect
               label="Machine"
@@ -756,7 +776,7 @@ function LabeledSelect({
   label?: string;
   value: string;
   onChange: (v: string) => void;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; disabled?: boolean }[];
   placeholder?: string;
   disabled?: boolean;
   hint?: string;
@@ -784,7 +804,7 @@ function LabeledSelect({
       />
       <Select.Content>
         {options.map((o) => (
-          <Select.Item key={o.value} value={o.value}>
+          <Select.Item key={o.value} value={o.value} disabled={o.disabled}>
             {o.label}
           </Select.Item>
         ))}
