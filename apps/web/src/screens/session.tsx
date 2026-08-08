@@ -17,6 +17,9 @@ import {
   isConfidentMatch,
   kgToLb,
   kmToM,
+  LATERALITY,
+  LATERALITY_LABELS,
+  type Laterality,
   type LoggedSet,
   lbToKg,
   type Machine,
@@ -69,7 +72,7 @@ import {
   Timer,
   Trash2,
   Unlink,
-  X,
+  Wrench,
 } from "lucide-react";
 import {
   type Ref,
@@ -83,7 +86,7 @@ import {
 } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { ExerciseRibbon, ExerciseThumb } from "@/components/anatomy-ui";
-import { AttachMachineStrip } from "@/components/attach-machine";
+import { MachineAttachDialog } from "@/components/attach-machine";
 import { ConditionsChip } from "@/components/conditions";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import {
@@ -124,6 +127,7 @@ import {
   useSession,
   useSessionExercises,
   useSetExerciseWeightUnit,
+  useUpdateExercise,
 } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
 import {
@@ -273,17 +277,20 @@ function columnsFor(
 }
 
 // `2.5rem` set-number + optional PREVIOUS reference + one flexible column each +
-// a FIXED `2.5rem` menu-gutter track — the one column template shared by the
-// column-header row, every committed row, the active row and the upcoming
-// rows, so every ⋯ lands at the same x-position and every value column stays a
-// straight line regardless of type. The gutter is fixed, not auto: the
-// RIR/RPE modifier readout lives as a badge OUT of the grid flow (see
-// CommittedRow/ActiveRow), so no row content can ever widen the track and
-// nudge its siblings. PREVIOUS only claims space when there's prior/target
-// data to show (blank column suppressed for a brand-new exercise).
+// a FIXED `2.5rem` commit track + a FIXED `2.5rem` menu-gutter track — the one
+// column template shared by the column-header row, every committed row, the
+// active row and the upcoming rows, so every ⋯ lands at the same x-position
+// and every value column stays a straight line regardless of type. The commit
+// track carries the draft row's "Mark set done" button (its own 2.5rem so the
+// 40px tap target never crowds the ⋯); committed/upcoming rows leave it empty.
+// The gutter is fixed, not auto: the RIR/RPE modifier readout lives as a badge
+// OUT of the grid flow (see CommittedRow/ActiveRow), so no row content can
+// ever widen the track and nudge its siblings. PREVIOUS only claims space when
+// there's prior/target data to show (blank column suppressed for a brand-new
+// exercise).
 function gridTemplate(cols: Column[], showPrevious: boolean): string {
   const prev = showPrevious ? "3.5rem " : "";
-  return `2.5rem ${prev}${cols.map(() => "1fr").join(" ")} 2.5rem`;
+  return `2.5rem ${prev}${cols.map(() => "1fr").join(" ")} 2.5rem 2.5rem`;
 }
 
 // Compact previous-performance string for the PREVIOUS column: weight sans unit
@@ -2293,6 +2300,7 @@ function ExerciseBlock({
   const navigate = useNavigate();
   const [plateTarget, setPlateTarget] = useState<number | null>(null);
   const [plateOpen, setPlateOpen] = useState(false);
+  const [attachOpen, setAttachOpen] = useState(false);
   const activeIndex = countSets(block.committed);
   // Whether a draft (active) row is shown for this block right now. The
   // first set's row is always open (fresh: blank; routine: seeded) so
@@ -2339,7 +2347,7 @@ function ExerciseBlock({
   return (
     <section
       ref={registerRef}
-      className="rounded-lg border border-border bg-surface"
+      className="rounded-lg border border-border bg-surface pb-4"
       style={
         supersetColor ? { borderLeft: `3px solid ${supersetColor}` } : undefined
       }
@@ -2373,10 +2381,9 @@ function ExerciseBlock({
             )}
           </span>
         </span>
-        {/* One row of four uniform icon buttons — rest, note, options,
-            remove. Same size, same border+fill; the rest timer glows while
-            that block's stopwatch runs (and taps stop it), remove turns red
-            on hover instead of disappearing. */}
+        {/* Rest + options only — remove, machine-attach and the sides
+            toggle live inside the options ⋯ menu, so the header stays one
+            row of uniform icon buttons and nothing claims its own row. */}
         <Toolbar>
           {supportsEffort(type) && (
             <IconButton
@@ -2397,6 +2404,11 @@ function ExerciseBlock({
             heaviestDisplay={
               heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
             }
+            machineAttached={machine != null}
+            onAttachMachine={() => setAttachOpen(true)}
+            laterality={exercise?.laterality ?? null}
+            exerciseId={block.exerciseId}
+            onRemoveBlock={onRemoveBlock}
             onLinkSuperset={onLinkSuperset}
             onUnlinkSuperset={onUnlinkSuperset}
             onAddWarmup={(displayWeight) =>
@@ -2405,14 +2417,6 @@ function ExerciseBlock({
               )
             }
           />
-          <IconButton
-            danger
-            onClick={onRemoveBlock}
-            title="Remove exercise"
-            data-testid={`remove-block-${block.name}`}
-          >
-            <X className="size-4" />
-          </IconButton>
         </Toolbar>
       </header>
 
@@ -2441,9 +2445,11 @@ function ExerciseBlock({
       {machine ? (
         <SetupStrip machine={machine} blockName={block.name} />
       ) : (
-        <AttachMachineStrip
+        <MachineAttachDialog
           exerciseId={block.exerciseId}
           blockName={block.name}
+          open={attachOpen}
+          onOpenChange={setAttachOpen}
         />
       )}
 
@@ -2480,7 +2486,6 @@ function ExerciseBlock({
               <span key={c.key}>{c.header}</span>
             ),
           )}
-          <span className="justify-self-end">···</span>
         </div>
 
         {groupSetsBySetNo(block.committed).map((rows, i) => (
@@ -2628,9 +2633,10 @@ function SessionNoteField({
   );
 }
 
-// Per-exercise overflow menu (Hevy three-dots): superset link/unlink and
-// warm-up insert. Remove-exercise stays as the header ✕ (its test id is
-// unchanged); the rest-timer target moved out to its own header control.
+// Per-exercise overflow menu (Hevy three-dots): superset link/unlink, warm-up
+// insert, machine attach (when none is set), the sides (laterality) toggle and
+// remove-exercise — the header keeps only rest + ⋯, so no per-exercise action
+// claims its own full row.
 function BlockMenu({
   blockName,
   unit,
@@ -2638,6 +2644,11 @@ function BlockMenu({
   inSuperset,
   warmupEligible,
   heaviestDisplay,
+  machineAttached,
+  onAttachMachine,
+  laterality,
+  exerciseId,
+  onRemoveBlock,
   onLinkSuperset,
   onUnlinkSuperset,
   onAddWarmup,
@@ -2648,14 +2659,28 @@ function BlockMenu({
   inSuperset: boolean;
   warmupEligible: boolean;
   heaviestDisplay: number | null;
+  machineAttached: boolean;
+  onAttachMachine: () => void;
+  laterality: string | null;
+  exerciseId: string;
+  onRemoveBlock: () => void;
   onLinkSuperset: (targetSeId: string) => void;
   onUnlinkSuperset: () => void;
   onAddWarmup: (displayWeight: number) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [warmupOpen, setWarmupOpen] = useState(false);
+  const updateExercise = useUpdateExercise();
   const labelCls =
     "px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase";
+  // null (never set) and any legacy value read as bilateral — the same
+  // default the editor and the session's pairing logic use.
+  const currentLaterality: Laterality =
+    laterality === "unilateral" ||
+    laterality === "alternating" ||
+    laterality === "bilateral"
+      ? laterality
+      : "bilateral";
 
   return (
     <span className="relative">
@@ -2713,6 +2738,23 @@ function BlockMenu({
               </button>
             )}
 
+            {!machineAttached && (
+              <>
+                <div className="border-t border-border" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    onAttachMachine();
+                  }}
+                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+                  data-testid={`setup-attach-${blockName}`}
+                >
+                  <Wrench className="size-3.5 shrink-0 text-faint" />
+                  Attach machine
+                </button>
+              </>
+            )}
             {warmupEligible && (
               <>
                 <div className="border-t border-border" />
@@ -2730,6 +2772,41 @@ function BlockMenu({
                 </button>
               </>
             )}
+            <div className="border-t border-border" />
+            <p className={labelCls}>Sides</p>
+            {LATERALITY.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  updateExercise.mutate({
+                    exerciseId,
+                    patch: { laterality: l },
+                  });
+                }}
+                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+                data-testid={`block-${blockName}-laterality-${l}`}
+              >
+                {LATERALITY_LABELS[l]}
+                {currentLaterality === l && (
+                  <Check className="size-3.5 text-accent" />
+                )}
+              </button>
+            ))}
+            <div className="border-t border-border" />
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onRemoveBlock();
+              }}
+              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
+              data-testid={`remove-block-${blockName}`}
+            >
+              <Trash2 className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
+              Remove exercise
+            </button>
           </div>
         </>
       )}
@@ -3048,7 +3125,7 @@ function PreviousCell({
   const text = previous ? previousText(previous, unit) : null;
   return (
     <span
-      className="num truncate text-2xs text-faint"
+      className="num truncate text-sm text-faint"
       data-testid={testId}
       title={text ?? undefined}
     >
@@ -3251,10 +3328,12 @@ function CommittedRow({
             {committedText(c.key, primary, unit, distUnit)}
           </button>
         ))}
-        {/* The ⋯ is a quiet fixed-track button: right-anchored so every row's
-            dots land at the same x (the track is fixed at 2.5rem), and small
-            enough (24px visual) to stay visible at all times without
-            dominating the row. */}
+        {/* A fixed empty cell keeps the ⋯ right-anchored in the last
+            (menu-gutter) track — the ActiveRow's commit button owns the
+            track immediately to its left, and every row shares the one
+            column template (gridTemplate above), so the draft row's actions
+            sit on the same x as every committed row's ⋯. */}
+        <span />
         <span className="flex items-center justify-end">
           <Dots
             onClick={() => openDetails(primary)}
@@ -4137,6 +4216,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="decimal"
           enterKeyHint={enterKeyHint}
           placeholder={
@@ -4155,6 +4235,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="numeric"
           enterKeyHint={enterKeyHint}
           placeholder={repRangePlaceholder ?? ghostReps ?? "reps"}
@@ -4170,6 +4251,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="decimal"
           enterKeyHint={enterKeyHint}
           placeholder={ghostDistance ?? distUnit}
@@ -4184,6 +4266,7 @@ function ActiveRow({
     return (
       <span key={key} className="flex items-center gap-1">
         <Field
+          className="px-0 leading-5"
           inputMode="text"
           enterKeyHint={enterKeyHint}
           placeholder={ghostDuration ?? "m:ss"}
@@ -4223,6 +4306,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="decimal"
           placeholder={
             weight.trim() !== ""
@@ -4242,6 +4326,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="numeric"
           placeholder={
             reps.trim() !== ""
@@ -4259,6 +4344,7 @@ function ActiveRow({
       return (
         <Field
           key={key}
+          className="px-0 leading-5"
           inputMode="decimal"
           placeholder={
             distance.trim() !== "" ? distance : (ghostDistance ?? distUnit)
@@ -4273,6 +4359,7 @@ function ActiveRow({
     return (
       <Field
         key={key}
+        className="px-0 leading-5"
         inputMode="text"
         placeholder={
           duration.trim() !== "" ? duration : (ghostDuration ?? "m:ss")
@@ -4300,7 +4387,15 @@ function ActiveRow({
       ref={rowRef}
       className="relative col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4"
     >
-      <div className="col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 md:h-8">
+      <div
+        className={cn(
+          "col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 -mx-4 px-4 md:h-8",
+          // Zebra continues the committed rows' alternation by physical-set
+          // index, so the draft row reads as the next stripe in the block —
+          // one quiet sage step; committed rows keep the stronger hover.
+          index % 2 === 1 ? "bg-surface-2" : "bg-surface",
+        )}
+      >
         <SetTypeCell
           index={index}
           setType={setType}
@@ -4317,7 +4412,7 @@ function ActiveRow({
             onClick={fillFromPrevious}
             disabled={!previous}
             title={previous ? "Fill from last time" : undefined}
-            className="num truncate text-left text-2xs text-faint transition-colors duration-100 enabled:hover:text-ink disabled:cursor-default"
+            className="num truncate text-left text-sm text-faint transition-colors duration-100 enabled:hover:text-ink disabled:cursor-default"
             data-testid={`set-${index}-previous`}
           >
             {previous ? (previousText(previous, unit) ?? "—") : "—"}
@@ -4326,7 +4421,15 @@ function ActiveRow({
         {columns.map((c, i) =>
           dataCell(c.key, autoFocusWeight && i === 0, i === columns.length - 1),
         )}
-        <span ref={moreCellRef} className="flex items-center justify-end">
+        {/* Commit + details share the two right-most fixed tracks (commit +
+            menu-gutter) inside one guard span, so tabbing into either button
+            can't check the set off. ⋯ is first in DOM (Tab from the last
+            input lands on details) and rendered right-most via row-reverse,
+            so it keeps the exact x of every committed row's ⋯. */}
+        <span
+          ref={moreCellRef}
+          className="col-span-2 flex flex-row-reverse items-center justify-start gap-1"
+        >
           <Dots
             onClick={() => {
               // Opening the sheet is about to steal focus from weight/reps
@@ -4341,6 +4444,15 @@ function ActiveRow({
             title="Set details"
             data-testid={`set-${index}-more`}
           />
+          <IconButton
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => commit(true)}
+            title="Mark set done"
+            className="text-ink"
+            data-testid={`set-${index}-done`}
+          >
+            <Check className="size-4" />
+          </IconButton>
         </span>
       </div>
 
@@ -4478,18 +4590,6 @@ function ActiveRow({
           </div>
         </DialogContent>
       </Dialog>
-      <div className="col-span-full mt-2 flex justify-end">
-        <Button
-          variant="outline"
-          size="icon-lg"
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => commit(true)}
-          title="Mark set done"
-          data-testid={`set-${index}-done`}
-        >
-          <Check className="size-4" />
-        </Button>
-      </div>
     </div>
   );
 }
