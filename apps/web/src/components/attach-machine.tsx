@@ -1,11 +1,7 @@
 import type { Machine, MachineCatalogEntry } from "@frog/core";
 import { MachineCatalogPicker } from "@/components/machine-catalog-picker";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import {
-  useCreateMachine,
-  useMachines,
-  useUpdateExercise,
-} from "@/lib/queries";
+import { useCreateMachine, useMachines } from "@/lib/queries";
 
 // In-workout machine attach (machine-DB plan §6, phase 3): when the exercise
 // has no machine set, the block's options ⋯ menu opens this dialog (the same
@@ -13,24 +9,24 @@ import {
 // remembered setup ("my gym" settings) is one tap away rather than forcing a
 // fresh catalog create. Controlled — the trigger lives in the session block
 // menu, which owns `open`, so the affordance no longer claims a full row of
-// its own under the header.
+// its own under the header. The write (and the seed-exercise copy-on-write)
+// lives in the session block: this dialog only reports the picked machine id.
 export function MachineAttachDialog({
-  exerciseId,
   blockName,
   open,
   onOpenChange,
+  onAttach,
 }: {
-  exerciseId: string;
   blockName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onAttach: (machineId: string) => void;
 }) {
   const { data: machines = [] } = useMachines();
   const createMachine = useCreateMachine();
-  const updateExercise = useUpdateExercise();
 
   function attach(machineId: string) {
-    updateExercise.mutate({ exerciseId, patch: { machineId } });
+    onAttach(machineId);
     onOpenChange(false);
   }
 

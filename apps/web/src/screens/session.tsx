@@ -3,6 +3,7 @@ import {
   computeRecords,
   countSets,
   type Exercise,
+  type ExercisePatch,
   type ExercisePref,
   type ExerciseRecords,
   type ExerciseType,
@@ -117,6 +118,8 @@ import type { LessonId } from "@/lib/lessons";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
 import {
+  copyExerciseOpts,
+  useCreateExercise,
   useExercisePrefs,
   useExercises,
   useGhost,
@@ -162,6 +165,11 @@ type BlockState = {
   seId: string;
   exerciseId: string;
   name: string;
+  // The exercise the PREVIOUS/last-note lookups key on. Set by the
+  // copy-on-write swap (a seed exercise cloned into a private custom copy)
+  // so a fresh copy's empty history doesn't blank the reference column
+  // mid-session; null = the block has never been swapped.
+  ghostExerciseId?: string;
   // Provenance from a routine-started session (null = ad-hoc / empty workout).
   routineExerciseId: string | null;
   // Superset grouping (int id shared by members; null = solo). Per-exercise
@@ -1185,6 +1193,23 @@ export default function SessionScreen() {
     void repo.deleteSessionExercise(seId);
   }
 
+  // Repoint a block at a different exercise row (copy-on-write: a seed
+  // exercise is RLS-read-only, so an in-session laterality/machine edit is
+  // applied to a private custom copy and the block follows it). `ghostId`
+  // pins the PREVIOUS/last-note lookups to the original exercise, so the
+  // copy's empty history doesn't blank the reference column mid-session.
+  function swapBlockExercise(
+    seId: string,
+    exerciseId: string,
+    ghostExerciseId: string,
+  ) {
+    setBlocks((prev) =>
+      (prev ?? []).map((b) =>
+        b.seId === seId ? { ...b, exerciseId, ghostExerciseId } : b,
+      ),
+    );
+  }
+
   // Per-block seed sets for the draft grid: routine targets (matched by
   // routine_exercise id) win; otherwise the copy-workout seed; otherwise none.
   const seedFor = useCallback(
@@ -1602,6 +1627,7 @@ export default function SessionScreen() {
               onSaveSet={(setId, patch) => saveSet(block.seId, setId, patch)}
               onRemoveSet={(setId) => removeSet(block.seId, setId)}
               onRemoveBlock={() => removeBlock(block.seId)}
+              onSwapExercise={swapBlockExercise}
             />
           ))}
 
@@ -2257,6 +2283,7 @@ function ExerciseBlock({
   onSaveSet,
   onRemoveSet,
   onRemoveBlock,
+  onSwapExercise,
 }: {
   block: BlockState;
   unit: Unit;
@@ -2286,17 +2313,24 @@ function ExerciseBlock({
   onSaveSet: (setId: string, patch: SetPatch) => void;
   onRemoveSet: (setId: string) => void;
   onRemoveBlock: () => void;
+  onSwapExercise: (seId: string, exerciseId: string, ghostId: string) => void;
 }) {
   const { data: ghost = [] } = useGhost(
-    block.exerciseId,
+    block.ghostExerciseId ?? block.exerciseId,
     block.seId,
     previousRoutineId,
   );
-  const { data: ghostNote } = useLastNote(block.exerciseId, block.seId);
+  const { data: ghostNote } = useLastNote(
+    block.ghostExerciseId ?? block.exerciseId,
+    block.seId,
+  );
   const { data: exercises = [] } = useExercises();
   const { data: machines = [] } = useMachines();
   const { data: prefs = [] } = useExercisePrefs();
   const setWeightUnit = useSetExerciseWeightUnit();
+  const createExercise = useCreateExercise();
+  const updateExercise = useUpdateExercise();
+  const repo = useRepo();
   const navigate = useNavigate();
   const [plateTarget, setPlateTarget] = useState<number | null>(null);
   const [plateOpen, setPlateOpen] = useState(false);
@@ -2316,6 +2350,34 @@ function ExerciseBlock({
   );
   const exercise = exercises.find((e) => e.id === block.exerciseId);
   const machine = machines.find((m) => m.id === exercise?.machineId);
+
+  // In-session exercise edit (laterality toggle / machine attach). Custom
+  // rows patch in place; seed rows are RLS-read-only (repo/types.ts), so the
+  // change goes onto a private custom copy — the duplicate field contract,
+  // minus aliases so the matcher stays unambiguous — and the block swaps
+  // onto it. The swap is optimistic: the copy is already in the exercises
+  // cache from the create's onMutate, and the session_exercises repoint
+  // waits for the insert so the FK can't race it. A failed create (or
+  // repoint) swaps the block back to the original row.
+  function editOrCopy(patch: ExercisePatch) {
+    if (!exercise) return;
+    if (exercise.isCustom) {
+      updateExercise.mutate({ exerciseId: exercise.id, patch });
+      return;
+    }
+    const originalId = exercise.id;
+    const copyId = newId();
+    const creating = createExercise.mutateAsync({
+      name: `${exercise.name} (copy)`,
+      opts: { id: copyId, ...copyExerciseOpts(exercise), ...patch },
+    });
+    onSwapExercise(block.seId, copyId, originalId);
+    void creating
+      .then(() =>
+        repo.updateSessionExercise(block.seId, { exerciseId: copyId }),
+      )
+      .catch(() => onSwapExercise(block.seId, originalId, originalId));
+  }
 
   const type = (exercise?.exerciseType as ExerciseType) ?? "weight_reps";
   // Per-exercise weight-unit override falls back to the global display unit.
@@ -2407,7 +2469,7 @@ function ExerciseBlock({
             machineAttached={machine != null}
             onAttachMachine={() => setAttachOpen(true)}
             laterality={exercise?.laterality ?? null}
-            exerciseId={block.exerciseId}
+            onLateralityChange={(l) => editOrCopy({ laterality: l })}
             onRemoveBlock={onRemoveBlock}
             onLinkSuperset={onLinkSuperset}
             onUnlinkSuperset={onUnlinkSuperset}
@@ -2446,10 +2508,10 @@ function ExerciseBlock({
         <SetupStrip machine={machine} blockName={block.name} />
       ) : (
         <MachineAttachDialog
-          exerciseId={block.exerciseId}
           blockName={block.name}
           open={attachOpen}
           onOpenChange={setAttachOpen}
+          onAttach={(machineId) => editOrCopy({ machineId })}
         />
       )}
 
@@ -2647,7 +2709,7 @@ function BlockMenu({
   machineAttached,
   onAttachMachine,
   laterality,
-  exerciseId,
+  onLateralityChange,
   onRemoveBlock,
   onLinkSuperset,
   onUnlinkSuperset,
@@ -2662,7 +2724,7 @@ function BlockMenu({
   machineAttached: boolean;
   onAttachMachine: () => void;
   laterality: string | null;
-  exerciseId: string;
+  onLateralityChange: (l: Laterality) => void;
   onRemoveBlock: () => void;
   onLinkSuperset: (targetSeId: string) => void;
   onUnlinkSuperset: () => void;
@@ -2670,7 +2732,6 @@ function BlockMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [warmupOpen, setWarmupOpen] = useState(false);
-  const updateExercise = useUpdateExercise();
   const labelCls =
     "px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase";
   // null (never set) and any legacy value read as bilateral — the same
@@ -2780,10 +2841,7 @@ function BlockMenu({
                 type="button"
                 onClick={() => {
                   setOpen(false);
-                  updateExercise.mutate({
-                    exerciseId,
-                    patch: { laterality: l },
-                  });
+                  onLateralityChange(l);
                 }}
                 className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
                 data-testid={`block-${blockName}-laterality-${l}`}

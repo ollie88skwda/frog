@@ -398,6 +398,10 @@ export interface Repo {
    * Per-block session fields: superset grouping, per-exercise rest seconds
    * (dormant — nothing writes it since rest became an untargeted stopwatch),
    * and the per-exercise session note. Only provided fields are written.
+   * `exerciseId` repoints the block at a different exercise row (the
+   * session-side copy-on-write: a seed exercise is RLS-read-only, so an
+   * in-session laterality/machine edit clones it into a private custom
+   * exercise and the session_exercise follows the copy).
    */
   updateSessionExercise(
     sessionExerciseId: string,
@@ -405,6 +409,7 @@ export interface Repo {
       supersetGroup?: number | null;
       restSec?: number | null;
       note?: string | null;
+      exerciseId?: string;
     },
   ): Promise<void>;
 
