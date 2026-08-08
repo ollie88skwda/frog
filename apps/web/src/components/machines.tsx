@@ -1,4 +1,5 @@
 import type { Machine, MachineCatalogEntry, MachineSetting } from "@frog/core";
+import { useQueryClient } from "@tanstack/react-query";
 import { Camera, ChevronDown, ChevronRight } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useState } from "react";
 import { MachineCatalogPicker } from "@/components/machine-catalog-picker";
@@ -255,6 +256,7 @@ function SettingRow({
   index: number;
   onChange: (next: MachineSetting[]) => void;
 }) {
+  const qc = useQueryClient();
   const s = settings[index];
   const upload = useUploadMachineSettingPhoto();
   const { data: photoUrl } = useMachineSettingPhotoUrl(s.photoPath);
@@ -270,8 +272,17 @@ function SettingRow({
         file: resized,
         existingPath: s.photoPath ?? null,
       });
+      // The array captured at click time is stale by the time the upload
+      // lands — writing it back whole would clobber a concurrent add/edit.
+      // Resolve the freshest copy from the cache and write through that.
+      const latest =
+        qc
+          .getQueryData<Machine[]>(["machines"])
+          ?.find((m) => m.id === machine.id)?.settings ?? settings;
       onChange(
-        settings.map((x, j) => (j === index ? { ...x, photoPath: path } : x)),
+        latest.map((x) =>
+          x.label === s.label ? { ...x, photoPath: path } : x,
+        ),
       );
     } catch {
       // A failed photo upload leaves the setting untouched — no partial state.

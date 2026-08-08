@@ -2363,14 +2363,6 @@ function ExerciseBlock({
   const [draftOpen, setDraftOpen] = useState(
     () => activeIndex === 0 || loadDraft(block.seId) != null,
   );
-  // Per-set laterality override, keyed by physical-set index: "make just this
-  // one set unilateral" (note 1) — toggled from the draft row's details
-  // sheet. Absent = the exercise's own laterality applies. The override is
-  // session-local state (the committed pair-ness is structural in the rows),
-  // so a reload falls back to the exercise default — the data is untouched.
-  const [setLaterality, setSetLaterality] = useState<
-    Record<number, Laterality>
-  >({});
   const activeRowHandleRef = useRef<ActiveRowHandle | null>(null);
   const enabledMetrics = metrics.filter(
     (m) => m.scope === "set" && m.exerciseIds?.includes(block.exerciseId),
@@ -2798,17 +2790,10 @@ function ExerciseBlock({
             enabledMetrics={enabledMetrics}
             autoFocusWeight={activeIndex > 0}
             barLoaded={barLoaded}
-            // Per-set override wins over the exercise default — "just this one
-            // set" (note 1). The toggle lives in the draft row's details sheet.
-            laterality={
-              setLaterality[activeIndex] ?? exercise?.laterality ?? null
-            }
-            lateralityEditable={
-              (exercise?.laterality ?? null) !== "alternating"
-            }
-            onSetLaterality={(l) =>
-              setSetLaterality((prev) => ({ ...prev, [activeIndex]: l }))
-            }
+            // The exercise-level laterality default; the per-set override
+            // lives in the row itself (seeded from the draft snapshot), so
+            // it dies with the row on commit and survives reloads.
+            exerciseLaterality={exercise?.laterality ?? null}
             onOpenPlates={(target) => {
               setPlateTarget(target);
               setPlateOpen(true);
@@ -4162,9 +4147,7 @@ function ActiveRow({
   enabledMetrics,
   autoFocusWeight,
   barLoaded,
-  laterality,
-  lateralityEditable,
-  onSetLaterality,
+  exerciseLaterality,
   onOpenPlates,
   timerRunning,
   timerStartedAt,
@@ -4187,12 +4170,7 @@ function ActiveRow({
   enabledMetrics: Metric[];
   autoFocusWeight: boolean;
   barLoaded: boolean;
-  laterality?: string | null;
-  /** Whether this row offers the per-set Unilateral toggle (note 1). Hidden
-   * for alternating exercises — their sets are all alternating, so a per-set
-   * unilateral override would contradict the exercise-level semantics. */
-  lateralityEditable: boolean;
-  onSetLaterality: (l: Laterality) => void;
+  exerciseLaterality: string | null;
   onOpenPlates: (target: number | null) => void;
   timerRunning: boolean;
   timerStartedAt: number | null;
@@ -4200,12 +4178,24 @@ function ActiveRow({
   onCommit: (set: CommitInput, ctx: CommitCtx) => void;
   ref: Ref<ActiveRowHandle>;
 }) {
-  const isUnilateral = laterality === "unilateral";
   // Restore any uncommitted keystrokes persisted for this block (draft wins over
   // the routine/copy seed once the user has started typing).
   const [draft] = useState<Partial<DraftSnapshot> | null>(() =>
     loadDraft(seId),
   );
+  // Per-set laterality override ("just this one set", note 1): toggled from
+  // the details sheet, seeded from the draft snapshot so a reload restores
+  // the ᴿ line and the right-side keystrokes it protects. Local to this row,
+  // so it dies on commit or remount — the next draft at the same index
+  // starts from the exercise default again.
+  const [lateralityOverride, setLateralityOverride] =
+    useState<Laterality | null>(() => draft?.laterality ?? null);
+  // Override wins over the exercise default.
+  const laterality = lateralityOverride ?? exerciseLaterality;
+  const isUnilateral = laterality === "unilateral";
+  // Hidden for alternating exercises — their sets are all alternating, so a
+  // per-set unilateral override would contradict the exercise-level semantics.
+  const lateralityEditable = exerciseLaterality !== "alternating";
   // Seed the draft from the routine target / copied set for this index. A rep
   // range seeds only a placeholder (never a concrete reps value).
   const [weight, setWeight] = useState(
@@ -4291,6 +4281,7 @@ function ActiveRow({
       rReps,
       rDuration,
       rDistance,
+      laterality: lateralityOverride,
     });
   }, [
     seId,
@@ -4308,6 +4299,7 @@ function ActiveRow({
     rReps,
     rDuration,
     rDistance,
+    lateralityOverride,
   ]);
 
   // Closing without a field blur ever landing (e.g. the sheet opened while
@@ -4848,7 +4840,7 @@ function ActiveRow({
                   type="checkbox"
                   checked={isUnilateral}
                   onChange={(e) =>
-                    onSetLaterality(
+                    setLateralityOverride(
                       e.target.checked ? "unilateral" : "bilateral",
                     )
                   }
