@@ -138,6 +138,21 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     expect((await repoB.listExercises()).map((e) => e.id)).not.toContain(
       priv.id,
     );
+
+    // A machine-linked create stays private even without an explicit flag:
+    // the publish RPC's whitelist has no machine_id, so publishing would
+    // silently drop the machine (resolveExerciseShare — the repo never lets
+    // a machine-bearing create ride the shared library).
+    const machine = await repoA.createMachine({ name: "A's Hack Squat" });
+    const machineEx = await repoA.createExercise(
+      `Machine Shared Guard ${newId().slice(0, 8)}`,
+      { machineId: machine.id },
+    );
+    expect(machineEx.ownerId).toBe(author);
+    expect(machineEx.machineId).toBe(machine.id);
+    expect((await repoB.listExercises()).map((e) => e.id)).not.toContain(
+      machineEx.id,
+    );
   });
 
   it("starts a session and logs ordered sets", async () => {

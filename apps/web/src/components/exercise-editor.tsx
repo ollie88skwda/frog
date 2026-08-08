@@ -22,6 +22,7 @@ import {
   type MuscleTarget,
   matchExerciseName,
   muscleLabel,
+  type NewExerciseOpts,
   newId,
   primaryMuscles,
   ratingsForExercise,
@@ -92,7 +93,12 @@ export type ExerciseEditorProps = {
   exercise?: Exercise;
   /** Create-mode name prefill (session picker search, routine-paste raw line). */
   initialName?: string;
-  /** Fires once Save is tapped in create mode, with the new row's id/name. */
+  /**
+   * Fires when Save is tapped in create mode, with the new row's id/name. On
+   * a publish dupe-hit (the RPC backstop returned an existing row) it fires
+   * again with the canonical row's id, since the optimistic id never became
+   * a real row.
+   */
   onCreated?: (id: string, name: string) => void;
 };
 
@@ -360,14 +366,24 @@ export function ExerciseEditor({
     if (mode === "create") {
       const id = newId();
       const staged = pendingMedia;
-      const opts = { id, ...buildOpts() };
+      const opts: NewExerciseOpts = { id, ...buildOpts() };
+      // A create carrying a machine link or staged demo media stays private:
+      // the publish RPC's parameter whitelist has no machine_id/media, so
+      // publishing would silently drop them. The note under Save says so.
+      if (machineId || staged) opts.share = false;
       // Synchronously, before dispatch: `onCreated` below hands this id to
       // consumers that write it as a foreign key the moment it stops being
       // pending, and `onMutate` doesn't run until a microtask later.
       seedExercises([{ name: trimmed, opts }]);
       create
         .mutateAsync({ name: trimmed, opts })
-        .then(() => {
+        .then((created) => {
+          // Publish dupe-hit: the RPC's dedupe backstop returned an existing
+          // row's id, so the optimistic id never became a real row — re-fire
+          // onCreated with the canonical id so consumers waiting on it (the
+          // session picker's auto-pick, the routine paste twin-resolve) land
+          // on the row that actually exists.
+          if (created.id !== id) onCreated?.(created.id, trimmed);
           if (staged) {
             uploadMedia.mutate({
               exerciseId: id,
@@ -675,6 +691,14 @@ export function ExerciseEditor({
         </div>
 
         <div className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
+          {mode === "create" && (machineId || pendingMedia) && (
+            <p
+              className="mr-auto self-center text-2xs text-warn"
+              data-testid="exercise-editor-not-shared"
+            >
+              Not shared — includes a machine or demo photo.
+            </p>
+          )}
           <Button
             variant="outline"
             size="lg"

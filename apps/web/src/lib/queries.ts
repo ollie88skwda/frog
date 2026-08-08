@@ -10,6 +10,7 @@ import {
   type NewMachineInput,
   type NewMetricInput,
   newId,
+  resolveExerciseShare,
   type Session,
   type TrackedCondition,
 } from "@frog/core";
@@ -92,12 +93,20 @@ function optimisticExercise(
   opts?: NewExerciseOpts,
 ): Exercise {
   const now = Date.now();
+  // The resolved share decision, not a hardcoded null: a private create
+  // (share: false — a fork or copy-on-write) owns its row, and its
+  // optimistic row must not render as community-shared (the badge/Edit gates
+  // key on owner_id null) for the seconds until the settle refetch returns
+  // the real owned row. "pending" is a transient marker — the refetch
+  // replaces it with the caller's actual id; nothing compares owner_id to a
+  // concrete value, only to null.
+  const ownerId = resolveExerciseShare(opts) ? null : "pending";
   return {
     id,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,
-    ownerId: null,
+    ownerId,
     createdBy: null,
     name,
     tags: null,

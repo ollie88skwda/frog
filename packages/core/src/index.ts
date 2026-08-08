@@ -10,6 +10,7 @@ export * from "./domain/anatomy";
 export * from "./domain/changelog";
 export * from "./domain/conditions";
 export * from "./domain/e1rm";
+export * from "./domain/exercise-share";
 export * from "./domain/exercise-types";
 export * from "./domain/ids";
 export * from "./domain/match-exercise";

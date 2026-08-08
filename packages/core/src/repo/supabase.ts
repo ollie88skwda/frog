@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { COMMUNITY_SHARING } from "../config";
 import type {
   ApiToken,
   Exercise,
@@ -23,6 +22,7 @@ import type {
 } from "../db/schema";
 import { SEED_CONDITIONS } from "../db/seed-ids";
 import type { MuscleTarget } from "../domain/anatomy";
+import { resolveExerciseShare } from "../domain/exercise-share";
 import { newId } from "../domain/ids";
 import { generateToken, hashToken } from "../domain/tokens";
 import { groupSetsBySetNo } from "../domain/volume";
@@ -412,7 +412,11 @@ export class SupabaseRepo implements Repo {
     name: string,
     opts?: NewExerciseOpts,
   ): Promise<Exercise> {
-    const share = opts?.share ?? COMMUNITY_SHARING;
+    // One publish-vs-private rule shared with the app's optimistic row and
+    // create form (domain/exercise-share.ts): an explicit share: false or a
+    // machine link forces a private row — the RPC whitelist can't carry
+    // machine_id, so publishing would silently drop it.
+    const share = resolveExerciseShare(opts);
     const id = opts?.id ?? newId();
     if (share) {
       // Community publish path (docs/DECISIONS.md 2026-08-08): the row is
