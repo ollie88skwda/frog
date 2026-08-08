@@ -212,6 +212,23 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     ]);
   });
 
+  it("recentExerciseIds returns recently-logged exercise ids, most recent first", async () => {
+    const older = await repoA.createExercise(`Older ${newId().slice(0, 8)}`);
+    const newer = await repoA.createExercise(`Newer ${newId().slice(0, 8)}`);
+    const session = await repoA.startSession();
+    const seOlder = await repoA.addExerciseToSession(session.id, older.id);
+    const seNewer = await repoA.addExerciseToSession(session.id, newer.id);
+    await repoA.logSet(seOlder, { weightKg: 100, reps: 5 }, newId(), 0);
+    await repoA.logSet(seNewer, { weightKg: 80, reps: 8 }, newId(), 0);
+
+    const recent = await repoA.recentExerciseIds(30);
+    // Both logged in the window; newer's set is later than older's.
+    expect(recent.slice(0, 2)).toEqual([newer.id, older.id]);
+
+    // Far-future-only window returns nothing new.
+    expect(await repoA.recentExerciseIds(0)).not.toContain(newer.id);
+  });
+
   it("imports sessions idempotently and applies sleep without overwriting", async () => {
     const day = 86_400_000;
     const base = Date.now() - 30 * day;

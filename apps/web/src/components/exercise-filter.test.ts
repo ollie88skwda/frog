@@ -102,3 +102,28 @@ describe("filterExercises — quality tier (Note 17)", () => {
     expect(filterExercises(ROWS, "", "pecs", "S")).toEqual([]);
   });
 });
+
+describe("filterExercises — equipment (Note 19)", () => {
+  it("filters to one equipment kind by key", () => {
+    expect(
+      filterExercises(ROWS, "", "", "", "cable").map((r) => r.name),
+    ).toEqual(["Cable Fly"]);
+  });
+
+  it("empty equipment means no equipment filter", () => {
+    expect(filterExercises(ROWS, "", "", "", "").length).toBe(ROWS.length);
+  });
+
+  it("combines with the muscle filter", () => {
+    expect(
+      filterExercises(ROWS, "", "pecs", "", "cable").map((r) => r.name),
+    ).toEqual(["Cable Fly"]);
+    expect(filterExercises(ROWS, "", "upper-pecs", "", "cable")).toEqual([]);
+  });
+
+  it("combines with the tier filter", () => {
+    expect(
+      filterExercises(ROWS, "", "", "S", "cable").map((r) => r.name),
+    ).toEqual([]);
+  });
+});

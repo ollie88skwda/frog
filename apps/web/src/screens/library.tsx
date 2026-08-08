@@ -1,4 +1,5 @@
 import {
+  EQUIPMENT_LABELS,
   type Exercise,
   formatPrevious,
   formatWeight,
@@ -47,6 +48,7 @@ import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
   filterExercises,
+  primaryMuscleKey,
   type TierFilter,
 } from "@/components/exercise-filter";
 import { MachinesSection } from "@/components/machines";
@@ -71,6 +73,7 @@ import {
   useLastSets,
   useMachines,
   useMetrics,
+  useRecentExerciseIds,
   useSeedExercises,
   useSetExerciseFavorite,
   useSetMetricExercises,
@@ -165,8 +168,11 @@ export default function LibraryScreen() {
     [favorites],
   );
   const [query, setQuery] = useState("");
+  const [filterRegion, setFilterRegion] = useState("");
   const [filterMuscle, setFilterMuscle] = useState("");
+  const [filterEquipment, setFilterEquipment] = useState("");
   const [filterTier, setFilterTier] = useState<TierFilter>("");
+  const [yoursOnly, setYoursOnly] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   // One shared editor sheet for both "+ Custom exercise" and every row's "Edit"
@@ -198,10 +204,40 @@ export default function LibraryScreen() {
   // Derived off the whole ~900-row library: every optimistic write re-renders
   // this screen, and a bulk run does one write per pasted name.
   const filtered = useMemo(
-    () => filterExercises(exercises, query, filterMuscle, filterTier),
-    [exercises, query, filterMuscle, filterTier],
+    () =>
+      filterExercises(
+        exercises,
+        query,
+        filterMuscle,
+        filterTier,
+        filterEquipment,
+      ).filter((ex) => !yoursOnly || ex.isCustom),
+    [exercises, query, filterMuscle, filterTier, filterEquipment, yoursOnly],
   );
   const groups = useMemo(() => groupByPrimaryMuscle(filtered), [filtered]);
+
+  // "Recent" band: exercises with a set logged in the last 30 days, most
+  // recent first (Hevy-style recently-logged-first ordering). Empty until the
+  // first session — renders as nothing, never as an error.
+  const { data: recentIds = [] } = useRecentExerciseIds(30);
+  const recentSet = useMemo(() => new Set(recentIds), [recentIds]);
+  // Default browse (no muscle filter, no query): Recent → Favorites → the
+  // rest alphabetically. Favorites and rest keep the exercises' name order
+  // (listExercises sorts by name); recent follows recency.
+  const bands = useMemo(() => {
+    const favorites: Exercise[] = [];
+    const rest: Exercise[] = [];
+    for (const ex of filtered) {
+      if (recentSet.has(ex.id)) continue;
+      if (favoriteIds.has(ex.id)) favorites.push(ex);
+      else rest.push(ex);
+    }
+    const byId = new Map(filtered.map((e) => [e.id, e]));
+    const recent = recentIds
+      .map((id) => byId.get(id))
+      .filter((e): e is Exercise => e !== undefined);
+    return { recent, favorites, rest };
+  }, [filtered, recentIds, recentSet, favoriteIds]);
 
   // Stable identities keep the memoized rows out of the re-render that every
   // optimistic write triggers — a bulk run does one write per name.
@@ -267,8 +303,28 @@ export default function LibraryScreen() {
         <ExerciseFilterBar
           query={query}
           onQuery={setQuery}
+          region={filterRegion}
+          onRegion={setFilterRegion}
           muscle={filterMuscle}
           onMuscle={setFilterMuscle}
+          equipment={filterEquipment}
+          onEquipment={setFilterEquipment}
+          after={
+            <button
+              type="button"
+              onClick={() => setYoursOnly((v) => !v)}
+              aria-pressed={yoursOnly}
+              className={cn(
+                "h-8 shrink-0 px-2.5 text-2xs transition-colors duration-150",
+                yoursOnly
+                  ? "bg-accent-soft text-accent"
+                  : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
+              )}
+              data-testid="library-filter-yours"
+            >
+              {t("Yours", "Yours")}
+            </button>
+          }
         />
         <TierLegend
           className="mt-2"
@@ -313,7 +369,9 @@ export default function LibraryScreen() {
           <p className="px-4 py-6 text-center text-xs text-faint">
             {t("No exercises match your search.", "No specimens match.")}
           </p>
-        ) : (
+        ) : filterMuscle ? (
+          // D2: muscle-grouped sections survive only inside a chosen muscle —
+          // the region→muscle drill-down lands here, tier-sorted within.
           groups.map((group) => (
             <section key={group.key} data-testid={`muscle-group-${group.key}`}>
               <header className="flex h-8 items-center gap-2 border-b border-border bg-surface-2 px-2">
@@ -360,6 +418,109 @@ export default function LibraryScreen() {
               )}
             </section>
           ))
+        ) : query.trim() ? (
+          // Search-first: a query shows a flat list of matches, no bands.
+          <ul className="divide-y divide-border">
+            {filtered.map((ex) => (
+              <ExerciseRow
+                key={ex.id}
+                exercise={ex}
+                groupMuscle={primaryMuscleKey(ex)}
+                flat
+                setMetrics={setMetrics}
+                machines={machines}
+                isFavorite={favoriteIds.has(ex.id)}
+                onToggleFavorite={onToggleFavorite}
+                pending={pendingExercises.has(ex.id)}
+                expanded={expandedId === ex.id}
+                onToggle={onToggleExpanded}
+                onEdit={onEdit}
+              />
+            ))}
+          </ul>
+        ) : (
+          // Default browse: Recent → Favorites → the rest alphabetically.
+          // Bands render only when non-empty (a fresh account has neither).
+          <>
+            {bands.recent.length > 0 && (
+              <section data-testid="library-band-recent">
+                <header className="flex h-8 items-center gap-2 border-b border-border bg-surface-2 px-2">
+                  <span className="truncate text-2xs font-medium tracking-widest uppercase">
+                    {t("Recent", "Recently used")}
+                  </span>
+                  <span className="num text-2xs text-faint">
+                    {bands.recent.length}
+                  </span>
+                </header>
+                <ul className="divide-y divide-border">
+                  {bands.recent.map((ex) => (
+                    <ExerciseRow
+                      key={ex.id}
+                      exercise={ex}
+                      groupMuscle={primaryMuscleKey(ex)}
+                      flat
+                      setMetrics={setMetrics}
+                      machines={machines}
+                      isFavorite={favoriteIds.has(ex.id)}
+                      onToggleFavorite={onToggleFavorite}
+                      pending={pendingExercises.has(ex.id)}
+                      expanded={expandedId === ex.id}
+                      onToggle={onToggleExpanded}
+                      onEdit={onEdit}
+                    />
+                  ))}
+                </ul>
+              </section>
+            )}
+            {bands.favorites.length > 0 && (
+              <section data-testid="library-band-favorites">
+                <header className="flex h-8 items-center gap-2 border-b border-border bg-surface-2 px-2">
+                  <span className="truncate text-2xs font-medium tracking-widest uppercase">
+                    {t("Favorites", "Favorites")}
+                  </span>
+                  <span className="num text-2xs text-faint">
+                    {bands.favorites.length}
+                  </span>
+                </header>
+                <ul className="divide-y divide-border">
+                  {bands.favorites.map((ex) => (
+                    <ExerciseRow
+                      key={ex.id}
+                      exercise={ex}
+                      groupMuscle={primaryMuscleKey(ex)}
+                      flat
+                      setMetrics={setMetrics}
+                      machines={machines}
+                      isFavorite={favoriteIds.has(ex.id)}
+                      onToggleFavorite={onToggleFavorite}
+                      pending={pendingExercises.has(ex.id)}
+                      expanded={expandedId === ex.id}
+                      onToggle={onToggleExpanded}
+                      onEdit={onEdit}
+                    />
+                  ))}
+                </ul>
+              </section>
+            )}
+            <ul className="divide-y divide-border">
+              {bands.rest.map((ex) => (
+                <ExerciseRow
+                  key={ex.id}
+                  exercise={ex}
+                  groupMuscle={primaryMuscleKey(ex)}
+                  flat
+                  setMetrics={setMetrics}
+                  machines={machines}
+                  isFavorite={favoriteIds.has(ex.id)}
+                  onToggleFavorite={onToggleFavorite}
+                  pending={pendingExercises.has(ex.id)}
+                  expanded={expandedId === ex.id}
+                  onToggle={onToggleExpanded}
+                  onEdit={onEdit}
+                />
+              ))}
+            </ul>
+          </>
         )}
       </div>
 
@@ -644,6 +805,7 @@ function BestForMuscle({
 const ExerciseRow = memo(function ExerciseRow({
   exercise,
   groupMuscle,
+  flat,
   setMetrics,
   machines,
   isFavorite,
@@ -655,6 +817,8 @@ const ExerciseRow = memo(function ExerciseRow({
 }: {
   exercise: Exercise;
   groupMuscle: string;
+  /** Flat-list row: show the primary muscle + equipment chip (Option B). */
+  flat?: boolean;
   setMetrics: Metric[];
   machines: Machine[];
   isFavorite: boolean;
@@ -747,6 +911,22 @@ const ExerciseRow = memo(function ExerciseRow({
           <JointActionRatings exercise={exercise} className="mt-1.5" />
 
           <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-faint">
+            {flat && (
+              <span className="flex items-center gap-1 truncate">
+                <span className="size-1 bg-accent" />
+                {groupMuscle !== "other" ? muscleLabel(groupMuscle) : "Other"}
+              </span>
+            )}
+            {flat && exercise.equipment && (
+              <span className="flex items-center gap-1 truncate">
+                <Dumbbell className="size-3 shrink-0" />
+                {
+                  EQUIPMENT_LABELS[
+                    exercise.equipment as keyof typeof EQUIPMENT_LABELS
+                  ]
+                }
+              </span>
+            )}
             {machine && (
               <span className="flex items-center gap-1 truncate">
                 <Dumbbell className="size-3 shrink-0" />

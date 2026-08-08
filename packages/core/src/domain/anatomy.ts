@@ -83,6 +83,16 @@ export function regionOf(muscleKey: string): MuscleRegion | null {
   return MUSCLE_REGION[muscleKey] ?? null;
 }
 
+/**
+ * The MUSCLES entries that fall under one coarse region, in MUSCLES order.
+ * Powers the library's two-level muscle filter (region select → muscle
+ * select). Muscles with no region (none currently) are reachable only via
+ * the unregion-filtered muscle list.
+ */
+export function musclesInRegion(region: MuscleRegion): readonly Muscle[] {
+  return MUSCLES.filter((m) => MUSCLE_REGION[m.key] === region);
+}
+
 export type JointAction = { key: string; label: string; note?: string };
 
 export const JOINT_ACTIONS: readonly JointAction[] = [
