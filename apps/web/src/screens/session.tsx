@@ -11,7 +11,6 @@ import {
   formatPrevious,
   formatWeight,
   type GhostSet,
-  ghostFor,
   groupByPrimaryMuscle,
   groupSetsBySetNo,
   isBarLoaded,
@@ -19,7 +18,6 @@ import {
   kgToLb,
   kmToM,
   LATERALITY,
-  LATERALITY_EXPLAINERS,
   LATERALITY_LABELS,
   type Laterality,
   type LoggedSet,
@@ -35,10 +33,8 @@ import {
   type PlateConfig,
   type PrType,
   parseSetUtterance,
-  previousCells,
   type RestTimerState,
   type RoutineDetail,
-  SET_TYPE_MARKERS,
   type Session,
   type SetType,
   shouldStartRest,
@@ -99,8 +95,7 @@ import { InfoTip } from "@/components/lesson";
 import { MachineEditor } from "@/components/machines";
 import { PlateSheet } from "@/components/session/plate-sheet";
 import { PrBanner, type PrBannerData } from "@/components/session/pr-banner";
-import { RestDock } from "@/components/session/rest-countdown";
-import { RestTimerIcon } from "@/components/session/rest-timer-icon";
+import { RestPill } from "@/components/session/rest-countdown";
 import {
   FinishPhotoStrip,
   type PendingPhoto,
@@ -111,8 +106,7 @@ import { Dots } from "@/components/ui/dots";
 import { Field } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
-import { markerColorClass, SetTypeCell } from "@/components/ui/set-type-cell";
-import { StatusRing } from "@/components/ui/status-ring";
+import { SetTypeCell } from "@/components/ui/set-type-cell";
 import { Toolbar } from "@/components/ui/toolbar";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
 import type { LessonId } from "@/lib/lessons";
@@ -288,26 +282,9 @@ function columnsFor(
   return cols;
 }
 
-// `2.5rem` set-number + optional PREVIOUS reference + one flexible column each +
-// a FIXED `2.5rem` commit track + a FIXED `2.5rem` menu-gutter track — the one
-// column template shared by the column-header row, every committed row, the
-// active row and the upcoming rows, so every value column stays a straight line
-// regardless of type. The commit track carries the draft row's ⋯; the
-// menu-gutter carries its "Mark set done" button (note 2: the check sits at the
-// far right, right of the ⋯), so the draft's ✓ lands at the same x as every
-// committed row's ⋯; committed/upcoming rows leave the commit track empty.
-// The gutter is fixed, not auto: the RIR/RPE modifier readout lives as a badge
-// OUT of the grid flow (see CommittedRow/ActiveRow), so no row content can
-// ever widen the track and nudge its siblings. PREVIOUS only claims space when
-// there's prior/target data to show (blank column suppressed for a brand-new
-// exercise).
-function gridTemplate(cols: Column[], showPrevious: boolean): string {
-  const prev = showPrevious ? "3.5rem " : "";
-  return `2.5rem ${prev}${cols.map(() => "1fr").join(" ")} 2.5rem 2.5rem`;
-}
-
-// Compact previous-performance string for the PREVIOUS column: weight sans unit
-// (the weight column header already carries it) — "100 × 8", "1:30" for time.
+// Compact previous-performance string for the pre-flight "Last workout"
+// summary: weight sans unit (the weight column header already carries it) —
+// "100 × 8", "1:30" for time.
 function previousText(g: GhostSet, unit: Unit): string | null {
   return formatPrevious(g, (kg) => String(toDisplayWeight(kg, unit)));
 }
@@ -421,11 +398,6 @@ export default function SessionScreen() {
   const [lastCommitByBlock, setLastCommitByBlock] = useState<
     Record<string, number>
   >({});
-  // For the live header stopwatch: time since the most recent set anywhere.
-  const lastCommitAt = useMemo(() => {
-    const vals = Object.values(lastCommitByBlock);
-    return vals.length ? Math.max(...vals) : null;
-  }, [lastCommitByBlock]);
 
   const { data: exercises = [] } = useExercises();
   const pendingExercises = usePendingExercises();
@@ -484,24 +456,6 @@ export default function SessionScreen() {
       return next;
     });
   }, []);
-
-  // The dock shows the most recently started stopwatch — the set you just
-  // finished. Only a superset sibling of that block can still be running
-  // alongside it (every commit prunes the rest); it takes the dock as it
-  // frees up. Blocks removed mid-rest are skipped rather than blanking the
-  // dock, so a still-running sibling keeps its Stop affordance.
-  const activeRest = useMemo(() => {
-    let latest: { seId: string; state: RestTimerState; name: string } | null =
-      null;
-    for (const [seId, state] of Object.entries(restByBlock)) {
-      const name = blocks?.find((b) => b.seId === seId)?.name;
-      if (!name) continue;
-      if (!latest || state.startedAt > latest.state.startedAt) {
-        latest = { seId, state, name };
-      }
-    }
-    return latest;
-  }, [restByBlock, blocks]);
 
   // Live PR banner + medal set. Bests snapshot captured once at mount, so the
   // logging path never triggers a records refetch (logSet invalidates
@@ -1190,6 +1144,11 @@ export default function SessionScreen() {
           : b,
       ),
     );
+    // A deleted set ends any rest pill tied to it when it was the block's
+    // last — "after set N" must never name a set that no longer exists.
+    const remaining = (blocks ?? []).find((b) => b.seId === seId)?.committed
+      .length;
+    if ((remaining ?? 0) <= 1) dismissRest(seId);
     dropQueuedSets((id) => id === setId);
     void repo.deleteSet(idMap[setId] ?? setId).then(
       () => {
@@ -1636,14 +1595,6 @@ export default function SessionScreen() {
           </div>
         </div>
       )}
-      {activeRest && (
-        <RestDock
-          since={activeRest.state.startedAt}
-          exerciseName={activeRest.name}
-          onStop={() => dismissRest(activeRest.seId)}
-          testId={`rest-${activeRest.name}`}
-        />
-      )}
       <header className="sticky top-0 z-10 border-b border-border bg-bg">
         {/* Title row: title + finish + mic only — everything else (duration,
             time-since-last-set) lives in the subheader row below so the title
@@ -1707,7 +1658,6 @@ export default function SessionScreen() {
               }}
             />
           )}
-          <RestTimer since={lastCommitAt} />
           {/* Routines stays reachable mid-workout: the shell's Training tab
               jumps to this session while one is live, so /routines (and from
               it /routines/new) would otherwise be unreachable until you
@@ -1726,14 +1676,7 @@ export default function SessionScreen() {
         </div>
       </header>
 
-      {/* Mobile keeps the shell's tab-bar padding (already clears the dock);
-          desktop has none, so it makes room only while the dock is up. */}
-      <div
-        className={cn(
-          "mx-auto max-w-2xl px-4 pt-4 pb-20",
-          activeRest ? "md:pb-28" : "md:pb-6",
-        )}
-      >
+      <div className="mx-auto max-w-2xl px-4 pt-4 pb-20">
         {/* The chip keeps the whole row on mobile: it owns the leftover space
             (flex-1) while the stats line wraps (or drops to its own row on
             the tightest phones) instead of shrinking it out of view — no
@@ -1776,7 +1719,7 @@ export default function SessionScreen() {
               onSavePlateConfig={(cfg) =>
                 updatePrefs.mutate({ plateConfig: cfg })
               }
-              restRunning={restByBlock[block.seId] != null}
+              restState={restByBlock[block.seId] ?? null}
               onStopRest={() => dismissRest(block.seId)}
               onSetNote={(note) => setBlockNote(block.seId, note)}
               onLinkSuperset={(target) => linkSuperset(block.seId, target)}
@@ -2435,7 +2378,7 @@ function ExerciseBlock({
   inSuperset,
   plateConfig,
   onSavePlateConfig,
-  restRunning,
+  restState,
   onStopRest,
   onSetNote,
   onLinkSuperset,
@@ -2466,7 +2409,8 @@ function ExerciseBlock({
   inSuperset: boolean;
   plateConfig: PlateConfig | null;
   onSavePlateConfig: (cfg: PlateConfig) => void;
-  restRunning: boolean;
+  /** The block's rest stopwatch, when one is running (drives the anchored pill). */
+  restState: RestTimerState | null;
   onStopRest: () => void;
   onSetNote: (note: string) => void;
   onLinkSuperset: (targetSeId: string) => void;
@@ -2526,14 +2470,12 @@ function ExerciseBlock({
       ? Math.round(rests.reduce((a, b) => a + b, 0) / rests.length)
       : null;
   })();
-  // Whether a draft (active) row is shown for this block right now. The
-  // first set's row is always open (fresh: blank; routine: seeded) so
-  // logging starts instantly; after that a draft only reappears via an
-  // explicit "Add set" tap (handleAddSet below) — or, on reload, when it
-  // restores real in-progress keystrokes rather than fabricating one.
-  const [draftOpen, setDraftOpen] = useState(
-    () => activeIndex === 0 || loadDraft(block.seId) != null,
-  );
+  // The pre-flight card (machine + laterality + last workout) shows once per
+  // exercise, before its first set — "Start logging" or the first keystroke
+  // collapses it for the rest of the session (the choices persist on the
+  // exercise row itself).
+  const [setupDone, setSetupDone] = useState(false);
+  const showSetup = activeIndex === 0 && !setupDone;
   const activeRowHandleRef = useRef<ActiveRowHandle | null>(null);
   const enabledMetrics = metrics.filter(
     (m) => m.scope === "set" && m.exerciseIds?.includes(block.exerciseId),
@@ -2572,6 +2514,10 @@ function ExerciseBlock({
     orphanId?: string;
     originalId: string;
   } | null>(null);
+  // A copy-on-write fork in flight (or failed) locks the pre-flight's
+  // machine/laterality controls — a rapid re-toggle can't target the
+  // not-yet-inserted copy id or bypass the orphan cleanup.
+  const busy = copying || copyError != null;
   const repoint = useMutation({
     mutationFn: ({ seId, copyId }: { seId: string; copyId: string }) =>
       repo.updateSessionExercise(seId, { exerciseId: copyId }),
@@ -2738,17 +2684,13 @@ function ExerciseBlock({
     0,
   );
 
-  // PREVIOUS column: last performance per set index ('any workout' scope — the
-  // existing ghost lookup). Only claims grid space when there's prior or seeded
-  // (routine/copy) data. Per-index (no clamp-to-last), so a newly added set is
-  // blank until logged once.
-  const showPrevious = ghost.length > 0 || seedSets.length > 0;
-  const cells = previousCells(
-    ghost,
-    [],
-    Math.max(activeIndex + 1, seedSets.length),
-  );
-  const template = gridTemplate(columns, showPrevious);
+  // The pre-flight card's "Last workout" summary — the labeled, unambiguous
+  // answer to "what did I do last time on this exercise" (the PREVIOUS
+  // column + input ghosts it replaces).
+  const previousSets = ghost;
+  const currentLaterality: Laterality =
+    exercise?.laterality === "unilateral" ? "unilateral" : "bilateral";
+  const setCountNow = countSets(block.committed);
 
   return (
     <section
@@ -2785,6 +2727,10 @@ function ExerciseBlock({
                 {routineNote}
               </span>
             )}
+            {/* The station's machine, plainly — the block header shows the
+                attached machine (tap → its remembered settings) instead of
+                a thin strip below the header. */}
+            {machine && <SetupStrip machine={machine} blockName={block.name} />}
             {avgRestSec != null && (
               <span
                 className="truncate text-2xs text-faint"
@@ -2796,20 +2742,10 @@ function ExerciseBlock({
             )}
           </span>
         </span>
-        {/* Rest + options only — remove, machine-attach and the laterality
-            toggle live inside the options ⋯ menu, so the header stays one
-            row of uniform icon buttons and nothing claims its own row. */}
+        {/* Options only — superset, warm-up, remove. Machine attach and the
+            exercise-level laterality live in the pre-flight card; the
+            per-set laterality toggle lives in the log strip. */}
         <Toolbar>
-          {supportsEffort(type) && (
-            <IconButton
-              active={restRunning}
-              onClick={onStopRest}
-              title={restRunning ? "Stop rest" : "Rest timer"}
-              data-testid={`block-${block.name}-rest-timer`}
-            >
-              <RestTimerIcon className="size-4" />
-            </IconButton>
-          )}
           <BlockMenu
             blockName={block.name}
             unit={blockUnit}
@@ -2819,11 +2755,7 @@ function ExerciseBlock({
             heaviestDisplay={
               heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
             }
-            machineAttached={machine != null}
             busy={copying || copyError != null}
-            onAttachMachine={() => setAttachOpen(true)}
-            laterality={exercise?.laterality ?? null}
-            onLateralityChange={(l) => editOrCopy({ laterality: l })}
             onRemoveBlock={onRemoveBlock}
             onLinkSuperset={onLinkSuperset}
             onUnlinkSuperset={onUnlinkSuperset}
@@ -2884,167 +2816,246 @@ function ExerciseBlock({
         onCommit={onSetNote}
       />
 
-      {/* No machine attached yet — the block header offers the in-workout
-          catalog attach in SetupStrip's slot, so the affordance sits exactly
-          where the remembered setup would. */}
-      {machine ? (
-        <SetupStrip machine={machine} blockName={block.name} />
-      ) : (
-        <MachineAttachDialog
-          blockName={block.name}
-          open={attachOpen}
-          onOpenChange={setAttachOpen}
-          onAttach={(machineId) => editOrCopy({ machineId })}
-        />
-      )}
+      {/* ── Pre-flight card ── The station's setup, once per exercise: the
+          machine (catalog search + "from your gym", not a menu item), the
+          exercise's laterality, and the labeled "Last workout" summary — all
+          visible together before the first set. One tap on "Start logging"
+          (or the first keystroke in the strip) collapses it; the choices
+          persist on the exercise row for the rest of the session. */}
+      {showSetup && (
+        <div
+          className="flex flex-col gap-3 border-b border-border bg-surface-2/60 px-4 py-3"
+          data-testid={`block-${block.name}-setup`}
+        >
+          <p className="text-2xs font-medium tracking-widest text-faint uppercase">
+            Set up · once
+          </p>
 
-      {/* One grid for the whole block, every row a `subgrid` spanning it.
-          The menu-gutter track is FIXED at 2.5rem (gridTemplate above), so
-          every row's ⋯ lands at the same x unconditionally — the modifier
-          readout lives as a badge out of the grid flow precisely so nothing
-          can stretch the track. The grid owns the `px-4` gutter; rows that
-          paint a border or a background take it back with a net-zero
-          `-mx-4 px-4`. */}
-      <div
-        className="grid gap-x-2 px-4"
-        style={{ gridTemplateColumns: template }}
-      >
-        <div className="col-span-full grid grid-cols-subgrid items-center gap-x-2 py-1 text-2xs font-medium tracking-widest text-faint uppercase">
-          <span>#</span>
-          {showPrevious && <span>prev</span>}
-          {columns.map((c) =>
-            c.key === "weight" ? (
-              <UnitOverrideMenu
-                key={c.key}
-                header={c.header}
-                blockName={block.name}
-                override={override}
-                globalUnit={unit}
-                onSet={(u) =>
-                  setWeightUnit.mutate({
-                    exerciseId: block.exerciseId,
-                    unit: u,
-                  })
-                }
-              />
-            ) : (
-              <span key={c.key}>{c.header}</span>
-            ),
+          {/* Machine: attached state reads at a glance and can be changed;
+              otherwise the picker is one tap away — visible, never buried. */}
+          {machine ? (
+            <button
+              type="button"
+              onClick={() => setAttachOpen(true)}
+              disabled={busy}
+              title="Change machine"
+              className="flex h-10 w-full items-center gap-2 border border-border bg-surface px-2 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover disabled:opacity-50"
+              data-testid={`block-${block.name}-setup-machine`}
+            >
+              <Settings2 className="size-4 shrink-0 text-faint" />
+              <span className="truncate">
+                {machine.brand ? `${machine.brand} · ` : ""}
+                {machine.name}
+              </span>
+              <span className="ml-auto shrink-0 text-2xs text-faint">
+                change
+              </span>
+            </button>
+          ) : (
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full"
+              onClick={() => setAttachOpen(true)}
+              disabled={busy}
+              data-testid={`setup-attach-${block.name}`}
+            >
+              <Wrench className="size-4" />
+              Attach a machine — catalog or your gym
+            </Button>
           )}
-        </div>
 
-        {groupSetsBySetNo(block.committed).map((rows, i) => (
-          <CommittedRow
-            key={rows[0].id}
-            rows={rows}
-            index={i}
-            unit={blockUnit}
-            distUnit={distUnit}
-            type={type}
-            columns={columns}
-            showPrevious={showPrevious}
-            previous={cells[i]?.previous ?? null}
-            prSetIds={prSetIds}
-            onSave={(setId, patch) => onSaveSet(setId, patch)}
-            onSaveType={(patch) => {
-              for (const r of rows) onSaveSet(r.id, patch);
-            }}
-            onDelete={() => {
-              for (const r of rows) onRemoveSet(r.id);
-            }}
-            onSetLaterality={(unilateral) =>
-              onSetLaterality(block.seId, type, rows[0], unilateral)
-            }
-          />
-        ))}
+          {/* Laterality for the whole exercise — full words, one tap. */}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-2xs font-medium tracking-widest text-faint uppercase">
+              Laterality
+            </span>
+            <div className="flex rounded-md border border-border bg-surface p-0.5">
+              {LATERALITY.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => editOrCopy({ laterality: l })}
+                  disabled={busy}
+                  className={cn(
+                    "h-8 rounded px-3 text-xs transition-colors duration-100",
+                    currentLaterality === l
+                      ? "bg-accent-soft text-accent"
+                      : "text-soft hover:text-ink",
+                    busy && "cursor-default opacity-50",
+                  )}
+                  data-testid={`block-${block.name}-setup-laterality-${l}`}
+                >
+                  {LATERALITY_LABELS[l]}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        {draftOpen && (
-          <ActiveRow
-            key={`${activeIndex}-${seedNonce}`}
-            ref={(handle) => {
-              activeRowHandleRef.current = handle;
-              registerRowRef(handle);
-            }}
-            seId={block.seId}
-            index={activeIndex}
-            unit={blockUnit}
-            distUnit={distUnit}
-            type={type}
-            columns={columns}
-            showPrevious={showPrevious}
-            previous={cells[activeIndex]?.previous ?? null}
-            seed={seedSets[activeIndex]}
-            nextSeedType={seedSets[activeIndex + 1]?.setType ?? null}
-            ghost={ghostFor(ghost, activeIndex)}
-            hasGhost={ghost.length > 0}
-            enabledMetrics={enabledMetrics}
-            autoFocusWeight={activeIndex > 0}
-            barLoaded={barLoaded}
-            // The exercise-level laterality default; the per-set override
-            // lives in the row itself (seeded from the draft snapshot), so
-            // it dies with the row on commit and survives reloads.
-            exerciseLaterality={exercise?.laterality ?? null}
-            onOpenPlates={(target) => {
-              setPlateTarget(target);
-              setPlateOpen(true);
-            }}
-            timerRunning={timerRunning}
-            timerStartedAt={timerStartedAt}
-            onToggleTimer={onToggleTimer}
-            onCommit={(set, ctx) => {
-              // Logging a set never auto-adds the next row — only an
-              // explicit "Add set" tap (handleAddSet) does that.
-              onCommit(set, ctx);
-              setDraftOpen(false);
-            }}
-          />
-        )}
+          {/* "Last workout" — the labeled previous-set answer. One tap on a
+              value uses it as this set's input. */}
+          <div
+            className="border border-border bg-surface px-3 py-2"
+            data-testid={`block-${block.name}-setup-last`}
+          >
+            <p className="text-2xs font-medium tracking-widest text-faint uppercase">
+              Last workout
+            </p>
+            {previousSets.length > 0 ? (
+              <p className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                {previousSets.map((g, i) => (
+                  <button
+                    // Ghosts are per-set-index with no stable id — the index
+                    // IS their identity (they never reorder).
+                    // biome-ignore lint/suspicious/noArrayIndexKey: index-keyed by contract
+                    key={i}
+                    type="button"
+                    onClick={() => activeRowHandleRef.current?.fillFromGhost(g)}
+                    title="Use for this set"
+                    className="num text-sm text-soft transition-colors duration-100 hover:text-accent"
+                    data-testid={`block-${block.name}-setup-last-${i}`}
+                  >
+                    {previousText(g, blockUnit)}
+                  </button>
+                ))}
+              </p>
+            ) : (
+              <p className="mt-1 text-2xs text-faint">
+                {seedSets.length > 0
+                  ? "No previous sets — follow the plan below."
+                  : "No previous sets for this exercise yet."}
+              </p>
+            )}
+            {seedSets.length > 0 && (
+              <p
+                className="mt-1 border-t border-border pt-1 text-2xs text-faint"
+                data-testid={`block-${block.name}-setup-plan`}
+              >
+                Planned · {seedSets.length}{" "}
+                {seedSets.length === 1 ? "set" : "sets"}
+              </p>
+            )}
+          </div>
 
-        {/* Only sets beyond the active row render as upcoming previews — the
-            current index with no draft open is never a row you can't type
-            into (note 3: no phantom upcoming rows). The plan preview for the
-            rest of the routine stays (2026-07-30). */}
-        {seedSets.slice(activeIndex + 1).map((seed, i) => {
-          const idx = activeIndex + 1 + i;
-          return (
-            <UpcomingRow
-              key={idx}
-              index={idx}
-              seed={seed}
-              unit={blockUnit}
-              distUnit={distUnit}
-              columns={columns}
-              showPrevious={showPrevious}
-              previous={cells[idx]?.previous ?? null}
-            />
-          );
-        })}
-
-        {/* The explicit "Add set" affordance — the only way a new draft row
-            appears. Sits below every committed row AND every upcoming
-            (routine-seeded) row, so it never lands between two sets the way
-            the old in-row button did. Commits any open draft first (same
-            path as the row's own check button) — with allowEmpty, so an
-            unfilled draft still pre-creates a blank committed row and the
-            next row opens (note 4: Add set must work before the previous
-            set is filled) — then opens the next one. */}
-        <div className="col-span-full mt-2">
           <Button
-            variant="outline"
+            variant="primary"
             size="lg"
             className="w-full"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              if (draftOpen) activeRowHandleRef.current?.commit(true, true);
-              setDraftOpen(true);
-            }}
-            data-testid={`set-${activeIndex}-add`}
+            onClick={() => setSetupDone(true)}
+            data-testid={`block-${block.name}-setup-start`}
           >
-            <Plus className="size-3" />
-            Add set
+            <Check className="size-4" />
+            Start logging
           </Button>
         </div>
-      </div>
+      )}
+
+      <MachineAttachDialog
+        blockName={block.name}
+        open={attachOpen}
+        onOpenChange={setAttachOpen}
+        onAttach={(machineId) => editOrCopy({ machineId })}
+      />
+
+      {/* ── Committed chips ── completed sets as compact records: set number,
+          type marker, laterality, weight × reps. Readable at a glance,
+          tappable to edit (each zone opens its own details sheet). */}
+      {block.committed.length > 0 && (
+        <div className="flex flex-wrap gap-2 px-4 pt-3">
+          {groupSetsBySetNo(block.committed).map((rows, i) => (
+            <CommittedChip
+              key={rows[0].id}
+              rows={rows}
+              index={i}
+              unit={blockUnit}
+              distUnit={distUnit}
+              type={type}
+              columns={columns}
+              prSetIds={prSetIds}
+              onSave={(setId, patch) => onSaveSet(setId, patch)}
+              onSaveType={(patch) => {
+                for (const r of rows) onSaveSet(r.id, patch);
+              }}
+              onDelete={() => {
+                for (const r of rows) onRemoveSet(r.id);
+              }}
+              onSetLaterality={(unilateral) =>
+                onSetLaterality(block.seId, type, rows[0], unilateral)
+              }
+            />
+          ))}
+        </div>
+      )}
+
+      {/* ── The rest pill ── anchored in the same spot every set (right above
+          the strip), naming its set. Typing in the strip stops it (the strip
+          wires onUserInput → dismissRest); Stop is the manual fallback. */}
+      {restState && (
+        <div className="px-4 pt-3">
+          <RestPill
+            since={restState.startedAt}
+            exerciseName={block.name}
+            afterSet={setCountNow}
+            onStop={onStopRest}
+            testId={`rest-${block.name}`}
+          />
+        </div>
+      )}
+
+      {/* ── The log strip ── the always-open next-set slot. The strip is the
+          only way values get entered; every commit advances it to the next
+          set (rapid fire: type, Enter, type, Enter). */}
+      <ActiveRow
+        key={`${activeIndex}-${seedNonce}`}
+        ref={(handle) => {
+          activeRowHandleRef.current = handle;
+          registerRowRef(handle);
+        }}
+        seId={block.seId}
+        index={activeIndex}
+        unit={blockUnit}
+        distUnit={distUnit}
+        type={type}
+        columns={columns}
+        unitOverride={
+          <UnitOverrideMenu
+            header={columns.find((c) => c.key === "weight")?.header ?? "kg"}
+            blockName={block.name}
+            override={override}
+            globalUnit={unit}
+            onSet={(u) =>
+              setWeightUnit.mutate({
+                exerciseId: block.exerciseId,
+                unit: u,
+              })
+            }
+          />
+        }
+        seed={seedSets[activeIndex]}
+        nextSeedType={seedSets[activeIndex + 1]?.setType ?? null}
+        enabledMetrics={enabledMetrics}
+        autoFocusWeight={activeIndex > 0}
+        barLoaded={barLoaded}
+        // The exercise-level laterality default (set in pre-flight); the
+        // per-set override lives in the strip's own toggle (seeded from the
+        // draft snapshot), so it dies with the row on commit and survives
+        // reloads.
+        exerciseLaterality={exercise?.laterality ?? null}
+        onUserInput={() => {
+          // Typing the next set is the natural end of this rest period —
+          // and it means the pre-flight is done, collapsed for good.
+          onStopRest();
+          setSetupDone(true);
+        }}
+        onOpenPlates={(target) => {
+          setPlateTarget(target);
+          setPlateOpen(true);
+        }}
+        timerRunning={timerRunning}
+        timerStartedAt={timerStartedAt}
+        onToggleTimer={onToggleTimer}
+        onCommit={(set, ctx) => onCommit(set, ctx)}
+      />
 
       <PlateSheet
         open={plateOpen}
@@ -3103,11 +3114,7 @@ function BlockMenu({
   inSuperset,
   warmupEligible,
   heaviestDisplay,
-  machineAttached,
   busy,
-  onAttachMachine,
-  laterality,
-  onLateralityChange,
   onRemoveBlock,
   onLinkSuperset,
   onUnlinkSuperset,
@@ -3119,11 +3126,7 @@ function BlockMenu({
   inSuperset: boolean;
   warmupEligible: boolean;
   heaviestDisplay: number | null;
-  machineAttached: boolean;
   busy: boolean;
-  onAttachMachine: () => void;
-  laterality: string | null;
-  onLateralityChange: (l: Laterality) => void;
   onRemoveBlock: () => void;
   onLinkSuperset: (targetSeId: string) => void;
   onUnlinkSuperset: () => void;
@@ -3134,11 +3137,6 @@ function BlockMenu({
   const [warmupOpen, setWarmupOpen] = useState(false);
   const labelCls =
     "px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase";
-  // null (never set) and any legacy value (incl. pre-2026-08-08
-  // 'alternating') read as bilateral — the same default the editor and the
-  // session's pairing logic use.
-  const currentLaterality: Laterality =
-    laterality === "unilateral" ? "unilateral" : "bilateral";
 
   return (
     <span className="relative">
@@ -3196,24 +3194,6 @@ function BlockMenu({
               </button>
             )}
 
-            {!machineAttached && (
-              <>
-                <div className="border-t border-border" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setOpen(false);
-                    onAttachMachine();
-                  }}
-                  disabled={busy}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
-                  data-testid={`setup-attach-${blockName}`}
-                >
-                  <Wrench className="size-3.5 shrink-0 text-faint" />
-                  Attach machine
-                </button>
-              </>
-            )}
             {warmupEligible && (
               <>
                 <div className="border-t border-border" />
@@ -3231,35 +3211,6 @@ function BlockMenu({
                 </button>
               </>
             )}
-            <div className="border-t border-border" />
-            <p className={labelCls}>Laterality</p>
-            <p className="px-3 pb-1 text-2xs text-faint">
-              Bilateral: both sides work together — one row per set. Unilateral:
-              each side's reps are logged separately, as two rows.
-            </p>
-            {LATERALITY.map((l) => (
-              <button
-                key={l}
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  onLateralityChange(l);
-                }}
-                disabled={busy}
-                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
-                data-testid={`block-${blockName}-laterality-${l}`}
-              >
-                <span className="flex flex-col">
-                  {LATERALITY_LABELS[l]}
-                  <span className="text-2xs font-normal normal-case tracking-normal text-faint">
-                    {LATERALITY_EXPLAINERS[l]}
-                  </span>
-                </span>
-                {currentLaterality === l && (
-                  <Check className="size-3.5 shrink-0 text-accent" />
-                )}
-              </button>
-            ))}
             <div className="border-t border-border" />
             <button
               type="button"
@@ -3489,9 +3440,9 @@ function UnitOverrideMenu({
   );
 }
 
-// Machine setup memory: the strip shows the remembered settings; the dialog
-// edits them on the machine row itself, so the same setup appears in every
-// future session.
+// Machine setup memory: the header chip shows the attached machine and its
+// remembered settings; the dialog edits them on the machine row itself, so
+// the same setup appears in every future session.
 function SetupStrip({
   machine,
   blockName,
@@ -3506,10 +3457,10 @@ function SetupStrip({
   return (
     <Dialog>
       <DialogTrigger
-        className="flex h-8 w-full items-center gap-2 border-b border-border bg-surface-2 px-4 text-left text-2xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+        className="mt-0.5 flex h-8 w-fit max-w-full items-center gap-1.5 border border-border bg-surface-2 px-2 text-left text-2xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
         data-testid={`setup-strip-${blockName}`}
       >
-        <Settings2 className="size-4 shrink-0 text-faint" />
+        <Settings2 className="size-3.5 shrink-0 text-faint" />
         <span className="truncate">
           {machine.brand ? `${machine.brand} · ` : ""}
           {machine.name}
@@ -3554,122 +3505,20 @@ function committedText(
   }
 }
 
-// Target-value formatter for a not-yet-active seeded set (rep range renders
-// as "6–8", same placeholder ActiveRow shows for its own reps field).
-function seedText(
-  key: ColKey,
-  seed: SeedSet,
-  unit: Unit,
-  distUnit: DistanceUnit,
-): string {
-  switch (key) {
-    case "weight":
-      return seed.weightKg != null
-        ? String(toDisplayWeight(seed.weightKg, unit))
-        : "—";
-    case "reps":
-      if (seed.repsMax != null) return `${seed.reps ?? ""}–${seed.repsMax}`;
-      return seed.reps != null ? String(seed.reps) : "—";
-    case "duration":
-      return seed.durationSec != null ? formatMMSS(seed.durationSec) : "—";
-    case "distance":
-      return seed.distanceM != null
-        ? String(toDisplayDistance(seed.distanceM, distUnit))
-        : "—";
-  }
-}
-
-// A planned set from the routine/copy seed that hasn't become the active row
-// yet — read-only, so the full count the template configured is visible from
-// the moment the session starts instead of only the one row being logged.
-function UpcomingRow({
-  index,
-  seed,
-  unit,
-  distUnit,
-  columns,
-  showPrevious,
-  previous,
-}: {
-  index: number;
-  seed: SeedSet;
-  unit: Unit;
-  distUnit: DistanceUnit;
-  columns: Column[];
-  showPrevious: boolean;
-  previous: GhostSet | null;
-}) {
-  const marker = SET_TYPE_MARKERS[seed.setType];
-  return (
-    <div
-      className="col-span-full grid h-8 grid-cols-subgrid items-center gap-x-2 -mx-4 border-t border-border px-4"
-      data-testid={`upcoming-${index}`}
-    >
-      <span className="flex items-center gap-2">
-        <StatusRing state="empty" />
-        <span
-          className={cn(
-            "num min-w-3 text-left text-2xs tabular-nums",
-            markerColorClass(seed.setType),
-            seed.setType !== "normal" && "font-semibold",
-          )}
-        >
-          {marker || index + 1}
-        </span>
-      </span>
-      {showPrevious && (
-        <PreviousCell
-          previous={previous}
-          unit={unit}
-          testId={`upcoming-${index}-previous`}
-        />
-      )}
-      {columns.map((c) => (
-        <span
-          key={c.key}
-          className="num text-sm text-faint"
-          data-testid={`upcoming-${index}-${c.key}`}
-        >
-          {seedText(c.key, seed, unit, distUnit)}
-        </span>
-      ))}
-      <span />
-    </div>
-  );
-}
-
-// PREVIOUS reference cell — quiet, tabular; blank when never logged at this
-// index. On the draft row it's a tap-to-fill button (see ActiveRow).
-function PreviousCell({
-  previous,
-  unit,
-  testId,
-}: {
-  previous: GhostSet | null;
-  unit: Unit;
-  testId: string;
-}) {
-  const text = previous ? previousText(previous, unit) : null;
-  return (
-    <span
-      className="num truncate text-sm text-faint"
-      data-testid={testId}
-      title={text ?? undefined}
-    >
-      {text ?? "—"}
-    </span>
-  );
-}
-
-function CommittedRow({
+// A committed set, compact: one chip per PHYSICAL set — set number/type
+// marker, laterality, weight × reps — readable at a glance and tappable to
+// edit. No row-form permanence: the strip is for entering, chips are the
+// record. A unilateral pair is ONE chip with two tappable zones (ᴸ and ᴿ),
+// each opening its own limb's details sheet, so per-limb RIR/RPE/note stay
+// editable exactly as on the row design (note 7's bilateral↔unilateral flip
+// lives in the ᴸ zone's sheet).
+function CommittedChip({
   rows,
   index,
   unit,
   distUnit,
   type,
   columns,
-  showPrevious,
-  previous,
   prSetIds,
   onSave,
   onSaveType,
@@ -3682,8 +3531,6 @@ function CommittedRow({
   distUnit: DistanceUnit;
   type: ExerciseType;
   columns: Column[];
-  showPrevious: boolean;
-  previous: GhostSet | null;
   prSetIds: Set<string>;
   onSave: (setId: string, patch: SetPatch) => void;
   onSaveType: (patch: Pick<SetPatch, "setType">) => void;
@@ -3712,9 +3559,7 @@ function CommittedRow({
   // A unilateral pair's ᴿ row has its own editable RIR/RPE/note (see the
   // details sheet below) that can diverge from the ᴸ row's after commit —
   // surface it only when it actually differs, so the common untouched-mirror
-  // case doesn't clutter both lines with duplicate readouts.
-  // Compared through the rendered readout, so a legacy scalar and the
-  // equivalent zero-width range don't read as a divergence.
+  // case doesn't clutter both zones with duplicate readouts.
   const secondaryEffortDiffers =
     isPaired && effortReadout(primary) !== effortReadout(secondary);
   const primaryNote = primary.note?.trim() || null;
@@ -3766,8 +3611,6 @@ function CommittedRow({
             : miToM(d);
     }
     if (effort) {
-      // Writes always go through the range pair going forward — the legacy
-      // scalar column is left null rather than kept alongside it.
       const r = parseLoggedRirFields(rirMin, rirMax);
       patch.rir = null;
       patch.rirMin = r.rirMin;
@@ -3785,7 +3628,6 @@ function CommittedRow({
     }
   }
 
-  // e1RM previews live off the fields being edited, so it reacts as you type.
   const showE1rm = has("weight") && has("reps");
   const liveWeightKg =
     weight.trim() === ""
@@ -3798,9 +3640,6 @@ function CommittedRow({
         liveWeightKg,
         reps.trim() === "" ? null : Number.parseInt(reps, 10),
         {
-          // Estimate off the low end of the range — the harder-effort bound.
-          // Read through rirRange so a max-only entry still projects, matching
-          // the badge rather than silently falling back to plain Epley.
           rir: rirRange(parseLoggedRirFields(rirMin, rirMax))?.min ?? null,
           rpe: rpe.trim() === "" ? null : Number.parseFloat(rpe),
         },
@@ -3812,7 +3651,7 @@ function CommittedRow({
       : null;
   const labelCls = "text-2xs font-medium tracking-wide text-faint uppercase";
 
-  // The ᴿ line's weight cell (note 1: same weight both sides is the norm, the
+  // The ᴿ zone's weight cell (note 1: same weight both sides is the norm, the
   // unilateral part is only the reps). A right weight matching the left
   // renders blank — reading as "same as left" — and only a divergent right
   // weight (legacy data, or a post-commit edit via the details sheet) prints
@@ -3825,257 +3664,141 @@ function CommittedRow({
     return String(toDisplayWeight(secondary.weightKg, unit));
   }
 
+  // One side's value spans for the chip, keeping the per-column testids the
+  // committed rows exposed (value text unchanged: weight, then reps etc.,
+  // joined by × between weight and reps, · elsewhere).
+  function valueSpans(s: LoggedSet, zone: "" | "right") {
+    return columns.map((c, i) => {
+      const text =
+        c.key === "weight" && zone === "right"
+          ? rightWeightText()
+          : committedText(c.key, s, unit, distUnit);
+      const sep =
+        i > 0
+          ? columns[i - 1].key === "weight" && c.key === "reps"
+            ? "×"
+            : "·"
+          : null;
+      return (
+        <span key={c.key} className="flex items-center gap-1">
+          {sep && (
+            <span aria-hidden className="text-faint">
+              {sep}
+            </span>
+          )}
+          <span
+            className={cn(zone === "right" && "text-soft")}
+            data-testid={`committed-${index}${zone ? `-${zone}` : ""}-${c.key}`}
+          >
+            {text}
+          </span>
+        </span>
+      );
+    });
+  }
+
   return (
-    // The row keeps the block's `subgrid` for the non-paired case, so value
-    // columns line up across every row (the one-column-template invariant).
-    // A unilateral PAIR takes horizontal space instead (note 3): ᴸ and ᴿ sit
-    // SIDE BY SIDE in one row — one zebra stripe per physical set, clear
-    // left/right labels — with the ⋯ still right-anchored in the menu-gutter
-    // position. The lines keep their own full-bleed background (`-mx-4 px-4`
-    // nets to no track offset, so the columns still land where the header
-    // row's do).
-    <div className="relative col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4">
-      <div
-        className={cn(
-          "relative commit-flash col-span-full transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover",
-          // Zebra by physical set (this row's own index — a unilateral pair
-          // is one stripe, since it's one CommittedRow), one quiet sage step;
-          // hover stays the strongest so the interaction still reads.
-          index % 2 === 1 ? "bg-surface-2" : "bg-surface",
-          isPaired
-            ? "flex h-11 items-center gap-x-2 px-4 -mx-4 md:h-8"
-            : "grid h-11 grid-cols-subgrid items-center gap-x-2 -mx-4 px-4 md:h-8",
-        )}
-        data-testid={`committed-${index}`}
-      >
-        {isPaired ? (
-          <>
-            {/* ᴸ limb: set number/type + PREVIOUS + value cells. */}
-            <span className="flex min-w-0 flex-1 items-center gap-x-2">
-              <SetTypeCell
-                index={index}
-                setType={setType}
-                ringState="done"
-                onChange={(t) => onSaveType({ setType: t })}
-                testId={`committed-${index}-type`}
-                sideLabel="L"
-              />
-              {showPrevious && (
-                <PreviousCell
-                  previous={previous}
-                  unit={unit}
-                  testId={`committed-${index}-previous`}
-                />
+    <div
+      className="relative flex items-stretch overflow-hidden border border-border bg-surface-2"
+      data-testid={`committed-${index}`}
+    >
+      {/* ᴸ zone — the chip's body: marker + values; tap → details sheet. */}
+      <span className="flex min-h-11 items-center gap-1.5 py-1 pr-2 pl-1.5 md:min-h-8">
+        <SetTypeCell
+          index={index}
+          setType={setType}
+          ringState="done"
+          onChange={(t) => onSaveType({ setType: t })}
+          testId={`committed-${index}-type`}
+          sideLabel={isPaired ? "L" : undefined}
+        />
+        <button
+          type="button"
+          onClick={() => openDetails(primary)}
+          title="Set details"
+          className="num flex min-h-11 items-center gap-1 text-sm text-ink"
+          data-testid={`set-menu-${index}`}
+        >
+          {valueSpans(primary, "")}
+          {effort && (effortReadout(primary) || secondaryEffortDiffers) && (
+            <span
+              className={cn(
+                "rounded-sm border border-border bg-surface px-1 text-2xs text-faint",
+                !secondaryEffortDiffers && "max-md:hidden",
               )}
-              {columns.map((c) => (
-                <button
-                  key={c.key}
-                  type="button"
-                  onClick={() => openDetails(primary)}
-                  className="num min-h-5 min-w-10 cursor-pointer text-left text-sm"
-                  title="Set details"
-                  data-testid={`committed-${index}-${c.key}`}
+              data-testid={`committed-${index}-effort`}
+            >
+              {effortReadout(primary) || "—"}
+            </span>
+          )}
+          {notesDiffer && primaryNote && (
+            <span
+              className="text-faint"
+              title={primaryNote}
+              data-testid={`committed-${index}-note`}
+            >
+              <StickyNote className="size-3.5" />
+            </span>
+          )}
+          {prSetIds.has(primary.id) && (
+            <span
+              className="text-accent"
+              title="Personal record"
+              data-testid={`committed-${index}-medal`}
+            >
+              <Medal className="size-3.5" />
+            </span>
+          )}
+        </button>
+      </span>
+
+      {/* ᴿ zone — a unilateral pair's second half; tap → ITS details sheet
+          (per-limb RIR/RPE/note live here). */}
+      {isPaired && (
+        <>
+          <span className="w-px bg-border" />
+          <span className="flex min-h-11 items-center gap-1.5 py-1 pr-2 pl-2 md:min-h-8">
+            <span className="num shrink-0 text-2xs tabular-nums text-faint">
+              {index + 1}ᴿ
+            </span>
+            <button
+              type="button"
+              onClick={() => openDetails(secondary)}
+              title="Right side details"
+              className="num flex min-h-11 items-center gap-1 text-sm"
+              data-testid={`committed-${index}-right`}
+            >
+              {valueSpans(secondary, "right")}
+              {effort && secondaryEffortDiffers && (
+                <span
+                  className="rounded-sm border border-border bg-surface px-1 text-2xs text-faint"
+                  data-testid={`committed-${index}-right-effort`}
                 >
-                  {committedText(c.key, primary, unit, distUnit)}
-                </button>
-              ))}
-            </span>
-
-            {/* ᴿ limb: label + value cells in the same column order as the
-                ᴸ side, so the pair reads side by side. Each cell opens THIS
-                limb's own details sheet, which is where its per-limb
-                RIR/RPE/note are edited. */}
-            <span className="flex min-w-0 flex-1 items-center gap-x-2">
-              <span className="num shrink-0 text-2xs tabular-nums text-faint">
-                {index + 1}ᴿ
-              </span>
-              {columns.map((c) => (
-                <button
-                  key={c.key}
-                  type="button"
-                  onClick={() => openDetails(secondary)}
-                  className="num min-h-5 min-w-10 cursor-pointer text-left text-sm text-soft"
-                  title="Set details"
-                  data-testid={`committed-${index}-right-${c.key}`}
+                  {effortReadout(secondary) || "—"}
+                </span>
+              )}
+              {notesDiffer && secondaryNote && (
+                <span
+                  className="text-faint"
+                  title={secondaryNote}
+                  data-testid={`committed-${index}-right-note`}
                 >
-                  {c.key === "weight"
-                    ? rightWeightText()
-                    : committedText(c.key, secondary, unit, distUnit)}
-                </button>
-              ))}
-            </span>
-
-            <span className="flex shrink-0 items-center justify-end">
-              <Dots
-                onClick={() => openDetails(primary)}
-                title="Set details"
-                data-testid={`set-menu-${index}`}
-              />
-            </span>
-
-            {/* RIR/RPE readouts + per-limb notes: badges OUT of the flex
-                flow (absolute, straddling the row's top border) so the
-                layout never widens for them — the `@2 RPE 8` preview and
-                the ᴸ/ᴿ divergence markers stay visible at every viewport.
-                The ᴸ readout hides below `md:` unless the pair diverges
-                (desktop chrome the narrow row can't spare); a divergent
-                pair's readouts show on both limbs. */}
-            {((effort && (effortReadout(primary) || secondaryEffortDiffers)) ||
-              (notesDiffer && primaryNote)) && (
-              <span className="pointer-events-none absolute top-0 right-1.5 z-10 flex -translate-y-1/2 items-center gap-1">
-                {effort &&
-                  (effortReadout(primary) || secondaryEffortDiffers) && (
-                    <span
-                      className={cn(
-                        "num rounded-sm border border-border bg-surface px-1 text-2xs text-faint",
-                        !secondaryEffortDiffers && "max-md:hidden",
-                      )}
-                      data-testid={`committed-${index}-effort`}
-                    >
-                      {effortReadout(primary) || "—"}
-                    </span>
-                  )}
-                {effort && secondaryEffortDiffers && (
-                  <span
-                    className="num rounded-sm border border-border bg-surface px-1 text-2xs text-faint"
-                    data-testid={`committed-${index}-right-effort`}
-                  >
-                    {/* This badge only prints when the ᴿ side diverges, so an
-                        empty readout renders as "—" — a cleared ᴿ effort says
-                        so, distinct from the suppressed mirror case. */}
-                    {effortReadout(secondary) || "—"}
-                  </span>
-                )}
-                {notesDiffer && primaryNote && (
-                  <span
-                    className="text-faint"
-                    title={primaryNote}
-                    data-testid={`committed-${index}-note`}
-                  >
-                    <StickyNote className="size-3.5" />
-                  </span>
-                )}
-                {notesDiffer && secondaryNote && (
-                  <span
-                    className="text-faint"
-                    title={secondaryNote}
-                    data-testid={`committed-${index}-right-note`}
-                  >
-                    <StickyNote className="size-3.5" />
-                  </span>
-                )}
-              </span>
-            )}
-
-            {prSetIds.has(primary.id) && (
-              <span
-                className="pointer-events-none absolute top-0.5 right-1.5 text-accent"
-                title="Personal record"
-                data-testid={`committed-${index}-medal`}
-              >
-                <Medal className="size-3.5" />
-              </span>
-            )}
-            {prSetIds.has(secondary.id) && (
-              <span
-                className="pointer-events-none absolute top-0.5 right-6 text-accent"
-                title="Personal record"
-                data-testid={`committed-${index}-right-medal`}
-              >
-                <Medal className="size-3.5" />
-              </span>
-            )}
-          </>
-        ) : (
-          <>
-            <SetTypeCell
-              index={index}
-              setType={setType}
-              ringState="done"
-              onChange={(t) => onSaveType({ setType: t })}
-              testId={`committed-${index}-type`}
-            />
-            {showPrevious && (
-              <PreviousCell
-                previous={previous}
-                unit={unit}
-                testId={`committed-${index}-previous`}
-              />
-            )}
-            {columns.map((c) => (
-              <button
-                key={c.key}
-                type="button"
-                onClick={() => openDetails(primary)}
-                className="num cursor-pointer text-left text-sm"
-                title="Set details"
-                data-testid={`committed-${index}-${c.key}`}
-              >
-                {committedText(c.key, primary, unit, distUnit)}
-              </button>
-            ))}
-            {/* A fixed empty cell keeps the ⋯ right-anchored in the last
-                (menu-gutter) track — the ActiveRow's commit button owns the
-                track immediately to its left, and every row shares the one
-                column template (gridTemplate above), so the draft row's
-                actions sit on the same x as every committed row's ⋯. */}
-            <span />
-            <span className="flex items-center justify-end">
-              <Dots
-                onClick={() => openDetails(primary)}
-                title="Set details"
-                data-testid={`set-menu-${index}`}
-              />
-            </span>
-
-            {/* RIR/RPE readout + note: rendered as badges OUT of the grid
-                flow (absolute, straddling the row's top border) so the
-                fixed gutter track never widens for them — the `@2 RPE 8`
-                preview stays visible at every viewport. */}
-            {((effort && (effortReadout(primary) || secondaryEffortDiffers)) ||
-              (notesDiffer && primaryNote)) && (
-              <span className="pointer-events-none absolute top-0 right-1.5 z-10 flex -translate-y-1/2 items-center gap-1">
-                {effort &&
-                  (effortReadout(primary) || secondaryEffortDiffers) && (
-                    <span
-                      className={cn(
-                        "num rounded-sm border border-border bg-surface px-1 text-2xs text-faint",
-                        // Below `md:` this readout is desktop chrome the narrow
-                        // row can't spare — unless it's carrying a pair's
-                        // divergence, in which case it has to show alongside
-                        // the (touch-visible) ⋯ button, or the ᴿ line's
-                        // readout reads as the whole set's.
-                        !secondaryEffortDiffers && "max-md:hidden",
-                      )}
-                      data-testid={`committed-${index}-effort`}
-                    >
-                      {effortReadout(primary) || "—"}
-                    </span>
-                  )}
-                {notesDiffer && primaryNote && (
-                  <span
-                    className="text-faint"
-                    title={primaryNote}
-                    data-testid={`committed-${index}-note`}
-                  >
-                    <StickyNote className="size-3.5" />
-                  </span>
-                )}
-              </span>
-            )}
-
-            {prSetIds.has(primary.id) && (
-              <span
-                className="pointer-events-none absolute top-0.5 right-1.5 text-accent"
-                title="Personal record"
-                data-testid={`committed-${index}-medal`}
-              >
-                <Medal className="size-3.5" />
-              </span>
-            )}
-          </>
-        )}
-      </div>
+                  <StickyNote className="size-3.5" />
+                </span>
+              )}
+              {prSetIds.has(secondary.id) && (
+                <span
+                  className="text-accent"
+                  title="Personal record"
+                  data-testid={`committed-${index}-right-medal`}
+                >
+                  <Medal className="size-3.5" />
+                </span>
+              )}
+            </button>
+          </span>
+        </>
+      )}
 
       <Dialog
         open={editingRow != null}
@@ -4091,10 +3814,8 @@ function CommittedRow({
         >
           <div className="flex flex-col gap-4">
             {/* Note 7: the set-level unilateral toggle lives in the ᴸ limb's
-                sheet (opened from the ⋯ or a ᴸ value cell) — flipping the set
-                away from unilateral while editing the ᴿ limb would delete the
-                very row being edited. Mirrors the draft row's per-set
-                override, but writes the committed pair structurally. */}
+                sheet — flipping the set away from unilateral while editing
+                the ᴿ limb would delete the very row being edited. */}
             {editingRow != null && editingRow.id === primary.id && (
               <label className="flex items-start gap-2 rounded-md border border-border bg-surface-2 p-2">
                 <input
@@ -4414,7 +4135,8 @@ function ModifierField(
 
 // Imperative escape hatch for voice logging: fills weight/reps as if typed,
 // converting kg to this row's own display unit. Never commits — same as a
-// manual edit, an explicit commit (Enter / Add set) still has to follow.
+// manual edit, an explicit commit (Enter / the check button) still has to
+// follow. `fillFromGhost` powers the pre-flight "Last workout" tap-to-use.
 type ActiveRowHandle = {
   // Returns false when this row's type has no field the values could land in,
   // so the caller can report the miss instead of leaving the row blank.
@@ -4422,14 +4144,19 @@ type ActiveRowHandle = {
     weightKg: number | null;
     reps: number | null;
   }) => boolean;
-  // Commits the current draft (same path as Enter / the check button) — the
-  // block-level "Add set" button drives this imperatively since it renders
-  // outside the row. `allowEmpty` lets the EXPLICIT Add-set path commit a
-  // blank draft (a planned-but-unfilled set) so "Add set" always advances;
-  // Enter/blur/check keep the empty-draft no-op.
-  commit: (adoptGhost: boolean, allowEmpty?: boolean) => void;
+  /** Pre-flight "Last workout" summary: use one prior set as this set's input. */
+  fillFromGhost: (g: GhostSet) => void;
+  // Commits the current draft (same path as Enter / the check button). An
+  // empty draft is a no-op — a set has to carry at least one value.
+  commit: () => void;
 };
 
+// The Protocol's log strip: column headers with the per-set laterality
+// toggle on the right, then the always-open next-set slot. Every commit
+// advances the strip to the next set (the parent keys this component by
+// index), so back-to-back sets are type → Enter → type → Enter with no
+// extra taps. One row per block, one keyboard session — the poundage
+// ergonomics of the old draft row, minus the grid chrome around it.
 function ActiveRow({
   seId,
   index,
@@ -4437,16 +4164,14 @@ function ActiveRow({
   distUnit,
   type,
   columns,
-  showPrevious,
-  previous,
+  unitOverride,
   seed,
   nextSeedType,
-  ghost,
-  hasGhost,
   enabledMetrics,
   autoFocusWeight,
   barLoaded,
   exerciseLaterality,
+  onUserInput,
   onOpenPlates,
   timerRunning,
   timerStartedAt,
@@ -4460,16 +4185,18 @@ function ActiveRow({
   distUnit: DistanceUnit;
   type: ExerciseType;
   columns: Column[];
-  showPrevious: boolean;
-  previous: GhostSet | null;
+  /** The weight-column header (unit override menu) — rendered by the parent,
+      placed here so the header row and the fields line up in one strip. */
+  unitOverride: React.ReactNode;
   seed: SeedSet | undefined;
   nextSeedType: string | null;
-  ghost: GhostSet;
-  hasGhost: boolean;
   enabledMetrics: Metric[];
   autoFocusWeight: boolean;
   barLoaded: boolean;
   exerciseLaterality: string | null;
+  /** Any user typing (or a pre-flight value tap) in THIS strip — the parent
+      stops the rest stopwatch and collapses the pre-flight on it. */
+  onUserInput: () => void;
   onOpenPlates: (target: number | null) => void;
   timerRunning: boolean;
   timerStartedAt: number | null;
@@ -4477,30 +4204,23 @@ function ActiveRow({
   onCommit: (set: CommitInput, ctx: CommitCtx) => void;
   ref: Ref<ActiveRowHandle>;
 }) {
-  // Restore any uncommitted keystrokes persisted for this block (draft wins over
-  // the routine/copy seed once the user has started typing).
+  // Restore any uncommitted keystrokes persisted for this block (draft wins
+  // over the routine/copy seed once the user has started typing).
   const [draft] = useState<Partial<DraftSnapshot> | null>(() =>
     loadDraft(seId),
   );
-  // Per-set laterality override ("just this one set", note 1): toggled from
-  // the details sheet, seeded from the routine template's per-set laterality
-  // or the draft snapshot so a reload restores the ᴿ line and the right-side
+  // Per-set laterality override ("just this one set"): toggled from the
+  // strip header, seeded from the routine template's per-set laterality or
+  // the draft snapshot so a reload restores the ᴿ field and the right-side
   // keystrokes it protects. Local to this row, so it dies on commit or
-  // remount — the next draft at the same index starts from the exercise
-  // default again.
+  // remount — the next strip starts from the exercise default again.
   const [lateralityOverride, setLateralityOverride] =
     useState<Laterality | null>(
       () => draft?.laterality ?? seed?.laterality ?? null,
     );
-  // Override wins over the exercise default.
+  // Override wins over the exercise default (set in the pre-flight).
   const laterality = lateralityOverride ?? exerciseLaterality;
   const isUnilateral = laterality === "unilateral";
-  // The per-set Unilateral toggle is always available — legacy 'alternating'
-  // exercises read as bilateral (docs/DECISIONS.md 2026-08-08), so there is
-  // no laterality the override could contradict anymore.
-  const lateralityEditable = true;
-  // Seed the draft from the routine target / copied set for this index. A rep
-  // range seeds only a placeholder (never a concrete reps value).
   const [weight, setWeight] = useState(
     () =>
       draft?.weight ??
@@ -4533,9 +4253,8 @@ function ActiveRow({
   const [note, setNote] = useState(() => draft?.note ?? "");
   // Right side of a unilateral pair. Blank means "mirror the left value" —
   // the input shows it as a faint placeholder; typing here overrides it. The
-  // right side has NO weight field (note 1: same weight both sides — the
-  // unilateral part is only the reps), so only reps/duration/distance live
-  // here.
+  // weight is shared (note 1: same weight both sides, stated in the strip's
+  // caption), so only reps/duration/distance live here.
   const [rReps, setRReps] = useState(() => draft?.rReps ?? "");
   const [rDuration, setRDuration] = useState(() => draft?.rDuration ?? "");
   const [rDistance, setRDistance] = useState(() => draft?.rDistance ?? "");
@@ -4566,8 +4285,8 @@ function ActiveRow({
   const [, tick] = useReducer((n: number) => n + 1, 0);
 
   // Mirror uncommitted keystrokes to localStorage so a reload restores them.
-  // rWeight deliberately isn't saved: the right side has no weight input (note
-  // 1) — legacy drafts that carry one are read for nothing.
+  // rWeight deliberately isn't saved: the right side has no weight input
+  // (note 1) — legacy drafts that carry one are read for nothing.
   useEffect(() => {
     saveDraft(seId, {
       weight,
@@ -4633,14 +4352,35 @@ function ActiveRow({
           setReps(String(repsValue));
           applied = true;
         }
+        if (applied) onUserInput();
         return applied;
+      },
+      fillFromGhost(g: GhostSet) {
+        onUserInput();
+        if (f.weight && g.weightKg != null)
+          setWeight(String(toDisplayWeight(g.weightKg, unit)));
+        if (f.reps && g.reps != null) setReps(String(g.reps));
+        if (f.duration && g.durationSec != null)
+          setDuration(formatMMSS(g.durationSec));
+        if (f.distance && g.distanceM != null)
+          setDistance(String(toDisplayDistance(g.distanceM, distUnit)));
+        // An uneven pair last time restores uneven — otherwise the left fill
+        // above already mirrors across as a placeholder.
+        const other = g.otherSide;
+        if (isUnilateral && other) {
+          if (f.reps && other.reps != null) setRReps(String(other.reps));
+          if (f.duration && other.durationSec != null)
+            setRDuration(formatMMSS(other.durationSec));
+          if (f.distance && other.distanceM != null)
+            setRDistance(String(toDisplayDistance(other.distanceM, distUnit)));
+        }
       },
       commit,
     }),
     // No deps array: `commit` closes over every field's current value and is
     // a fresh function every render, so memoizing this against a partial dep
-    // list (the old [f.weight, f.reps, unit]) would expose a stale `commit`
-    // to the ref holder whenever some other field changed without those three.
+    // list would expose a stale `commit` to the ref holder whenever some
+    // other field changed without those three.
   );
 
   // Live stopwatch readout while this row's timer runs (ticks each second).
@@ -4677,42 +4417,10 @@ function ActiveRow({
     onToggleTimer();
   }
 
-  const ghostWeight =
-    ghost.weightKg != null ? toDisplayWeight(ghost.weightKg, unit) : null;
-  const ghostReps = ghost.reps != null ? String(ghost.reps) : null;
-  const ghostDuration =
-    ghost.durationSec != null ? formatMMSS(ghost.durationSec) : null;
-  const ghostDistance =
-    ghost.distanceM != null
-      ? String(toDisplayDistance(ghost.distanceM, distUnit))
-      : null;
-  // Rep-range placeholder ("8–12") when the routine seeds a range at this index.
+  // Rep-range placeholder ("8–12") when the routine seeds a range at this
+  // index.
   const repRangePlaceholder =
     seed?.repsMax != null ? `${seed.reps ?? ""}–${seed.repsMax}` : null;
-
-  // Tap the PREVIOUS cell → autofill this draft row from last time.
-  function fillFromPrevious() {
-    if (!previous) return;
-    if (f.weight && previous.weightKg != null)
-      setWeight(String(toDisplayWeight(previous.weightKg, unit)));
-    if (f.reps && previous.reps != null) setReps(String(previous.reps));
-    if (f.duration && previous.durationSec != null)
-      setDuration(formatMMSS(previous.durationSec));
-    if (f.distance && previous.distanceM != null)
-      setDistance(String(toDisplayDistance(previous.distanceM, distUnit)));
-    // An uneven pair last time restores uneven — otherwise the left fill
-    // above already mirrors across as a placeholder. The right side has no
-    // weight field (note 1: same weight both sides), so only a divergent
-    // right REP is restored; a legacy divergent weight is dropped on fill.
-    const other = previous.otherSide;
-    if (isUnilateral && other) {
-      if (f.reps && other.reps != null) setRReps(String(other.reps));
-      if (f.duration && other.durationSec != null)
-        setRDuration(formatMMSS(other.durationSec));
-      if (f.distance && other.distanceM != null)
-        setRDistance(String(toDisplayDistance(other.distanceM, distUnit)));
-    }
-  }
 
   function metricValues(): Record<string, unknown> | null {
     const out: Record<string, unknown> = {};
@@ -4729,7 +4437,7 @@ function ActiveRow({
     return Object.keys(out).length ? out : null;
   }
 
-  function parseFields(adoptGhost: boolean) {
+  function parseFields() {
     let weightKg: number | null = null;
     let repsN: number | null = null;
     let durationSec: number | null = null;
@@ -4752,13 +4460,6 @@ function ActiveRow({
           : distUnit === "km"
             ? kmToM(d)
             : miToM(d);
-    }
-    if (adoptGhost && hasGhost) {
-      // Enter on empty fields accepts the ghost values (tap-to-accept).
-      if (f.weight) weightKg = weightKg ?? ghost.weightKg ?? null;
-      if (f.reps) repsN = repsN ?? ghost.reps ?? null;
-      if (f.duration) durationSec = durationSec ?? ghost.durationSec ?? null;
-      if (f.distance) distanceM = distanceM ?? ghost.distanceM ?? null;
     }
     return { weightKg, reps: repsN, durationSec, distanceM };
   }
@@ -4790,19 +4491,17 @@ function ActiveRow({
     return { weightKg, reps: repsN, durationSec, distanceM };
   }
 
-  function commit(adoptGhost: boolean, allowEmpty = false) {
+  function commit() {
     if (done.current) return;
-    const v = parseFields(adoptGhost);
+    const v = parseFields();
     const parsedRir = parseLoggedRirFields(rirMin, rirMax);
     const anyPresent =
       (f.weight && v.weightKg != null) ||
       (f.reps && v.reps != null) ||
       (f.duration && v.durationSec != null) ||
       (f.distance && v.distanceM != null);
-    // An empty draft is normally a no-op (nothing to log) — the one exception
-    // is the explicit "Add set" path (allowEmpty), which pre-creates a blank
-    // committed row the user fills in later via its details sheet.
-    if (!anyPresent && !allowEmpty) return;
+    // An empty strip is a no-op (nothing to log).
+    if (!anyPresent) return;
     done.current = true;
     clearDraft(seId);
     if (timerRunning) onToggleTimer();
@@ -4827,25 +4526,25 @@ function ActiveRow({
     );
   }
 
-  // Wired to the row's data inputs only — deliberately not to the details-sheet
-  // fields, where Enter must stay a newline in the note textarea rather than
-  // commit the set out from under a sheet the user still has open.
+  // Wired to the strip's data inputs only — deliberately not to the
+  // details-sheet fields, where Enter must stay a newline in the note
+  // textarea rather than commit the set out from under a sheet the user
+  // still has open.
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") {
       e.preventDefault();
-      commit(true);
+      commit();
     }
   }
 
   // Auto-checkoff: once both weight and reps carry a typed value, leaving
-  // either field commits the set — no separate confirm tap required. Doesn't
-  // adopt ghost values (unlike Enter's tap-to-accept), so it never silently
-  // pulls in an untyped duration/distance alongside it.
+  // either field commits the set — no separate confirm tap required.
   //
-  // Paired (unilateral) rows re-scope this: blurring a ᴸ field never commits
-  // — only leaving the ᴿ line does, and only once the ᴸ line is complete.
-  // Otherwise the moment you tab off "weight" into "reps" would half-log the
-  // set before the right side ever gets a chance to mirror or override.
+  // Paired (unilateral) strips re-scope this: blurring a ᴸ field never
+  // commits — only leaving the ᴿ field does, and only once the ᴸ line is
+  // complete. Otherwise the moment you tab off "weight" into "reps" would
+  // half-log the set before the right side ever gets a chance to mirror or
+  // override.
   function onFieldBlur(e: React.FocusEvent<HTMLInputElement>) {
     if (suppressCheckoffRef.current) {
       suppressCheckoffRef.current = false;
@@ -4858,7 +4557,7 @@ function ActiveRow({
     const next = e.relatedTarget as Node | null;
     if (next && moreCellRef.current?.contains(next)) return;
     if (isUnilateral) return;
-    if (weight.trim() !== "" && reps.trim() !== "") commit(false);
+    if (weight.trim() !== "" && reps.trim() !== "") commit();
   }
 
   // Guards against committing mid-override: tabbing from one ᴿ field to the
@@ -4866,7 +4565,7 @@ function ActiveRow({
   // complete, which would otherwise auto-commit before the override is even
   // typed. (The ᴿ weight input this guard originally described is gone —
   // same weight both sides, note 1.) Only fires once focus actually leaves
-  // this row.
+  // this strip.
   function onRightFieldBlur(e: React.FocusEvent<HTMLInputElement>) {
     if (suppressCheckoffRef.current) {
       suppressCheckoffRef.current = false;
@@ -4874,163 +4573,167 @@ function ActiveRow({
     }
     const next = e.relatedTarget as Node | null;
     if (next && rowRef.current?.contains(next)) return;
-    if (weight.trim() !== "" && reps.trim() !== "") commit(false);
+    if (weight.trim() !== "" && reps.trim() !== "") commit();
   }
 
-  // One input cell per data column (weight / reps / time / distance). The time
-  // cell also carries the inline stopwatch control. `last` picks the mobile
-  // keyboard's Return-key hint — "next" mid-row, "done" on the row's final
-  // field (iOS numeric/decimal keypads often have no Return key at all
+  // One input cell per data column (weight / reps / time / distance). The
+  // time cell also carries the inline stopwatch control. `last` picks the
+  // mobile keyboard's Return-key hint — "next" mid-row, "done" on the row's
+  // final field (iOS numeric/decimal keypads often have no Return key at all
   // regardless of this hint, so it's a best-effort nicety, not the mobile
-  // advance path — that's the checkmark / "Add set").
+  // advance path — that's the checkmark / Enter).
   function dataCell(key: ColKey, autoFocus: boolean, last: boolean) {
     const enterKeyHint = last ? "done" : "next";
-    if (key === "weight") {
+    const width =
+      key === "weight"
+        ? "min-w-0 flex-1"
+        : key === "reps"
+          ? "w-16 shrink-0"
+          : "w-20 shrink-0";
+    const field = (
+      <Field
+        className="leading-5"
+        inputMode={
+          key === "reps" ? "numeric" : key === "duration" ? "text" : "decimal"
+        }
+        enterKeyHint={enterKeyHint}
+        placeholder={
+          key === "weight"
+            ? unitLabel(unit)
+            : key === "reps"
+              ? (repRangePlaceholder ?? "reps")
+              : key === "duration"
+                ? "m:ss"
+                : distUnit
+        }
+        value={
+          key === "weight"
+            ? weight
+            : key === "reps"
+              ? reps
+              : key === "duration"
+                ? durationDisplay
+                : distance
+        }
+        readOnly={key === "duration" && timerRunning}
+        onChange={(e) => {
+          onUserInput();
+          if (key === "weight") setWeight(e.target.value);
+          else if (key === "reps") setReps(e.target.value);
+          else if (key === "duration") setDuration(e.target.value);
+          else setDistance(e.target.value);
+        }}
+        onKeyDown={onKeyDown}
+        onBlur={key === "weight" || key === "reps" ? onFieldBlur : undefined}
+        autoFocus={autoFocus}
+        data-testid={`set-${index}-${key}`}
+      />
+    );
+    if (key === "duration")
       return (
-        <Field
-          key={key}
-          className="px-0 leading-5"
-          inputMode="decimal"
-          enterKeyHint={enterKeyHint}
-          placeholder={
-            ghostWeight != null ? String(ghostWeight) : unitLabel(unit)
-          }
-          value={weight}
-          onChange={(e) => setWeight(e.target.value)}
-          onKeyDown={onKeyDown}
-          onBlur={onFieldBlur}
-          autoFocus={autoFocus}
-          data-testid={`set-${index}-weight`}
-        />
+        <span key={key} className={cn(width, "flex items-center gap-1")}>
+          {field}
+          <IconButton
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={toggleTimer}
+            title={timerRunning ? "Stop timer" : "Start timer"}
+            className={cn(
+              timerRunning &&
+                "border-accent bg-accent text-accent-fg hover:bg-accent hover:text-accent-fg",
+              !timerRunning && "text-soft",
+            )}
+            data-testid={`set-${index}-timer`}
+          >
+            {timerRunning ? (
+              <Square className="size-3.5" />
+            ) : (
+              <Play className="size-3.5" />
+            )}
+          </IconButton>
+        </span>
       );
-    }
-    if (key === "reps")
-      return (
-        <Field
-          key={key}
-          className="px-0 leading-5"
-          inputMode="numeric"
-          enterKeyHint={enterKeyHint}
-          placeholder={repRangePlaceholder ?? ghostReps ?? "reps"}
-          value={reps}
-          onChange={(e) => setReps(e.target.value)}
-          onKeyDown={onKeyDown}
-          onBlur={onFieldBlur}
-          autoFocus={autoFocus}
-          data-testid={`set-${index}-reps`}
-        />
-      );
-    if (key === "distance")
-      return (
-        <Field
-          key={key}
-          className="px-0 leading-5"
-          inputMode="decimal"
-          enterKeyHint={enterKeyHint}
-          placeholder={ghostDistance ?? distUnit}
-          value={distance}
-          onChange={(e) => setDistance(e.target.value)}
-          onKeyDown={onKeyDown}
-          autoFocus={autoFocus}
-          data-testid={`set-${index}-distance`}
-        />
-      );
-    // duration
     return (
-      <span key={key} className="flex items-center gap-1">
-        <Field
-          className="px-0 leading-5"
-          inputMode="text"
-          enterKeyHint={enterKeyHint}
-          placeholder={ghostDuration ?? "m:ss"}
-          value={durationDisplay}
-          readOnly={timerRunning}
-          onChange={(e) => setDuration(e.target.value)}
-          onKeyDown={onKeyDown}
-          autoFocus={autoFocus}
-          data-testid={`set-${index}-duration`}
-        />
-        <IconButton
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={toggleTimer}
-          title={timerRunning ? "Stop timer" : "Start timer"}
-          className={cn(
-            timerRunning &&
-              "border-accent bg-accent text-accent-fg hover:bg-accent hover:text-accent-fg",
-            !timerRunning && "text-soft",
-          )}
-          data-testid={`set-${index}-timer`}
-        >
-          {timerRunning ? (
-            <Square className="size-3.5" />
-          ) : (
-            <Play className="size-3.5" />
-          )}
-        </IconButton>
+      <span key={key} className={width}>
+        {field}
       </span>
     );
   }
 
   // Right-side input for a unilateral pair. Placeholder mirrors the left
   // line's own typed value (live, as faint text) so the pair reads as
-  // symmetric until overridden — typing here just makes the row uneven. No
-  // weight field: the weight is shared (note 1), so the ᴿ line's weight cell
-  // is an empty span that keeps the columns aligned.
+  // symmetric until overridden — typing here just makes the set uneven. No
+  // weight field: the weight is shared (note 1), stated in the strip's
+  // caption.
   function rDataCell(key: ColKey) {
-    if (key === "weight") return <span key={key} aria-hidden="true" />;
+    if (key === "weight") return null;
     if (key === "reps")
       return (
-        <Field
-          key={key}
-          className="px-0 leading-5"
-          inputMode="numeric"
-          placeholder={
-            reps.trim() !== ""
-              ? reps
-              : (repRangePlaceholder ?? ghostReps ?? "reps")
-          }
-          value={rReps}
-          onChange={(e) => setRReps(e.target.value)}
-          onKeyDown={onKeyDown}
-          onBlur={onRightFieldBlur}
-          data-testid={`set-${index}-right-reps`}
-        />
+        <span key={key} className="w-16 shrink-0">
+          <Field
+            className="leading-5"
+            inputMode="numeric"
+            enterKeyHint={lastColIs(key) ? "done" : "next"}
+            placeholder={
+              reps.trim() !== "" ? reps : (repRangePlaceholder ?? "reps")
+            }
+            value={rReps}
+            onChange={(e) => {
+              onUserInput();
+              setRReps(e.target.value);
+            }}
+            onKeyDown={onKeyDown}
+            onBlur={onRightFieldBlur}
+            data-testid={`set-${index}-right-${key}`}
+          />
+        </span>
       );
     if (key === "distance")
       return (
-        <Field
-          key={key}
-          className="px-0 leading-5"
-          inputMode="decimal"
-          placeholder={
-            distance.trim() !== "" ? distance : (ghostDistance ?? distUnit)
-          }
-          value={rDistance}
-          onChange={(e) => setRDistance(e.target.value)}
-          onKeyDown={onKeyDown}
-          data-testid={`set-${index}-right-distance`}
-        />
+        <span key={key} className="w-20 shrink-0">
+          <Field
+            className="leading-5"
+            inputMode="decimal"
+            enterKeyHint={lastColIs(key) ? "done" : "next"}
+            placeholder={distance.trim() !== "" ? distance : distUnit}
+            value={rDistance}
+            onChange={(e) => {
+              onUserInput();
+              setRDistance(e.target.value);
+            }}
+            onKeyDown={onKeyDown}
+            onBlur={onRightFieldBlur}
+            data-testid={`set-${index}-right-${key}`}
+          />
+        </span>
       );
     // duration — no second timer button: one physical set has one clock.
     return (
-      <Field
-        key={key}
-        className="px-0 leading-5"
-        inputMode="text"
-        placeholder={
-          duration.trim() !== "" ? duration : (ghostDuration ?? "m:ss")
-        }
-        value={rDuration}
-        onChange={(e) => setRDuration(e.target.value)}
-        onKeyDown={onKeyDown}
-        data-testid={`set-${index}-right-duration`}
-      />
+      <span key={key} className="w-20 shrink-0">
+        <Field
+          className="leading-5"
+          inputMode="text"
+          enterKeyHint={lastColIs(key) ? "done" : "next"}
+          placeholder={duration.trim() !== "" ? duration : "m:ss"}
+          value={rDuration}
+          onChange={(e) => {
+            onUserInput();
+            setRDuration(e.target.value);
+          }}
+          onKeyDown={onKeyDown}
+          onBlur={onRightFieldBlur}
+          data-testid={`set-${index}-right-${key}`}
+        />
+      </span>
     );
   }
 
+  function lastColIs(key: ColKey): boolean {
+    return key === columns[columns.length - 1]?.key;
+  }
+
   // Compact preview of what's filled in next to the details-sheet trigger —
-  // mirrors CommittedRow's collapsed RIR/RPE readout, so the same information
-  // is visible without opening the sheet on either row type.
+  // mirrors CommittedChip's collapsed RIR/RPE readout, so the same
+  // information is visible without opening the sheet on either row type.
   const modifierPreview = effort
     ? effortReadout({
         ...parseLoggedRirFields(rirMin, rirMax),
@@ -5038,54 +4741,92 @@ function ActiveRow({
       })
     : "";
 
+  const segCls = (active: boolean) =>
+    cn(
+      "h-6 rounded px-2 text-2xs transition-colors duration-100",
+      active
+        ? "bg-accent-soft font-medium text-accent"
+        : "text-faint hover:text-soft",
+    );
+
   return (
-    <div
-      ref={rowRef}
-      className="relative col-span-full grid grid-cols-subgrid gap-x-2 -mx-4 border-t border-border px-4"
-    >
-      <div
-        className={cn(
-          "col-span-full grid h-11 grid-cols-subgrid items-center gap-x-2 -mx-4 px-4 md:h-8",
-          // Zebra continues the committed rows' alternation by physical-set
-          // index, so the draft row reads as the next stripe in the block —
-          // one quiet sage step; committed rows keep the stronger hover.
-          index % 2 === 1 ? "bg-surface-2" : "bg-surface",
+    <div ref={rowRef} className="relative border-t border-border">
+      {/* Strip header: # · data columns · this set's laterality toggle. */}
+      <div className="flex items-center gap-1.5 px-4 py-1 text-2xs font-medium tracking-widest text-faint uppercase">
+        <span className="w-8 shrink-0">#</span>
+        {columns.map((c) =>
+          c.key === "weight" ? (
+            <span key={c.key} className="min-w-0 flex-1">
+              {unitOverride}
+            </span>
+          ) : (
+            <span key={c.key} className="flex-1">
+              {c.header}
+            </span>
+          ),
         )}
-      >
-        <SetTypeCell
-          index={index}
-          setType={setType}
-          ringState="empty"
-          onChange={setSetType}
-          testId={`set-${index}-type`}
-          sideLabel={isUnilateral ? "L" : undefined}
-        />
-        {showPrevious && (
+        <span className="flex shrink-0 items-center gap-0.5 rounded-md border border-border bg-surface p-0.5 normal-case tracking-normal">
           <button
             type="button"
-            // Keep the input focused so tapping doesn't blur it.
             onMouseDown={(e) => e.preventDefault()}
-            onClick={fillFromPrevious}
-            disabled={!previous}
-            title={previous ? "Fill from last time" : undefined}
-            className="num truncate text-left text-sm text-faint transition-colors duration-100 enabled:hover:text-ink disabled:cursor-default"
-            data-testid={`set-${index}-previous`}
+            onClick={() => setLateralityOverride("bilateral")}
+            aria-pressed={!isUnilateral}
+            title="Both sides work together — one line per set"
+            className={segCls(!isUnilateral)}
+            data-testid={`set-${index}-laterality-bilateral`}
           >
-            {previous ? (previousText(previous, unit) ?? "—") : "—"}
+            Bilateral
           </button>
-        )}
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setLateralityOverride("unilateral")}
+            aria-pressed={isUnilateral}
+            title="Each side's reps logged separately — two lines per set"
+            className={segCls(isUnilateral)}
+            data-testid={`set-${index}-laterality-unilateral`}
+          >
+            Unilateral
+          </button>
+        </span>
+      </div>
+
+      {/* The strip itself: set number · data fields · ⋯ · ✓. */}
+      <div className="flex items-stretch gap-1.5 py-1 pr-2 pl-4">
+        <span className="flex w-8 shrink-0 items-center">
+          <SetTypeCell
+            index={index}
+            setType={setType}
+            ringState="empty"
+            onChange={setSetType}
+            testId={`set-${index}-type`}
+            sideLabel={isUnilateral ? "L" : undefined}
+          />
+        </span>
         {columns.map((c, i) =>
-          dataCell(c.key, autoFocusWeight && i === 0, i === columns.length - 1),
+          isUnilateral && c.key !== "weight" ? (
+            <span key={c.key} className="flex min-w-0 flex-1 gap-1.5">
+              {dataCell(
+                c.key,
+                autoFocusWeight && i === 0,
+                i === columns.length - 1,
+              )}
+              {rDataCell(c.key)}
+            </span>
+          ) : (
+            dataCell(
+              c.key,
+              autoFocusWeight && i === 0,
+              i === columns.length - 1,
+            )
+          ),
         )}
-        {/* Commit + details share the two right-most fixed tracks (commit +
-            menu-gutter) inside one guard span, so tabbing into either button
-            can't check the set off. The check sits at the far right, right of
-            the ⋯ (note 2) — the ⋯ claims the commit track so the ✓ lands at
-            the same x as every committed row's ⋯. ⋯ is first in DOM (Tab
-            from the last input lands on details). */}
+        {/* ⋯ + ✓ share the trailing control group, so tabbing into either
+            button can't check the set off. The check is the far-right
+            commit; ⋯ opens the details sheet. */}
         <span
           ref={moreCellRef}
-          className="col-span-2 flex items-center justify-end gap-1"
+          className="col-span-2 flex shrink-0 items-center"
         >
           <Dots
             onClick={() => {
@@ -5103,7 +4844,7 @@ function ActiveRow({
           />
           <IconButton
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => commit(true)}
+            onClick={() => commit()}
             title="Mark set done"
             className="text-ink"
             data-testid={`set-${index}-done`}
@@ -5113,27 +4854,23 @@ function ActiveRow({
         </span>
       </div>
 
-      {/* RIR/RPE draft preview: the same badge out of the grid flow as the
-          committed rows', so the fixed gutter never widens for it. */}
+      {/* RIR/RPE draft preview: the same badge out of the strip's flow as
+          the committed chips', so the layout never widens for it. */}
       {modifierPreview && (
         <span className="num pointer-events-none absolute top-0 right-1.5 z-10 -translate-y-1/2 rounded-sm border border-border bg-surface px-1 text-2xs text-faint">
           {modifierPreview}
         </span>
       )}
 
-      {/* Right side of a unilateral pair: no ring, no ⋯ — set type/RIR/RPE/
-          note are entered once above and seed both rows at commit. Only set
-          type stays shared after that; post-commit RIR/RPE/note are per-limb,
-          edited from each committed row's own details sheet. */}
+      {/* The unilateral strip's shared-weight statement — explicit, never an
+          invisible "same weight both sides". */}
       {isUnilateral && (
-        <div className="col-span-full mt-1 grid grid-cols-subgrid items-center gap-x-2">
-          <span className="num pl-6 text-2xs tabular-nums text-faint">
-            {index + 1}ᴿ
-          </span>
-          {showPrevious && <span />}
-          {columns.map((c) => rDataCell(c.key))}
-          <span />
-        </div>
+        <p
+          className="px-4 pb-1.5 text-2xs text-faint"
+          data-testid={`set-${index}-laterality-note`}
+        >
+          Same weight both sides — log each side&apos;s reps separately.
+        </p>
       )}
 
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
@@ -5142,27 +4879,6 @@ function ActiveRow({
           className="md:max-w-sm"
         >
           <div className="flex flex-col gap-4">
-            {lateralityEditable && (
-              <label className="flex items-start gap-2 rounded-md border border-border bg-surface-2 p-2">
-                <input
-                  type="checkbox"
-                  checked={isUnilateral}
-                  onChange={(e) =>
-                    setLateralityOverride(
-                      e.target.checked ? "unilateral" : "bilateral",
-                    )
-                  }
-                  className="mt-0.5 size-4 shrink-0 accent-(--accent)"
-                  data-testid={`set-${index}-unilateral`}
-                />
-                <span className="text-xs text-soft">
-                  <span className="font-medium text-ink">Unilateral</span>
-                  <br />
-                  Just this set: same weight both sides, log each side's reps
-                  separately.
-                </span>
-              </label>
-            )}
             {effort && (
               <div className="flex flex-col gap-3">
                 {modifierBindings({
@@ -5272,9 +4988,6 @@ function ActiveRow({
   );
 }
 
-// Top-bar duration readout that doubles as the pause / edit-start control
-// (Hevy: tapping the stopwatch opens Pause·Resume and start-date/time edits).
-// Duration = (end | now) − started − paused; freezes while paused.
 function SessionDurationControl({
   startedAt,
   endedAt,
@@ -5370,26 +5083,6 @@ function SessionDurationControl({
           </div>
         </>
       )}
-    </span>
-  );
-}
-
-function RestTimer({ since }: { since: number | null }) {
-  const [, tick] = useReducer((n: number) => n + 1, 0);
-  useEffect(() => {
-    if (since === null) return;
-    const t = setInterval(tick, 1000);
-    return () => clearInterval(t);
-  }, [since]);
-
-  if (since === null) return null;
-  const total = Math.floor((Date.now() - since) / 1000);
-  const m = Math.floor(total / 60);
-  const s = String(total % 60).padStart(2, "0");
-  return (
-    <span className="num flex h-8 shrink-0 items-center gap-2 rounded-md bg-translucent px-2 text-xs text-soft shadow-(--inset-control)">
-      <Timer className="size-4" />
-      {m}:{s}
     </span>
   );
 }
