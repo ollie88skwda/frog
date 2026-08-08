@@ -330,7 +330,7 @@
    desktop's smaller `text-sm`/`text-xs` sizing on mouse-driven pointers alone. */
 @layer utilities {
   @media (pointer: coarse) {
-    input,
+    input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
     textarea,
     select {
       font-size: 16px !important;
