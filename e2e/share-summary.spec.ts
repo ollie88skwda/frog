@@ -107,6 +107,19 @@ test("post-save summary shows the ordinal, offers a hero-set pick, and shares a 
   await page.getByTestId("share-ground-green").click();
   expect(await isPainted()).toBe(true);
 
+  // The 16:9 poster frame paints at its exact crop (the aspect fix this pass
+  // landed — a 4th frame used to fall through to the post aspect).
+  await page.getByTestId("share-frame-landscape").click();
+  await expect
+    .poll(() =>
+      page
+        .getByTestId("share-canvas")
+        .evaluate((c: HTMLCanvasElement) => `${c.width}x${c.height}`),
+    )
+    .toBe("1080x608");
+  expect(await isPainted()).toBe(true);
+  await page.getByTestId("share-frame-story").click();
+
   const [download] = await Promise.all([
     page.waitForEvent("download"),
     page.getByTestId("share-save").click(),

@@ -20,17 +20,8 @@ import {
   useUpdateConditions,
   useUpdateSessionNotes,
 } from "@/lib/queries";
+import { sessionConditionsLine } from "@/lib/share/conditions";
 import { cn } from "@/lib/utils";
-
-// Compact chip labels for the seeded conditions ("7.5h · 82kg · stress 3").
-const SHORT: Record<string, (v: unknown) => string> = {
-  [SEED_CONDITIONS.sleepH]: (v) => `${v}h`,
-  [SEED_CONDITIONS.bodyweight]: (v) => `${v}kg`,
-  [SEED_CONDITIONS.preCarbsG]: (v) => `${v}g`,
-  [SEED_CONDITIONS.caffeineMg]: (v) => `${v}mg`,
-  [SEED_CONDITIONS.stress]: (v) => `stress ${v}`,
-  [SEED_CONDITIONS.lastMealH]: (v) => `ate ${v}h ago`,
-};
 
 const NUMERIC_RE = /^-?\d+(\.\d+)?$/;
 
@@ -66,24 +57,6 @@ function stressWord(
   if (n <= 6) return { text: "normal", className: "text-faint" };
   if (n <= 8) return { text: "strained", className: "text-warn" };
   return { text: "severe", className: "text-neg" };
-}
-
-function summarize(
-  values: Record<string, unknown>,
-  metrics: Metric[],
-): string | null {
-  const parts: string[] = [];
-  for (const m of metrics) {
-    const v = values[m.id];
-    if (v == null || v === "") continue;
-    const short = SHORT[m.id];
-    if (short) parts.push(short(v));
-    else if (m.type === "checkbox") {
-      if (v === true) parts.push(m.name);
-    } else if (m.unit) parts.push(`${v}${m.unit}`);
-    else parts.push(`${m.name} ${v}`);
-  }
-  return parts.length ? parts.join(" · ") : null;
 }
 
 // Debounced-with-flush: schedule() replaces any pending call; flush() runs it now.
@@ -150,7 +123,7 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
     [metrics],
   );
   const values = session?.conditionValues ?? {};
-  const summary = summarize(values, sessionMetrics);
+  const summary = sessionConditionsLine(values, sessionMetrics);
 
   // The sheet edits a LOCAL copy, seeded when it opens; every commit sends the
   // whole map (replace semantics). Keeping it local means the settle-invalidate

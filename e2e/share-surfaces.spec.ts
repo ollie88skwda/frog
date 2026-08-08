@@ -9,6 +9,10 @@ import {
   waitForExercise,
 } from "./helpers";
 
+// The seed id of the globally-seeded Sleep condition (seed-ids.ts) — the
+// conditions chip pre-loads it for every session.
+const SLEEP_ID = "00000000-0000-4000-8000-0000000000a1";
+
 // The share surfaces share-summary.spec.ts doesn't reach:
 //
 //  1. The exercise Records card on a reps-only type. `bodyweight_reps` has no
@@ -115,6 +119,11 @@ test("a reps-only exercise keeps a Records share card that paints", async ({
       .getByTestId("share-sheet")
       .screenshot({ path: evidence("records-bodyweight-sheet.png") });
     await saveCard(page, "records-bodyweight-card.png");
+    // The press-pose mascot (records/pr cards) on the 16:9 poster frame.
+    await page.getByTestId("share-frame-landscape").click();
+    await page.getByTestId("share-ground-dark").click();
+    await expect.poll(() => paintedSize(page)).toBe("1080x608");
+    await saveCard(page, "records-landscape-dark.png");
   }
 });
 
@@ -207,6 +216,15 @@ test("one layout engine paints every frame × ground of a session card", async (
     await page.getByTestId(`set-${i}-add`).click();
     await expect(page.getByTestId(`committed-${i}-type`)).toBeVisible();
   }
+  // Record a condition so the card's lab-report strip has data to paint
+  // (the strip only renders when the session recorded something).
+  await page.getByTestId("conditions-chip").click();
+  const sleep = page.getByTestId(`condition-input-${SLEEP_ID}`);
+  await expect(sleep).toBeVisible();
+  await sleep.fill("7.5");
+  await sleep.blur();
+  await expect(page.getByTestId("conditions-chip")).toContainText("7.5h");
+  await page.keyboard.press("Escape"); // close the conditions sheet
   await page.getByTestId("end-session-btn").click();
   await page.getByTestId("finish-save").click();
   await expect(page.getByTestId("post-save-summary")).toBeVisible();
@@ -240,7 +258,12 @@ test("one layout engine paints every frame × ground of a session card", async (
   }
   await page.getByTestId("share-hero-auto").click();
 
-  const SIZES = { story: "1080x1920", post: "1080x1350", square: "1080x1080" };
+  const SIZES = {
+    story: "1080x1920",
+    post: "1080x1350",
+    square: "1080x1080",
+    landscape: "1080x608",
+  };
   for (const [frame, size] of Object.entries(SIZES)) {
     await page.getByTestId(`share-frame-${frame}`).click();
     for (const ground of ["dark", "light", "green", "photo"]) {
@@ -262,5 +285,15 @@ test("one layout engine paints every frame × ground of a session card", async (
     await page
       .getByTestId("share-sheet")
       .screenshot({ path: evidence("session-sheet-square-green.png") });
+    // The new 16:9 poster frame, both mascot poses' cards, dark + photo:
+    // the split layout is the frame this pass is about, so it gets its own
+    // evidence set beyond the matrix loop above.
+    await page.getByTestId("share-frame-landscape").click();
+    await page.getByTestId("share-ground-dark").click();
+    await expect.poll(() => paintedSize(page)).toBe(SIZES.landscape);
+    await saveCard(page, "session-landscape-dark.png");
+    await page.getByTestId("share-ground-photo").click();
+    await expect.poll(() => paintedSize(page)).toBe(SIZES.landscape);
+    await saveCard(page, "session-landscape-photo.png");
   }
 });

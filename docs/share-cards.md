@@ -29,7 +29,18 @@ confirm-every-time in `measures.tsx`).
 
 Story (1080×1920, default, mobile-first — the primary IG-story surface
 every competitor treats as primary) / Post (1080×1350) / Square
-(1080×1080) / OG (1200×630, brand-only, not user-selectable).
+(1080×1080) / **Landscape (1080×608 — IG's 16:9 feed crop, added 2026-08-08;
+see the DECISIONS entry)** / OG (1200×630, brand-only, not user-selectable).
+
+The landscape frame is the odd one by design: a 608-tall canvas cannot hold
+the full vertical zone stack (every inter-zone margin is a width ratio, so
+the stack is ~580 px at 1080 wide), so it is the **poster format** — compact
+knobs on the `Frame` type (`spacing` ×0.6, `markRatio` 56/1080, `layout:
+"split"` with `splitRatio` 0.55, `contextMode` "poster") drive a two-column
+split: full-width brand row (with the frog-mascot moment top-right), left
+column context (eyebrow + title only) + hero, right column the signature
+graphic with the support row bottom-anchored beneath it, footer full-width. Every other frame omits the knobs
+and paints byte-identically to before.
 
 ## Grounds
 
@@ -37,6 +48,25 @@ Dark / Light / Photo (new — bottom scrim over a session photo, the format
 every competitor ships and the old card didn't) / Green (new — the shipped
 brand-tile palette, default for PR cards and now confirmed for general use
 per captain call).
+
+## Session card conditions strip
+
+The lab-report touch (2026-08-08): when the session recorded conditions,
+the card paints a mono strip under the date — `7.5h · 82kg · stress 3` —
+from `sessions.condition_values` + the user's metrics, formatted by the one
+shared helper `lib/share/conditions.ts` (the in-session chip imports the same
+formatter; two copies would drift). `SessionCard.conditionsLine` is a
+pre-formatted `string | null`; null means the strip simply isn't painted.
+The landscape/poster frame drops the date and the strip (no budget); the
+card never invents a line when nothing was recorded.
+
+## Frog-mascot moments
+
+The canonical mark, rasterized through the same `loadFrogMarkImage` path as
+the brand row (never a hand-copied path — `check-mark-drift.ts` untouched),
+in a flat two-pose moment top-right of the brand row: "press" (barbell
+overhead — pr/records cards) and "ride" (frog perched on the bar — every
+other kind). The barbell is primitives in `p.ink` (`lib/share/mascot.ts`).
 
 ## Session card hero
 
@@ -182,7 +212,7 @@ already took.
 `summary-{ordinal,streak,streak-weeks,pr-count,dots,dismiss}`,
 `share-slide-{hero,pr,streak}`,
 `share-sheet`(+`-loading`)/`share-preview`/`share-canvas`/`share-close`/`share-save`/`share-export`/`share-paint-error`,
-`share-frame-{story,post,square}`/`share-ground-{dark,light,photo,green}`,
+`share-frame-{story,post,square,landscape}`/`share-ground-{dark,light,photo,green}`,
 `share-hero-picker`/`share-hero-auto`/`share-hero-set-{setId}`,
 `share-photo-picker`/`share-photo-{position}`/`share-photo-camera`/`share-photo-error`,
 `history-share-btn`/`records-share-btn`/`monthly-share-btn`/`year-share-btn`/`measures-share-btn`(+`measures-share-confirm`).

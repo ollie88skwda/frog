@@ -12,7 +12,12 @@ import { randomTagline, type Tone } from "@/lib/frog-tagline";
 import { useSessionMedia } from "@/lib/media-queries";
 import { resizePhoto } from "@/lib/photo";
 import { useUnit } from "@/lib/settings";
-import { FRAME_LABELS, FRAME_ORDER, type FrameKind } from "@/lib/share/frames";
+import {
+  FRAME_LABELS,
+  FRAME_ORDER,
+  FRAMES,
+  type FrameKind,
+} from "@/lib/share/frames";
 import {
   GROUND_LABELS,
   GROUNDS,
@@ -441,12 +446,11 @@ export function ShareSheet({
     }
   }
 
-  const aspect =
-    frame === "story"
-      ? "1080 / 1920"
-      : frame === "square"
-        ? "1080 / 1080"
-        : "1080 / 1350";
+  // One source of truth: the frame's own geometry, not a hand-rolled chain —
+  // a 4th hardcoded branch here silently previewed a new frame at the post
+  // aspect (the landscape frame's preview bug this replaced). Kept as a CSS
+  // "w / h" string (React appends px to unitless-unlisted numeric styles).
+  const aspect = `${FRAMES[frame].w} / ${FRAMES[frame].h}`;
 
   return (
     <div
