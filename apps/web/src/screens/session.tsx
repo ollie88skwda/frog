@@ -2368,14 +2368,22 @@ function ExerciseBlock({
   // on the copy means the edit landed and nothing is deleted. If the
   // resolution read itself fails, the copy is never deleted (deleting could
   // destroy a committed repoint) and the block stays on the copy with a
-  // couldn't-confirm banner. Retry resolves by read again and never mints a
-  // second copy while the row already points at one. The Sides/Attach items
-  // stay disabled while a copy-on-write is in flight so a rapid re-toggle
-  // can't target the not-yet-inserted copy id.
+  // couldn't-confirm banner. Retry re-attempts the orphan copy's idempotent
+  // soft-delete first (a cleanup delete can itself fail and leave a live
+  // duplicate library row), resolves by read again, never mints a second
+  // copy while the row already points at one, and a fork whose create never
+  // resolved starts over from the seed instead of re-pointing at a copy that
+  // was never inserted. The Sides/Attach items stay disabled while a
+  // copy-on-write is in flight or its failure banner is up, so a rapid
+  // re-toggle can't target the not-yet-inserted copy id or bypass the orphan
+  // cleanup.
   const [copying, setCopying] = useState(false);
   const [copyError, setCopyError] = useState<{
     patch: ExercisePatch;
     unresolved?: boolean;
+    created?: boolean;
+    orphanId?: string;
+    originalId: string;
   } | null>(null);
   const repoint = useMutation({
     mutationFn: ({ seId, copyId }: { seId: string; copyId: string }) =>
@@ -2386,6 +2394,7 @@ function ExerciseBlock({
     copyId: string,
     originalId: string,
     patch: ExercisePatch,
+    created: boolean,
   ) {
     void (async () => {
       let state: "committed" | "not-committed" | "unresolved";
@@ -2401,34 +2410,53 @@ function ExerciseBlock({
       }
       if (state === "unresolved") {
         setCopying(false);
-        setCopyError({ patch, unresolved: true });
+        setCopyError({ patch, unresolved: true, created, originalId });
         return;
       }
       onSwapExercise(seId, originalId, originalId);
       setCopying(false);
-      setCopyError({ patch });
+      setCopyError({ patch, created, orphanId: copyId, originalId });
       deleteExercise.mutate(copyId);
+    })();
+  }
+  function forkExercise(ex: Exercise, patch: ExercisePatch) {
+    if (ex.isCustom) {
+      updateExercise.mutate({ exerciseId: ex.id, patch });
+      return;
+    }
+    setCopyError(null);
+    const originalId = ex.id;
+    const copyId = newId();
+    const creating = createExercise.mutateAsync({
+      name: `${ex.name} (copy)`,
+      opts: { id: copyId, ...copyExerciseOpts(ex), ...patch },
+    });
+    onSwapExercise(block.seId, copyId, originalId);
+    setCopying(true);
+    void (async () => {
+      let created = false;
+      try {
+        await creating;
+        created = true;
+      } catch {
+        // The create's failure is itself ambiguous (the row can have landed
+        // with the response lost) — settleRepointFailure resolves it by read.
+      }
+      if (!created) {
+        settleRepointFailure(block.seId, copyId, originalId, patch, false);
+        return;
+      }
+      try {
+        await repoint.mutateAsync({ seId: block.seId, copyId });
+        setCopying(false);
+      } catch {
+        settleRepointFailure(block.seId, copyId, originalId, patch, true);
+      }
     })();
   }
   function editOrCopy(patch: ExercisePatch) {
     if (!exercise) return;
-    if (exercise.isCustom) {
-      updateExercise.mutate({ exerciseId: exercise.id, patch });
-      return;
-    }
-    setCopyError(null);
-    const originalId = exercise.id;
-    const copyId = newId();
-    const creating = createExercise.mutateAsync({
-      name: `${exercise.name} (copy)`,
-      opts: { id: copyId, ...copyExerciseOpts(exercise), ...patch },
-    });
-    onSwapExercise(block.seId, copyId, originalId);
-    setCopying(true);
-    void creating
-      .then(() => repoint.mutateAsync({ seId: block.seId, copyId }))
-      .then(() => setCopying(false))
-      .catch(() => settleRepointFailure(block.seId, copyId, originalId, patch));
+    forkExercise(exercise, patch);
   }
   function retryCopy() {
     if (!copyError) return;
@@ -2436,6 +2464,24 @@ function ExerciseBlock({
     setCopyError(null);
     setCopying(true);
     void (async () => {
+      if (err.orphanId) {
+        // The block was swapped back to the seed and the previous copy may
+        // still exist (its cleanup delete can have failed) — re-attempt the
+        // idempotent soft-delete first. The row no longer references it, so
+        // this cannot destroy a committed repoint.
+        try {
+          await deleteExercise.mutateAsync(err.orphanId);
+        } catch {
+          setCopying(false);
+          setCopyError(err);
+          return;
+        }
+      }
+      if (!err.unresolved) {
+        setCopying(false);
+        editOrCopy(err.patch);
+        return;
+      }
       let state: "committed" | "not-committed" | "unresolved";
       try {
         const row = await repo.getSessionExercise(block.seId);
@@ -2453,9 +2499,9 @@ function ExerciseBlock({
         setCopyError(err);
         return;
       }
-      if (err.unresolved) {
-        // The block never left the live copy (nothing was soft-deleted); the
-        // repoint is all that remains — re-attempt it on the same copy.
+      if (err.created) {
+        // The copy exists but the repoint never confirmed; the block is
+        // still on the copy — re-attempt the repoint on it.
         void repoint
           .mutateAsync({ seId: block.seId, copyId: block.exerciseId })
           .then(() => setCopying(false))
@@ -2463,14 +2509,23 @@ function ExerciseBlock({
             settleRepointFailure(
               block.seId,
               block.exerciseId,
-              block.ghostExerciseId ?? block.exerciseId,
+              err.originalId,
               err.patch,
+              true,
             ),
           );
         return;
       }
+      // The copy create never resolved — the block may be pinned to a
+      // nonexistent copy id; start a fresh copy from the seed exercise.
+      const original = exercises.find((e) => e.id === err.originalId);
+      if (!original) {
+        setCopying(false);
+        setCopyError(err);
+        return;
+      }
       setCopying(false);
-      editOrCopy(err.patch);
+      forkExercise(original, err.patch);
     })();
   }
 
@@ -2562,7 +2617,7 @@ function ExerciseBlock({
               heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
             }
             machineAttached={machine != null}
-            busy={copying}
+            busy={copying || copyError != null}
             onAttachMachine={() => setAttachOpen(true)}
             laterality={exercise?.laterality ?? null}
             onLateralityChange={(l) => editOrCopy({ laterality: l })}
