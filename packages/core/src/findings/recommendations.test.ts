@@ -80,6 +80,25 @@ describe("recommendationsForExercise", () => {
     expect(recs[0].stats.rirCoverage).toBe(1);
   });
 
+  it("keep-going's n is the fit n, not the RIR work-set count", () => {
+    // One bad-data spike session is rejected by the MAD fit, so trend.n <
+    // session count; the RIR stats still span every session.
+    const sessions = [
+      ...Array.from({ length: 8 }, (_, i) =>
+        session(i, [lift(100 + i * 5, 5, { rirMin: 2, rirMax: 3 })]),
+      ),
+      session(8, [lift(500, 5, { rirMin: 2, rirMax: 3 })]),
+    ];
+    const trend = trendFor(sessions);
+    expect(trend.n).toBe(8);
+    const recs = recommendationsForExercise("ex1", sessions, trend);
+    expect(recs).toHaveLength(1);
+    expect(recs[0].kind).toBe("keep-going");
+    expect(recs[0].stats.n).toBe(trend.n);
+    expect(recs[0].stats.rirCoverage).toBe(1);
+    expect(recs[0].stats.medianRir).toBeCloseTo(2.5);
+  });
+
   it("PLATEAU with flat volume → change-volume", () => {
     const sessions = Array.from({ length: 8 }, (_, i) =>
       session(i, [lift(100), lift(100)]),

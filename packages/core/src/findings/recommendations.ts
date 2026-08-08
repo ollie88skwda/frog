@@ -41,7 +41,10 @@ export function recommendationsForExercise(
     return [
       {
         kind: "keep-going",
-        stats: rirStatsFor(exerciseId, sessions),
+        stats: {
+          ...rirStatsFor(exerciseId, sessions),
+          n: trend.n,
+        },
       },
     ];
   }
@@ -85,10 +88,9 @@ export function recommendationsForExercise(
 function rirStatsFor(
   exerciseId: string,
   sessions: FindingsSessionInput[],
-): RecommendationStat {
+): Omit<RecommendationStat, "n"> {
   const rir = rirStatsByExercise(sessions, exerciseId);
   return {
-    n: rir.total,
     medianRir: rir.medianRir,
     rirCoverage: rir.coverage,
   };

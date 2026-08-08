@@ -6,10 +6,12 @@ import type {
 } from "@frog/core";
 import {
   formatVolume,
+  formatVolumeNumber,
   formatWeight,
   rirStatsByExercise,
   sessionTopsByExercise,
   sessionVolumeByExercise,
+  toDisplayWeight,
 } from "@frog/core";
 import { Badge } from "@radix-ui/themes";
 import { ChevronRight } from "lucide-react";
@@ -308,6 +310,7 @@ function TrendSheet({
   onClose: () => void;
 }) {
   const { t } = useVoice();
+  const { unit } = useUnit();
 
   const tops = useMemo(
     () => sessionTopsByExercise(sessions).get(trend.exerciseId)?.tops ?? [],
@@ -350,7 +353,7 @@ function TrendSheet({
               "Top-set e1RM — what the trend is fit over",
             )}
             points={e1rmPoints}
-            formatY={(v) => String(Math.round(v))}
+            formatY={(v) => String(toDisplayWeight(v, unit))}
             testId="trend-sheet-e1rm-chart"
           />
           {hasVolume && (
@@ -360,7 +363,7 @@ function TrendSheet({
                 "Volume per session, warm-ups out",
               )}
               points={volumePoints}
-              formatY={(v) => String(Math.round(v))}
+              formatY={(v) => formatVolumeNumber(v, unit)}
               testId="trend-sheet-volume-chart"
             />
           )}
