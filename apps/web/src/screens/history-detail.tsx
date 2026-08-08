@@ -235,6 +235,7 @@ export default function HistoryDetailScreen() {
     void qc.invalidateQueries({ queryKey: ["sessions"] });
     void qc.invalidateQueries({ queryKey: ["findings-data"] });
     void qc.invalidateQueries({ queryKey: ["active-session"] });
+    void qc.invalidateQueries({ queryKey: ["recent-exercise-ids"] });
     navigate("/history");
   }
 

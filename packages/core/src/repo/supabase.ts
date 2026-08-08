@@ -1514,6 +1514,37 @@ export class SupabaseRepo implements Repo {
     }));
   }
 
+  async recentExerciseIds(days: number): Promise<string[]> {
+    const since = Date.now() - days * 86_400_000;
+    // One row per set in the window, newest first; dedupe by exercise id
+    // preserving that order (the first occurrence of each id is its most
+    // recent set). Paginated via selectAll — a heavy log can exceed the
+    // 1000-row PostgREST cap.
+    const rows = await this.selectAll<Row>((from, to) =>
+      this.client
+        .from("set_logs")
+        .select("created_at, session_exercises!inner(exercise_id)", {
+          count: "exact",
+        })
+        .gte("created_at", since)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, to),
+    );
+    const seen = new Set<string>();
+    const ids: string[] = [];
+    for (const r of rows) {
+      const exId = (r.session_exercises as Row | null)?.exercise_id as
+        | string
+        | undefined;
+      if (!exId || seen.has(exId)) continue;
+      seen.add(exId);
+      ids.push(exId);
+    }
+    return ids;
+  }
+
   async lastNoteForExercise(
     exerciseId: string,
     excludeSessionExerciseId?: string,

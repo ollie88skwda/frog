@@ -857,7 +857,10 @@ export default function SessionScreen() {
     },
     // A new set can mint a PR — mark the records snapshot stale (no observer is
     // mounted mid-session, so this never refetches on the logging path).
-    onSettled: () => qc.invalidateQueries({ queryKey: ["records-data"] }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["records-data"] });
+      void qc.invalidateQueries({ queryKey: ["recent-exercise-ids"] });
+    },
   });
 
   // Track the payload from the moment it is dispatched, so the reconciliation
@@ -1184,14 +1187,24 @@ export default function SessionScreen() {
       ),
     );
     dropQueuedSets((id) => id === setId);
-    void repo.deleteSet(idMap[setId] ?? setId);
+    void repo.deleteSet(idMap[setId] ?? setId).then(
+      () => {
+        void qc.invalidateQueries({ queryKey: ["recent-exercise-ids"] });
+      },
+      () => {},
+    );
   }
 
   function removeBlock(seId: string) {
     setBlocks((prev) => (prev ?? []).filter((b) => b.seId !== seId));
     dismissRest(seId);
     dropQueuedSets((_id, v) => v.seId === seId);
-    void repo.deleteSessionExercise(seId);
+    void repo.deleteSessionExercise(seId).then(
+      () => {
+        void qc.invalidateQueries({ queryKey: ["recent-exercise-ids"] });
+      },
+      () => {},
+    );
   }
 
   // Repoint a block at a different exercise row (copy-on-write: a seed
@@ -1382,6 +1395,7 @@ export default function SessionScreen() {
     void qc.invalidateQueries({ queryKey: ["active-session"] });
     void qc.invalidateQueries({ queryKey: ["sessions"] });
     void qc.invalidateQueries({ queryKey: ["findings-data"] });
+    void qc.invalidateQueries({ queryKey: ["recent-exercise-ids"] });
     navigate("/");
   }
 

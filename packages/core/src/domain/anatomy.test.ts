@@ -6,12 +6,15 @@ import {
   MUSCLE_ALIASES,
   MUSCLE_REGION,
   MUSCLE_REGION_LABELS,
+  MUSCLE_REGIONS,
   MUSCLES,
   type MuscleTarget,
   muscleLabelMatches,
+  musclesInRegion,
   primaryMuscles,
   ratingsForExercise,
   ratingsForMuscle,
+  regionOf,
   roleAt,
   secondaryMuscles,
 } from "./anatomy";
@@ -183,6 +186,25 @@ describe("primaryMuscles / secondaryMuscles", () => {
   it("handles null", () => {
     expect(primaryMuscles(null)).toEqual([]);
     expect(secondaryMuscles(null)).toEqual([]);
+  });
+});
+
+describe("musclesInRegion", () => {
+  it("partitions MUSCLES across the six regions, in MUSCLES order", () => {
+    const seen: (typeof MUSCLES)[number][] = [];
+    for (const region of MUSCLE_REGIONS) {
+      const inRegion = musclesInRegion(region);
+      expect(inRegion.length).toBeGreaterThan(0);
+      // Every listed muscle maps to the region it was asked for.
+      for (const m of inRegion) expect(regionOf(m.key)).toBe(region);
+      // Order follows MUSCLES, not an invented order.
+      const indexIn = new Map(MUSCLES.map((m, i) => [m.key, i]));
+      const idx = inRegion.map((m) => indexIn.get(m.key) ?? 0);
+      expect(idx).toEqual([...idx].sort((a, b) => a - b));
+      seen.push(...inRegion);
+    }
+    // Every muscle belongs to exactly one region (the regions partition).
+    expect(new Set(seen.map((m) => m.key)).size).toBe(MUSCLES.length);
   });
 });
 
