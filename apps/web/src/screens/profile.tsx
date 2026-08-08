@@ -271,7 +271,7 @@ function ProfileHeader({
               <p className="truncate text-2xs text-faint">{email}</p>
               {bio && (
                 <p
-                  className="mt-0.5 text-xs text-soft"
+                  className="mt-0.5 whitespace-pre-line text-xs text-soft"
                   data-testid="profile-bio"
                 >
                   {bio}
