@@ -282,7 +282,7 @@ function ProfileHeader({
 
   return (
     <div className="mt-6 border border-border bg-surface p-4">
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         <span className="flex size-12 shrink-0 items-center justify-center bg-accent text-lg font-semibold text-accent-fg">
           {initial}
         </span>
@@ -332,37 +332,37 @@ function ProfileHeader({
             />
           </div>
         ) : (
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div className="min-w-0">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 items-center gap-2">
               <p
-                className="truncate text-sm font-medium"
+                className="min-w-0 truncate text-sm font-medium"
                 data-testid="profile-name"
               >
                 {displayName}
               </p>
-              <p className="truncate text-2xs text-faint">{email}</p>
-              {bio && (
-                <p
-                  className="mt-0.5 whitespace-pre-line text-xs text-soft"
-                  data-testid="profile-bio"
-                >
-                  {bio}
-                </p>
-              )}
+              <button
+                type="button"
+                title="Edit profile"
+                onClick={() => {
+                  setDraft(displayName);
+                  setDraftBio(bio ?? "");
+                  setEditing(true);
+                }}
+                className="ml-auto flex size-8 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
+                data-testid="profile-name-edit"
+              >
+                <Pencil className="size-4" />
+              </button>
             </div>
-            <button
-              type="button"
-              title="Edit profile"
-              onClick={() => {
-                setDraft(displayName);
-                setDraftBio(bio ?? "");
-                setEditing(true);
-              }}
-              className="ml-auto flex size-8 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
-              data-testid="profile-name-edit"
-            >
-              <Pencil className="size-4" />
-            </button>
+            <p className="mt-0.5 truncate text-2xs text-faint">{email}</p>
+            {bio && (
+              <p
+                className="mt-0.5 whitespace-pre-line text-xs text-soft"
+                data-testid="profile-bio"
+              >
+                {bio}
+              </p>
+            )}
           </div>
         )}
       </div>
