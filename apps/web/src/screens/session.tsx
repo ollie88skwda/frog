@@ -3043,7 +3043,8 @@ function BlockMenu({
                 setOpen(false);
                 onRemoveBlock();
               }}
-              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
+              disabled={busy}
+              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
               data-testid={`remove-block-${blockName}`}
             >
               <Trash2 className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
