@@ -1602,14 +1602,6 @@ export default function SessionScreen() {
     0,
   );
   const volume = Math.round(unit === "lb" ? kgToLb(volumeKg) : volumeKg);
-  const restValues = blocks.flatMap((b) =>
-    b.committed
-      .map((s) => s.restSec)
-      .filter((r): r is number => r != null && r > 0),
-  );
-  const avgRestSec = restValues.length
-    ? Math.round(restValues.reduce((a, b) => a + b, 0) / restValues.length)
-    : null;
 
   return (
     <>
@@ -1742,17 +1734,21 @@ export default function SessionScreen() {
           activeRest ? "md:pb-28" : "md:pb-6",
         )}
       >
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
+        {/* The chip keeps the whole row on mobile: it owns the leftover space
+            (flex-1) while the stats line wraps (or drops to its own row on
+            the tightest phones) instead of shrinking it out of view — no
+            session-wide rest average here, rest is per-exercise (see each
+            block header). */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-max flex-1">
             <ConditionsChip sessionId={sessionId} />
           </div>
           <p
-            className="num shrink-0 text-xs text-faint"
+            className="num text-right text-xs text-faint"
             data-testid="session-stats"
           >
             {setCount} {setCount === 1 ? "set" : "sets"} ·{" "}
             {volume.toLocaleString()} {unitLabel(unit)}
-            {avgRestSec != null && ` · rest ${formatRest(avgRestSec)} avg`}
           </p>
         </div>
 
@@ -2518,6 +2514,18 @@ function ExerciseBlock({
   const [plateOpen, setPlateOpen] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const activeIndex = countSets(block.committed);
+  // Average rest between this exercise's committed sets — rest is a
+  // per-exercise gap (each block times its own), so it's reported here in
+  // the block header, not in the session stats line. Rendered only once at
+  // least one committed set carries a rest value.
+  const avgRestSec = (() => {
+    const rests = block.committed
+      .map((s) => s.restSec)
+      .filter((r): r is number => r != null && r > 0);
+    return rests.length
+      ? Math.round(rests.reduce((a, b) => a + b, 0) / rests.length)
+      : null;
+  })();
   // Whether a draft (active) row is shown for this block right now. The
   // first set's row is always open (fresh: blank; routine: seeded) so
   // logging starts instantly; after that a draft only reappears via an
@@ -2775,6 +2783,15 @@ function ExerciseBlock({
                 data-testid={`block-${block.name}-note`}
               >
                 {routineNote}
+              </span>
+            )}
+            {avgRestSec != null && (
+              <span
+                className="truncate text-2xs text-faint"
+                title="Average rest between sets of this exercise"
+                data-testid={`block-${block.name}-rest-avg`}
+              >
+                rest {formatRest(avgRestSec)} avg
               </span>
             )}
           </span>
