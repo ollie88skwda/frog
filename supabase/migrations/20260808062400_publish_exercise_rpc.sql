@@ -113,13 +113,17 @@ begin
   end if;
 
   -- Rate limit (dev-mode generous; Phase 4 of the plan tunes this before any
-  -- non-friends launch — see docs/DECISIONS.md 2026-08-08).
+  -- non-friends launch — see docs/DECISIONS.md 2026-08-08). 1000/hour is not
+  -- a coincidence: the E2E suite publishes ~100 rows in a single ~10-minute
+  -- run (one uniquely-named exercise per spec, all inside the 1-hour window),
+  -- so the limit must clear that with headroom or the suite itself trips it
+  -- (voice-log's "Rear Delt Flyes" was the 101st publish and got refused).
   select count(*) into v_recent
   from exercises
   where created_by = v_author
     and deleted_at is null
     and created_at > v_now - 3600000;
-  if v_recent >= 100 then
+  if v_recent >= 1000 then
     raise exception 'publish_exercise: too many exercises shared recently — try again later';
   end if;
 
