@@ -857,7 +857,10 @@ export default function SessionScreen() {
     },
     // A new set can mint a PR — mark the records snapshot stale (no observer is
     // mounted mid-session, so this never refetches on the logging path).
-    onSettled: () => qc.invalidateQueries({ queryKey: ["records-data"] }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["records-data"] });
+      void qc.invalidateQueries({ queryKey: ["recent-exercise-ids"] });
+    },
   });
 
   // Track the payload from the moment it is dispatched, so the reconciliation
@@ -1382,6 +1385,7 @@ export default function SessionScreen() {
     void qc.invalidateQueries({ queryKey: ["active-session"] });
     void qc.invalidateQueries({ queryKey: ["sessions"] });
     void qc.invalidateQueries({ queryKey: ["findings-data"] });
+    void qc.invalidateQueries({ queryKey: ["recent-exercise-ids"] });
     navigate("/");
   }
 

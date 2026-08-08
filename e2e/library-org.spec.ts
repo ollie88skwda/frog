@@ -5,6 +5,7 @@ import {
   PASSWORD,
   signIn,
   waitForExercise,
+  waitForSetLogs,
 } from "./helpers";
 
 // Note 19 (library org redesign): the default library is a search-first flat
@@ -87,6 +88,7 @@ test("recently logged exercises surface in the Recent band", async ({
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-reps").press("Enter");
+  await waitForSetLogs(page, EX, 1);
 
   await page.goto("/library");
   await expect(page.getByTestId("library-band-recent")).toBeVisible();
