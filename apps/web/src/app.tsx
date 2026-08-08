@@ -55,7 +55,7 @@ const ThemePanel = showThemePanel
   : null;
 
 // Click-to-comment overlay (src/dev/annotate/) — dev-only, off by default,
-// toggled with Ctrl+Shift+A or its floating button. Same dead-branch shape as
+// toggled with the bare A key or its floating button. Same dead-branch shape as
 // ThemePanel above: both conditions fold to a literal `false` in a production
 // build, so Rollup drops the dynamic import and the whole subtree with it.
 // VITE_E2E builds keep it so Playwright can drive the real thing; that build

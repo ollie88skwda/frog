@@ -22,9 +22,9 @@ test("annotate a live element, copy the payload, restore normal clicks", async (
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
 
   // Keyboard shortcut toggles the mode (touch users get the button below).
-  await page.keyboard.press("Control+Shift+A");
+  await page.keyboard.press("a");
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
-  await page.keyboard.press("Control+Shift+A");
+  await page.keyboard.press("a");
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
 
   await toggle.click();
@@ -121,12 +121,15 @@ test("notes can be edited and cleared before sending", async ({ page }) => {
   await expect(page.getByTestId("annotate-list-btn")).toHaveText("0 notes");
 });
 
-test("bare letter keys never navigate, mode on or off; Ctrl+Shift+A still toggles annotate", async ({
+test("bare letters never navigate; the dev-only bare `a` toggles annotate, exempting text entry", async ({
   page,
 }) => {
   // Regression guard for the 2026-08-07 removal of the app's bare single-key
   // shortcuts (`s`/`l`/`h`/`f` on app-shell.tsx, `a`/`e` on session.tsx): none
   // of them should navigate or open anything, with or without annotate mode on.
+  // The dev-only annotate overlay is the one exception to that removal
+  // (2026-08-08): a bare `a` toggles it, and text entry is exempted so typing
+  // the letter never flips the mode.
   for (const key of ["h", "l", "f", "s"]) {
     await page.keyboard.press(key);
   }
@@ -145,10 +148,45 @@ test("bare letter keys never navigate, mode on or off; Ctrl+Shift+A still toggle
   await page.waitForTimeout(500);
   await expect(page).toHaveURL(/\/train$/);
 
-  // Ctrl+Shift+A (a modifier combo) is unaffected and still toggles the mode.
-  await page.keyboard.press("Control+Shift+A");
+  // Bare `a` toggles the mode, same key exits.
+  await page.keyboard.press("a");
   await expect(page.getByTestId("annotate-toggle")).toHaveAttribute(
     "aria-pressed",
     "false",
+  );
+  await page.keyboard.press("a");
+  await expect(page.getByTestId("annotate-toggle")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  // Modifier combos never toggle — Ctrl+A is select-all in every app.
+  await page.keyboard.press("Control+A");
+  await expect(page.getByTestId("annotate-toggle")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+
+  // Typing `a` while focused in a text input never toggles, mode on or off.
+  await page.keyboard.press("a"); // exit the mode first (focus is on the body)
+  await expect(page.getByTestId("annotate-toggle")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await page.getByTestId("exercises-link").click();
+  await expect(page).toHaveURL(/\/library$/);
+  const search = page.getByTestId("exercise-search-input");
+  await search.pressSequentially("abacus"); // each `a` here must not toggle
+  await expect(search).toHaveValue("abacus");
+  await expect(page.getByTestId("annotate-toggle")).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await page.getByTestId("annotate-toggle").click(); // mode on, still in the input
+  await search.focus();
+  await page.keyboard.press("a");
+  await expect(page.getByTestId("annotate-toggle")).toHaveAttribute(
+    "aria-pressed",
+    "true",
   );
 });

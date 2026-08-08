@@ -174,14 +174,21 @@ export default function AnnotateOverlay() {
    * document-level suppression below. A key
    * the overlay consumes stops dead there: the Escape that closes the composer
    * must not also dismiss the Radix layer underneath it. An Escape the overlay
-   * has no use for — mode off, nothing pending — is left entirely alone. */
+   * has no use for — mode off, nothing pending — is left entirely alone.
+   *
+   * The toggle is a bare `a` (2026-08-08) — the one bare single-key shortcut
+   * the app allows, safe only because this overlay is dev-only and text entry
+   * is exempted below: typing the letter in any field never flips the mode.
+   * Every modifier combo is excluded (Ctrl+A is select-all in any app), and
+   * `Shift` is deliberately not part of the check so uppercase A works too. */
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (
-        e.ctrlKey &&
-        e.shiftKey &&
+        !e.ctrlKey &&
         !e.metaKey &&
-        e.key.toLowerCase() === "a"
+        !e.altKey &&
+        e.key.toLowerCase() === "a" &&
+        !isTextEntry(e.target)
       ) {
         e.preventDefault();
         e.stopPropagation();
@@ -292,11 +299,13 @@ export default function AnnotateOverlay() {
       setStatus(null);
     }
 
-    /* Stray keystrokes must not reach the app while annotating (the app has
-     * no bare single-key shortcuts as of 2026-08-07, but this stays as a
-     * general safety net). Only propagation is stopped when nothing editable
-     * holds focus, so the arrow / space / page keys still scroll the page —
-     * the same bargain the touch events strike above. */
+    /* Stray keystrokes must not reach the app while annotating (the toggle's
+     * own bare `a` is consumed at window capture when it toggles; a text-entry
+     * `a` is exempt there and gets quieted here instead — the app has no other
+     * bare single-key shortcuts as of 2026-08-07, but this stays as a general
+     * safety net). Only propagation is stopped when nothing editable holds
+     * focus, so the arrow / space / page keys still scroll the page — the same
+     * bargain the touch events strike above. */
     function muteKeys(e: KeyboardEvent) {
       if (isOurUi(e.target) || e.key === "Escape") return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -435,7 +444,7 @@ export default function AnnotateOverlay() {
             type="button"
             data-testid="annotate-toggle"
             aria-pressed={on}
-            title="Toggle annotation mode (Ctrl+Shift+A)"
+            title="Toggle annotation mode (A)"
             onClick={() => setMode(true)}
             style={{
               ...btnStyle("quiet"),
@@ -465,7 +474,7 @@ export default function AnnotateOverlay() {
             type="button"
             data-testid="annotate-toggle"
             aria-pressed={on}
-            title="Toggle annotation mode (Ctrl+Shift+A)"
+            title="Toggle annotation mode (A)"
             onClick={() => setMode(!on)}
             style={{
               ...btnStyle(on ? "primary" : "quiet"),

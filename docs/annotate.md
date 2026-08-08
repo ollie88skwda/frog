@@ -15,7 +15,10 @@ the build if either of its markers appears in an emitted chunk anyway.
 Available on `bun run dev` (and in `VITE_E2E=1` builds, which is how the e2e
 spec drives it). Off by default, every load.
 
-- **Keyboard:** `Ctrl+Shift+A` toggles the mode. `Esc` closes the composer, then
+- **Keyboard:** a bare `A` toggles the mode (case-insensitive — `a` or `A`;
+  `Ctrl`/`Cmd`/`Option`+A never do, since `Ctrl+A` is select-all in any app).
+  Typing `a` while focused in an input, textarea, select, or content-editable
+  never toggles, so the letter is safe mid-type. `Esc` closes the composer, then
   exits the mode.
 - **Touch:** the floating **◎ Annotate** button, bottom-left. Next to it, an
   **N notes** button opens the list — that one works whether or not the mode is
@@ -125,7 +128,8 @@ to trust everywhere.
   the source path, component, test id, selector, route and viewport; plus edit,
   reload-persistence, armed clear, and that normal clicks resume when the mode
   is off (and, as a regression guard, that no bare letter key ever navigates
-  the app, mode on or off).
+  the app, mode on or off — and that the dev-only bare `a` toggles the mode
+  while exempting text entry).
 - `scripts/check-bundle.ts` — the production gate. Prove it still bites by
   inverting it: a `VITE_E2E=1` build must fail the script, a clean build must
   pass.
