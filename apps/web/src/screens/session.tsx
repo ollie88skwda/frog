@@ -2389,7 +2389,7 @@ function ExerciseBlock({
   // duplicate library row), resolves by read again, never mints a second
   // copy while the row already points at one, and a fork whose create never
   // resolved starts over from the seed instead of re-pointing at a copy that
-  // was never inserted. The Sides/Attach items stay disabled while a
+  // was never inserted. The Laterality/Attach items stay disabled while a
   // copy-on-write is in flight or its failure banner is up, so a rapid
   // re-toggle can't target the not-yet-inserted copy id or bypass the orphan
   // cleanup.
@@ -2609,7 +2609,7 @@ function ExerciseBlock({
             )}
           </span>
         </span>
-        {/* Rest + options only — remove, machine-attach and the sides
+        {/* Rest + options only — remove, machine-attach and the laterality
             toggle live inside the options ⋯ menu, so the header stays one
             row of uniform icon buttons and nothing claims its own row. */}
         <Toolbar>
@@ -4555,10 +4555,12 @@ function ActiveRow({
     if (weight.trim() !== "" && reps.trim() !== "") commit(false);
   }
 
-  // Guards against committing mid-override: tabbing from the ᴿ weight field
-  // to the ᴿ reps field blurs the former while the ᴸ line is already
-  // complete, which would otherwise auto-commit before the reps override is
-  // even typed. Only fires once focus actually leaves this row.
+  // Guards against committing mid-override: tabbing from one ᴿ field to the
+  // next (e.g. reps → duration) blurs the former while the ᴸ line is already
+  // complete, which would otherwise auto-commit before the override is even
+  // typed. (The ᴿ weight input this guard originally described is gone —
+  // same weight both sides, note 1.) Only fires once focus actually leaves
+  // this row.
   function onRightFieldBlur(e: React.FocusEvent<HTMLInputElement>) {
     if (suppressCheckoffRef.current) {
       suppressCheckoffRef.current = false;
