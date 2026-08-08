@@ -12,10 +12,24 @@ import {
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { BarChart } from "@/components/charts/bars";
-import { GroupedBarChart } from "@/components/charts/grouped-bars";
+import {
+  CartesianGrid,
+  LabelList,
+  Bar as RechartsBar,
+  BarChart as RechartsBarChart,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { MonthHeatGrid } from "@/components/report-calendar";
 import { ShareButton } from "@/components/share-sheet";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { formatDuration } from "@/lib/format";
 import { useUserPrefs } from "@/lib/profile-queries";
 import {
@@ -33,6 +47,12 @@ const monthYearFmt = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
 });
 const monthShortFmt = new Intl.DateTimeFormat(undefined, { month: "short" });
+
+// Muscle split vs prior month — two grouped series, legend below the plot.
+const DIST_CONFIG = {
+  current: { label: "This month", color: "var(--accent)" },
+  previous: { label: "Prior", color: "var(--faint)" },
+} satisfies ChartConfig;
 
 type Metric = "time" | "volume" | "sets";
 const METRIC_LABELS: Record<Metric, string> = {
@@ -275,18 +295,45 @@ function ReportBody({
       </Slide>
 
       <Slide title="Muscle split vs prior month" testId="monthly-distribution">
-        <GroupedBarChart
-          groups={MUSCLE_REGIONS.map((r) => ({
-            label: MUSCLE_REGION_LABELS[r],
-            values: [
-              round1(report.distribution.regionSets[r]),
-              round1(report.previous.regionSets[r]),
-            ],
-          }))}
-          seriesLabels={["This month", "Prior"]}
-          ariaLabel="Muscle split vs prior month"
-          testId="monthly-dist-chart"
-        />
+        <ChartContainer
+          config={DIST_CONFIG}
+          className="h-42 w-full"
+          role="img"
+          aria-label="Muscle split vs prior month"
+          data-testid="monthly-dist-chart"
+        >
+          <RechartsBarChart
+            data={MUSCLE_REGIONS.map((r) => ({
+              label: MUSCLE_REGION_LABELS[r],
+              current: round1(report.distribution.regionSets[r]),
+              previous: round1(report.previous.regionSets[r]),
+            }))}
+            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+            accessibilityLayer
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              interval={0}
+            />
+            <YAxis hide width={0} />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <ChartLegend content={<ChartLegendContent />} />
+            <RechartsBar
+              dataKey="current"
+              fill="var(--color-current)"
+              maxBarSize={40}
+            />
+            <RechartsBar
+              dataKey="previous"
+              fill="var(--color-previous)"
+              maxBarSize={40}
+            />
+          </RechartsBarChart>
+        </ChartContainer>
       </Slide>
 
       <Slide title="Top exercises" testId="monthly-top">
@@ -338,6 +385,11 @@ function TrendSlide({
       : metric === "volume"
         ? compactVolume(v, unit)
         : String(Math.round(v));
+  // The tooltip/axis formatting follows the active metric; the label stays
+  // the metric name so a tooltip reads "Volume: 12.5k".
+  const trendConfig: ChartConfig = {
+    value: { label: METRIC_LABELS[metric], color: "var(--accent)" },
+  };
 
   return (
     <Slide
@@ -363,12 +415,49 @@ function TrendSlide({
         </div>
       }
     >
-      <BarChart
-        bars={bars}
-        formatValue={fmt}
-        ariaLabel={`${METRIC_LABELS[metric]} by month`}
-        testId="monthly-trend-chart"
-      />
+      <ChartContainer
+        config={trendConfig}
+        className="h-40 w-full"
+        role="img"
+        aria-label={`${METRIC_LABELS[metric]} by month`}
+        data-testid="monthly-trend-chart"
+      >
+        <RechartsBarChart
+          data={bars}
+          margin={{ top: 16, right: 4, left: 0, bottom: 0 }}
+          accessibilityLayer
+        >
+          <CartesianGrid vertical={false} />
+          <XAxis
+            dataKey="label"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={6}
+            interval={0}
+          />
+          <YAxis hide width={0} />
+          <ChartTooltip
+            cursor={false}
+            content={
+              <ChartTooltipContent valueFormatter={(v) => fmt(Number(v))} />
+            }
+          />
+          <RechartsBar
+            dataKey="value"
+            fill="var(--color-value)"
+            maxBarSize={40}
+          >
+            <LabelList
+              dataKey="value"
+              position="top"
+              formatter={(v) => (Number(v) > 0 ? fmt(Number(v)) : "")}
+              className="num"
+              fill="var(--soft)"
+              fontSize={10}
+            />
+          </RechartsBar>
+        </RechartsBarChart>
+      </ChartContainer>
       <p className="mt-1 text-2xs text-faint">
         {metric === "time"
           ? "Active hours per month"

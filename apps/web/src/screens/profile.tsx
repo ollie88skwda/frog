@@ -12,9 +12,22 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { BarChart } from "@/components/charts/bars";
+import {
+  CartesianGrid,
+  LabelList,
+  Bar as RechartsBar,
+  BarChart as RechartsBarChart,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { StreakCard } from "@/components/streak-card";
 import { Button } from "@/components/ui/button";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { Input } from "@/components/ui/input";
 import { StatusRing } from "@/components/ui/status-ring";
 import { useUserInfo } from "@/lib/auth";
@@ -30,6 +43,15 @@ const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const ACTIVITY_WEEKS = 13; // ~3 months
 
 const monthFmt = new Intl.DateTimeFormat(undefined, { month: "short" });
+const weekDayFmt = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+});
+
+// Weekly workout-count bars — one accent series, tooltip + per-bar label.
+const ACTIVITY_CONFIG = {
+  value: { label: "Workouts", color: "var(--accent)" },
+} satisfies ChartConfig;
 
 export default function ProfileScreen() {
   const { t } = useVoice();
@@ -43,7 +65,10 @@ export default function ProfileScreen() {
   const starts = useMemo(() => sessions.map((s) => s.startedAt), [sessions]);
   const recent = sessions.slice(0, 5);
 
-  // Weekly workout counts over the last ~3 months, oldest → newest.
+  // Weekly workout counts over the last ~3 months, oldest → newest. The week
+  // start rides as the unique category key (recharts positions category axes
+  // off the value — the sparse "" month labels repeat, so they must be a
+  // tickFormatter over it, never the dataKey itself).
   const activity = useMemo(() => {
     const thisWeek = weekStart(Date.now(), FIRST_WEEKDAY);
     const counts = new Map<number, number>();
@@ -51,7 +76,7 @@ export default function ProfileScreen() {
       const ws = weekStart(t, FIRST_WEEKDAY);
       counts.set(ws, (counts.get(ws) ?? 0) + 1);
     }
-    const bars: { label: string; value: number }[] = [];
+    const bars: { week: number; label: string; value: number }[] = [];
     let prevMonth = -1;
     for (let i = ACTIVITY_WEEKS - 1; i >= 0; i--) {
       // Re-normalize onto a true week boundary (DST-safe).
@@ -59,10 +84,15 @@ export default function ProfileScreen() {
       const d = new Date(ws);
       const label = d.getMonth() !== prevMonth ? monthFmt.format(d) : "";
       prevMonth = d.getMonth();
-      bars.push({ label, value: counts.get(ws) ?? 0 });
+      bars.push({ week: ws, label, value: counts.get(ws) ?? 0 });
     }
     return bars;
   }, [starts]);
+
+  const activityLabelOf = useMemo(
+    () => new Map(activity.map((b) => [b.week, b.label])),
+    [activity],
+  );
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
@@ -107,12 +137,54 @@ export default function ProfileScreen() {
           Activity — last 3 months
         </h2>
         <div className="mt-2">
-          <BarChart
-            bars={activity}
-            formatValue={(v) => String(v)}
-            ariaLabel="Workouts per week"
-            testId="activity-bars"
-          />
+          <ChartContainer
+            config={ACTIVITY_CONFIG}
+            className="h-40 w-full"
+            role="img"
+            aria-label="Workouts per week"
+            data-testid="activity-bars"
+          >
+            <RechartsBarChart
+              data={activity}
+              margin={{ top: 16, right: 4, left: 0, bottom: 0 }}
+              accessibilityLayer
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="week"
+                type="category"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
+                tickFormatter={(v) => activityLabelOf.get(Number(v)) ?? ""}
+              />
+              <YAxis hide width={0} />
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(_, payload) =>
+                      weekDayFmt.format(new Date(payload?.[0]?.payload?.week))
+                    }
+                  />
+                }
+              />
+              <RechartsBar
+                dataKey="value"
+                fill="var(--color-value)"
+                maxBarSize={40}
+              >
+                <LabelList
+                  dataKey="value"
+                  position="top"
+                  formatter={(v) => (Number(v) > 0 ? String(v) : "")}
+                  className="num"
+                  fill="var(--soft)"
+                  fontSize={10}
+                />
+              </RechartsBar>
+            </RechartsBarChart>
+          </ChartContainer>
         </div>
       </div>
 
