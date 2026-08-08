@@ -505,7 +505,9 @@ test("exercise menu laterality/warm-up/superset round-trip into the session", as
   await block.getByTestId("set-0-right-reps").fill("8");
   await block.getByTestId("set-0-add").click();
   await expect(page.getByTestId("committed-0")).toBeVisible();
-  await expect(page.getByTestId("committed-0-right")).toBeVisible();
+  // Horizontal pair (batch 8): the ᴿ side renders inside the same stripe,
+  // its cells carrying the committed-0-right-* ids.
+  await expect(page.getByTestId("committed-0-right-reps")).toBeVisible();
   // Both inserts can take up to ~7s to land (mutations retry 3x), and a
   // touch tap on the add button can double-fire the commit — so poll for at
   // least the pair rather than exactly two, on a longer-than-default window.
