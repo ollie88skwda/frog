@@ -44,7 +44,7 @@ test("mid-logging: an RIR range fills the collapsed badge and commits as a pair"
   await page.keyboard.press("Escape");
 
   // Live preview badge next to the details trigger, sheet closed.
-  await expect(page.locator('[data-testid="block-' + EX + '"]')).toContainText(
+  await expect(page.locator(`[data-testid="block-${EX}"]`)).toContainText(
     "@1-2",
   );
 
