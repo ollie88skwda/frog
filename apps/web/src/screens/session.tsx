@@ -240,6 +240,10 @@ export type SeedSet = {
   repsMax: number | null; // non-null ⇒ rep range (placeholder only, never seeded as a value)
   durationSec: number | null;
   distanceM: number | null;
+  /** Per-set laterality override from the routine template (unilateral
+   * routine set = one pair, two sides). Null = fall through to the
+   * exercise-level default. */
+  laterality?: Laterality | null;
 };
 
 // mm:ss for a rest duration in whole seconds.
@@ -1240,6 +1244,7 @@ export default function SessionScreen() {
             repsMax: s.targetRepsMax,
             durationSec: s.targetDurationSec,
             distanceM: s.targetDistanceM,
+            laterality: (s.laterality as Laterality | null) ?? null,
           }));
       }
       return copySeed?.[block.seId] ?? [];
@@ -1294,20 +1299,27 @@ export default function SessionScreen() {
           // One routine set per *physical* set: a unilateral pair is two
           // committed rows sharing one set_no, and the left row is the
           // template for the target.
-          sets: groupSetsBySetNo(b.committed).map(([s], si) => ({
-            setNo: si,
-            setType: (s.setType as string) ?? "normal",
-            targetWeightKg: s.weightKg,
-            targetReps: s.reps,
-            targetRepsMax: null,
-            targetDurationSec: s.durationSec,
-            targetDistanceM: s.distanceM,
-            // Performed sets carry no RIR prescription — updateRoutine
-            // re-creates the set graph, so the authored range has to come
-            // from the template or it's erased.
-            targetRirMin: t?.sets[si]?.targetRirMin ?? null,
-            targetRirMax: t?.sets[si]?.targetRirMax ?? null,
-          })),
+          sets: groupSetsBySetNo(b.committed).map((rows, si) => {
+            const [s] = rows;
+            return {
+              setNo: si,
+              setType: (s.setType as string) ?? "normal",
+              targetWeightKg: s.weightKg,
+              targetReps: s.reps,
+              targetRepsMax: null,
+              targetDurationSec: s.durationSec,
+              targetDistanceM: s.distanceM,
+              // A pair of rows sharing one set_no is a unilateral set — carry
+              // the laterality back into the routine template so an Update
+              // Routine doesn't silently flatten a unilateral prescription.
+              laterality: rows.length === 2 ? "unilateral" : "bilateral",
+              // Performed sets carry no RIR prescription — updateRoutine
+              // re-creates the set graph, so the authored range has to come
+              // from the template or it's erased.
+              targetRirMin: t?.sets[si]?.targetRirMin ?? null,
+              targetRirMax: t?.sets[si]?.targetRirMax ?? null,
+            };
+          }),
         };
       }),
     };
@@ -4192,12 +4204,15 @@ function ActiveRow({
     loadDraft(seId),
   );
   // Per-set laterality override ("just this one set", note 1): toggled from
-  // the details sheet, seeded from the draft snapshot so a reload restores
-  // the ᴿ line and the right-side keystrokes it protects. Local to this row,
-  // so it dies on commit or remount — the next draft at the same index
-  // starts from the exercise default again.
+  // the details sheet, seeded from the routine template's per-set laterality
+  // or the draft snapshot so a reload restores the ᴿ line and the right-side
+  // keystrokes it protects. Local to this row, so it dies on commit or
+  // remount — the next draft at the same index starts from the exercise
+  // default again.
   const [lateralityOverride, setLateralityOverride] =
-    useState<Laterality | null>(() => draft?.laterality ?? null);
+    useState<Laterality | null>(
+      () => draft?.laterality ?? seed?.laterality ?? null,
+    );
   // Override wins over the exercise default.
   const laterality = lateralityOverride ?? exerciseLaterality;
   const isUnilateral = laterality === "unilateral";

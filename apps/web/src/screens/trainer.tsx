@@ -34,8 +34,20 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { LineChart } from "@/components/charts/line";
+import {
+  CartesianGrid,
+  Line as RechartsLine,
+  LineChart as RechartsLineChart,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Button } from "@/components/ui/button";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useMeasurements } from "@/lib/measure-queries";
@@ -60,6 +72,7 @@ import {
   startingWeightsFrom,
   useTrainerData,
 } from "@/lib/trainer";
+import { trendYDomain } from "@/lib/trend-domain";
 import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
 
@@ -1005,6 +1018,11 @@ function ProgramSettingsDialog({
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// Bodyweight trend — one accent line, display-unit values.
+const BW_CONFIG = {
+  y: { label: "Weight", color: "var(--accent)" },
+} satisfies ChartConfig;
+
 function ProgressReport({
   program,
   td,
@@ -1014,6 +1032,7 @@ function ProgressReport({
   td: ReturnType<typeof useTrainerData>;
   nameById: Map<string, string>;
 }) {
+  const { t } = useVoice();
   const { unit } = useUnit();
   const { data: exercises = [] } = useExercises();
   const { data: records } = useRecordsData();
@@ -1178,18 +1197,73 @@ function ProgressReport({
         <p className="mb-2 text-2xs text-faint">
           Bodyweight trend ({unitLabel(unit)})
         </p>
-        <LineChart
-          points={bodyweightPoints}
-          formatX={(x) =>
-            new Date(x).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-            })
-          }
-          formatY={(y) => y.toFixed(1)}
-          ariaLabel="Bodyweight trend"
-          testId="bodyweight-trend"
-        />
+        {bodyweightPoints.length === 0 ? (
+          <div
+            className="flex h-42 items-center justify-center text-xs text-faint"
+            data-testid="bodyweight-trend"
+          >
+            {t("No data yet.", "No data yet. The frog refuses to speculate.")}
+          </div>
+        ) : (
+          <ChartContainer
+            config={BW_CONFIG}
+            className="h-42 w-full"
+            role="img"
+            aria-label="Bodyweight trend"
+            data-testid="bodyweight-trend"
+          >
+            <RechartsLineChart
+              data={bodyweightPoints}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              accessibilityLayer
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="x"
+                type="number"
+                domain={["dataMin", "dataMax"]}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
+                tickCount={3}
+                tickFormatter={(v) =>
+                  new Date(Number(v)).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                  })
+                }
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                width={40}
+                domain={trendYDomain(bodyweightPoints)}
+                tickFormatter={(v) => Number(v).toFixed(1)}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(_, payload) =>
+                      new Date(payload?.[0]?.payload?.x).toLocaleDateString(
+                        undefined,
+                        { month: "short", day: "numeric" },
+                      )
+                    }
+                    valueFormatter={(v) => Number(v).toFixed(1)}
+                  />
+                }
+              />
+              <RechartsLine
+                dataKey="y"
+                type="monotone"
+                stroke="var(--color-y)"
+                strokeWidth={1.5}
+                dot={{ r: 2.5, strokeWidth: 0, fill: "var(--color-y)" }}
+              />
+            </RechartsLineChart>
+          </ChartContainer>
+        )}
       </div>
     </div>
   );

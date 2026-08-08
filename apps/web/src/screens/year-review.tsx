@@ -7,9 +7,22 @@ import {
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { BarChart } from "@/components/charts/bars";
+import {
+  CartesianGrid,
+  LabelList,
+  Bar as RechartsBar,
+  BarChart as RechartsBarChart,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { MonthDots } from "@/components/report-calendar";
 import { ShareButton } from "@/components/share-sheet";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { formatDuration } from "@/lib/format";
 import { useUserPrefs } from "@/lib/profile-queries";
 import { formatVolume, prValue } from "@/lib/report-format";
@@ -20,6 +33,11 @@ import { useVoice } from "@/lib/voice";
 const MONTHS = Array.from({ length: 12 }, (_, i) => i);
 const monthLongFmt = new Intl.DateTimeFormat(undefined, { month: "long" });
 const monthShortFmt = new Intl.DateTimeFormat(undefined, { month: "short" });
+
+// Top-muscle-region bars — one accent series, per-bar value labels.
+const REGIONS_CONFIG = {
+  value: { label: "Sets", color: "var(--accent)" },
+} satisfies ChartConfig;
 
 export default function YearReviewScreen() {
   const navigate = useNavigate();
@@ -192,15 +210,47 @@ function YearBody({
         {review.topRegions.length === 0 ? (
           <p className="text-xs text-faint">No muscle data this year.</p>
         ) : (
-          <BarChart
-            bars={review.topRegions.map((r) => ({
-              label: MUSCLE_REGION_LABELS[r.region],
-              value: Math.round(r.sets * 10) / 10,
-            }))}
-            formatValue={(v) => String(v)}
-            ariaLabel="Top muscle regions by sets"
-            testId="year-regions-chart"
-          />
+          <ChartContainer
+            config={REGIONS_CONFIG}
+            className="h-40 w-full"
+            role="img"
+            aria-label="Top muscle regions by sets"
+            data-testid="year-regions-chart"
+          >
+            <RechartsBarChart
+              data={review.topRegions.map((r) => ({
+                label: MUSCLE_REGION_LABELS[r.region],
+                value: Math.round(r.sets * 10) / 10,
+              }))}
+              margin={{ top: 16, right: 4, left: 0, bottom: 0 }}
+              accessibilityLayer
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
+                interval={0}
+              />
+              <YAxis hide width={0} />
+              <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+              <RechartsBar
+                dataKey="value"
+                fill="var(--color-value)"
+                maxBarSize={40}
+              >
+                <LabelList
+                  dataKey="value"
+                  position="top"
+                  formatter={(v) => (Number(v) > 0 ? String(v) : "")}
+                  className="num"
+                  fill="var(--soft)"
+                  fontSize={10}
+                />
+              </RechartsBar>
+            </RechartsBarChart>
+          </ChartContainer>
         )}
       </Slide>
 

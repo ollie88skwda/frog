@@ -324,6 +324,12 @@ export const routineSets = pgTable(
     // no target authored until the user sets one.
     targetRirMin: integer("target_rir_min"),
     targetRirMax: integer("target_rir_max"),
+    // Bilateral vs unilateral (domain/exercise-types). Null = bilateral (the
+    // default; a unilateral routine set prescribes one pair — two sides,
+    // reps per side — matching how the session logs it). The session's
+    // per-set draft override seeds from this, so a routine-authored
+    // laterality carries into the live session.
+    laterality: text("laterality"),
   },
   (t) => [
     index("routine_sets_owner_idx").on(t.ownerId),
