@@ -32,7 +32,11 @@ function linregSlope(xs: number[], ys: number[]): number {
 
 export function robustTrend(points: SessionTop[]) {
   const n0 = points.length;
-  if (n0 < 5)
+  // Two points are enough to fit a line; below that there is no trend to
+  // speak of. MAD outlier rejection (isOutlier) only activates at >= 5
+  // points, so a 2-4 point fit is a raw slope — the caller labels it a
+  // rough estimate rather than withholding it (note 12, 2026-08-08).
+  if (n0 < 2)
     return {
       verdict: "INSUFFICIENT" as const,
       pctChange: 0,

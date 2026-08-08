@@ -29,6 +29,8 @@ export type TrendFinding = {
   n: number;
   /** Days between the first and last session the verdict was fit over. */
   spanDays: number;
+  /** n < 6 → a rough estimate with a high chance of error (note 12, 2026-08-08). */
+  confidence: "low" | "medium";
 };
 
 export type CountdownFinding = {

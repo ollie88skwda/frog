@@ -112,7 +112,7 @@ export default function FindingsScreen() {
                       )}
                     </span>
                     <span className="num text-2xs text-faint">
-                      {c.sessionsLogged}/5
+                      {c.sessionsLogged}/2
                     </span>
                   </div>
                 ))}
@@ -147,7 +147,7 @@ export default function FindingsScreen() {
               </p>
               <p className="mt-1 text-xs text-faint">
                 {t(
-                  "Log sessions with conditions — trends appear after 5 sessions per exercise.",
+                  "Log sessions with conditions — trends appear from 2 sessions per exercise.",
                   "A correlation needs roughly 10 sessions before the frog will put its name on it. Keep logging sleep and carbs — it is watching, it is patient, and it has nowhere else to be.",
                 )}
               </p>
@@ -207,8 +207,16 @@ function TrendRow({
       <span className="flex shrink-0 items-center gap-2">
         <span className="num text-xs text-faint">
           {trend.pctChange > 0 ? "+" : ""}
-          {trend.pctChange.toFixed(1)}% · n={trend.n}
+          {trend.pctChange.toFixed(1)}% · {trend.n}{" "}
+          {trend.n === 1 ? "session" : "sessions"}
         </span>
+        <Badge
+          color={trend.confidence === "low" ? "amber" : "gray"}
+          variant="soft"
+          size="1"
+        >
+          {trend.confidence === "low" ? "Rough estimate" : "Medium confidence"}
+        </Badge>
         <Badge color={VERDICT_COLOR[trend.verdict]} variant="soft" size="1">
           {trend.verdict}
         </Badge>
@@ -343,9 +351,17 @@ function TrendSheet({
             <span className="num text-xs text-soft">
               {sign}
               {trend.pctChange.toFixed(1)}% · n = {trend.n} sessions · ~{weeks}{" "}
-              {weeks === 1 ? "week" : "weeks"}
+              {weeks === 1 ? "week" : "weeks"} · {trend.confidence} confidence
             </span>
           </div>
+          {trend.confidence === "low" && (
+            <p className="text-2xs text-faint">
+              {t(
+                `Rough estimate — only ${trend.n} sessions, so the chance of error is high. Keep logging to sharpen it.`,
+                `Rough estimate — the frog is guessing from only ${trend.n} sessions, so it could easily be wrong. Keep logging and it will sharpen up.`,
+              )}
+            </p>
+          )}
 
           <TrendChart
             label={t(

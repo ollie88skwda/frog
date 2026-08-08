@@ -28,7 +28,7 @@ function session(
 }
 
 describe("progressionFindings", () => {
-  it("calls PROGRESSING on a rising trend", () => {
+  it("calls PROGRESSING on a rising trend with medium confidence at 8 sessions", () => {
     const sessions = Array.from({ length: 8 }, (_, i) =>
       session(i, 100 + i * 5),
     );
@@ -38,10 +38,11 @@ describe("progressionFindings", () => {
     expect(trends[0].verdict).toBe("PROGRESSING");
     expect(trends[0].exerciseName).toBe("Squat");
     expect(trends[0].pctChange).toBeGreaterThan(5);
+    expect(trends[0].confidence).toBe("medium");
   });
 
   it("emits an honest countdown below the session minimum", () => {
-    const sessions = Array.from({ length: 3 }, (_, i) => session(i, 100));
+    const sessions = Array.from({ length: 1 }, (_, i) => session(i, 100));
     const { trends, countdowns } = progressionFindings(sessions);
     expect(trends).toEqual([]);
     expect(countdowns).toEqual([
@@ -49,10 +50,34 @@ describe("progressionFindings", () => {
         kind: "countdown",
         exerciseId: "ex1",
         exerciseName: "Squat",
-        sessionsLogged: 3,
-        sessionsNeeded: 2,
+        sessionsLogged: 1,
+        sessionsNeeded: 1,
       },
     ]);
+  });
+
+  it("starts surfacing a trend at 2 sessions, labeled a rough estimate", () => {
+    const sessions = Array.from({ length: 2 }, (_, i) =>
+      session(i, 100 + i * 10),
+    );
+    const { trends, countdowns } = progressionFindings(sessions);
+    expect(countdowns).toEqual([]);
+    expect(trends).toHaveLength(1);
+    expect(trends[0].verdict).toBe("PROGRESSING");
+    expect(trends[0].n).toBe(2);
+    expect(trends[0].confidence).toBe("low");
+  });
+
+  it("keeps 3-5 sessions as low-confidence rough estimates", () => {
+    for (const count of [3, 4, 5]) {
+      const sessions = Array.from({ length: count }, (_, i) =>
+        session(i, 100 + i * 10),
+      );
+      const { trends } = progressionFindings(sessions);
+      expect(trends).toHaveLength(1);
+      expect(trends[0].n).toBe(count);
+      expect(trends[0].confidence).toBe("low");
+    }
   });
 
   it("calls PLATEAU on a flat trend", () => {

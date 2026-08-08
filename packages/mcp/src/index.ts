@@ -118,7 +118,7 @@ server.registerTool(
       name.toLowerCase().includes(exercise_name.toLowerCase());
     return text({
       caveat:
-        "Correlation, not causation. Trends need >=5 sessions per exercise.",
+        "Correlation, not causation. Trends appear from 2 sessions (low confidence until 6 — a rough estimate).",
       trends: trends.filter((t) => match(t.exerciseName)),
       countdowns: countdowns.filter((c) => match(c.exerciseName)),
       condition_findings: conditions,

@@ -6,6 +6,11 @@ import { EMAIL, PASSWORD, signIn } from "./helpers";
 // the countdown → verdict transition on /findings and the note-12 drill-down:
 // tapping a trend row opens a bottom sheet with charts + recommendations, and
 // tapping a condition row opens its bucket breakdown.
+//
+// Threshold notes (2026-08-08): a trend appears from 2 sessions, labeled
+// "Rough estimate" (low confidence) until 6; the trend row spells out
+// "N sessions" instead of a bare n=N, and every trend row carries a
+// confidence value.
 
 // Seeded session-condition metric (seeds migration 20260712144107).
 const SLEEP_ID = "00000000-0000-4000-8000-0000000000a1";
@@ -96,25 +101,38 @@ async function seedSessions(
   );
 }
 
-test("countdown appears below 5 sessions, verdict appears at 6", async ({
+test("countdown appears below 2 sessions, rough-estimate verdict at 2", async ({
   page,
 }) => {
   const EX = `Trend Lift ${Date.now()}`;
 
-  // 3 sessions → countdown (2 more needed).
-  await seedSessions(page, EX, 3);
+  // 1 session → countdown (1 more needed).
+  await seedSessions(page, EX, 1);
   await page.goto("/findings");
   await expect(page.getByTestId(`countdown-${EX}`)).toBeVisible();
   await expect(page.getByTestId(`countdown-${EX}`)).toContainText(
-    "2 more sessions",
+    "1 more session",
   );
 
-  // 6 sessions total → PROGRESSING verdict for this exercise.
+  // 2 sessions total → PROGRESSING verdict, labeled a rough estimate, and
+  // the n reads as sessions.
   const EX2 = `Trend Lift B ${Date.now()}`;
-  await seedSessions(page, EX2, 6);
+  await seedSessions(page, EX2, 2, {
+    weights: [100, 120], // steep rise: safely past the 5% PROGRESSING bar
+  });
   await page.goto("/findings");
-  await expect(page.getByTestId(`trend-${EX2}`)).toBeVisible();
-  await expect(page.getByTestId(`trend-${EX2}`)).toContainText("PROGRESSING");
+  const row = page.getByTestId(`trend-${EX2}`);
+  await expect(row).toBeVisible();
+  await expect(row).toContainText("PROGRESSING");
+  await expect(row).toContainText("2 sessions");
+  await expect(row).toContainText("Rough estimate");
+
+  // The sheet repeats the n-as-sessions stat and the high-error caveat.
+  await row.click();
+  const sheet = page.getByTestId("findings-sheet");
+  await expect(sheet).toContainText("n = 2 sessions");
+  await expect(sheet).toContainText("low confidence");
+  await expect(sheet).toContainText(/chance of error is high/);
 });
 
 test("tapping a plateau trend row opens the sheet with recommendations", async ({
@@ -128,6 +146,8 @@ test("tapping a plateau trend row opens the sheet with recommendations", async (
   const row = page.getByTestId(`trend-${EX}`);
   await expect(row).toBeVisible();
   await expect(row).toContainText("PLATEAU");
+  await expect(row).toContainText("6 sessions");
+  await expect(row).toContainText("Medium confidence");
   await row.click();
 
   const sheet = page.getByTestId("findings-sheet");
