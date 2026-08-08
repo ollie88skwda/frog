@@ -1187,14 +1187,24 @@ export default function SessionScreen() {
       ),
     );
     dropQueuedSets((id) => id === setId);
-    void repo.deleteSet(idMap[setId] ?? setId);
+    void repo.deleteSet(idMap[setId] ?? setId).then(
+      () => {
+        void qc.invalidateQueries({ queryKey: ["recent-exercise-ids"] });
+      },
+      () => {},
+    );
   }
 
   function removeBlock(seId: string) {
     setBlocks((prev) => (prev ?? []).filter((b) => b.seId !== seId));
     dismissRest(seId);
     dropQueuedSets((_id, v) => v.seId === seId);
-    void repo.deleteSessionExercise(seId);
+    void repo.deleteSessionExercise(seId).then(
+      () => {
+        void qc.invalidateQueries({ queryKey: ["recent-exercise-ids"] });
+      },
+      () => {},
+    );
   }
 
   // Repoint a block at a different exercise row (copy-on-write: a seed
