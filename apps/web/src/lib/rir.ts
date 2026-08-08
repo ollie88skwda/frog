@@ -1,26 +1,7 @@
+import { rirRange } from "@frog/core";
 import { parseIntOrNull } from "@/lib/format";
 
-/**
- * Read-time RIR compat: a set logged before rir became a range carries only
- * the legacy scalar `rir` — reads back as a zero-width range (min=max), never
- * fabricating a spread that was never captured. New logging always writes
- * rirMin/rirMax (even for a single value) and leaves `rir` null going forward.
- * Every RIR reader (session rows, history detail) goes through this.
- */
-export function rirRange(s: {
-  rir?: number | null;
-  rirMin: number | null;
-  rirMax: number | null;
-}): { min: number; max: number } | null {
-  if (s.rirMin != null || s.rirMax != null) {
-    return { min: s.rirMin ?? s.rirMax, max: s.rirMax ?? s.rirMin } as {
-      min: number;
-      max: number;
-    };
-  }
-  if (s.rir != null) return { min: s.rir, max: s.rir };
-  return null;
-}
+export { rirRange };
 
 export function formatRirRange(
   r: { min: number; max: number } | null,

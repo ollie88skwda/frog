@@ -57,5 +57,11 @@ export function robustTrend(points: SessionTop[]) {
   if (pctChange >= 5 && slope > 0) verdict = "PROGRESSING";
   else if (pctChange <= -5) verdict = "REGRESSING";
   else verdict = "PLATEAU";
-  return { verdict, pctChange, perMonth, n: pts.length };
+  return {
+    verdict,
+    pctChange,
+    perMonth,
+    n: pts.length,
+    spanDays: Math.max(1, Math.round(span)),
+  };
 }

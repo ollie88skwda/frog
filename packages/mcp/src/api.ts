@@ -55,6 +55,11 @@ export function toFindingsInputs(bundle: ExportJson): FindingsSessionInput[] {
       exerciseName: exerciseName.get(se.exercise_id as string) ?? "",
       weightKg: (sl.weight_kg as number | null) ?? null,
       reps: (sl.reps as number | null) ?? null,
+      setType: (sl.set_type as string | null) ?? null,
+      rir: (sl.rir as number | null) ?? null,
+      rirMin: (sl.rir_min as number | null) ?? null,
+      rirMax: (sl.rir_max as number | null) ?? null,
+      rpe: (sl.rpe as number | null) ?? null,
     });
     setsBySession.set(sessionId, list);
   }
