@@ -120,6 +120,13 @@
       "when": 1786170214735,
       "tag": "20260808062334_third_spot",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786214673419,
+      "tag": "20260808184433_robust_wind_dancer",
+      "breakpoints": true
     }
   ]
 }

@@ -212,6 +212,8 @@ export type RoutineSetInput = {
   /** Target RIR range (reps-based exercise types only). */
   targetRirMin?: number | null;
   targetRirMax?: number | null;
+  /** Bilateral vs unilateral ('bilateral' | 'unilateral', null = bilateral). */
+  laterality?: string | null;
 };
 
 export type RoutineExerciseInput = {

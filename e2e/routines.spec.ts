@@ -91,12 +91,10 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await page.getByTestId(`routine-pick-${EX}`).click();
 
   // The picker seeds 3 blank sets; drop the third so this routine has
-  // exactly the two sets under test (fixed, rep-range).
-  await page
-    .getByTestId("routine-ex-0")
-    .getByLabel("Remove set")
-    .last()
-    .click();
+  // exactly the two sets under test (fixed, rep-range). The per-set ⋯ menu
+  // owns Remove set (note 13).
+  await page.getByTestId("routine-ex-0-set-2-menu").click();
+  await page.getByTestId("routine-ex-0-set-2-remove").click();
   await page.getByTestId("routine-ex-0-set-0-reps").fill("5");
   await page.getByTestId("routine-ex-0-set-1-reps").fill("8");
   await page.getByTestId("routine-ex-0-set-1-repsmax").fill("12");
@@ -207,17 +205,12 @@ test("+ Add set inherits reps/range/RIR from the previous set, not weight or set
   await page.getByTestId("routine-ex-0-set-0-type-warmup").click();
 
   // Remove one of the two default extra sets so "Add set" appends after a
-  // single, known-shape set.
-  await page
-    .getByTestId("routine-ex-0")
-    .getByLabel("Remove set")
-    .last()
-    .click();
-  await page
-    .getByTestId("routine-ex-0")
-    .getByLabel("Remove set")
-    .last()
-    .click();
+  // single, known-shape set. The per-set ⋯ menu owns Remove set (note 13);
+  // indexes re-number after each removal.
+  await page.getByTestId("routine-ex-0-set-2-menu").click();
+  await page.getByTestId("routine-ex-0-set-2-remove").click();
+  await page.getByTestId("routine-ex-0-set-1-menu").click();
+  await page.getByTestId("routine-ex-0-set-1-remove").click();
   await page.getByTestId("routine-ex-0-add-set").click();
 
   // The new set (index 1) inherited reps/range/RIR range…
@@ -422,4 +415,104 @@ test("start routine materializes every configured set as a visible row, not just
   for (let i = 2; i < 5; i++) {
     await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
   }
+});
+
+// Routine editor ↔ session parity (UI feedback batch 8, notes 10/13): the
+// exercise ⋯ menu owns laterality (writes every set), warm-up (inserts a
+// warmup-typed set at the top) and superset (adjacent pair); the per-set ⋯
+// menu owns per-set laterality + Remove set. The prescription round-trips:
+// a unilateral warm-up set starts a session as a unilateral pair (two
+// committed rows, W marker on the left line) with the superset group intact.
+test("exercise menu laterality/warm-up/superset round-trip into the session", async ({
+  page,
+}) => {
+  const EX1 = `MenuEx1 ${Date.now()}`;
+  const EX2 = `MenuEx2 ${Date.now()}`;
+  const ROUTINE = `Menu routine ${Date.now()}`;
+
+  await page.goto("/library");
+  await createExercise(page, EX1);
+  await createExercise(page, EX2);
+  await waitForExercise(page, EX1);
+  await waitForExercise(page, EX2);
+
+  await page.goto("/routines/new");
+  await page.getByTestId("routine-add-exercise-btn").click();
+  await page.getByTestId(`routine-pick-${EX1}`).click();
+  await page.getByTestId("routine-add-exercise-btn").click();
+  await page.getByTestId(`routine-pick-${EX2}`).click();
+
+  // Exercise-level Unilateral writes every set of the exercise.
+  await page.getByTestId("routine-ex-0-menu").click();
+  await page.getByTestId("routine-ex-0-laterality-unilateral").click();
+  // Warm-up inserts a warmup-typed set at the top (marker W on set 0).
+  await page.getByTestId("routine-ex-0-menu").click();
+  await page.getByTestId("routine-ex-0-warmup").click();
+  await expect(page.getByTestId("routine-ex-0-set-0-type")).toHaveText("W");
+  // Superset with next, from the same menu.
+  await page.getByTestId("routine-ex-0-menu").click();
+  await page.getByTestId("routine-ex-0-superset").click();
+  await page.getByTestId("routine-name-input").fill(ROUTINE);
+  await page.getByTestId("routine-save-btn").click();
+  await expect(page).toHaveURL(/\/train$/);
+
+  const routineId = await routineIdByName(page, ROUTINE);
+  expect(routineId).not.toBe("");
+  // The set graph persisted: warmup + 2 normal sets, all unilateral; the two
+  // exercises share a superset group.
+  const state = await page.evaluate(async (rid) => {
+    const { data: ex } = await window.__frog.supabase
+      .from("routine_exercises")
+      .select("id, superset_group")
+      .eq("routine_id", rid)
+      .is("deleted_at", null)
+      .order("order_index");
+    const sets = await Promise.all(
+      (ex ?? []).map(async (e) => {
+        const { data } = await window.__frog.supabase
+          .from("routine_sets")
+          .select("set_type, laterality")
+          .eq("routine_exercise_id", e.id)
+          .is("deleted_at", null)
+          .order("set_no");
+        return data;
+      }),
+    );
+    return {
+      groups: (ex ?? []).map((e) => e.superset_group),
+      sets,
+    };
+  }, routineId);
+  expect(state.groups).toEqual([0, 0]);
+  expect(state.sets[0]?.[0]?.set_type).toBe("warmup");
+  expect(state.sets[0]?.every((s) => s.laterality === "unilateral")).toBe(true);
+
+  // Start it: the warm-up is set 0, seeded unilateral (ᴸ marker on the type
+  // cell), and logging it commits a pair — two rows, one set_no.
+  await page.getByTestId(`routine-start-${ROUTINE}`).click();
+  await expect(page).toHaveURL(/\/session\//);
+  // Both exercises' blocks render; scope to the first block.
+  await expect(
+    page.locator('[data-testid^="block-"]').first().getByTestId("set-0-type"),
+  ).toHaveText("Wᴸ");
+  const block = page.locator('[data-testid^="block-"]').first();
+  await block.getByTestId("set-0-weight").fill("20");
+  await block.getByTestId("set-0-reps").fill("8");
+  await block.getByTestId("set-0-right-reps").fill("8");
+  await block.getByTestId("set-0-add").click();
+  await expect(page.getByTestId("committed-0")).toBeVisible();
+  await expect(page.getByTestId("committed-0-right")).toBeVisible();
+  const pair = await page.evaluate(async () => {
+    const { data, error } = await window.__frog.supabase
+      .from("set_logs")
+      .select("set_no, side, set_type, reps")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: true });
+    if (error) throw new Error(error.message);
+    return (data ?? []).slice(-2).sort((a, b) => (a.side < b.side ? -1 : 1));
+  });
+  expect(pair).toEqual([
+    { set_no: 0, side: "left", set_type: "warmup", reps: 8 },
+    { set_no: 0, side: "right", set_type: "warmup", reps: 8 },
+  ]);
 });
