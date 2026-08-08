@@ -21,8 +21,9 @@ supabase/.branches/
 *.pem
 
 # local env files
-.env*.local
-.env
+.env*
+!.env.example
+!*.env.example
 
 # secrets
 *.key
@@ -36,4 +37,3 @@ scripts/machine-catalog/staging/
 
 # local tooling config
 treehouse.toml
-.env*
