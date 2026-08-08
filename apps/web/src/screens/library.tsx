@@ -47,6 +47,7 @@ import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
   filterExercises,
+  type TierFilter,
 } from "@/components/exercise-filter";
 import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
@@ -165,14 +166,15 @@ export default function LibraryScreen() {
   );
   const [query, setQuery] = useState("");
   const [filterMuscle, setFilterMuscle] = useState("");
+  const [filterTier, setFilterTier] = useState<TierFilter>("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  // One shared editor sheet for both "+ New exercise" and every row's "Edit"
+  // One shared editor sheet for both "+ Custom exercise" and every row's "Edit"
   // — mode/exercise together decide create vs. edit.
   const [editorTarget, setEditorTarget] = useState<
     { mode: "create" } | { mode: "edit"; exercise: Exercise } | null
   >(null);
-  // Deep-link from Home's "+ New" affordance: opens straight into the create
+  // Deep-link from Home's "+ Custom" affordance: opens straight into the create
   // sheet instead of landing on the list and requiring a second tap.
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
@@ -196,8 +198,8 @@ export default function LibraryScreen() {
   // Derived off the whole ~900-row library: every optimistic write re-renders
   // this screen, and a bulk run does one write per pasted name.
   const filtered = useMemo(
-    () => filterExercises(exercises, query, filterMuscle),
-    [exercises, query, filterMuscle],
+    () => filterExercises(exercises, query, filterMuscle, filterTier),
+    [exercises, query, filterMuscle, filterTier],
   );
   const groups = useMemo(() => groupByPrimaryMuscle(filtered), [filtered]);
 
@@ -239,7 +241,7 @@ export default function LibraryScreen() {
           data-testid="new-exercise-btn"
         >
           <Plus className="size-4" />
-          New exercise
+          Custom exercise
         </Button>
         <BulkAddDialog
           exercises={exercises}
@@ -248,6 +250,7 @@ export default function LibraryScreen() {
           onRetryLibrary={() => void refetch()}
         />
       </div>
+      <BulkAddFailures />
 
       {editorTarget && (
         <ExerciseEditor
@@ -267,7 +270,11 @@ export default function LibraryScreen() {
           muscle={filterMuscle}
           onMuscle={setFilterMuscle}
         />
-        <TierLegend className="mt-2" />
+        <TierLegend
+          className="mt-2"
+          active={filterTier}
+          onSelect={(v) => setFilterTier((prev) => (prev === v ? "" : v))}
+        />
       </div>
 
       <div className="mt-4 overflow-hidden border border-border bg-surface">
@@ -419,118 +426,126 @@ function BulkAddDialog({
   }
 
   return (
-    <div className="mt-2">
-      <div className="flex items-center gap-2">
-        <Dialog
-          open={open}
-          onOpenChange={(next) => {
-            setOpen(next);
-            // Reopening is the retry path the notice points at, so hand the
-            // full failed list back as the draft — not the truncated preview.
-            if (next) setText(failed.join("\n"));
-            else {
-              setText("");
-              setSkipDuplicates(true);
-            }
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              // Duplicate detection reads the loaded library, so the dialog
-              // stays shut until there is one — otherwise "Skip duplicates"
-              // silently protects nothing.
-              disabled={!libraryLoaded}
-              title={
-                libraryLoaded
-                  ? undefined
-                  : libraryFailed
-                    ? "Couldn't load your library — retry first"
-                    : "Loading your library…"
-              }
-              data-testid="bulk-add-exercises-trigger"
-            >
-              Bulk add
-            </Button>
-          </DialogTrigger>
-          <DialogContent title="Bulk add exercises">
-            <form onSubmit={onSubmit} className="flex flex-col gap-3">
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="One exercise name per line"
-                rows={8}
-                className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
-                data-testid="bulk-add-textarea"
-              />
-              {duplicates.length > 0 && (
-                <p
-                  className="text-2xs text-warn"
-                  data-testid="bulk-add-duplicate-warning"
-                >
-                  {duplicates.length} name{duplicates.length === 1 ? "" : "s"}{" "}
-                  already in your library: {previewNames(duplicates)}
-                </p>
-              )}
-              <label className="flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={skipDuplicates}
-                  onChange={(e) => setSkipDuplicates(e.target.checked)}
-                  className="size-4 accent-(--accent)"
-                  data-testid="bulk-add-skip-duplicates"
-                />
-                Skip duplicates
-              </label>
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={!libraryLoaded || toCreate.length === 0}
-                  data-testid="bulk-add-submit"
-                >
-                  {toCreate.length > 0
-                    ? `Add ${toCreate.length} exercise${toCreate.length === 1 ? "" : "s"}`
-                    : "Add exercises"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-        {libraryFailed && (
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          // Reopening is the retry path the notice points at, so hand the
+          // full failed list back as the draft — not the truncated preview.
+          if (next) setText(failed.join("\n"));
+          else {
+            setText("");
+            setSkipDuplicates(true);
+          }
+        }}
+      >
+        <DialogTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
-            onClick={onRetryLibrary}
-            data-testid="bulk-add-retry-library"
+            // Duplicate detection reads the loaded library, so the dialog
+            // stays shut until there is one — otherwise "Skip duplicates"
+            // silently protects nothing.
+            disabled={!libraryLoaded}
+            title={
+              libraryLoaded
+                ? undefined
+                : libraryFailed
+                  ? "Couldn't load your library — retry first"
+                  : "Loading your library…"
+            }
+            data-testid="bulk-add-exercises-trigger"
           >
-            Retry loading library
+            Bulk add
           </Button>
-        )}
-      </div>
-      {failed.length > 0 && (
-        <p
-          role="status"
-          className="mt-1 flex items-start gap-1 text-2xs text-neg"
-          data-testid="bulk-add-failures"
+        </DialogTrigger>
+        <DialogContent title="Bulk add exercises">
+          <form onSubmit={onSubmit} className="flex flex-col gap-3">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="One exercise name per line"
+              rows={8}
+              className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
+              data-testid="bulk-add-textarea"
+            />
+            {duplicates.length > 0 && (
+              <p
+                className="text-2xs text-warn"
+                data-testid="bulk-add-duplicate-warning"
+              >
+                {duplicates.length} name{duplicates.length === 1 ? "" : "s"}{" "}
+                already in your library: {previewNames(duplicates)}
+              </p>
+            )}
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={skipDuplicates}
+                onChange={(e) => setSkipDuplicates(e.target.checked)}
+                className="size-4 accent-(--accent)"
+                data-testid="bulk-add-skip-duplicates"
+              />
+              Skip duplicates
+            </label>
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={!libraryLoaded || toCreate.length === 0}
+                data-testid="bulk-add-submit"
+              >
+                {toCreate.length > 0
+                  ? `Add ${toCreate.length} exercise${toCreate.length === 1 ? "" : "s"}`
+                  : "Add exercises"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {libraryFailed && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onRetryLibrary}
+          data-testid="bulk-add-retry-library"
         >
-          <span className="min-w-0 flex-1">
-            {failed.length} name{failed.length === 1 ? "" : "s"} didn't save:{" "}
-            {previewNames(failed)}. Open bulk add to try again.
-          </span>
-          <button
-            type="button"
-            title="Dismiss"
-            onClick={dismissBulkAddFailures}
-            className="shrink-0 px-1 text-faint transition-colors duration-100 hover:text-neg"
-            data-testid="bulk-add-failures-dismiss"
-          >
-            ×
-          </button>
-        </p>
+          Retry loading library
+        </Button>
       )}
-    </div>
+    </>
+  );
+}
+
+// The post-run failure notice, rendered as a sibling *below* the header row
+// rather than inside it: the row is `items-center`, so a two-line notice
+// stacked under the trigger would grow that flex item and lift "Bulk add"
+// off the primary button's vertical centre line (Note 16). Reads the same
+// module store the dialog does — it outlives both the dialog and the screen.
+function BulkAddFailures() {
+  const failed = useBulkAddFailures();
+  if (failed.length === 0) return null;
+  return (
+    <p
+      role="status"
+      className="mt-1 flex items-start gap-1 text-2xs text-neg"
+      data-testid="bulk-add-failures"
+    >
+      <span className="min-w-0 flex-1">
+        {failed.length} name{failed.length === 1 ? "" : "s"} didn't save:{" "}
+        {previewNames(failed)}. Open bulk add to try again.
+      </span>
+      <button
+        type="button"
+        title="Dismiss"
+        onClick={dismissBulkAddFailures}
+        className="shrink-0 px-1 text-faint transition-colors duration-100 hover:text-neg"
+        data-testid="bulk-add-failures-dismiss"
+      >
+        ×
+      </button>
+    </p>
   );
 }
 
@@ -854,15 +869,17 @@ const ExerciseRow = memo(function ExerciseRow({
 });
 
 // "Last set" line — reuses the ghost-prefill lookup (most recent prior
-// session's sets), no separate history query needed.
+// session's sets), no separate history query needed. useLastSets already
+// scopes to the single most recent session; the set_logs rows come back
+// grouped by set_no ascending (set 1, 2, …), so the last entry is the last
+// set they did — that one line, not the whole session (Note 15).
 function LastSetSummary({ exerciseId }: { exerciseId: string }) {
   const { unit } = useUnit();
   const { data: sets = [] } = useLastSets(exerciseId);
   if (sets.length === 0) return null;
-  const summary = sets
-    .map((s) => formatPrevious(s, (kg) => formatWeight(kg, unit)))
-    .filter((s): s is string => s != null)
-    .join(", ");
+  const summary = formatPrevious(sets[sets.length - 1], (kg) =>
+    formatWeight(kg, unit),
+  );
   if (!summary) return null;
   return (
     <span className="flex items-center gap-1 truncate">

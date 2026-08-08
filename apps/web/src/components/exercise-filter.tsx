@@ -1,4 +1,10 @@
-import { EQUIPMENT_LABELS, MUSCLES, type MuscleTarget } from "@frog/core";
+import {
+  EQUIPMENT_LABELS,
+  MUSCLES,
+  type MuscleTarget,
+  muscleLabelMatches,
+  type Tier,
+} from "@frog/core";
 import { Select } from "@radix-ui/themes";
 import { Search } from "lucide-react";
 import type { ReactNode } from "react";
@@ -20,14 +26,29 @@ export function primaryMuscleKey(e: {
   return primary && MUSCLE_KEYS.has(primary) ? primary : "other";
 }
 
-// Matches the name, any alias ("OHP" finds "Overhead Press"), or the
-// equipment label — one function, so the library, session picker, and
+// Quality filter values: a tier, or "unrated" for exercises with no rating on
+// their primary muscle ("" = no filter).
+export type TierFilter = Tier | "unrated" | "";
+
+// The tier the library row shows is the exercise's rating for its primary
+// muscle (same index-0 rule as grouping) — filtering on it keeps the filter
+// consistent with the name-brightness encoding TierLegend explains.
+export function primaryTier(e: {
+  muscleTargets: MuscleTarget[] | null;
+}): Tier | null {
+  return e.muscleTargets?.[0]?.tier ?? null;
+}
+
+// Matches the name, any alias ("OHP" finds "Overhead Press"), the equipment
+// label, or any target muscle's label/alias ("chest" finds pec work, via
+// MUSCLE_ALIASES) — one function, so the library, session picker, and
 // routine editor all pick up new match surfaces for free.
 function matchesQuery(
   e: {
     name: string;
     aliases?: string[] | null;
     equipment?: string | null;
+    muscleTargets: MuscleTarget[] | null;
   },
   q: string,
 ): boolean {
@@ -36,7 +57,8 @@ function matchesQuery(
   const equipmentLabel = e.equipment
     ? EQUIPMENT_LABELS[e.equipment as keyof typeof EQUIPMENT_LABELS]
     : null;
-  return equipmentLabel?.toLowerCase().includes(q) ?? false;
+  if (equipmentLabel?.toLowerCase().includes(q)) return true;
+  return e.muscleTargets?.some((t) => muscleLabelMatches(t.muscle, q)) ?? false;
 }
 
 export function filterExercises<
@@ -46,11 +68,15 @@ export function filterExercises<
     aliases?: string[] | null;
     equipment?: string | null;
   },
->(items: T[], query: string, muscle: string): T[] {
+>(items: T[], query: string, muscle: string, tier: TierFilter = ""): T[] {
   const q = query.trim().toLowerCase();
   return items.filter((e) => {
     if (q && !matchesQuery(e, q)) return false;
     if (muscle && primaryMuscleKey(e) !== muscle) return false;
+    if (tier) {
+      const t = primaryTier(e);
+      if (tier === "unrated" ? t !== null : t !== tier) return false;
+    }
     return true;
   });
 }

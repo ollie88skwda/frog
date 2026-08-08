@@ -34,7 +34,60 @@ export function tierNameClass(tier: Tier | null | undefined): string {
 }
 
 // Key explaining the name-brightness scale. Brighter = better exercise.
-export function TierLegend({ className }: { className?: string }) {
+// Interactive (library): each chip sets/clears a quality filter — the tier
+// colors/typography are the legend's encoding, a chip surface marks it as
+// pressable, and the active chip is outlined. Plain spans when `onSelect` is
+// absent, so other surfaces keep a static key.
+const TIER_LEGEND_ITEMS = [
+  { value: "S", label: "Best", className: "text-ink" },
+  { value: "A", label: "Great", className: "text-ink-2" },
+  { value: "B", label: "Good", className: "text-soft" },
+  { value: "C", label: "Weak", className: "text-faint" },
+  { value: "unrated", label: "Unrated", className: "text-faint italic" },
+] as const satisfies readonly {
+  value: Tier | "unrated";
+  label: string;
+  className: string;
+}[];
+
+/** What a legend chip stands for: a real tier, or the untiered bucket. */
+export type TierLegendValue = Tier | "unrated";
+
+export function TierLegend({
+  className,
+  active,
+  onSelect,
+}: {
+  className?: string;
+  /** Currently applied quality filter ("" = none). */
+  active?: TierLegendValue | "";
+  /** When provided, chips are buttons that report their value on click. */
+  onSelect?: (value: TierLegendValue) => void;
+}) {
+  const chips = TIER_LEGEND_ITEMS.map((item) =>
+    onSelect ? (
+      <button
+        key={item.value}
+        type="button"
+        onClick={() => onSelect(item.value)}
+        aria-pressed={active === item.value}
+        data-testid={`tier-filter-${item.value}`}
+        className={cn(
+          "flex h-10 items-center border px-2 font-semibold transition-colors duration-100",
+          item.className,
+          active === item.value
+            ? "border-accent bg-accent-soft"
+            : "border-border bg-surface hover:border-border-strong",
+        )}
+      >
+        {item.label}
+      </button>
+    ) : (
+      <span key={item.value} className={cn("font-semibold", item.className)}>
+        {item.label}
+      </span>
+    ),
+  );
   return (
     <div
       className={cn(
@@ -43,11 +96,7 @@ export function TierLegend({ className }: { className?: string }) {
       )}
     >
       <span className="text-faint">Exercise quality:</span>
-      <span className="font-semibold text-ink">Best</span>
-      <span className="font-semibold text-ink-2">Great</span>
-      <span className="font-semibold text-soft">Good</span>
-      <span className="font-semibold text-faint">Weak</span>
-      <span className="font-semibold text-faint italic">Unrated</span>
+      {chips}
     </div>
   );
 }

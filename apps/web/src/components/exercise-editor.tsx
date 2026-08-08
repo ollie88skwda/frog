@@ -354,7 +354,7 @@ export function ExerciseEditor({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        title={mode === "create" ? "New exercise" : "Edit exercise"}
+        title={mode === "create" ? "Custom exercise" : "Edit exercise"}
       >
         <div className="flex flex-col gap-5">
           {/* Section 1 — Identity (fast path) */}

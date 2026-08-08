@@ -3,8 +3,12 @@ import {
   ACTION_RATINGS,
   groupByPrimaryMuscle,
   JOINT_ACTIONS,
+  MUSCLE_ALIASES,
+  MUSCLE_REGION,
+  MUSCLE_REGION_LABELS,
   MUSCLES,
   type MuscleTarget,
+  muscleLabelMatches,
   primaryMuscles,
   ratingsForExercise,
   ratingsForMuscle,
@@ -179,5 +183,53 @@ describe("primaryMuscles / secondaryMuscles", () => {
   it("handles null", () => {
     expect(primaryMuscles(null)).toEqual([]);
     expect(secondaryMuscles(null)).toEqual([]);
+  });
+});
+
+describe("muscleLabelMatches (search aliases)", () => {
+  it("every alias key is a real muscle key", () => {
+    const keys = new Set(MUSCLES.map((m) => m.key));
+    for (const key of Object.keys(MUSCLE_ALIASES)) {
+      expect(keys.has(key), key).toBe(true);
+    }
+  });
+
+  it("matches the label itself", () => {
+    expect(muscleLabelMatches("pecs", "pecs")).toBe(true);
+    expect(muscleLabelMatches("front-delts", "front delts")).toBe(true);
+  });
+
+  it("chest finds the pecs, upper chest finds upper pecs", () => {
+    expect(muscleLabelMatches("pecs", "chest")).toBe(true);
+    expect(muscleLabelMatches("upper-pecs", "chest")).toBe(true);
+    expect(muscleLabelMatches("upper-pecs", "upper chest")).toBe(true);
+    expect(muscleLabelMatches("quads", "chest")).toBe(false);
+  });
+
+  it("shoulders finds every delt head", () => {
+    for (const key of ["front-delts", "side-delts", "rear-delts"]) {
+      expect(muscleLabelMatches(key, "shoulders"), key).toBe(true);
+    }
+    expect(muscleLabelMatches("side-delts", "lateral delts")).toBe(true);
+    expect(muscleLabelMatches("rear-delts", "posterior deltoids")).toBe(true);
+    expect(muscleLabelMatches("biceps", "shoulders")).toBe(false);
+  });
+
+  it("region names come from MUSCLE_REGION, so no muscle is left out", () => {
+    // rotator-cuff is a shoulder in MUSCLE_REGION but has no alias of its own
+    // — searching "shoulders" must still find it.
+    expect(muscleLabelMatches("rotator-cuff", "shoulders")).toBe(true);
+    for (const [key, region] of Object.entries(MUSCLE_REGION)) {
+      const label = MUSCLE_REGION_LABELS[region].toLowerCase();
+      expect(muscleLabelMatches(key, label), `${key} × ${label}`).toBe(true);
+    }
+  });
+
+  it("every region label is searchable", () => {
+    expect(muscleLabelMatches("lats", "back")).toBe(true);
+    expect(muscleLabelMatches("quads", "legs")).toBe(true);
+    expect(muscleLabelMatches("triceps", "arms")).toBe(true);
+    expect(muscleLabelMatches("abs", "core")).toBe(true);
+    expect(muscleLabelMatches("quads", "arms")).toBe(false);
   });
 });

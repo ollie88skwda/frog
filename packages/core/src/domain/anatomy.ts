@@ -580,6 +580,45 @@ export function muscleLabel(key: string): string {
   return MUSCLE_BY_KEY.get(key)?.label ?? key;
 }
 
+// Alternate names for muscles, resolved by free-text search so a query like
+// "front shoulders" finds the front delts. Mirrors the MatchCandidate.aliases
+// precedent (match-exercise.ts): the label is the primary name, these are
+// extra strings that resolve to the same muscle — the captain's preference is
+// the more universal term, but searching the label works too.
+// Colloquial *region* names ("chest", "shoulders", "back", …) don't need an
+// entry here: MUSCLE_REGION already owns muscle→region membership for the heat
+// map and region charts, and muscleLabelMatches reads it directly, so every
+// muscle in a region is searchable by that region's name. Don't add new region
+// names below — a second copy of that mapping drifts (rotator-cuff is a
+// shoulder in MUSCLE_REGION but had no "shoulders" alias here, so a search for
+// "shoulders" used to skip it).
+export const MUSCLE_ALIASES: Record<string, readonly string[]> = {
+  pecs: ["chest"],
+  "upper-pecs": ["upper chest"],
+  "front-delts": ["front shoulders", "anterior deltoids", "front deltoids"],
+  "side-delts": [
+    "side shoulders",
+    "lateral deltoids",
+    "lateral delts",
+    "side deltoids",
+  ],
+  "rear-delts": ["rear shoulders", "posterior deltoids", "rear deltoids"],
+};
+
+/**
+ * Does a lowercased query match this muscle's label, its coarse region label,
+ * or any of its aliases? Substring match on all three, so "chest" finds both
+ * "Pecs" and "Upper pecs" (via the chest region) and "upper chest" finds only
+ * the latter (via its alias).
+ */
+export function muscleLabelMatches(muscleKey: string, q: string): boolean {
+  if (muscleLabel(muscleKey).toLowerCase().includes(q)) return true;
+  const region = MUSCLE_REGION[muscleKey];
+  if (region && MUSCLE_REGION_LABELS[region].toLowerCase().includes(q))
+    return true;
+  return (MUSCLE_ALIASES[muscleKey] ?? []).some((a) => a.includes(q));
+}
+
 export function jointActionLabel(key: string): string {
   return JOINT_ACTION_BY_KEY.get(key)?.label ?? key;
 }
