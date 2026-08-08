@@ -25,7 +25,7 @@ export function paintHeatmap(
 ) {
   const regionSets = regionSetsOf(muscleSets);
   const max = Math.max(1, ...Object.values(regionSets));
-  const boxSide = 168; // matches the interactive SVG's viewBox
+  const boxSide = 168; // matches the interactive SVG's viewBox width (160-unit content span; must stay ≥ the content span or the two figures overflow a square box). The frog figure's content is ~96 units tall, so it renders shorter than the humanoid did in the same band — by design (docs/DECISIONS.md 2026-08-08).
   const scale = Math.min(box.w / boxSide, box.h / boxSide);
   const originX = box.x + (box.w - boxSide * scale) / 2;
   const originY = box.y + (box.h - boxSide * scale) / 2;

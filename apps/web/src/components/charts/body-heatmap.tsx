@@ -14,11 +14,14 @@ import {
 // schematic figure, zero dependencies, Radix tokens (theme-safe). Six coarse
 // regions (chest/back/legs/shoulders/arms/core) roll up from the 23-muscle
 // vocabulary via regionOf. Each region's fill opacity scales with its set count
-// (0 → the neutral silhouette shows through; max → accent at ~0.85). Neutral,
-// gender-agnostic figure v1 (deliberate deviation — see docs/DECISIONS.md).
+// (0 → the neutral silhouette shows through; max → accent at ~0.85).
 //
-// This is a legibility-first schematic, not anatomy art: proportions are blocky
-// on purpose so the region a set lands in is unmistakable at a glance.
+// The figure is a faceless squatting-frog schematic (head-on, mark pose) —
+// frog-themed per note 13 while the encoding stays untouched: same regions,
+// same opacity ramp, same selection/chips/readout. It borrows the mark's
+// silhouette only, never the mascot's face (docs/DECISIONS.md 2026-08-08).
+// Still legibility-first: proportions are blocky on purpose so the region a
+// set lands in is unmistakable at a glance.
 //
 // The path geometry itself lives in ./body-paths.ts — the share card's canvas
 // painter (lib/share/graphics.ts) draws the same figure from that one module.
@@ -42,7 +45,7 @@ function Figure({
 }) {
   const regions = VIEW_REGIONS[view];
   return (
-    <g transform={`translate(${xOffset}, 2)`}>
+    <g transform={`translate(${xOffset}, 4)`}>
       {/* Neutral silhouette (head, neck, and every region part) — always
           visible so 0-set regions still read as body, not empty space. */}
       {NEUTRAL_PARTS.map((d) => (
@@ -110,7 +113,7 @@ function Figure({
           );
         },
       )}
-      <text x={36} y={158} textAnchor="middle" fontSize="9" fill="var(--faint)">
+      <text x={36} y={126} textAnchor="middle" fontSize="9" fill="var(--faint)">
         {view === "front" ? "Front" : "Back"}
       </text>
     </g>
@@ -140,7 +143,7 @@ export function BodyHeatmap({
   return (
     <div className={className} data-testid={testId}>
       <svg
-        viewBox="0 0 168 168"
+        viewBox="0 0 168 132"
         className="w-full"
         role="img"
         aria-label="Muscles trained — front and back"
