@@ -16,7 +16,7 @@ Clone the Hevy MOBILE app's feature set into Frog (feature parity, built in Frog
 - Frog repo: `/Users/Ollie/Documents/Code/sbl` — read `AGENTS.md`, `CLAUDE.md`, `packages/core/src/db/schema.ts`, `apps/web/src/screens/session.tsx`, `apps/web/src/lib/queries.ts` for conventions.
 
 ## Hard constraints (from Frog CLAUDE.md/AGENTS.md)
-- Initial JS ≤220 kB gzipped (CI-gated). Charts must be tiny custom SVG or a micro-lib, lazy-loaded — NOT recharts.
+- Initial JS ≤220 kB gzipped (CI-gated). ~~Charts must be tiny custom SVG or a micro-lib, lazy-loaded — NOT recharts~~ **→ stats graphs are now shadcn charts over recharts 3.8, lazy-loaded in the stats chunk (2026-08-08 stats-screen batch); the ≤220 kB eager gate still holds**.
 - Optimistic UI everywhere on the logging path; mobile-first (bottom tabs, ≥40px targets); online-first Supabase-direct via the `Repo` seam; `packages/core` framework-free.
 - Migrations: Drizzle schema → `bun run db:generate`, hand-written RLS + seeds interleaved; soft-delete only; owner_id/RLS pattern; seed rows owner_id NULL.
 - Design: current Frog monochrome/0px-radius/8px-grid theme. NO Hevy visual cloning.
@@ -24,5 +24,5 @@ Clone the Hevy MOBILE app's feature set into Frog (feature parity, built in Frog
 ## Known open implementation choices the plan should resolve (recommend, don't ask)
 - Exercise library expansion: recommend seeding from free-exercise-db (public-domain, ~870 exercises w/ images + instructions) mapped into Frog's schema + muscle/tier taxonomy; keep Frog's 20 curated seeds as the "classified" core; classification of the rest can be incremental.
 - Exercise types (8 Hevy types: weight&reps, bodyweight reps, weighted bodyweight, assisted bodyweight, duration, duration&weight, distance&duration, weight&distance) — schema approach for set_logs (add durationSec, distanceM, exercise.exerciseType; bodyweight volume math needs a bodyweight source = Measures latest weight).
-- Charts: recommend one tiny in-house SVG chart kit (line, bar, grouped bar, heatmap-body) in apps/web, lazy-loaded.
+- Charts: ~~recommend one tiny in-house SVG chart kit (line, bar, grouped bar, heatmap-body) in apps/web, lazy-loaded~~ **SUPERSEDED → 2026-08-08 (stats-screen batch): stats graphs are shadcn charts (recharts 3.8) and the body heat map is the react-body-highlighter library figure; the in-house kit survives for the other screens.**
 - Body heat map: Frog already has anatomy muscle taxonomy; needs front/back SVG body diagram component.

@@ -22,10 +22,23 @@ import {
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { BarChart } from "@/components/charts/bars";
-import { BodyHeatmap } from "@/components/charts/body-heatmap";
-import { GroupedBarChart } from "@/components/charts/grouped-bars";
-import { StackedBarChart, stackColor } from "@/components/charts/stacked-bars";
+import {
+  CartesianGrid,
+  Bar as RechartsBar,
+  BarChart as RechartsBarChart,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { HumanBodyHeatmap } from "@/components/charts/human-body-heatmap";
+import { Card } from "@/components/ui/card";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { formatDuration } from "@/lib/format";
 import { useExercises } from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
@@ -61,6 +74,15 @@ function bucketLabel(start: number, g: StatsGranularity): string {
   if (g === "year") return String(d.getFullYear());
   if (g === "month") return monthShort.format(d);
   return monthDay.format(d);
+}
+
+// Compact y-axis ticks for weight volume (2 500 → "2.5k").
+function compactNumber(v: number): string {
+  if (v >= 1000) {
+    const s = (v / 1000).toFixed(1).replace(/\.0$/, "");
+    return `${s}k`;
+  }
+  return formatCount(v);
 }
 
 export default function StatsScreen() {
@@ -145,7 +167,7 @@ type SectionProps = {
   opts: StatsOptions;
 };
 
-// ── Section shell ────────────────────────────────────────────────────────────
+// ── Section shell (shadcn/ui Card) ───────────────────────────────────────────
 function Section({
   title,
   children,
@@ -158,8 +180,8 @@ function Section({
   testId?: string;
 }) {
   return (
-    <section
-      className="mt-4 border border-border bg-surface p-4"
+    <Card
+      className="mt-4 border-border bg-surface px-4 py-4 ring-border"
       data-testid={testId}
     >
       <div className="flex items-center justify-between gap-2">
@@ -169,7 +191,7 @@ function Section({
         {right}
       </div>
       <div className="mt-3">{children}</div>
-    </section>
+    </Card>
   );
 }
 
@@ -209,6 +231,10 @@ function Chips<T extends string>({
 }
 
 // ── 1. Last 7 days: consistency mini-bars + rolling body heat map ─────────────
+const CONSISTENCY_CONFIG = {
+  sessions: { label: "Workouts", color: "var(--accent)" },
+} satisfies ChartConfig;
+
 function SevenDaySection({ history, muscleMap, opts }: SectionProps) {
   const consistency = useMemo(
     () => weeklyConsistency(history, 12, opts),
@@ -225,61 +251,111 @@ function SevenDaySection({ history, muscleMap, opts }: SectionProps) {
       const d = new Date(w.weekStart);
       const label = d.getMonth() !== prevMonth ? monthShort.format(d) : "";
       prevMonth = d.getMonth();
-      return { label, value: w.sessions };
+      return { weekStart: w.weekStart, label, sessions: w.sessions };
     });
   }, [consistency]);
+  // Recharts category axes dedupe identical values, so the sparse month labels
+  // ("" for most weeks) must be a *display* transform, not the category key —
+  // the unique weekStart is the key, the formatter re-applies the sparse rule.
+  const labelOf = useMemo(
+    () => new Map(bars.map((b) => [b.weekStart, b.label])),
+    [bars],
+  );
 
   return (
     <Section title="Last 7 days" testId="stats-seven-day">
       <p className="text-2xs text-faint">Workouts per week — last 12 weeks</p>
       <div className="mt-1">
-        <BarChart
-          bars={bars}
-          formatValue={(v) => String(v)}
-          height={96}
-          ariaLabel="Workouts per week"
-          testId="consistency-bars"
-        />
+        <ChartContainer
+          config={CONSISTENCY_CONFIG}
+          className="h-24 w-full"
+          data-testid="consistency-bars"
+        >
+          <RechartsBarChart
+            data={bars}
+            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+            accessibilityLayer
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="weekStart"
+              type="category"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={6}
+              tickFormatter={(v) => labelOf.get(Number(v)) ?? ""}
+            />
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              width={24}
+              allowDecimals={false}
+            />
+            <ChartTooltip
+              cursor={false}
+              content={
+                <ChartTooltipContent
+                  labelFormatter={(_, payload) =>
+                    monthDay.format(new Date(payload?.[0]?.payload?.weekStart))
+                  }
+                />
+              }
+            />
+            <RechartsBar
+              dataKey="sessions"
+              fill="var(--color-sessions)"
+              maxBarSize={40}
+            />
+          </RechartsBarChart>
+        </ChartContainer>
       </div>
       <p className="mt-3 text-2xs text-faint">Muscles trained — last 7 days</p>
-      <BodyHeatmap muscleSets={sevenDay} testId="seven-day-heatmap" />
+      <HumanBodyHeatmap muscleSets={sevenDay} testId="seven-day-heatmap" />
     </Section>
   );
 }
 
 // ── 2. Set count per muscle group over time ──────────────────────────────────
+const SETS_CONFIG = {
+  sets: { label: "Total sets", color: "var(--accent)" },
+} satisfies ChartConfig;
+
+// Note 6: per-muscle stack colors failed once many muscles carried one set
+// each, so the representation no longer encodes muscle as color at all — a
+// single-accent total-sets bar per bucket, with the per-muscle breakdown as a
+// ranked list below (docs/DECISIONS.md 2026-08-08, stats-screen batch).
 function SetsPerMuscleSection({ history, muscleMap, opts }: SectionProps) {
   const [range, setRange] = useState<StatsRange>("3m");
   const [gran, setGran] = useState<StatsGranularity>("week");
-  const [picked, setPicked] = useState<string[] | null>(null);
+  const { t } = useVoice();
 
   const buckets = useMemo(
     () => setsPerMuscle(history, muscleMap, range, gran, opts),
     [history, muscleMap, range, gran, opts],
   );
 
-  // Muscles present in the window, busiest first — the multi-select universe.
-  const present = useMemo(() => {
+  // Muscles present in the window, busiest first — the ranked breakdown.
+  const breakdown = useMemo(() => {
     const totals = new Map<string, number>();
     for (const b of buckets)
       for (const [m, n] of Object.entries(b.counts))
         totals.set(m, (totals.get(m) ?? 0) + n);
-    return [...totals.entries()].sort((a, b) => b[1] - a[1]).map(([m]) => m);
+    return [...totals.entries()].sort((a, b) => b[1] - a[1]);
   }, [buckets]);
 
-  const selected = picked ?? present.slice(0, 6);
-  const groups = buckets.map((b) => ({
-    label: bucketLabel(b.start, gran),
-    values: selected.map((m) => b.counts[m] ?? 0),
-  }));
-
-  function toggle(m: string) {
-    const base = new Set(selected);
-    if (base.has(m)) base.delete(m);
-    else base.add(m);
-    // Preserve busiest-first order for stable colors.
-    setPicked(present.filter((p) => base.has(p)));
-  }
+  const chartData = useMemo(
+    () =>
+      buckets.map((b) => ({
+        start: b.start,
+        label: bucketLabel(b.start, gran),
+        sets: Object.values(b.counts).reduce((a, n) => a + n, 0),
+      })),
+    [buckets, gran],
+  );
+  const labelOf = useMemo(
+    () => new Map(chartData.map((b) => [b.start, b.label])),
+    [chartData],
+  );
 
   return (
     <Section title="Sets per muscle group" testId="stats-sets-per-muscle">
@@ -300,51 +376,85 @@ function SetsPerMuscleSection({ history, muscleMap, opts }: SectionProps) {
         />
       </div>
 
-      <div className="mt-3">
-        <StackedBarChart
-          groups={groups}
-          seriesLabels={selected.map(muscleLabel)}
-          testId="sets-per-muscle-chart"
-        />
+      <p className="mt-3 text-2xs text-faint">
+        Total sets per {GRAN_LABELS[gran].toLowerCase()}
+      </p>
+      <div className="mt-1">
+        {chartData.length === 0 ? (
+          <div
+            className="flex h-44 items-center justify-center text-xs text-faint"
+            data-testid="sets-per-muscle-chart"
+          >
+            {t("No data yet.", "No data yet. The frog refuses to speculate.")}
+          </div>
+        ) : (
+          <ChartContainer
+            config={SETS_CONFIG}
+            className="h-44 w-full"
+            data-testid="sets-per-muscle-chart"
+          >
+            <RechartsBarChart
+              data={chartData}
+              margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+              accessibilityLayer
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="start"
+                type="category"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                tickFormatter={(v) => labelOf.get(Number(v)) ?? ""}
+              />
+              <YAxis tickLine={false} axisLine={false} width={26} />
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(_, payload) =>
+                      bucketLabel(payload?.[0]?.payload?.start, gran)
+                    }
+                  />
+                }
+              />
+              <RechartsBar
+                dataKey="sets"
+                fill="var(--color-sets)"
+                maxBarSize={40}
+              />
+            </RechartsBarChart>
+          </ChartContainer>
+        )}
       </div>
 
-      {/* Legend + multi-select: every present muscle is a toggle; selected ones
-          carry their stack color swatch. */}
-      {present.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {present.map((m) => {
-            const idx = selected.indexOf(m);
-            const on = idx !== -1;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => toggle(m)}
-                className={cn(
-                  "flex h-7 items-center gap-1.5 px-2 text-2xs transition-colors duration-150",
-                  on
-                    ? "bg-accent-soft text-accent"
-                    : "bg-translucent text-faint hover:bg-surface-hover hover:text-soft",
-                )}
-                data-testid={`spm-muscle-${m}`}
-              >
-                <span
-                  className="inline-block size-2"
-                  style={{
-                    background: on ? stackColor(idx) : "var(--border-strong)",
-                  }}
-                />
-                {muscleLabel(m)}
-              </button>
-            );
-          })}
-        </div>
+      {breakdown.length > 0 && (
+        <ul
+          className="mt-3 divide-y divide-border border border-border"
+          data-testid="sets-per-muscle-breakdown"
+        >
+          {breakdown.map(([m, n]) => (
+            <li
+              key={m}
+              className="flex items-center justify-between px-3 py-1.5"
+              data-testid={`spm-row-${m}`}
+            >
+              <span className="text-xs text-soft">{muscleLabel(m)}</span>
+              <span className="num text-sm">{formatCount(n)}</span>
+            </li>
+          ))}
+        </ul>
       )}
     </Section>
   );
 }
 
 // ── 3. Muscle distribution vs prior equal period ─────────────────────────────
+const DIST_CONFIG = {
+  current: { label: "This period", color: "var(--accent)" },
+  previous: { label: "Previous", color: "var(--faint)" },
+} satisfies ChartConfig;
+
 function DistributionSection({
   history,
   muscleMap,
@@ -358,13 +468,15 @@ function DistributionSection({
     [history, muscleMap, range, opts, bodyweightKg],
   );
 
-  const groups = MUSCLE_REGIONS.map((r) => ({
-    label: MUSCLE_REGION_LABELS[r],
-    values: [
-      toDisplayWeight(current.regionVolumeKg[r], unit),
-      toDisplayWeight(previous.regionVolumeKg[r], unit),
-    ],
-  }));
+  const chartData = useMemo(
+    () =>
+      MUSCLE_REGIONS.map((r) => ({
+        region: MUSCLE_REGION_LABELS[r],
+        current: toDisplayWeight(current.regionVolumeKg[r], unit),
+        previous: toDisplayWeight(previous.regionVolumeKg[r], unit),
+      })),
+    [current, previous, unit],
+  );
 
   const totals: Array<{
     label: string;
@@ -415,12 +527,49 @@ function DistributionSection({
         testIdPrefix="dist-range"
       />
       <div className="mt-3">
-        <GroupedBarChart
-          groups={groups}
-          seriesLabels={["This period", "Previous"]}
-          ariaLabel="Region volume vs previous period"
-          testId="distribution-chart"
-        />
+        <ChartContainer
+          config={DIST_CONFIG}
+          className="h-40 w-full"
+          data-testid="distribution-chart"
+        >
+          <RechartsBarChart
+            data={chartData}
+            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+            accessibilityLayer
+          >
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="region"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              interval={0}
+            />
+            {/* Note 7c: the grouped bars gain a real y-axis (kg/lb volume),
+                compact-formatted so 2 500 reads as "2.5k". */}
+            <YAxis
+              tickLine={false}
+              axisLine={false}
+              width={30}
+              tickFormatter={compactNumber}
+            />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            {/* Note 7a+b: the legend lives BELOW the plot (shadcn
+                ChartLegendContent), so bar tops can never collide with the
+                "This period"/"Previous" labels again. */}
+            <ChartLegend content={<ChartLegendContent />} />
+            <RechartsBar
+              dataKey="current"
+              fill="var(--color-current)"
+              maxBarSize={40}
+            />
+            <RechartsBar
+              dataKey="previous"
+              fill="var(--color-previous)"
+              maxBarSize={40}
+            />
+          </RechartsBarChart>
+        </ChartContainer>
       </div>
 
       <ul
@@ -513,7 +662,10 @@ function WeekBodySection({ history, muscleMap, opts }: SectionProps) {
       <p className="num text-2xs text-faint" data-testid="week-range">
         {monthDay.format(from)} – {monthDay.format(to - DAY)}
       </p>
-      <BodyHeatmap muscleSets={distribution.muscleSets} testId="week-heatmap" />
+      <HumanBodyHeatmap
+        muscleSets={distribution.muscleSets}
+        testId="week-heatmap"
+      />
       {rows.length === 0 ? (
         <p className="mt-2 text-xs text-faint">No sets logged this week.</p>
       ) : (
@@ -533,7 +685,7 @@ function WeekBodySection({ history, muscleMap, opts }: SectionProps) {
   );
 }
 
-// ── 5. Main exercises ────────────────────────────────────────────────────────
+// ── 5. Favorite exercises ────────────────────────────────────────────────────
 function MainExercisesSection({
   history,
   opts,
@@ -554,7 +706,7 @@ function MainExercisesSection({
   }, [exercises]);
 
   return (
-    <Section title="Main exercises" testId="stats-main-exercises">
+    <Section title="Favorite Exercises" testId="stats-main-exercises">
       <Chips
         options={RANGES}
         value={range}

@@ -61,7 +61,7 @@ Research performed (this session): 48 Hevy feature articles + 86 help-center doc
 | History full edit / Copy Workout / Save as Routine | 🟡 | extend `history-detail.tsx` |
 | Calendar (month/year/all-time, retro-log, first-weekday) | ❌ | `/calendar` |
 | Weekly streak + rest-day counter + backdate repair | ❌ | `domain/streak.ts` (computed) |
-| Statistics hub (7-day body map, sets/muscle, distribution vs prior period, main exercises) | ❌ | `/stats` + `stats/aggregate.ts` + body heat-map SVG |
+| Statistics hub (7-day body map, sets/muscle, distribution vs prior period, main exercises) | ❌ | `/stats` + `stats/aggregate.ts` + shadcn charts + library human-body heat map — **as-shipped, see DECISIONS.md 2026-08-08 (stats-screen batch)** |
 | Monthly report / Year in Review | ❌ | report builders + screens (Frog keeps archive — improvement) |
 | Measures (weight/bodyfat/14 girths, 1/day) + progress photos (private, compare) | ❌ | `measurements` table + `/measures` + private bucket |
 | Settings: units(3 kinds), workouts hub(12), first weekday, sounds, notifications | 🟡 | expand settings + `user_prefs` |
@@ -122,7 +122,7 @@ Extended: `session-reducer.ts` (set types, duration/distance drafts, superset or
 
 ## D. Screens (3-tab shell; all new routes lazy)
 
-**Chart kit** `apps/web/src/components/charts/` — in-house SVG only (line, bars, grouped-bars, sparkline, body-heatmap), zero deps, theme tokens, tabular numerals, only in lazy chunks. Body heat map = hand-built front/back SVG, 6–10 region paths per view keyed to `MUSCLE_REGION`, neutral figure v1 — **figure superseded, see DECISIONS.md 2026-08-08 (frog heatmap)**.
+**Chart kit** `apps/web/src/components/charts/` — in-house SVG only (line, bars, grouped-bars, sparkline, body-heatmap), zero deps, theme tokens, tabular numerals, only in lazy chunks. Body heat map = hand-built front/back SVG, 6–10 region paths per view keyed to `MUSCLE_REGION`, neutral figure v1 — **figure superseded, see DECISIONS.md 2026-08-08 (frog heatmap); on `/stats` the heat maps now render the library human figure instead, and the stats graphs are shadcn charts — see DECISIONS.md 2026-08-08 (stats-screen batch)**.
 
 | Route | Work |
 |---|---|
@@ -139,7 +139,7 @@ Extended: `session-reducer.ts` (set types, duration/distance drafts, superset or
 | `/profile` | fill stub: name, counts, streak, media strip, 3-month activity bars, dashboard buttons (Exercises/Stats/Measures/Calendar), recent history, gear |
 | `/history/:id` | full retroactive edit (session components in edit mode), Copy Workout, Save as Routine, share, media |
 | `/calendar` | month grid (0px squares), tap-through, retro-log + multi-workout "+", year/all-time zooms, streak header, share |
-| `/stats` | 7-day consistency + body heat map; sets-per-muscle (range × granularity × multi-muscle); distribution vs grey prior period + totals w/ deltas; weekly body view; main exercises; report links |
+| `/stats` | 7-day consistency + library human-body heat map; sets-per-muscle total-sets bar + ranked breakdown (no per-muscle colors); distribution vs grey prior period + totals w/ deltas; weekly body view; Favorite Exercises; report links — **as-shipped shape, see DECISIONS.md 2026-08-08 (stats-screen batch)** |
 | `/stats/monthly`, `/stats/year` | report slides, month archive picker, shareable |
 | `/measures` | entry editor (backdate, any subset, 1/day upsert), trend graph + metric switcher + list, photo gallery/compare/replace/delete, `<input capture>` camera v1 |
 | `/settings` | units ×3 + per-exercise note; workouts hub (default rest, previous scope, warm-up method editor, warm-ups-in-stats, RPE/RIR visibility, inline timer, smart scrolling, PR banner, plate gear, keep awake, sounds w/ WebAudio volumes); first weekday; body diagram; notifications; Install app; Strong import; measurements export |

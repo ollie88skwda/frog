@@ -24,6 +24,10 @@
 @import "@radix-ui/themes/components.css" layer(radix);
 @import "@radix-ui/themes/utilities.css" layer(radix);
 
+/* shadcn/ui (radix-nova preset) uses the `.dark` class for dark variants —
+   the same class Radix Themes keys off (index.html sets it pre-paint). */
+@custom-variant dark (&:is(.dark *));
+
 @font-face {
   font-family: "Bricolage Grotesque";
   src: url("/fonts/BricolageGrotesque.woff2") format("woff2");
@@ -99,6 +103,31 @@
   /* signature secondary-control treatment: translucent fill + inset hairlines */
   --inset-control:
     inset 0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+  /* shadcn/ui semantic tokens (radix-nova preset), bridged onto the Frog
+     scale so shadcn components (chart, card) resolve to the app palette.
+     These name shadcn's concepts but hold the app's own tokens — nothing
+     here overrides the Frog tokens above; the Radix scales stay the single
+     source for light/dark. Added by `npx shadcn@latest init` (2026-08-08). */
+  --background: var(--bg);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--surface);
+  --popover-foreground: var(--ink);
+  --primary: var(--accent);
+  --primary-foreground: var(--accent-fg);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--ink);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--faint);
+  --accent-foreground: var(--accent-fg);
+  --destructive: var(--neg);
+  --input: var(--border-strong);
+  --chart-1: var(--grass-9);
+  --chart-2: var(--sage-8);
+  --chart-3: var(--grass-6);
+  --chart-4: var(--sage-11);
+  --chart-5: var(--grass-11);
 }
 
 /* Dark only needs the handful of values Radix switches by appearance rather
@@ -162,6 +191,27 @@
   --radius-md: var(--radius-3);
   --radius-lg: var(--radius-4);
   --radius-xl: var(--radius-5);
+  /* shadcn/ui color tokens — the :root values above are the single source. */
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-input: var(--input);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
 }
 
 @theme {
@@ -367,4 +417,14 @@
 }
 @utility float-in {
   animation: float-in 160ms var(--ease-out-quad);
+}
+
+/* react-body-highlighter human body map (stats hub): the library fills each
+   muscle polygon without strokes, so neighbouring regions bleed together;
+   a hairline between polygons makes the figure read as one body. Inline
+   `fill` styles win over this rule, so the heat encoding is unaffected. */
+.rbh polygon {
+  stroke: var(--border);
+  stroke-width: 0.4;
+  stroke-linejoin: round;
 }
