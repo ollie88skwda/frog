@@ -295,7 +295,9 @@ function SevenDaySection({ history, muscleMap, opts }: SectionProps) {
               cursor={false}
               content={
                 <ChartTooltipContent
-                  labelFormatter={(v) => monthDay.format(new Date(Number(v)))}
+                  labelFormatter={(_, payload) =>
+                    monthDay.format(new Date(payload?.[0]?.payload?.weekStart))
+                  }
                 />
               }
             />
@@ -410,7 +412,9 @@ function SetsPerMuscleSection({ history, muscleMap, opts }: SectionProps) {
                 cursor={false}
                 content={
                   <ChartTooltipContent
-                    labelFormatter={(v) => bucketLabel(Number(v), gran)}
+                    labelFormatter={(_, payload) =>
+                      bucketLabel(payload?.[0]?.payload?.start, gran)
+                    }
                   />
                 }
               />
