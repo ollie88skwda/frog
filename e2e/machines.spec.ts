@@ -8,20 +8,29 @@ import {
 } from "./helpers";
 
 // Machines: catalog search → "my gym", settings memory in the session setup
-// strip, muscle-grouped library, and the RIR lesson InfoTip.
+// strip, muscle drill-down library (region → muscle → grouped sections), and
+// the RIR lesson InfoTip.
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
   await signIn(page);
 });
 
-test("library groups exercises by muscle with tier badges", async ({
+test("library drills down region → muscle into tier-grouped sections", async ({
   page,
 }) => {
   await page.goto("/library");
-  // Seed classifications put Squat & co under quads.
+  // Default view is the flat search-first list — no muscle sections yet.
+  await expect(page.getByTestId("muscle-group-quads")).not.toBeVisible();
+  // Two-level filter: Legs region narrows the muscle options to legs muscles.
+  await page.getByTestId("exercise-region-select").click();
+  await page.getByRole("option", { name: "Legs", exact: true }).click();
+  await page.getByTestId("exercise-filter-select").click();
+  await page.getByRole("option", { name: "Quads", exact: true }).click();
+  // Selecting a muscle lands on the grouped sections (D2: groups survive
+  // only inside a chosen muscle). Seed classifications put Squat & co under
+  // quads.
   await expect(page.getByTestId("muscle-group-quads")).toBeVisible();
-  await expect(page.getByTestId("muscle-group-hamstrings")).toBeVisible();
   // "Best for" panel opens with ranked joint actions.
   await page.getByTestId("best-for-quads").click();
   const dialog = page.getByRole("dialog");

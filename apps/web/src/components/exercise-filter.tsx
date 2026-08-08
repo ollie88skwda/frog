@@ -1,8 +1,12 @@
 import {
+  EQUIPMENT_KINDS,
   EQUIPMENT_LABELS,
+  MUSCLE_REGION_LABELS,
+  MUSCLE_REGIONS,
   MUSCLES,
   type MuscleTarget,
   muscleLabelMatches,
+  musclesInRegion,
   type Tier,
 } from "@frog/core";
 import { Select } from "@radix-ui/themes";
@@ -10,8 +14,8 @@ import { Search } from "lucide-react";
 import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 
-// Radix Select forbids an empty-string item value, so the "All muscles" option
-// uses a sentinel that maps to "" (the filter's "no muscle") at the boundary.
+// Radix Select forbids an empty-string item value, so the "All …" options use
+// a sentinel that maps to "" (the filter's "no value") at the boundary.
 const ALL = "all";
 
 const MUSCLE_KEYS = new Set(MUSCLES.map((m) => m.key));
@@ -68,11 +72,18 @@ export function filterExercises<
     aliases?: string[] | null;
     equipment?: string | null;
   },
->(items: T[], query: string, muscle: string, tier: TierFilter = ""): T[] {
+>(
+  items: T[],
+  query: string,
+  muscle: string,
+  tier: TierFilter = "",
+  equipment = "",
+): T[] {
   const q = query.trim().toLowerCase();
   return items.filter((e) => {
     if (q && !matchesQuery(e, q)) return false;
     if (muscle && primaryMuscleKey(e) !== muscle) return false;
+    if (equipment && e.equipment !== equipment) return false;
     if (tier) {
       const t = primaryTier(e);
       if (tier === "unrated" ? t !== null : t !== tier) return false;
@@ -81,13 +92,18 @@ export function filterExercises<
   });
 }
 
-// Search box + muscle-group filter, shared by the Library and the session
-// exercise picker so both stay in sync.
+// Search box + region/muscle/equipment filters, shared by the Library and the
+// session exercise picker so both stay in sync. The region and equipment
+// selects are optional — the picker passes only the muscle filter.
 export function ExerciseFilterBar({
   query,
   onQuery,
   muscle,
   onMuscle,
+  region,
+  onRegion,
+  equipment,
+  onEquipment,
   autoFocus,
   after,
 }: {
@@ -95,13 +111,22 @@ export function ExerciseFilterBar({
   onQuery: (v: string) => void;
   muscle: string;
   onMuscle: (v: string) => void;
+  /** Coarse region; narrows the muscle options ("" = all regions). */
+  region?: string;
+  onRegion?: (v: string) => void;
+  /** Equipment kind key, e.g. "barbell" ("" = all equipment). */
+  equipment?: string;
+  onEquipment?: (v: string) => void;
   autoFocus?: boolean;
   /** Extra control appended after the muscle select (e.g. a "Yours" toggle). */
   after?: ReactNode;
 }) {
+  const muscles = region
+    ? musclesInRegion(region as (typeof MUSCLE_REGIONS)[number])
+    : MUSCLES;
   return (
-    <div className="flex gap-2">
-      <div className="relative flex-1">
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="relative min-w-40 flex-1">
         <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-faint" />
         <Input
           placeholder="Search exercises…"
@@ -112,6 +137,40 @@ export function ExerciseFilterBar({
           data-testid="exercise-search-input"
         />
       </div>
+      {onRegion && (
+        <Select.Root
+          value={region || ALL}
+          onValueChange={(v) => {
+            const next = v === ALL ? "" : v;
+            onRegion(next);
+            // A region change can invalidate the current muscle — clear it so
+            // the muscle select never shows an option outside the region.
+            if (
+              next &&
+              muscle &&
+              !musclesInRegion(next as (typeof MUSCLE_REGIONS)[number]).some(
+                (m) => m.key === muscle,
+              )
+            )
+              onMuscle("");
+          }}
+          size="2"
+        >
+          <Select.Trigger
+            variant="surface"
+            className="w-28 shrink-0"
+            data-testid="exercise-region-select"
+          />
+          <Select.Content>
+            <Select.Item value={ALL}>All regions</Select.Item>
+            {MUSCLE_REGIONS.map((r) => (
+              <Select.Item key={r} value={r}>
+                {MUSCLE_REGION_LABELS[r]}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
+      )}
       <Select.Root
         value={muscle || ALL}
         onValueChange={(v) => onMuscle(v === ALL ? "" : v)}
@@ -124,14 +183,35 @@ export function ExerciseFilterBar({
         />
         <Select.Content>
           <Select.Item value={ALL}>All muscles</Select.Item>
-          {MUSCLES.map((m) => (
+          {muscles.map((m) => (
             <Select.Item key={m.key} value={m.key}>
               {m.label}
             </Select.Item>
           ))}
-          <Select.Item value="other">Other</Select.Item>
+          {!region && <Select.Item value="other">Other</Select.Item>}
         </Select.Content>
       </Select.Root>
+      {onEquipment && (
+        <Select.Root
+          value={equipment || ALL}
+          onValueChange={(v) => onEquipment(v === ALL ? "" : v)}
+          size="2"
+        >
+          <Select.Trigger
+            variant="surface"
+            className="w-28 shrink-0"
+            data-testid="exercise-equipment-select"
+          />
+          <Select.Content>
+            <Select.Item value={ALL}>All equipment</Select.Item>
+            {EQUIPMENT_KINDS.map((k) => (
+              <Select.Item key={k} value={k}>
+                {EQUIPMENT_LABELS[k]}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
+      )}
       {after}
     </div>
   );

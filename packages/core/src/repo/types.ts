@@ -388,6 +388,13 @@ export interface Repo {
     routineId?: string,
   ): Promise<GhostSet[]>;
 
+  /**
+   * Exercise ids with at least one set logged within the last `days` days,
+   * most-recent set first (one entry per exercise). Powers the library's
+   * "Recent" band — the Hevy-style recently-logged-first ordering.
+   */
+  recentExerciseIds(days: number): Promise<string[]>;
+
   /** Sets the session title (null clears it). */
   updateSessionTitle(sessionId: string, title: string | null): Promise<void>;
   /** Corrects a finished session's end time (ms epoch) — duration edits. */

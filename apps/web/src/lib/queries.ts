@@ -926,3 +926,15 @@ export function useLastSets(exerciseId: string) {
     enabled: !!exerciseId,
   });
 }
+
+// Exercise ids logged within the last `days` days, most-recent first — the
+// Library's "Recent" band. One query for the whole screen (vs. the
+// per-row useLastSets lookups, which are viewport-gated).
+export function useRecentExerciseIds(days: number) {
+  const repo = useRepo();
+  return useQuery({
+    queryKey: ["recent-exercise-ids", days],
+    queryFn: () => repo.recentExerciseIds(days),
+    staleTime: 60_000,
+  });
+}
