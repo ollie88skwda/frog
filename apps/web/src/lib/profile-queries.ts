@@ -54,6 +54,7 @@ export function useUpdateUserPrefs() {
               bodyDiagram: "neutral",
               plateConfig: null,
               displayName: null,
+              bio: null,
               ...patch,
             } as UserPrefs),
       );
