@@ -336,6 +336,7 @@ function toRoutineSet(r: Row): RoutineSet {
     targetDistanceM: (r.target_distance_m as number | null) ?? null,
     targetRirMin: (r.target_rir_min as number | null) ?? null,
     targetRirMax: (r.target_rir_max as number | null) ?? null,
+    laterality: (r.laterality as string | null) ?? null,
   };
 }
 
@@ -2283,6 +2284,7 @@ export class SupabaseRepo implements Repo {
         target_distance_m: s.targetDistanceM ?? null,
         target_rir_min: s.targetRirMin ?? null,
         target_rir_max: s.targetRirMax ?? null,
+        laterality: s.laterality ?? null,
       })),
     );
     if (setRows.length) {
@@ -2401,6 +2403,7 @@ export class SupabaseRepo implements Repo {
           targetDistanceM: s.targetDistanceM,
           targetRirMin: s.targetRirMin,
           targetRirMax: s.targetRirMax,
+          laterality: s.laterality,
         })),
       })),
     });
