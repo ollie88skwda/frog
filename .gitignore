@@ -36,3 +36,4 @@ scripts/machine-catalog/staging/
 
 # local tooling config
 treehouse.toml
+.env*
