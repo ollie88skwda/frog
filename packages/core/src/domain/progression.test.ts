@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest";
 import { isOutlier, robustTrend } from "./progression";
 
 describe("progression", () => {
-  it("needs >=5 sessions", () => {
+  it("needs >=2 sessions", () => {
+    const r = robustTrend([{ day: 0, e1rm: 100 }]);
+    expect(r.verdict).toBe("INSUFFICIENT");
+  });
+  it("fits a two-point line (rough estimate territory)", () => {
     const r = robustTrend([
       { day: 0, e1rm: 100 },
-      { day: 7, e1rm: 101 },
+      { day: 7, e1rm: 110 },
     ]);
-    expect(r.verdict).toBe("INSUFFICIENT");
+    expect(r.verdict).toBe("PROGRESSING");
+    expect(r.n).toBe(2);
   });
   it("flags steady increase as PROGRESSING", () => {
     const pts = [0, 7, 14, 21, 28, 35].map((d, i) => ({

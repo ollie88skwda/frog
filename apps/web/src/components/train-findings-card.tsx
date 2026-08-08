@@ -44,7 +44,8 @@ export function TrainFindingsCard() {
         {trend.exerciseName} is{" "}
         <span className="num text-ink">{trend.verdict.toLowerCase()}</span> (
         {trend.pctChange > 0 ? "+" : ""}
-        {trend.pctChange.toFixed(1)}%)
+        {trend.pctChange.toFixed(1)}%
+        {trend.confidence === "low" ? " · rough estimate" : ""})
       </p>
     );
   } else if (next) {
@@ -73,7 +74,7 @@ export function TrainFindingsCard() {
     body = (
       <p className="text-sm text-soft" data-testid="findings-countdown">
         {t("Log", "The frog refuses to speculate. Log")}{" "}
-        <span className="num text-ink">5</span>{" "}
+        <span className="num text-ink">2</span>{" "}
         {t(
           "sessions of any exercise to earn your first finding",
           "sessions of any exercise and it will reconsider.",
