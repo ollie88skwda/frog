@@ -6,7 +6,7 @@ import { type MuscleRegion, regionOf } from "@frog/core";
 // module rather than hand-copying path data a second time (AGENTS.md "Brand
 // mark" tracks the repo's other hand-copy situations; this one doesn't join
 // them). Local coordinates: x 0–72, y 0–132 per figure (figure content
-// y 22–118; the interactive SVG's viewBox is 168×132 — two figures at
+// y 24–118; the interactive SVG's viewBox is 168×132 — two figures at
 // xOffset 2 and 90, label at y 126).
 //
 // The figure is a faceless squatting-frog schematic, head-on in the mark's
