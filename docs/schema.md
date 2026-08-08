@@ -22,7 +22,7 @@ The user's gym equipment — settings entered once, recalled in every session.
 | id | uuid | PK |
 | name | text | |
 | brand | text? | |
-| catalog_key | text? | source key when added from the catalog |
+| catalog_key | text? | the `machine_catalog` row's uuid when added from the catalog (denormalized, no FK) |
 | settings | jsonb | `{label, value}[]` remembered setup |
 | notes | text? | freeform setup notes |
 | photo_path | text? | storage path of the user's photo |
@@ -33,9 +33,11 @@ Global reference catalog of real gym-machine models (brand/model/specs) —
 distinct from `machines` (the user's owned equipment above; no seed rows
 there). `owner_id null` = global seed row, same convention as `exercises`/
 `metrics`. v1 is seeded from the static catalog
-(`packages/core/src/data/machine-catalog.ts`, Tier 1 brands); not yet linked
-from `machines.catalog_key` or exposed in any UI/search (see
-`docs/DECISIONS.md` 2026-08-07).
+(`packages/core/src/data/machine-catalog.ts`, Tier 1 brands). Read only
+through the `search_machine_catalog` / `list_machine_categories` RPCs
+(migration `20260807101227_search_machine_catalog.sql`); a row picked in the
+machine picker has its uuid stored in `machines.catalog_key`. See AGENTS.md's
+`machine_catalog` bullet and `docs/DECISIONS.md` 2026-08-07.
 | column | type | notes |
 |---|---|---|
 | id | uuid | PK |
