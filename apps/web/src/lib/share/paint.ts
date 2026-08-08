@@ -17,6 +17,7 @@ import {
 import type { Ground, Palette } from "./grounds";
 import { paletteFor } from "./grounds";
 import { drawFrogMark, loadFrogMarkImage } from "./mark";
+import { type MascotPose, paintMascotMoment } from "./mascot";
 
 const FONT_SANS = `"Bricolage Grotesque", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
 const FONT_MONO = `ui-monospace, "SF Mono", "Berkeley Mono", Menlo, monospace`;
@@ -27,6 +28,19 @@ const GRAPHIC_GAP_RATIO = 0.03;
 /** Below this height (× frame width) a heat map / strip / sparkline is a
  * smear rather than a graphic — drop it instead of squashing it. */
 const MIN_GRAPHIC_RATIO = 0.055;
+
+/** The frame's compact-mode spacing multiplier (frames.ts) — every
+ * w-ratio margin the painter uses passes through this so the landscape
+ * frame's 0.6 can fit a 608-tall poster without touching the other frames. */
+function sp(frame: Frame, r: number): number {
+  return r * (frame.spacing ?? 1);
+}
+
+/** The frog-mascot pose for a card kind: the PR moment (bar overhead) for
+ * achievement kinds, the ride everywhere else. */
+function poseFor(card: ShareCard): MascotPose {
+  return card.kind === "pr" || card.kind === "records" ? "press" : "ride";
+}
 
 export type PaintOptions = {
   frame: FrameKind;
@@ -85,30 +99,73 @@ export async function paintShareCard(
   const pad = frame.pad;
   let y = pad + frame.safeTop;
   const contentW = frame.w - pad * 2;
+  const pose = poseFor(opts.card);
 
-  y = await paintBrand(ctx, frame, p, pad, y);
-  y = paintContext(ctx, frame, p, pad, contentW, y, opts.card);
-  y = paintHero(ctx, frame, p, pad, contentW, y, opts.card);
-  y = paintSupport(ctx, frame, p, pad, contentW, y, opts.card);
+  y = await paintBrand(ctx, frame, p, pad, y, pose);
+  const footerY = footerTop(frame, pad);
 
-  // The graphic is the one zone that can be squeezed: everything above it is
-  // text whose height depends on the card kind (a session card carries an
-  // eyebrow + title + date + hero caption, a streak card only an eyebrow), and
-  // the footer is anchored to the bottom. Size it against the space actually
-  // left rather than the frame's nominal height, or long kinds paint their
-  // figures straight through the tagline and the identity hairline.
-  const graphicTop = y;
-  const graphicH = Math.min(
-    frame.graphicH,
-    footerTop(frame, pad) - frame.w * GRAPHIC_GAP_RATIO - graphicTop,
-  );
-  if (graphicH >= frame.w * MIN_GRAPHIC_RATIO) {
-    paintGraphic(
+  if (frame.layout === "split") {
+    // The landscape poster: brand row full-width, then a 55/45 split — left
+    // column context + hero, right column the signature graphic on top with
+    // the support row bottom-anchored beneath it (table-under-figure; the
+    // graphic is the widest any frame gives it). Everything below is the same
+    // painters as the stack path, just with narrowed content boxes.
+    const splitX = pad + contentW * (frame.splitRatio ?? 0.55);
+    const leftW = splitX - pad;
+    const rightW = frame.w - pad - splitX;
+    const colTop = y;
+    const contextEnd = paintContext(
       ctx,
-      { x: pad, y: graphicTop, w: contentW, h: graphicH },
+      frame,
       p,
+      pad,
+      leftW,
+      colTop,
       opts.card,
     );
+    paintHero(ctx, frame, p, pad, leftW, contextEnd, opts.card);
+    // Support row height is deterministic (same advance math as paintSupport)
+    // — anchor it to the footer so the graphic above it gets the whole column
+    // instead of being squeezed by a top-anchored row.
+    const supportTop = footerY - supportRowHeight(frame, opts.card);
+    const graphicH = Math.min(
+      frame.graphicH,
+      supportTop - frame.w * GRAPHIC_GAP_RATIO - colTop,
+    );
+    if (graphicH >= frame.w * MIN_GRAPHIC_RATIO) {
+      paintGraphic(
+        ctx,
+        { x: splitX, y: colTop, w: rightW, h: graphicH },
+        p,
+        opts.card,
+      );
+    }
+    paintSupport(ctx, frame, p, splitX, rightW, supportTop, opts.card);
+  } else {
+    y = paintContext(ctx, frame, p, pad, contentW, y, opts.card);
+    y = paintHero(ctx, frame, p, pad, contentW, y, opts.card);
+    y = paintSupport(ctx, frame, p, pad, contentW, y, opts.card);
+
+    // The graphic is the one zone that can be squeezed: everything above it
+    // is text whose height depends on the card kind (a session card carries
+    // an eyebrow + title + date + hero caption, a streak card only an
+    // eyebrow), and the footer is anchored to the bottom. Size it against the
+    // space actually left rather than the frame's nominal height, or long
+    // kinds paint their figures straight through the tagline and the identity
+    // hairline.
+    const graphicTop = y;
+    const graphicH = Math.min(
+      frame.graphicH,
+      footerY - frame.w * GRAPHIC_GAP_RATIO - graphicTop,
+    );
+    if (graphicH >= frame.w * MIN_GRAPHIC_RATIO) {
+      paintGraphic(
+        ctx,
+        { x: pad, y: graphicTop, w: contentW, h: graphicH },
+        p,
+        opts.card,
+      );
+    }
   }
 
   paintFooter(ctx, frame, p, pad, contentW, opts.tagline, opts.card.identity);
@@ -124,8 +181,9 @@ async function paintBrand(
   p: Palette,
   pad: number,
   y: number,
+  pose: MascotPose,
 ): Promise<number> {
-  const markSize = frame.w * MARK_SIZE_RATIO;
+  const markSize = frame.w * (frame.markRatio ?? MARK_SIZE_RATIO);
   try {
     const mark = await loadFrogMarkImage(p.ink, p.markBody);
     drawFrogMark(ctx, mark, pad, y, markSize);
@@ -133,23 +191,41 @@ async function paintBrand(
     // Rasterizing the mark failed — the wordmark alone still reads fine.
   }
   ctx.fillStyle = p.ink;
-  ctx.font = `700 ${Math.round(frame.w * 0.037)}px ${FONT_SANS}`;
+  ctx.font = `700 ${Math.round(sp(frame, 0.037) * frame.w)}px ${FONT_SANS}`;
   ctx.textBaseline = "middle";
   ctx.fillText(
     APP_NAME.toUpperCase(),
-    pad + markSize + frame.w * 0.022,
+    pad + markSize + sp(frame, 0.022) * frame.w,
     y + markSize / 2,
   );
   ctx.textBaseline = "alphabetic";
 
-  const nextY = y + markSize + frame.w * 0.037;
+  const nextY = y + markSize + sp(frame, 0.037) * frame.w;
   ctx.strokeStyle = p.hair;
   ctx.lineWidth = Math.max(1.5, frame.w * 0.0019);
   ctx.beginPath();
   ctx.moveTo(pad, nextY);
   ctx.lineTo(frame.w - pad, nextY);
   ctx.stroke();
-  return nextY + frame.w * 0.037;
+
+  // The frog-mascot moment, top-right of the brand row — the one place on
+  // every frame with guaranteed empty space (content is left-anchored; the
+  // mascot never touches a data zone). Sized off the mark and vertically
+  // centred on the row; the box is wide enough for the landscape mark.
+  const mascotH = markSize * 1.45;
+  await paintMascotMoment(
+    ctx,
+    {
+      x: frame.w - pad - mascotH * 2.1,
+      y: y + markSize / 2 - mascotH / 2,
+      w: mascotH * 2.1,
+      h: mascotH,
+    },
+    p,
+    pose,
+  );
+
+  return nextY + sp(frame, 0.037) * frame.w;
 }
 
 function contextFor(card: ShareCard): {
@@ -184,9 +260,9 @@ function paintContext(
   const ctxData = contextFor(card);
   let cy = y;
 
-  cy += frame.w * 0.037;
+  cy += sp(frame, 0.037) * frame.w;
   ctx.fillStyle = p.accent;
-  ctx.font = `700 ${Math.round(frame.w * 0.026)}px ${FONT_SANS}`;
+  ctx.font = `700 ${Math.round(sp(frame, 0.026) * frame.w)}px ${FONT_SANS}`;
   ctx.fillText(ctxData.eyebrow.toUpperCase(), pad, cy);
 
   if (ctxData.title) {
@@ -196,14 +272,30 @@ function paintContext(
     ctx.fillText(clip(ctx, ctxData.title, contentW), pad, cy);
   }
 
-  if (ctxData.date) {
-    cy += frame.w * 0.033;
+  // "poster" frames (landscape) skip the date and the conditions strip —
+  // their 608px budget has no room for either (report §2.2); the story/post/
+  // square frames carry the full lab-report context.
+  const poster = frame.contextMode === "poster";
+  if (ctxData.date && !poster) {
+    cy += sp(frame, 0.033) * frame.w;
     ctx.fillStyle = p.soft;
-    ctx.font = `500 ${Math.round(frame.w * 0.026)}px ${FONT_SANS}`;
+    ctx.font = `500 ${Math.round(sp(frame, 0.026) * frame.w)}px ${FONT_SANS}`;
     ctx.fillText(ctxData.date, pad, cy);
   }
 
-  return cy + frame.w * 0.05;
+  // The lab-report conditions strip — session cards only, and only when the
+  // session actually recorded conditions (builders set conditionsLine to null
+  // otherwise; the card never invents one). Same mono data-row voice as the
+  // support stats, formatted by the same helper as the in-session chip
+  // (lib/share/conditions.ts).
+  if (!poster && card.kind === "session" && card.conditionsLine) {
+    cy += sp(frame, 0.024) * frame.w;
+    ctx.fillStyle = p.faint;
+    ctx.font = `600 ${Math.round(sp(frame, 0.022) * frame.w)}px ${FONT_MONO}`;
+    ctx.fillText(clip(ctx, card.conditionsLine, contentW), pad, cy);
+  }
+
+  return cy + sp(frame, 0.05) * frame.w;
 }
 
 function paintHero(
@@ -219,9 +311,9 @@ function paintHero(
   let cy = y;
 
   if (hero.caption) {
-    cy += frame.w * 0.024;
+    cy += sp(frame, 0.024) * frame.w;
     ctx.fillStyle = p.faint;
-    ctx.font = `600 ${Math.round(frame.w * 0.022)}px ${FONT_MONO}`;
+    ctx.font = `600 ${Math.round(sp(frame, 0.022) * frame.w)}px ${FONT_MONO}`;
     ctx.fillText(clip(ctx, hero.caption.toUpperCase(), contentW), pad, cy);
     cy += frame.heroPx * 0.15;
   }
@@ -231,7 +323,7 @@ function paintHero(
   // as clipped. Measuring the raw string would park the unit off the card
   // whenever the value was long enough to need truncating.
   const unitFont = `600 ${frame.unitPx}px ${FONT_SANS}`;
-  const unitGap = frame.w * 0.018;
+  const unitGap = sp(frame, 0.018) * frame.w;
   let unitW = 0;
   if (hero.unit) {
     ctx.font = unitFont;
@@ -280,6 +372,17 @@ function supportStatsFor(card: ShareCard): ShareStat[] {
   }
 }
 
+/** Height of the support-stats row (0 when the card has none) — the advance
+ * math paintSupport uses, exposed so the split layout can bottom-anchor the
+ * row and give the graphic the column above it. */
+function supportRowHeight(frame: Frame, card: ShareCard): number {
+  const stats = supportStatsFor(card);
+  if (stats.length === 0) return 0;
+  const valueSize = Math.round(sp(frame, 0.048) * frame.w);
+  const labelY = sp(frame, 0.02) * frame.w;
+  return labelY + valueSize * 0.95 + sp(frame, 0.06) * frame.w;
+}
+
 function paintSupport(
   ctx: CanvasRenderingContext2D,
   frame: Frame,
@@ -293,9 +396,9 @@ function paintSupport(
   if (stats.length === 0) return y;
 
   const colW = contentW / stats.length;
-  const labelSize = Math.round(frame.w * 0.023);
-  const valueSize = Math.round(frame.w * 0.048);
-  const labelY = y + frame.w * 0.02;
+  const labelSize = Math.round(sp(frame, 0.023) * frame.w);
+  const valueSize = Math.round(sp(frame, 0.048) * frame.w);
+  const labelY = y + sp(frame, 0.02) * frame.w;
   const valueY = labelY + valueSize * 0.95;
 
   stats.forEach((s, i) => {
@@ -304,8 +407,11 @@ function paintSupport(
       ctx.strokeStyle = p.hair;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(x - frame.w * 0.018, labelY - labelSize);
-      ctx.lineTo(x - frame.w * 0.018, valueY + frame.w * 0.006);
+      ctx.moveTo(x - sp(frame, 0.018) * frame.w, labelY - labelSize);
+      ctx.lineTo(
+        x - sp(frame, 0.018) * frame.w,
+        valueY + sp(frame, 0.006) * frame.w,
+      );
       ctx.stroke();
     }
     ctx.fillStyle = p.faint;
@@ -313,10 +419,14 @@ function paintSupport(
     ctx.fillText(s.label.toUpperCase(), x, labelY);
     ctx.fillStyle = p.ink;
     ctx.font = `700 ${valueSize}px ${FONT_MONO}`;
-    ctx.fillText(clip(ctx, s.value, colW - frame.w * 0.02), x, valueY);
+    ctx.fillText(
+      clip(ctx, s.value, colW - sp(frame, 0.02) * frame.w),
+      x,
+      valueY,
+    );
   });
 
-  return valueY + frame.w * 0.06;
+  return valueY + sp(frame, 0.06) * frame.w;
 }
 
 function paintGraphic(
@@ -373,8 +483,8 @@ function identityLine(identity: ShareIdentity): {
 
 /** Top edge of the footer zone — the floor every zone above it must clear. */
 function footerTop(frame: Frame, pad: number): number {
-  const identityH = frame.w * 0.028 + frame.w * 0.05;
-  const taglineH = frame.showTagline ? frame.w * 0.07 : 0;
+  const identityH = sp(frame, 0.028) * frame.w + sp(frame, 0.05) * frame.w;
+  const taglineH = frame.showTagline ? sp(frame, 0.07) * frame.w : 0;
   return frame.h - frame.safeBottom - pad - identityH - taglineH;
 }
 
@@ -390,11 +500,11 @@ function paintFooter(
   let y = footerTop(frame, pad);
 
   if (frame.showTagline) {
-    y += frame.w * 0.03;
+    y += sp(frame, 0.03) * frame.w;
     ctx.fillStyle = p.soft;
-    ctx.font = `italic 500 ${Math.round(frame.w * 0.028)}px ${FONT_SANS}`;
+    ctx.font = `italic 500 ${Math.round(sp(frame, 0.028) * frame.w)}px ${FONT_SANS}`;
     ctx.fillText(clip(ctx, tagline, contentW), pad, y);
-    y += frame.w * 0.045;
+    y += sp(frame, 0.045) * frame.w;
   }
 
   ctx.strokeStyle = p.hair;
@@ -403,11 +513,11 @@ function paintFooter(
   ctx.moveTo(pad, y);
   ctx.lineTo(frame.w - pad, y);
   ctx.stroke();
-  y += frame.w * 0.038;
+  y += sp(frame, 0.038) * frame.w;
 
   const { left, right } = identityLine(identity);
   ctx.fillStyle = p.faint;
-  ctx.font = `500 ${Math.round(frame.w * 0.024)}px ${FONT_MONO}`;
+  ctx.font = `500 ${Math.round(sp(frame, 0.024) * frame.w)}px ${FONT_MONO}`;
   ctx.fillText(left, pad, y);
   if (right) {
     const w = ctx.measureText(right).width;

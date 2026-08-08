@@ -167,6 +167,9 @@ export function buildSessionCard(input: {
    * `blocks`: a user explicitly tapping a set to headline is a deliberate
    * choice, not a stats aggregate. */
   includeWarmups: boolean;
+  /** Pre-formatted conditions display line ("7.5h · 82kg · stress 3") from
+   * the session's `condition_values`; null when nothing was recorded. */
+  conditionsLine?: string | null;
 }): SessionCard {
   const { blocks, unit, bodyweightKg, includeWarmups } = input;
   const countedBlocks: SessionCardBlock[] = blocks.map((b) => ({
@@ -207,9 +210,10 @@ export function buildSessionCard(input: {
 
   return {
     kind: "session",
-    eyebrow: `Workout #${input.ordinal}`,
+    eyebrow: `Experiment #${input.ordinal}`,
     title: input.title,
     date: input.date,
+    conditionsLine: input.conditionsLine ?? null,
     hero,
     heroRef,
     isAutoHero,

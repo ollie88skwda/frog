@@ -23,9 +23,15 @@ import {
 import { ShareButton, type ShareSource } from "@/components/share-sheet";
 import { formatDate } from "@/lib/format";
 import { useAllSessions, useUserPrefs } from "@/lib/profile-queries";
-import { useExercises, useSession, useSessionExercises } from "@/lib/queries";
+import {
+  useExercises,
+  useMetrics,
+  useSession,
+  useSessionExercises,
+} from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
 import { useUnit } from "@/lib/settings";
+import { sessionConditionsLine } from "@/lib/share/conditions";
 import { ordinalFor } from "@/lib/share/ordinal";
 import { useLatestBodyweightQuery, useMuscleMap } from "@/lib/stats-queries";
 import { cn } from "@/lib/utils";
@@ -79,6 +85,7 @@ export function PostSaveSummary({
   const { data: recordsData, isLoading: recordsPending } = useRecordsData();
   const { data: exercises = [], isPending: exercisesPending } = useExercises();
   const { data: prefs, isPending: prefsPending } = useUserPrefs();
+  const { data: metrics = [], isPending: metricsPending } = useMetrics();
   const muscleMap = useMuscleMap();
   const { data: bodyweightKg = null, isPending: bodyweightPending } =
     useLatestBodyweightQuery();
@@ -98,6 +105,7 @@ export function PostSaveSummary({
     recordsPending ||
     exercisesPending ||
     prefsPending ||
+    metricsPending ||
     bodyweightPending;
 
   const startedAt = session?.startedAt ?? Date.now();
@@ -163,6 +171,10 @@ export function PostSaveSummary({
         identity,
         heroSet,
         includeWarmups: recordsData?.includeWarmups ?? true,
+        conditionsLine: sessionConditionsLine(
+          session?.conditionValues ?? {},
+          metrics.filter((m) => m.scope === "session"),
+        ),
       }),
     [
       ordinal,
@@ -175,6 +187,7 @@ export function PostSaveSummary({
       unit,
       identity,
       recordsData,
+      metrics,
     ],
   );
   const sessionSource: ShareSource = useMemo(

@@ -44,9 +44,14 @@ export type SessionSetRef = { exerciseId: string; setId: string };
 
 export type SessionCard = {
   kind: "session";
-  eyebrow: string; // "WORKOUT #47"
+  eyebrow: string; // "EXPERIMENT #47" — the lab-report voice; the ordinal stays the fact
   title: string;
   date: string;
+  /** The session's recorded conditions as one display line ("7.5h · 82kg ·
+   * stress 3"), pre-formatted by the caller from `condition_values` + the
+   * user's metrics — or null when nothing was recorded (the card then simply
+   * has no conditions strip; it never invents one). */
+  conditionsLine: string | null;
   hero: ShareHero;
   /** The exact set behind the hero — auto-picked (top set) unless the caller
    * passed a `heroSet` ref into the builder. */

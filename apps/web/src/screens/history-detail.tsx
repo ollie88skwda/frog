@@ -32,6 +32,7 @@ import { useRepo } from "@/lib/repo";
 import { effortReadout } from "@/lib/rir";
 import { useCreateRoutine } from "@/lib/routine-queries";
 import { useUnit } from "@/lib/settings";
+import { sessionConditionsLine } from "@/lib/share/conditions";
 import { ordinalFor } from "@/lib/share/ordinal";
 import { useLatestBodyweightQuery, useMuscleMap } from "@/lib/stats-queries";
 import { useVoice } from "@/lib/voice";
@@ -56,7 +57,7 @@ function toLocalInput(ms: number): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-/** The share card's data — the whole session list (for the "Workout #N"
+/** The share card's data — the whole session list (for the "Experiment #N"
  * ordinal), the exercise catalog and the latest bodyweight — is only ever read
  * once the sheet is open, so it hangs off this component rather than the
  * screen: opening history detail must not pull a whole-table session fetch. */
@@ -65,6 +66,7 @@ function ShareWorkoutSheet({
   title,
   startedAt,
   durationMs,
+  conditionValues,
   blocks,
   onClose,
 }: {
@@ -72,6 +74,10 @@ function ShareWorkoutSheet({
   title: string;
   startedAt: number;
   durationMs: number;
+  /** The session row's `condition_values` — feeds the card's lab-report
+   * conditions strip; the screen already holds the session, so it passes the
+   * map rather than re-fetching it here. */
+  conditionValues: Record<string, unknown>;
   blocks: SessionExerciseDetail[];
   onClose: () => void;
 }) {
@@ -82,6 +88,7 @@ function ShareWorkoutSheet({
   const { data: prefs, isPending: prefsPending } = useUserPrefs();
   const { data: bodyweightKg = null, isPending: bodyweightPending } =
     useLatestBodyweightQuery();
+  const { data: metrics = [], isPending: metricsPending } = useMetrics();
   const muscleMap = useMuscleMap();
 
   const exerciseTypeById = useMemo(
@@ -99,6 +106,17 @@ function ShareWorkoutSheet({
     [blocks, exerciseTypeById],
   );
   const ordinal = ordinalFor(allSessions, sessionId, startedAt);
+  // The card's lab-report conditions strip — the same display line as the
+  // in-session chip (one formatter, lib/share/conditions.ts), or null when
+  // the session recorded nothing (the strip never renders empty).
+  const conditionsLine = useMemo(
+    () =>
+      sessionConditionsLine(
+        conditionValues,
+        metrics.filter((m) => m.scope === "session"),
+      ),
+    [conditionValues, metrics],
+  );
   const buildShareCard = useMemo(
     () => (heroSet?: Parameters<typeof buildSessionCard>[0]["heroSet"]) =>
       buildSessionCard({
@@ -113,6 +131,7 @@ function ShareWorkoutSheet({
         identity: { displayName: prefs?.displayName ?? null },
         heroSet,
         includeWarmups: prefs?.includeWarmupsInStats ?? true,
+        conditionsLine,
       }),
     [
       ordinal,
@@ -124,6 +143,7 @@ function ShareWorkoutSheet({
       bodyweightKg,
       unit,
       prefs,
+      conditionsLine,
     ],
   );
   // Stable object identity, not an inline literal — an unmemoized `source`
@@ -139,10 +159,17 @@ function ShareWorkoutSheet({
   );
 
   // Every one of these feeds a value the card states as fact — the ordinal,
-  // per-exercise volume, the identity handle. Painting before they land would
-  // render (and, once the export blob resolves, let the user share) a card
-  // saying "Workout #1" with a missing volume. Hold the card, not the truth.
-  if (exercisesPending || sessionsPending || prefsPending || bodyweightPending)
+  // per-exercise volume, the identity handle, the conditions strip. Painting
+  // before they land would render (and, once the export blob resolves, let the
+  // user share) a card saying "Experiment #1" with a missing volume. Hold the
+  // card, not the truth.
+  if (
+    exercisesPending ||
+    sessionsPending ||
+    prefsPending ||
+    bodyweightPending ||
+    metricsPending
+  )
     return (
       <button
         type="button"
@@ -328,6 +355,7 @@ export default function HistoryDetailScreen() {
               title={session.title ?? ""}
               startedAt={session.startedAt}
               durationMs={durationMs}
+              conditionValues={session.conditionValues ?? {}}
               blocks={blocks}
             />
           )}

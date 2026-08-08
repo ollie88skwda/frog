@@ -1,6 +1,6 @@
 // Shared by post-save-summary.tsx and history-detail.tsx — both need the
 // same "which workout number is this" arithmetic for the session card's
-// eyebrow ("Workout #47"), and it's easy for the two to quietly drift if each
+// eyebrow ("Experiment #47"), and it's easy for the two to quietly drift if each
 // hand-rolls it.
 export function ordinalFor(
   allSessions: Array<{ id: string; startedAt: number }>,
