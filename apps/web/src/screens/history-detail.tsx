@@ -279,15 +279,21 @@ export default function HistoryDetailScreen() {
       for (const b of blocks) {
         const seId = await repo.addExerciseToSession(s.id, b.exerciseId);
         // One draft row per physical set — the copied grid must ask for the
-        // same number of sets the source session actually performed.
-        seed[seId] = groupSetsBySetNo(b.sets).map(([x]) => ({
-          setType: (x.setType as SetType) ?? "normal",
-          weightKg: x.weightKg,
-          reps: x.reps,
-          repsMax: null,
-          durationSec: x.durationSec,
-          distanceM: x.distanceM,
-        }));
+        // same number of sets the source session actually performed. A
+        // unilateral pair (two rows, one set_no) copies as a unilateral
+        // prescription.
+        seed[seId] = groupSetsBySetNo(b.sets).map((rows) => {
+          const [x] = rows;
+          return {
+            setType: (x.setType as SetType) ?? "normal",
+            weightKg: x.weightKg,
+            reps: x.reps,
+            repsMax: null,
+            durationSec: x.durationSec,
+            distanceM: x.distanceM,
+            laterality: rows.length === 2 ? "unilateral" : "bilateral",
+          };
+        });
       }
       void qc.invalidateQueries({ queryKey: ["active-session"] });
       navigate(`/session/${s.id}`, { state: { seed } });

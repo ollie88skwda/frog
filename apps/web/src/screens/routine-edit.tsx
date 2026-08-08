@@ -4,6 +4,8 @@ import {
   type ExerciseType,
   groupByPrimaryMuscle,
   isConfidentMatch,
+  LATERALITY_EXPLAINERS,
+  LATERALITY_LABELS,
   matchExerciseName,
   type NewRoutineInput,
   type ParsedExercise,
@@ -17,8 +19,11 @@ import { Select } from "@radix-ui/themes";
 import {
   ArrowDown,
   ArrowUp,
+  Check,
   ClipboardPaste,
+  Flame,
   Link2,
+  MoreVertical,
   Plus,
   Trash2,
   X,
@@ -33,6 +38,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { SetTypeCell } from "@/components/ui/set-type-cell";
 import { formatMMSS, parseDuration, parseIntOrNull } from "@/lib/format";
@@ -49,11 +55,20 @@ import { useUnit } from "@/lib/settings";
 import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
 
+// Laterality in the routine builder is a per-set prescription: unilateral
+// means "each side does the reps, logged as a pair in the session" — the
+// session's LATERALITY also has alternating, which lives on the exercise row
+// (never authored here) and is out of this screen's scope. A null
+// routine_sets.laterality reads as bilateral, the same default the session
+// uses.
+type SetLaterality = "bilateral" | "unilateral";
+
 // Draft model for the builder: targets in DISPLAY units (converted to kg on
 // save). Rep range mode = repsMax non-empty.
 type DraftSet = {
   key: string;
   setType: SetType;
+  laterality: SetLaterality;
   reps: string;
   repsMax: string;
   duration: string; // mm:ss or seconds
@@ -118,6 +133,7 @@ function emptySet(): DraftSet {
   return {
     key: crypto.randomUUID(),
     setType: "normal",
+    laterality: "bilateral",
     reps: "",
     repsMax: "",
     duration: "",
@@ -143,6 +159,11 @@ function inheritedSet(prev: DraftSet | undefined): DraftSet {
         distance: prev.distance,
         rirMin: prev.rirMin,
         rirMax: prev.rirMax,
+        // Laterality is structural, not a label: a set added to a unilateral
+        // exercise keeps prescribing one pair unless the user flips it (a
+        // carried-forward warmup/failure TYPE would mislabel, laterality
+        // can't).
+        laterality: prev.laterality,
       }
     : base;
 }
@@ -205,6 +226,13 @@ function pickerSeed(rawName: string): string {
     .filter((w) => /[a-zA-Z]/.test(w))
     .reduce((best, w) => (w.length > best.length ? w : best), "");
 }
+
+// N8: the RIR and REPS/TIME groups are capped tracks so they sit close
+// together instead of each claiming a wide 1fr column (fields stretched to
+// ~125px on desktop); minmax(0,·) lets the caps yield on narrow phones. The
+// last track absorbs the leftover and right-anchors the per-set ⋯ menu.
+const ROW_GRID =
+  "grid grid-cols-[2.5rem_minmax(0,5rem)_minmax(0,6rem)_minmax(0,1fr)] items-center gap-1";
 
 export default function RoutineEditScreen() {
   const { id } = useParams(); // undefined on /routines/new
@@ -302,6 +330,8 @@ export default function RoutineEditScreen() {
           rirMin: s.targetRirMin != null ? String(s.targetRirMin) : "",
           rirMax: s.targetRirMax != null ? String(s.targetRirMax) : "",
           existingTargetWeightKg: s.targetWeightKg ?? null,
+          laterality:
+            s.laterality === "unilateral" ? "unilateral" : "bilateral",
         })),
       })),
     );
@@ -569,6 +599,7 @@ export default function RoutineEditScreen() {
           })(),
           targetRirMin: fields.reps ? rirMin : null,
           targetRirMax: fields.reps ? rirMax : null,
+          laterality: s.laterality,
         };
       }),
     }));
@@ -649,7 +680,7 @@ export default function RoutineEditScreen() {
         <Select.Root
           value={folderId ?? NO_FOLDER}
           onValueChange={(v) => setFolderId(v === NO_FOLDER ? null : v)}
-          size="2"
+          size="3"
         >
           <Select.Trigger
             variant="surface"
@@ -713,47 +744,42 @@ export default function RoutineEditScreen() {
                 <span className="flex-1 truncate text-sm font-medium">
                   {d.name}
                 </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Move up"
-                  onClick={() => move(i, -1)}
-                  disabled={i === 0}
-                >
-                  <ArrowUp className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Move down"
-                  onClick={() => move(i, 1)}
-                  disabled={i === list.length - 1}
-                >
-                  <ArrowDown className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={
-                    linkedWithNext ? "Remove superset" : "Superset with next"
+                <ExerciseMenu
+                  index={i}
+                  hasNext={i + 1 < list.length}
+                  linkedWithNext={linkedWithNext}
+                  canMoveUp={i > 0}
+                  canMoveDown={i < list.length - 1}
+                  setsLaterality={d.sets[0]?.laterality ?? "bilateral"}
+                  onSetLaterality={(l) =>
+                    setDrafts((prev) =>
+                      (prev ?? []).map((x, j) =>
+                        j === i
+                          ? {
+                              ...x,
+                              sets: x.sets.map((s) => ({
+                                ...s,
+                                laterality: l,
+                              })),
+                            }
+                          : x,
+                      ),
+                    )
                   }
-                  className={cn(linkedWithNext && "text-accent")}
-                  onClick={() => toggleSupersetWithNext(i)}
-                  disabled={i === list.length - 1 && !linkedWithNext}
-                  data-testid={`routine-ex-${i}-superset`}
-                >
-                  <Link2 className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Remove exercise"
-                  onClick={() =>
+                  onAddWarmup={() =>
+                    patchExercise(i, {
+                      sets: [
+                        { ...inheritedSet(d.sets[0]), setType: "warmup" },
+                        ...d.sets,
+                      ],
+                    })
+                  }
+                  onToggleSuperset={() => toggleSupersetWithNext(i)}
+                  onMove={(dir) => move(i, dir)}
+                  onRemove={() =>
                     setDrafts((prev) => (prev ?? []).filter((_, j) => j !== i))
                   }
-                >
-                  <Trash2 className="size-4" />
-                </Button>
+                />
               </div>
 
               <div className="mt-2">
@@ -766,7 +792,7 @@ export default function RoutineEditScreen() {
                 />
               </div>
 
-              <div className="num mt-2 grid grid-cols-[2.5rem_1fr_1fr_2rem] items-center gap-1 text-2xs text-faint">
+              <div className={cn("num mt-2 text-2xs text-faint", ROW_GRID)}>
                 <span>SET</span>
                 {fields.reps ? (
                   <span>RIR</span>
@@ -776,7 +802,7 @@ export default function RoutineEditScreen() {
                   <span />
                 )}
                 {fields.reps ? (
-                  <span>REPS</span>
+                  <span>MIN</span>
                 ) : fields.distance ? (
                   <span>{unit === "kg" ? "KM" : "MI"}</span>
                 ) : fields.weight && fields.duration ? (
@@ -791,7 +817,8 @@ export default function RoutineEditScreen() {
                 <div
                   key={s.key}
                   className={cn(
-                    "-mx-3 grid grid-cols-[2.5rem_1fr_1fr_2rem] items-center gap-1 border-t border-border px-3",
+                    "-mx-3 border-t border-border px-3",
+                    ROW_GRID,
                     si % 2 === 0 ? "bg-surface" : "bg-surface-2",
                   )}
                 >
@@ -842,7 +869,7 @@ export default function RoutineEditScreen() {
                     <div className="flex items-center gap-1">
                       <Field
                         inputMode="numeric"
-                        placeholder="reps"
+                        placeholder="min"
                         value={s.reps}
                         onChange={(e) =>
                           patchSet(i, si, { reps: e.target.value })
@@ -884,25 +911,24 @@ export default function RoutineEditScreen() {
                   ) : (
                     <span />
                   )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Remove set"
-                    onClick={() =>
+                  <SetMenu
+                    index={i}
+                    si={si}
+                    laterality={s.laterality}
+                    onSetLaterality={(l) => patchSet(i, si, { laterality: l })}
+                    onRemove={() =>
                       patchExercise(i, {
                         sets: d.sets.filter((_, k) => k !== si),
                       })
                     }
-                  >
-                    <X className="size-4" />
-                  </Button>
+                  />
                 </div>
               ))}
 
               <Button
                 variant="ghost"
                 size="sm"
-                className="mt-2"
+                className="mt-2 ml-10"
                 onClick={() =>
                   patchExercise(i, {
                     sets: [...d.sets, inheritedSet(d.sets.at(-1))],
@@ -1189,5 +1215,260 @@ export default function RoutineEditScreen() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// The exercise header's ⋯ menu (note 10: parity with the session's BlockMenu
+// — move-up/down, superset, warm-up and remove moved in here so the header
+// keeps only the name + ⋯). The menu mirrors the session's popup styling:
+// `floating` surface, label sections, hover rows. Exercise-level laterality
+// writes to every set of the exercise (the session's BlockMenu makes "every
+// set of the exercise unilateral (as before)", same bulk semantics) — the
+// per-set rows can still diverge via their own ⋯ menu.
+function ExerciseMenu({
+  index,
+  hasNext,
+  linkedWithNext,
+  canMoveUp,
+  canMoveDown,
+  setsLaterality,
+  onSetLaterality,
+  onAddWarmup,
+  onToggleSuperset,
+  onMove,
+  onRemove,
+}: {
+  index: number;
+  hasNext: boolean;
+  linkedWithNext: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  setsLaterality: SetLaterality;
+  onSetLaterality: (l: SetLaterality) => void;
+  onAddWarmup: () => void;
+  onToggleSuperset: () => void;
+  onMove: (dir: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+  const labelCls =
+    "px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase";
+  const itemCls =
+    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft";
+
+  return (
+    <span className="relative">
+      <IconButton
+        aria-label="Exercise options"
+        onClick={() => setOpen((o) => !o)}
+        data-testid={`routine-ex-${index}-menu`}
+      >
+        <MoreVertical className="size-4" />
+      </IconButton>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Close menu"
+            tabIndex={-1}
+            onClick={close}
+            className="fixed inset-0 z-10 cursor-default"
+          />
+          <div
+            className="floating absolute top-full right-0 z-20 mt-1 max-h-80 min-w-52 overflow-y-auto py-1"
+            data-testid={`routine-ex-${index}-menu-popup`}
+          >
+            <p className={labelCls}>Superset</p>
+            <button
+              type="button"
+              onClick={() => {
+                onToggleSuperset();
+                close();
+              }}
+              disabled={!hasNext && !linkedWithNext}
+              data-testid={`routine-ex-${index}-superset`}
+              className={itemCls}
+            >
+              <Link2 className="size-3.5 shrink-0 text-faint" />
+              {linkedWithNext ? "Remove from superset" : "Superset with next"}
+            </button>
+            <div className="border-t border-border" />
+            <button
+              type="button"
+              onClick={() => {
+                onAddWarmup();
+                close();
+              }}
+              data-testid={`routine-ex-${index}-warmup`}
+              className={itemCls}
+            >
+              <Flame className="size-3.5 shrink-0 text-warn" />
+              Add warm-up set
+            </button>
+            <div className="border-t border-border" />
+            <p className={labelCls}>Laterality</p>
+            {(
+              [
+                ["bilateral", LATERALITY_LABELS.bilateral],
+                ["unilateral", LATERALITY_LABELS.unilateral],
+              ] as const
+            ).map(([l, label]) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => {
+                  onSetLaterality(l);
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-laterality-${l}`}
+                className={itemCls}
+              >
+                <span className="flex flex-col">
+                  {label}
+                  <span className="text-2xs font-normal normal-case tracking-normal text-faint">
+                    {LATERALITY_EXPLAINERS[l]}
+                  </span>
+                </span>
+                {setsLaterality === l && (
+                  <Check className="ml-auto size-3.5 shrink-0 text-accent" />
+                )}
+              </button>
+            ))}
+            <div className="border-t border-border" />
+            <button
+              type="button"
+              onClick={() => {
+                onMove(-1);
+                close();
+              }}
+              disabled={!canMoveUp}
+              data-testid={`routine-ex-${index}-move-up`}
+              className={itemCls}
+            >
+              <ArrowUp className="size-3.5 shrink-0 text-faint" />
+              Move up
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onMove(1);
+                close();
+              }}
+              disabled={!canMoveDown}
+              data-testid={`routine-ex-${index}-move-down`}
+              className={itemCls}
+            >
+              <ArrowDown className="size-3.5 shrink-0 text-faint" />
+              Move down
+            </button>
+            <div className="border-t border-border" />
+            <button
+              type="button"
+              onClick={() => {
+                onRemove();
+                close();
+              }}
+              data-testid={`routine-ex-${index}-remove`}
+              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
+            >
+              <Trash2 className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
+              Remove exercise
+            </button>
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
+// The per-set row's small ⋯ menu (note 13: the oversized remove X becomes a
+// menu — laterality + remove set now, room for future per-set options). A
+// unilateral routine set prescribes one pair — two sides, reps per side —
+// exactly how the session logs it.
+function SetMenu({
+  index,
+  si,
+  laterality,
+  onSetLaterality,
+  onRemove,
+}: {
+  index: number;
+  si: number;
+  laterality: SetLaterality;
+  onSetLaterality: (l: SetLaterality) => void;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+  const itemCls =
+    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink";
+
+  return (
+    <span className="relative flex justify-self-end">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Set options"
+        onClick={() => setOpen((o) => !o)}
+        data-testid={`routine-ex-${index}-set-${si}-menu`}
+      >
+        <MoreVertical className="size-4" />
+      </Button>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Close menu"
+            tabIndex={-1}
+            onClick={close}
+            className="fixed inset-0 z-10 cursor-default"
+          />
+          <div
+            className="floating absolute top-full right-0 z-20 mt-1 min-w-44 py-1"
+            data-testid={`routine-ex-${index}-set-${si}-menu-popup`}
+          >
+            <p className="px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
+              Laterality
+            </p>
+            {(
+              [
+                ["bilateral", LATERALITY_LABELS.bilateral],
+                ["unilateral", LATERALITY_LABELS.unilateral],
+              ] as const
+            ).map(([l, label]) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => {
+                  onSetLaterality(l);
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-set-${si}-laterality-${l}`}
+                className={itemCls}
+              >
+                {label}
+                {laterality === l && (
+                  <Check className="ml-auto size-3.5 shrink-0 text-accent" />
+                )}
+              </button>
+            ))}
+            <div className="border-t border-border" />
+            <button
+              type="button"
+              onClick={() => {
+                onRemove();
+                close();
+              }}
+              data-testid={`routine-ex-${index}-set-${si}-remove`}
+              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
+            >
+              <Trash2 className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
+              Remove set
+            </button>
+          </div>
+        </>
+      )}
+    </span>
   );
 }

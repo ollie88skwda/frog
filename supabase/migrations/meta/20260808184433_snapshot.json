@@ -1,6 +1,6 @@
 {
-  "id": "de8ad544-bfeb-4756-a5de-88aea7b30f6f",
-  "prevId": "752fcdf1-443d-4d90-bc1c-1c5eb480ae66",
+  "id": "8c1e0f14-2e4c-4b2c-b594-ce59fbce4f3f",
+  "prevId": "de8ad544-bfeb-4756-a5de-88aea7b30f6f",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1534,6 +1534,12 @@
         "target_rir_max": {
           "name": "target_rir_max",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "laterality": {
+          "name": "laterality",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         }
