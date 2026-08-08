@@ -1,9 +1,10 @@
 # Frog read API
 
-Read-only REST API over your own training data, authenticated with a
-personal access token (PAT). Create tokens in the app: **Settings → API
-tokens**. The plaintext is shown once; only its sha256 hash is stored, and a
-token can be revoked at any time.
+Read-only REST API over your own training data — plus the shared community
+exercise library, which every token can read (see `GET /v1/exercises`) —
+authenticated with a personal access token (PAT). Create tokens in the app:
+**Settings → API tokens**. The plaintext is shown once; only its sha256 hash
+is stored, and a token can be revoked at any time.
 
 - Base URL: `<SUPABASE_PROJECT_URL>/functions/v1/api` (local dev: `http://127.0.0.1:54321/functions/v1/api`)
 - Auth header: `Authorization: Bearer frog_...`
@@ -15,10 +16,12 @@ token can be revoked at any time.
 
 ### `GET /v1/exercises`
 
-Global seed exercises (`owner_id: null`, `is_custom: false`) plus your custom
-ones. Every column on the `exercises` table (see [schema.md](./schema.md)) —
-there's no separate hand-picked subset here, so a new column shows up
-automatically instead of silently missing the API.
+Global seed exercises (`owner_id: null`, `is_custom: false`) plus the shared
+community library (`owner_id: null`, `is_custom: true` — exercises published
+by other users in the community phase, carrying the publisher's
+`created_by`) and your own custom ones. Every column on the `exercises` table
+(see [schema.md](./schema.md)) — there's no separate hand-picked subset here,
+so a new column shows up automatically instead of silently missing the API.
 
 ```sh
 curl -H "Authorization: Bearer $FROG_TOKEN" "$FROG_API_URL/v1/exercises?limit=100"

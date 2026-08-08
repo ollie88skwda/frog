@@ -47,6 +47,23 @@ async function markUnilateral(
   }, name);
 }
 
+// Community phase (docs/DECISIONS.md 2026-08-08): an exercise created via the
+// library is published as a shared row (owner_id null) and is RLS-immutable —
+// a direct update on it is silently blocked. Fork a private copy (the
+// library's "Make a private copy") and return its name, so the tests below
+// can mutate an owned row instead.
+async function forkCopy(
+  page: import("@playwright/test").Page,
+  name: string,
+): Promise<string> {
+  const copy = `${name} (copy)`;
+  await page.getByTestId(`exercise-row-toggle-${name}`).click();
+  await page.getByTestId(`fork-exercise-${name}`).click();
+  await expect(page.getByTestId(`exercise-row-${copy}`)).toBeVisible();
+  await waitForExercise(page, copy);
+  return copy;
+}
+
 test("logs a unilateral set as two rows sharing one set_no, and counts it once", async ({
   page,
 }) => {
@@ -55,16 +72,17 @@ test("logs a unilateral set as two rows sharing one set_no, and counts it once",
   await page.goto("/library");
   await createExercise(page, EX);
   await waitForExercise(page, EX);
-  await markUnilateral(page, EX);
+  const copy = await forkCopy(page, EX);
+  await markUnilateral(page, copy);
 
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
-  await page.getByTestId(`pick-exercise-${EX}`).click();
+  await page.getByTestId(`pick-exercise-${copy}`).click();
 
   // Header shows "reps" (not "reps/side") — the ᴸ/ᴿ line markers already say
   // per-side (report's own resolved judgment call).
-  const block = page.getByTestId(`block-${EX}`);
+  const block = page.getByTestId(`block-${copy}`);
   await expect(block).toContainText("reps");
   await expect(block).not.toContainText("reps/side");
 
@@ -116,7 +134,7 @@ test("logs a unilateral set as two rows sharing one set_no, and counts it once",
         .order("side");
       if (error) throw new Error(error.message);
       return data;
-    }, EX);
+    }, copy);
 
   await expect.poll(async () => (await readRows()).length).toBe(2);
   const rows = await readRows();
@@ -158,12 +176,13 @@ test("shows the laterality affix alongside the warm-up marker on a unilateral pa
   await page.goto("/library");
   await createExercise(page, EX);
   await waitForExercise(page, EX);
-  await markUnilateral(page, EX);
+  const copy = await forkCopy(page, EX);
+  await markUnilateral(page, copy);
 
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
-  await page.getByTestId(`pick-exercise-${EX}`).click();
+  await page.getByTestId(`pick-exercise-${copy}`).click();
 
   // The marker must still carry the ᴸ affix once a type is assigned — losing
   // it drops the pairing cue that ties this line to its ᴿ line below.
@@ -186,12 +205,13 @@ test("editing only the ᴿ row's RIR/RPE/note surfaces them in the collapsed rea
   await page.goto("/library");
   await createExercise(page, EX);
   await waitForExercise(page, EX);
-  await markUnilateral(page, EX);
+  const copy = await forkCopy(page, EX);
+  await markUnilateral(page, copy);
 
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
-  await page.getByTestId(`pick-exercise-${EX}`).click();
+  await page.getByTestId(`pick-exercise-${copy}`).click();
 
   await page.getByTestId("set-0-weight").fill("20");
   await page.getByTestId("set-0-reps").fill("8");
@@ -242,12 +262,13 @@ test("a mirrored pair prints no ᴿ readout; clearing the ᴿ side prints — be
   await page.goto("/library");
   await createExercise(page, EX);
   await waitForExercise(page, EX);
-  await markUnilateral(page, EX);
+  const copy = await forkCopy(page, EX);
+  await markUnilateral(page, copy);
 
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
-  await page.getByTestId(`pick-exercise-${EX}`).click();
+  await page.getByTestId(`pick-exercise-${copy}`).click();
 
   // Weight only, so far — auto-checkoff (weight+reps both filled) hasn't
   // armed yet, so opening the details sheet next can't race it. Effort
@@ -265,7 +286,7 @@ test("a mirrored pair prints no ᴿ readout; clearing the ᴿ side prints — be
   // pixel-aligned anyway — the whole point of the shared track. The ᴿ line
   // has no weight input (note 1: same weight both sides) — only its reps
   // column lines up with the ᴸ line's.
-  await expect(page.getByTestId(`block-${EX}`)).toContainText("@2 RPE 8");
+  await expect(page.getByTestId(`block-${copy}`)).toContainText("@2 RPE 8");
   await expect(page.getByTestId("set-0-right-weight")).toHaveCount(0);
   expect(await cellX(page, "set-0-right-reps")).toBeCloseTo(
     await cellX(page, "set-0-reps"),
@@ -364,19 +385,20 @@ test("alternating exercises log as a single row with a total-reps header", async
   await page.goto("/library");
   await createExercise(page, EX);
   await waitForExercise(page, EX);
+  const copy = await forkCopy(page, EX);
   await page.evaluate(async (n) => {
     const { error } = await window.__frog.supabase
       .from("exercises")
       .update({ laterality: "alternating" })
       .eq("name", n);
     if (error) throw new Error(error.message);
-  }, EX);
+  }, copy);
 
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
-  await page.getByTestId(`pick-exercise-${EX}`).click();
+  await page.getByTestId(`pick-exercise-${copy}`).click();
 
-  const block = page.getByTestId(`block-${EX}`);
+  const block = page.getByTestId(`block-${copy}`);
   await expect(block).toContainText("total reps");
   // No paired ᴿ line for alternating — it logs identically to bilateral.
   await expect(page.getByTestId("set-0-right-weight")).toHaveCount(0);
@@ -467,12 +489,13 @@ test("library last-set summary shows both sides of a divergent unilateral pair",
   await page.goto("/library");
   await createExercise(page, EX);
   await waitForExercise(page, EX);
-  await markUnilateral(page, EX);
+  const copy = await forkCopy(page, EX);
+  await markUnilateral(page, copy);
 
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
-  await page.getByTestId(`pick-exercise-${EX}`).click();
+  await page.getByTestId(`pick-exercise-${copy}`).click();
 
   // Same weight both sides, divergent reps (note 1: the unilateral part is
   // only the reps).
@@ -481,7 +504,7 @@ test("library last-set summary shows both sides of a divergent unilateral pair",
   await page.getByTestId("set-0-right-reps").fill("12");
   await page.getByTestId("set-0-done").click();
   await expect(page.getByTestId("committed-0-right-reps")).toContainText("12");
-  await waitForSetLogs(page, EX, 2);
+  await waitForSetLogs(page, copy, 2);
 
   // A divergent WEIGHT is still expressible post-commit — the ᴿ row's own
   // details sheet edits it independently (the escape hatch the shared-weight
@@ -497,8 +520,8 @@ test("library last-set summary shows both sides of a divergent unilateral pair",
   // pair convention ("X × r / Y × r") with the session PREVIOUS column — it
   // must show the ᴿ side too, not silently drop it.
   await page.goto("/library");
-  await page.getByTestId("exercise-search-input").fill(EX);
-  await expect(page.getByTestId(`exercise-row-${EX}`)).toContainText(
+  await page.getByTestId("exercise-search-input").fill(copy);
+  await expect(page.getByTestId(`exercise-row-${copy}`)).toContainText(
     "Last: 40 kg × 8 / 35 kg × 12",
   );
 });

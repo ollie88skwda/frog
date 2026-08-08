@@ -117,6 +117,16 @@ export type MachineCatalogEntry = {
 export type NewExerciseOpts = {
   /** Client-generated id — same optimistic-identity rule as NewMachineInput. */
   id?: string;
+  /**
+   * Publish to the shared library instead of creating a private row
+   * (community phase, docs/DECISIONS.md 2026-08-08). Defaults to
+   * COMMUNITY_SHARING (true in dev). A shared row is owner_id null +
+   * created_by = the caller and is RLS-immutable afterward — editing it
+   * forks a private copy (share: false) via the duplicate flow; the fork
+   * paths in the app pass false explicitly so a duplicate or mid-session
+   * copy-on-write is never published.
+   */
+  share?: boolean;
   jointActions?: string[] | null;
   muscleTargets?: MuscleTarget[] | null;
   machineId?: string | null;

@@ -76,16 +76,24 @@ test("delete a custom exercise removes it from the picker; tags round-trip", asy
   page,
 }) => {
   const EX = `Tagged ${Date.now()}`;
+  const copy = `${EX} (copy)`;
 
   await page.goto("/library");
   await createExercise(page, EX);
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 
-  // Tag it.
+  // The published row is frozen (community phase, docs/DECISIONS.md
+  // 2026-08-08) — fork a private copy to get an editable row.
   await page.getByTestId(`exercise-row-toggle-${EX}`).click();
-  await page.getByTestId(`tag-input-${EX}`).fill("pull");
-  await page.getByTestId(`tag-input-${EX}`).press("Enter");
+  await page.getByTestId(`fork-exercise-${EX}`).click();
+  await expect(page.getByTestId(`exercise-row-${copy}`)).toBeVisible();
+  await waitForExercise(page, copy);
+
+  // Tag the private copy.
+  await page.getByTestId(`exercise-row-toggle-${copy}`).click();
+  await page.getByTestId(`tag-input-${copy}`).fill("pull");
+  await page.getByTestId(`tag-input-${copy}`).press("Enter");
   // Wait for the tag write to land server-side before reloading (reload aborts
   // in-flight requests).
   await expect
@@ -98,23 +106,25 @@ test("delete a custom exercise removes it from the picker; tags round-trip", asy
           .single();
         if (error) throw new Error(error.message);
         return (data?.tags as string[] | null) ?? [];
-      }, EX),
+      }, copy),
     )
     .toContain("pull");
   await page.reload();
-  await expect(page.getByTestId(`exercise-row-${EX}`)).toContainText("pull");
+  await page.getByTestId("exercise-search-input").fill(copy);
+  await expect(page.getByTestId(`exercise-row-${copy}`)).toContainText("pull");
 
   // Archive it (soft-delete; history kept). Confirm in the dialog.
-  await page.getByTestId(`exercise-row-toggle-${EX}`).click();
-  await page.getByTestId(`archive-exercise-${EX}`).click();
-  await page.getByTestId(`confirm-archive-${EX}`).click();
-  await expect(page.getByTestId(`exercise-row-${EX}`)).not.toBeVisible();
+  await page.getByTestId(`exercise-row-toggle-${copy}`).click();
+  await page.getByTestId(`archive-exercise-${copy}`).click();
+  await page.getByTestId(`confirm-archive-${copy}`).click();
+  await expect(page.getByTestId(`exercise-row-${copy}`)).not.toBeVisible();
 
-  // Gone from the session picker too.
+  // Gone from the session picker too (the published shared original stays —
+  // only the private copy was deleted).
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page.getByTestId("pick-exercise-Squat")).toBeVisible();
-  await expect(page.getByTestId(`pick-exercise-${EX}`)).not.toBeVisible();
+  await expect(page.getByTestId(`pick-exercise-${copy}`)).not.toBeVisible();
   // Close the auto-opened picker before reaching the header.
   await page.keyboard.press("Escape");
   await page.getByRole("dialog").waitFor({ state: "hidden" });

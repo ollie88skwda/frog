@@ -475,6 +475,12 @@ export default function RoutineEditScreen() {
   // the very next render; this resolves once it does.
   useEffect(() => {
     if (!pendingTwinCreate) return;
+    // Wait for the create to settle: resolving against the still-pending
+    // optimistic row binds the draft to an id that a publish dupe-hit then
+    // drops (the RPC backstop's canonical row supersedes it — the editor
+    // re-fires onCreated with that id, which re-points this effect at the
+    // row that actually exists).
+    if (pendingExercises.has(pendingTwinCreate.id)) return;
     const created = exercises.find((e) => e.id === pendingTwinCreate.id);
     if (!created) return;
     // A routine can name the same lift twice (main sets + a backoff line),
@@ -497,7 +503,7 @@ export default function RoutineEditScreen() {
       ),
     );
     setPendingTwinCreate(null);
-  }, [pendingTwinCreate, exercises]);
+  }, [pendingTwinCreate, exercises, pendingExercises]);
 
   function selectFromPicker(e: Exercise) {
     if (pickFor) {

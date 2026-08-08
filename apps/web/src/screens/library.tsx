@@ -19,6 +19,7 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronRight,
+  Copy,
   Dumbbell,
   History,
   Info,
@@ -64,6 +65,7 @@ import {
 } from "@/lib/bulk-add-failures";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import {
+  copyExerciseOpts,
   useCreateExercise,
   useCreateMetric,
   useDeleteExercise,
@@ -832,6 +834,7 @@ const ExerciseRow = memo(function ExerciseRow({
   const toggleMetric = useSetMetricExercises();
   const update = useUpdateExercise();
   const deleteExercise = useDeleteExercise();
+  const createExercise = useCreateExercise();
   const [confirmingArchive, setConfirmingArchive] = useState(false);
   // Gate the per-row last-set lookup on visibility — otherwise the seeded
   // library fires one query per row (~900) on open, saturating the network.
@@ -886,11 +889,21 @@ const ExerciseRow = memo(function ExerciseRow({
               )}
             </button>
             <span className="flex shrink-0 items-center gap-1">
-              {exercise.isCustom && (
-                <span className="bg-accent-soft px-2 py-0.5 text-2xs text-accent">
-                  yours
-                </span>
-              )}
+              {exercise.isCustom &&
+                (exercise.ownerId === null ? (
+                  // Community-shared row (owner_id null): quiet "shared" mark,
+                  // the why behind the missing Edit/Archive below.
+                  <span
+                    className="border border-border bg-surface px-2 py-0.5 text-2xs text-faint"
+                    data-testid={`shared-badge-${exercise.name}`}
+                  >
+                    shared
+                  </span>
+                ) : (
+                  <span className="bg-accent-soft px-2 py-0.5 text-2xs text-accent">
+                    yours
+                  </span>
+                ))}
               <FavoriteButton
                 favorite={isFavorite}
                 onToggle={() => onToggleFavorite(exercise.id, !isFavorite)}
@@ -985,63 +998,93 @@ const ExerciseRow = memo(function ExerciseRow({
             </div>
           )}
 
-          {exercise.isCustom && (
-            <div className="mt-3 border-t border-border pt-2">
-              <TagEditor exercise={exercise} update={update} />
-              <div className="mt-2 flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-soft"
-                  onClick={() => onEdit(exercise)}
-                  data-testid={`edit-exercise-${exercise.name}`}
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-soft"
-                  onClick={() => setConfirmingArchive(true)}
-                  data-testid={`archive-exercise-${exercise.name}`}
-                >
-                  <Archive className="size-4" />
-                  Archive exercise
-                </Button>
+          {exercise.isCustom &&
+            (exercise.ownerId === null ? (
+              // Shared rows are RLS-immutable (no owner) — the editor's
+              // Edit/Archive become fork-on-edit: a private copy the user can
+              // change (docs/DECISIONS.md 2026-08-08). The fork is never
+              // itself published (share: false).
+              <div className="mt-3 border-t border-border pt-2">
+                <p className="text-2xs text-faint">
+                  Shared with everyone, so it can't be edited here. Make a
+                  private copy to change it.
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-soft"
+                    onClick={() => {
+                      void createExercise.mutateAsync({
+                        name: `${exercise.name} (copy)`,
+                        opts: { ...copyExerciseOpts(exercise), share: false },
+                      });
+                    }}
+                    data-testid={`fork-exercise-${exercise.name}`}
+                  >
+                    <Copy className="size-4" />
+                    Make a private copy
+                  </Button>
+                </div>
               </div>
-              <Dialog
-                open={confirmingArchive}
-                onOpenChange={setConfirmingArchive}
-              >
-                <DialogContent title="Archive this exercise?">
-                  <p className="text-xs text-soft">
-                    It's hidden from your library and the exercise picker. Your
-                    past sessions and findings keep it — nothing logged is lost.
-                  </p>
-                  <div className="mt-3 flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setConfirmingArchive(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={() => {
-                        deleteExercise.mutate(exercise.id);
-                        setConfirmingArchive(false);
-                      }}
-                      data-testid={`confirm-archive-${exercise.name}`}
-                    >
-                      Archive
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          )}
+            ) : (
+              <div className="mt-3 border-t border-border pt-2">
+                <TagEditor exercise={exercise} update={update} />
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-soft"
+                    onClick={() => onEdit(exercise)}
+                    data-testid={`edit-exercise-${exercise.name}`}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-soft"
+                    onClick={() => setConfirmingArchive(true)}
+                    data-testid={`archive-exercise-${exercise.name}`}
+                  >
+                    <Archive className="size-4" />
+                    Archive exercise
+                  </Button>
+                </div>
+                <Dialog
+                  open={confirmingArchive}
+                  onOpenChange={setConfirmingArchive}
+                >
+                  <DialogContent title="Archive this exercise?">
+                    <p className="text-xs text-soft">
+                      It's hidden from your library and the exercise picker.
+                      Your past sessions and findings keep it — nothing logged
+                      is lost.
+                    </p>
+                    <div className="mt-3 flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setConfirmingArchive(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => {
+                          deleteExercise.mutate(exercise.id);
+                          setConfirmingArchive(false);
+                        }}
+                        data-testid={`confirm-archive-${exercise.name}`}
+                      >
+                        Archive
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            ))}
         </div>
       )}
     </li>

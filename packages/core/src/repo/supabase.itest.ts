@@ -87,10 +87,72 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     const created = await repoA.createExercise(name);
     expect(created.name).toBe(name);
     expect(created.isCustom).toBe(true);
-    expect(created.ownerId).not.toBeNull();
+    // Community population phase (COMMUNITY_SHARING = true,
+    // docs/DECISIONS.md 2026-08-08): a plain create publishes — owner_id
+    // null so every authenticated user can read it.
+    expect(created.ownerId).toBeNull();
+    expect(created.createdBy).not.toBeNull();
 
     const listed = await repoA.listExercises();
     expect(listed.map((e) => e.id)).toContain(created.id);
+  });
+
+  it("community sharing: global visibility, provenance, dupe backstop, frozen rows, private fork", async () => {
+    const { data: aUser } = await clientA.auth.getUser();
+    const author = aUser.user?.id;
+    const name = `Community Lift ${newId().slice(0, 8)}`;
+
+    // A default create publishes: owner_id null + created_by = the author,
+    // and the other user sees it in their library.
+    const shared = await repoA.createExercise(name, {
+      muscleTargets: [{ muscle: "quads", tier: "B" }],
+    });
+    expect(shared.ownerId).toBeNull();
+    expect(shared.createdBy).toBe(author);
+    expect(shared.muscleTargets).toEqual([{ muscle: "quads", tier: "B" }]);
+    expect((await repoB.listExercises()).map((e) => e.id)).toContain(shared.id);
+
+    // Dupe backstop: re-publishing the same name (case-insensitively)
+    // returns the canonical row and creates no second row.
+    const dupe = await repoA.createExercise(name.toLowerCase());
+    expect(dupe.id).toBe(shared.id);
+    const { count } = await clientA
+      .from("exercises")
+      .select("id", { count: "exact", head: true })
+      .ilike("name", name)
+      .is("deleted_at", null);
+    expect(count).toBe(1);
+
+    // Frozen: updateExercise matches zero rows on a shared row (no owner
+    // under RLS), so an update attempt leaves it unchanged — the fork
+    // contract.
+    await repoA.updateExercise(shared.id, { notes: "should not stick" });
+    const after = await repoA.getExercise(shared.id);
+    expect(after?.notes).toBeNull();
+
+    // A private create (share: false) stays invisible to the other user.
+    const priv = await repoA.createExercise(`Private ${newId().slice(0, 8)}`, {
+      share: false,
+    });
+    expect(priv.ownerId).toBe(author);
+    expect((await repoB.listExercises()).map((e) => e.id)).not.toContain(
+      priv.id,
+    );
+
+    // A machine-linked create stays private even without an explicit flag:
+    // the publish RPC's whitelist has no machine_id, so publishing would
+    // silently drop the machine (resolveExerciseShare — the repo never lets
+    // a machine-bearing create ride the shared library).
+    const machine = await repoA.createMachine({ name: "A's Hack Squat" });
+    const machineEx = await repoA.createExercise(
+      `Machine Shared Guard ${newId().slice(0, 8)}`,
+      { machineId: machine.id },
+    );
+    expect(machineEx.ownerId).toBe(author);
+    expect(machineEx.machineId).toBe(machine.id);
+    expect((await repoB.listExercises()).map((e) => e.id)).not.toContain(
+      machineEx.id,
+    );
   });
 
   it("starts a session and logs ordered sets", async () => {
@@ -320,6 +382,9 @@ describe("SupabaseRepo (integration, local supabase)", () => {
     const ex = await repoA.createExercise(
       `Machine Row ${newId().slice(0, 8)}`,
       {
+        // Private: the delete-detach write below must reach this row, and
+        // shared rows are RLS-immutable.
+        share: false,
         machineId: machine.id,
         jointActions: ["shoulder-extension", "elbow-flexion"],
         muscleTargets: [{ muscle: "lats", tier: "A" }],
@@ -601,7 +666,12 @@ describe("SupabaseRepo (integration, local supabase)", () => {
   }, 30_000);
 
   it("exercise media: owner can upload/clear, others cannot read", async () => {
-    const ex = await repoA.createExercise(`Media Test ${newId().slice(0, 8)}`);
+    const ex = await repoA.createExercise(`Media Test ${newId().slice(0, 8)}`, {
+      // Private: media_path is owner-private and may never ride a shared
+      // row (the publish RPC's field whitelist drops it), and the upload
+      // writes the row.
+      share: false,
+    });
     const pixel = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], {
       type: "image/jpeg",
     });
@@ -629,6 +699,9 @@ describe("SupabaseRepo (integration, local supabase)", () => {
   it("RLS: users cannot see or write each other's data", async () => {
     const exA = await repoA.createExercise(
       `Private Curl ${newId().slice(0, 8)}`,
+      // share: false — this test is about isolation, so the row must be
+      // the caller's own, not a published global row.
+      { share: false },
     );
     const sessionA = await repoA.startSession("A's session");
 

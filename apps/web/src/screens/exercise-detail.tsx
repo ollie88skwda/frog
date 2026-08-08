@@ -687,11 +687,13 @@ function MoreMenu({
   // exercise's stats" mechanism). Same exercise design, fresh history: every
   // field the editor writes is carried except `aliases` — two rows sharing an
   // alias would make `matchExerciseName` ambiguous for voice/paste logging.
+  // share: false — a fork is a private copy, never a publish
+  // (docs/DECISIONS.md 2026-08-08).
   async function duplicate() {
     setOpen(false);
     const copy = await create.mutateAsync({
       name: `${exercise.name} (copy)`,
-      opts: copyExerciseOpts(exercise),
+      opts: { ...copyExerciseOpts(exercise), share: false },
     });
     navigate(`/exercises/${copy.id}`);
   }
@@ -717,7 +719,10 @@ function MoreMenu({
             className="fixed inset-0 z-10 cursor-default"
           />
           <div className="floating absolute top-full right-0 z-20 mt-1 min-w-40 py-1">
-            {exercise.isCustom && (
+            {/* Edit is for the user's own custom rows only — shared rows
+                (isCustom true, ownerId null) are RLS-immutable, same as
+                seeds, so the menu drops to Duplicate for them. */}
+            {exercise.isCustom && exercise.ownerId !== null && (
               <button
                 type="button"
                 onClick={() => {
@@ -743,10 +748,13 @@ function MoreMenu({
               {/* Seed rows are immutable book data — "duplicate" undersells
                   that this is the only way to get an editable copy. Custom
                   rows keep the literal label since they're also editable
-                  directly (see the Edit action above). */}
-              {exercise.isCustom
-                ? "Duplicate exercise"
-                : "Customise this exercise"}
+                  directly (see the Edit action above); shared community rows
+                  are equally immutable, so their fork says what it does. */}
+              {exercise.isCustom && exercise.ownerId === null
+                ? "Make a private copy"
+                : exercise.isCustom
+                  ? "Duplicate exercise"
+                  : "Customise this exercise"}
             </button>
           </div>
         </>

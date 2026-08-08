@@ -22,6 +22,7 @@ import type {
 } from "../db/schema";
 import { SEED_CONDITIONS } from "../db/seed-ids";
 import type { MuscleTarget } from "../domain/anatomy";
+import { resolveExerciseShare } from "../domain/exercise-share";
 import { newId } from "../domain/ids";
 import { generateToken, hashToken } from "../domain/tokens";
 import { groupSetsBySetNo } from "../domain/volume";
@@ -78,10 +79,10 @@ function bySetNoThenSide(a: Row, b: Row): number {
 // every logged block — fat-fielding it would mean one extra fetch per block
 // on the logging hot path, exactly what LIST_COLUMNS exists to avoid.
 const LIST_COLUMNS =
-  "id, created_at, updated_at, deleted_at, owner_id, name, tags, is_custom, " +
-  "machine_id, joint_actions, muscle_targets, image_url, image_attribution, " +
-  "exercise_type, equipment, mechanic, movement_pattern, laterality, " +
-  "default_reps_min, default_reps_max, default_rest_sec, aliases, notes";
+  "id, created_at, updated_at, deleted_at, owner_id, created_by, name, tags, " +
+  "is_custom, machine_id, joint_actions, muscle_targets, image_url, " +
+  "image_attribution, exercise_type, equipment, mechanic, movement_pattern, " +
+  "laterality, default_reps_min, default_reps_max, default_rest_sec, aliases, notes";
 
 // PostgREST speaks snake_case; the app speaks the schema's camelCase types.
 function toExercise(r: Row): Exercise {
@@ -91,6 +92,7 @@ function toExercise(r: Row): Exercise {
     updatedAt: r.updated_at as number,
     deletedAt: (r.deleted_at as number | null) ?? null,
     ownerId: (r.owner_id as string | null) ?? null,
+    createdBy: (r.created_by as string | null) ?? null,
     name: r.name as string,
     tags: (r.tags as string[] | null) ?? null,
     isCustom: r.is_custom as boolean,
@@ -410,9 +412,62 @@ export class SupabaseRepo implements Repo {
     name: string,
     opts?: NewExerciseOpts,
   ): Promise<Exercise> {
+    // One publish-vs-private rule shared with the app's optimistic row and
+    // create form (domain/exercise-share.ts): an explicit share: false or a
+    // machine link forces a private row — the RPC whitelist can't carry
+    // machine_id, so publishing would silently drop it.
+    const share = resolveExerciseShare(opts);
+    const id = opts?.id ?? newId();
+    if (share) {
+      // Community publish path (docs/DECISIONS.md 2026-08-08): the row is
+      // created as owner_id null + created_by = caller via the security
+      // definer publish_exercise RPC — never by a direct insert, which RLS
+      // rejects for null-owner rows by design. The RPC returns the canonical
+      // id: the inserted row's id, or the existing row's id when the
+      // case-insensitive dedupe backstop matched (no duplicate created).
+      const { data: canonicalId, error } = await this.client.rpc(
+        "publish_exercise",
+        {
+          p_id: id,
+          p_name: name,
+          p_joint_actions: opts?.jointActions?.length
+            ? opts.jointActions
+            : null,
+          p_muscle_targets: opts?.muscleTargets?.length
+            ? opts.muscleTargets
+            : null,
+          p_exercise_type: opts?.exerciseType ?? "weight_reps",
+          p_equipment: opts?.equipment ?? null,
+          p_instructions: opts?.instructions?.length ? opts.instructions : null,
+          p_image_urls: opts?.imageUrls?.length ? opts.imageUrls : null,
+          p_mechanic: opts?.mechanic ?? null,
+          p_movement_pattern: opts?.movementPattern ?? null,
+          p_laterality: opts?.laterality ?? null,
+          p_default_reps_min: opts?.defaultRepsMin ?? null,
+          p_default_reps_max: opts?.defaultRepsMax ?? null,
+          p_default_rest_sec: opts?.defaultRestSec ?? null,
+          p_notes: opts?.notes ?? null,
+          p_aliases: opts?.aliases?.length ? opts.aliases : null,
+        },
+      );
+      throwIf(error);
+      if (!canonicalId) {
+        throw new Error("Could not publish the exercise");
+      }
+      // Read back the canonical row (on the dupe-hit path this is the
+      // existing global row, not the one the caller optimistically created).
+      const { data, error: readError } = await this.client
+        .from("exercises")
+        .select()
+        .eq("id", canonicalId as string)
+        .single();
+      throwIf(readError);
+      return toExercise(data as Row);
+    }
+    // Private path — unchanged direct insert, owner_id = caller via RLS.
     const now = Date.now();
     const row = {
-      id: opts?.id ?? newId(),
+      id,
       created_at: now,
       updated_at: now,
       name,

@@ -99,6 +99,11 @@ export const machineCatalog = pgTable(
     discontinuedYear: integer("discontinued_year"), // null = current line
     sourceUrl: text("source_url"), // provenance
     sourceNote: text("source_note"),
+    // Community-shared rows carry the publisher's JWT `sub` here (owner_id
+    // stays null = global, readable by all); null on migration seeds so the
+    // two populations stay distinguishable. Provenance for the moderation
+    // story (rate limits, abuse takedown) — see the publish_exercise RPC.
+    createdBy: text("created_by"),
   },
   (t) => [index("machine_catalog_brand_idx").on(t.brand)],
 );
@@ -108,6 +113,10 @@ export const exercises = pgTable(
   {
     ...base,
     ownerId: seedableOwner,
+    // Community-shared rows (owner_id null + is_custom true) carry the
+    // publisher's JWT `sub` here; null on migration seeds. Set only by the
+    // publish_exercise RPC — never by a plain insert.
+    createdBy: text("created_by"),
     name: text("name").notNull(),
     tags: jsonb("tags").$type<string[]>(), // light tagging only in v1
     isCustom: boolean("is_custom").notNull().default(true),

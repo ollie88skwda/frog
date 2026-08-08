@@ -54,6 +54,7 @@ machine picker has its uuid stored in `machines.catalog_key`. See AGENTS.md's
 | introduced_year / discontinued_year | integer? | discontinued null = current line |
 | source_url | text? | provenance |
 | source_note | text? | e.g. "migrated from static catalog 2026-08-07" |
+| created_by | text? | community-shared rows carry the publisher's JWT `sub`; null on migration seeds (`publish_catalog_machine`, phase 2) |
 | owner_id | text? | null = global seed |
 | created_at / updated_at / deleted_at | bigint ms | |
 
@@ -80,6 +81,7 @@ machine picker has its uuid stored in `machines.catalog_key`. See AGENTS.md's
 | default_rest_sec | integer? | prefill only — seeds `routine_exercises.rest_sec` when the routine editor adds this exercise; no session-side reader (rest is an untargeted stopwatch) |
 | notes | text? | the user's own note about the exercise (setup, cue); shown read-only under the block header in a session |
 | aliases | jsonb? | string[], alternate names; matched by the fuzzy matcher (voice logging, routine paste) and search alongside `name` |
+| created_by | text? | publisher's JWT `sub` on community-shared rows (`owner_id null`, `is_custom true`); null on migration seeds — set only by the `publish_exercise` RPC (`20260808062400_publish_exercise_rpc.sql`), never by a plain insert |
 | media_path | text? | storage path in the private `exercise-media` bucket (user-uploaded demo image/video, resized client-side); null = no media |
 | media_type | text? | `image` \| `video`; null when `media_path` is null |
 | owner_id | uuid? | null = global seed |

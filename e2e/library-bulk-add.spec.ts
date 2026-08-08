@@ -97,7 +97,8 @@ test("bulk add warns on duplicates against the library without blocking", async 
 // trickle. 12 names at 4 in flight still finish in ~9 s.
 const INSERT_DELAY_MS = 3_000;
 
-// The names carried by one PostgREST insert body (an object or an array of
+// The names carried by one publish body (the publish_exercise RPC takes a
+// single object with p_name; a direct insert takes an object or an array of
 // them). Unparseable bodies contribute nothing rather than failing the test.
 function insertedNames(body: string | null): string[] {
   if (!body) return [];
@@ -109,7 +110,10 @@ function insertedNames(body: string | null): string[] {
   }
   const rows = Array.isArray(parsed) ? parsed : [parsed];
   return rows
-    .map((row) => (row as { name?: unknown })?.name)
+    .map((row) => {
+      const r = row as { name?: unknown; p_name?: unknown };
+      return (r.name ?? r.p_name) as unknown;
+    })
     .filter((name): name is string => typeof name === "string");
 }
 
@@ -151,8 +155,12 @@ test("bulk add bounds the insert fan-out and refetches the library once", async 
   let peakInFlight = 0;
   let listFetches = 0;
   const inserted = new Set<string>();
+  // With community sharing on, a create is a publish_exercise RPC POST (the
+  // follow-up read-back GET carries the id, so only the POST is an insert).
   const isInsert = (r: { method(): string; url(): string }) =>
-    r.method() === "POST" && r.url().includes("/rest/v1/exercises");
+    r.method() === "POST" &&
+    (r.url().includes("/rest/v1/rpc/publish_exercise") ||
+      r.url().includes("/rest/v1/exercises"));
   page.on("request", (r) => {
     if (isInsert(r)) {
       for (const name of insertedNames(r.postData())) inserted.add(name);
@@ -172,11 +180,11 @@ test("bulk add bounds the insert fan-out and refetches the library once", async 
   page.on("requestfinished", settled);
   page.on("requestfailed", settled);
 
-  // Hold every insert open for a beat. Seeded rows don't wait on the network,
-  // so they all paint anyway; a regression to one optimistic write per
-  // dispatched create would need three worker waves (≥9 s) to finish painting.
-  await page.route("**/rest/v1/exercises*", async (route) => {
-    if (route.request().method() !== "POST") return route.continue();
+  // Hold every publish open for a beat. Seeded rows don't wait on the
+  // network, so they all paint anyway; a regression to one optimistic write
+  // per dispatched create would need three worker waves (≥9 s) to finish
+  // painting.
+  await page.route("**/rest/v1/rpc/publish_exercise*", async (route) => {
     await new Promise((r) => setTimeout(r, INSERT_DELAY_MS));
     await route.continue();
   });
@@ -219,14 +227,13 @@ test("bulk add surfaces failed names and prefills them on reopen", async ({
 
   await page.goto("/library");
   await expect(page.getByTestId("bulk-add-exercises-trigger")).toBeVisible();
-  await page.route("**/rest/v1/exercises*", (route) =>
-    route.request().method() === "POST"
-      ? route.fulfill({
-          status: 500,
-          contentType: "application/json",
-          body: JSON.stringify({ message: "e2e forced insert failure" }),
-        })
-      : route.continue(),
+  // Community phase: creates publish through the publish_exercise RPC.
+  await page.route("**/rest/v1/rpc/publish_exercise*", (route) =>
+    route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ message: "e2e forced insert failure" }),
+    }),
   );
 
   await page.getByTestId("bulk-add-exercises-trigger").click();

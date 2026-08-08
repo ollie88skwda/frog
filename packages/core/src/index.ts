@@ -1,10 +1,16 @@
-export { APP_NAME, FIRST_WEEKDAY, SHARE_DOMAIN } from "./config";
+export {
+  APP_NAME,
+  COMMUNITY_SHARING,
+  FIRST_WEEKDAY,
+  SHARE_DOMAIN,
+} from "./config";
 export * from "./db/schema";
 export * from "./db/seed-ids";
 export * from "./domain/anatomy";
 export * from "./domain/changelog";
 export * from "./domain/conditions";
 export * from "./domain/e1rm";
+export * from "./domain/exercise-share";
 export * from "./domain/exercise-types";
 export * from "./domain/ids";
 export * from "./domain/match-exercise";
