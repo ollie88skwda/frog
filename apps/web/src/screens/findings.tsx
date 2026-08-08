@@ -17,16 +17,35 @@ import { Badge } from "@radix-ui/themes";
 import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
-import { LineChart } from "@/components/charts/line";
+import {
+  CartesianGrid,
+  Line as RechartsLine,
+  LineChart as RechartsLineChart,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { computeFindings } from "@/lib/findings";
 import { formatDate } from "@/lib/format";
 import { useFindingsData, useMetrics } from "@/lib/queries";
 import { useUnit } from "@/lib/settings";
+import { trendYDomain } from "@/lib/trend-domain";
 import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
 
 const DAY_MS = 86_400_000;
+
+// Trend-sheet line charts — one accent series; value/date formatting comes
+// from the callers' formatY/formatDate.
+const TREND_CONFIG = {
+  y: { label: "Value", color: "var(--accent)" },
+} satisfies ChartConfig;
 
 export default function FindingsScreen() {
   const { t } = useVoice();
@@ -287,20 +306,72 @@ function TrendChart({
   formatY: (v: number) => string;
   testId: string;
 }) {
+  const { t } = useVoice();
   return (
     <div>
       <p className="text-2xs font-medium tracking-widest text-faint uppercase">
         {label}
       </p>
       <div className="mt-1">
-        <LineChart
-          points={points}
-          formatX={formatDate}
-          formatY={formatY}
-          height={120}
-          ariaLabel={label}
-          testId={testId}
-        />
+        {points.length === 0 ? (
+          <div
+            className="flex h-30 items-center justify-center text-xs text-faint"
+            data-testid={testId}
+          >
+            {t("No data yet.", "No data yet. The frog refuses to speculate.")}
+          </div>
+        ) : (
+          <ChartContainer
+            config={TREND_CONFIG}
+            className="h-30 w-full"
+            role="img"
+            aria-label={label}
+            data-testid={testId}
+          >
+            <RechartsLineChart
+              data={points}
+              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+              accessibilityLayer
+            >
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey="x"
+                type="number"
+                domain={["dataMin", "dataMax"]}
+                tickLine={false}
+                axisLine={false}
+                tickMargin={6}
+                tickCount={3}
+                tickFormatter={(v) => formatDate(Number(v))}
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
+                width={40}
+                domain={trendYDomain(points)}
+                tickFormatter={(v) => formatY(Number(v))}
+              />
+              <ChartTooltip
+                cursor={false}
+                content={
+                  <ChartTooltipContent
+                    labelFormatter={(_, payload) =>
+                      formatDate(payload?.[0]?.payload?.x)
+                    }
+                    valueFormatter={(v) => formatY(Number(v))}
+                  />
+                }
+              />
+              <RechartsLine
+                dataKey="y"
+                type="monotone"
+                stroke="var(--color-y)"
+                strokeWidth={1.5}
+                dot={{ r: 2.5, strokeWidth: 0, fill: "var(--color-y)" }}
+              />
+            </RechartsLineChart>
+          </ChartContainer>
+        )}
       </div>
     </div>
   );

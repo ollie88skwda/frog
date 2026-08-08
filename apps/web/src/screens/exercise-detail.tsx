@@ -33,10 +33,22 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import {
+  CartesianGrid,
+  Line as RechartsLine,
+  LineChart as RechartsLineChart,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { ExerciseThumb, TierBadge } from "@/components/anatomy-ui";
-import { type ChartPoint, LineChart } from "@/components/charts/line";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import { ShareButton } from "@/components/share-sheet";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { formatDate, formatDateTime, formatMMSS } from "@/lib/format";
 import { useUserPrefs } from "@/lib/profile-queries";
 import {
@@ -51,6 +63,7 @@ import {
   type Unit,
   useUnit,
 } from "@/lib/settings";
+import { trendYDomain } from "@/lib/trend-domain";
 import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
 
@@ -208,6 +221,7 @@ function SummaryTab({
   data: RecordsData | undefined;
   unit: Unit;
 }) {
+  const { t } = useVoice();
   const distUnit = distanceUnitFor(unit);
   const metrics = useMemo(() => chartMetricsFor(type), [type]);
   const [metricKey, setMetricKey] = useState(metrics[0]?.key ?? "");
@@ -220,11 +234,11 @@ function SummaryTab({
 
   // Per-session scalar for the active metric, over sessions in the range that
   // contain this exercise. Chronological → the line reads left (old) to right.
-  const points: ChartPoint[] = useMemo(() => {
+  const points: Array<{ x: number; y: number }> = useMemo(() => {
     if (!metric) return [];
     const cutoff = RANGE_MS[range];
     const min = cutoff == null ? 0 : Date.now() - cutoff;
-    const out: ChartPoint[] = [];
+    const out: Array<{ x: number; y: number }> = [];
     for (const s of sessions) {
       if (s.startedAt < min) continue;
       const sets = setsFor(s, exercise.id, includeWarmups);
@@ -236,6 +250,11 @@ function SummaryTab({
   }, [metric, range, sessions, exercise.id, includeWarmups]);
 
   const latest = points.length ? points[points.length - 1].y : null;
+
+  // The trend tooltip's series label follows the active metric chip.
+  const summaryConfig: ChartConfig = {
+    y: { label: metric?.label ?? "Value", color: "var(--accent)" },
+  };
 
   // Records sparkline for the share card's graphic — independent of the
   // metric chip above (always the type's headline PR metric: e1RM for
@@ -289,13 +308,72 @@ function SummaryTab({
         </div>
         {metric && (
           <div className="mt-2">
-            <LineChart
-              points={points}
-              formatX={formatDate}
-              formatY={(v) => metricTick(metric.kind, v, unit, distUnit)}
-              ariaLabel={`${metric.label} trend`}
-              testId="summary-chart"
-            />
+            {points.length === 0 ? (
+              <div
+                className="flex h-42 items-center justify-center text-xs text-faint"
+                data-testid="summary-chart"
+              >
+                {t(
+                  "No data yet.",
+                  "No data yet. The frog refuses to speculate.",
+                )}
+              </div>
+            ) : (
+              <ChartContainer
+                config={summaryConfig}
+                className="h-42 w-full"
+                role="img"
+                aria-label={`${metric.label} trend`}
+                data-testid="summary-chart"
+              >
+                <RechartsLineChart
+                  data={points}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                  accessibilityLayer
+                >
+                  <CartesianGrid vertical={false} />
+                  <XAxis
+                    dataKey="x"
+                    type="number"
+                    domain={["dataMin", "dataMax"]}
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={6}
+                    tickCount={3}
+                    tickFormatter={(v) => formatDate(Number(v))}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    width={40}
+                    domain={trendYDomain(points)}
+                    tickFormatter={(v) =>
+                      metricTick(metric.kind, v, unit, distUnit)
+                    }
+                  />
+                  <ChartTooltip
+                    cursor={false}
+                    content={
+                      <ChartTooltipContent
+                        labelFormatter={(_, payload) =>
+                          formatDate(payload?.[0]?.payload?.x)
+                        }
+                        valueFormatter={(v) =>
+                          metricTick(metric.kind, Number(v), unit, distUnit)
+                        }
+                      />
+                    }
+                  />
+                  <RechartsLine
+                    dataKey="y"
+                    type="monotone"
+                    stroke="var(--color-y)"
+                    strokeWidth={1.5}
+                    dot={{ r: 2.5, strokeWidth: 0, fill: "var(--color-y)" }}
+                  />
+                </RechartsLineChart>
+              </ChartContainer>
+            )}
           </div>
         )}
         {/* Range selector — ungated (no Pro cap, scope decision #4). */}
