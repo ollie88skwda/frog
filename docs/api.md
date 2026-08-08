@@ -15,10 +15,12 @@ token can be revoked at any time.
 
 ### `GET /v1/exercises`
 
-Global seed exercises (`owner_id: null`, `is_custom: false`) plus your custom
-ones. Every column on the `exercises` table (see [schema.md](./schema.md)) —
-there's no separate hand-picked subset here, so a new column shows up
-automatically instead of silently missing the API.
+Global seed exercises (`owner_id: null`, `is_custom: false`) plus the shared
+community library (`owner_id: null`, `is_custom: true` — exercises published
+by other users in the community phase, carrying the publisher's
+`created_by`) and your own custom ones. Every column on the `exercises` table
+(see [schema.md](./schema.md)) — there's no separate hand-picked subset here,
+so a new column shows up automatically instead of silently missing the API.
 
 ```sh
 curl -H "Authorization: Bearer $FROG_TOKEN" "$FROG_API_URL/v1/exercises?limit=100"

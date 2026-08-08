@@ -7,6 +7,7 @@ import {
   EXERCISE_TYPES,
   type Exercise,
   type ExerciseType,
+  isConfidentMatch,
   JOINT_ACTIONS,
   jointActionLabel,
   LATERALITY,
@@ -19,6 +20,7 @@ import {
   MOVEMENT_PATTERNS,
   MUSCLES,
   type MuscleTarget,
+  matchExerciseName,
   muscleLabel,
   newId,
   primaryMuscles,
@@ -229,6 +231,19 @@ export function ExerciseEditor({
       setDuplicateOf(null);
       return;
     }
+    // Community dedupe (dedupe-strictness decision, docs/DECISIONS.md
+    // 2026-08-08): a confident fuzzy hit against the shared library warns
+    // "use it instead" — a warn, never a block. Only global rows (owner_id
+    // null) count: a match against the user's own private row is their own
+    // business, and the server backstop dedupes against the same population.
+    const shared = exercises.filter((e) => e.ownerId === null);
+    const sharedMatch = matchExerciseName(trimmed, shared);
+    if (sharedMatch && isConfidentMatch(sharedMatch)) {
+      setDuplicateOf(sharedMatch);
+      return;
+    }
+    // The existing exact-name warn against the user's own rows (a rename
+    // collision in edit mode, a duplicate of their own custom exercise).
     const hit = exercises.find(
       (e) => e.id !== exercise?.id && sameExerciseName(e.name, trimmed),
     );
@@ -402,7 +417,9 @@ export function ExerciseEditor({
                 className="text-2xs text-warn"
                 data-testid="exercise-editor-duplicate"
               >
-                Matches an existing exercise, "{duplicateOf.name}".{" "}
+                {duplicateOf.ownerId === null
+                  ? `Already in the shared library as "${duplicateOf.name}" — use it instead.`
+                  : `Matches an existing exercise, "${duplicateOf.name}".`}{" "}
                 <button
                   type="button"
                   className="underline"

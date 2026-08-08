@@ -12,6 +12,7 @@ const bundle: ExportBundle = {
       ...base,
       id: "ex1",
       ownerId: "u1",
+      createdBy: null,
       name: "Bench, Press",
       tags: null,
       isCustom: true,

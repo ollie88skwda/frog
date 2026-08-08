@@ -63,11 +63,18 @@ test("machine from catalog: settings remembered into the session setup strip", a
   await page.getByTestId(`add-setting-${MACHINE}`).press("Enter");
   await page.getByTestId(`setting-value-${MACHINE}-Seat height`).fill("4");
 
-  // Custom exercise linked to the machine, via the row's Edit sheet.
+  // Custom exercise linked to the machine, via the row's Edit sheet. The
+  // created row is a published shared row (frozen — community phase,
+  // docs/DECISIONS.md 2026-08-08), so fork a private copy and edit that.
   await createExercise(page, EX);
   await waitForExercise(page, EX);
   await page.getByTestId(`exercise-row-toggle-${EX}`).click();
-  await page.getByTestId(`edit-exercise-${EX}`).click();
+  await page.getByTestId(`fork-exercise-${EX}`).click();
+  const copy = `${EX} (copy)`;
+  await expect(page.getByTestId(`exercise-row-${copy}`)).toBeVisible();
+  await waitForExercise(page, copy);
+  await page.getByTestId(`exercise-row-toggle-${copy}`).click();
+  await page.getByTestId(`edit-exercise-${copy}`).click();
   await page.getByTestId("exercise-editor-machine").click();
   await page
     .getByRole("option", { name: `Matrix · ${MACHINE}`, exact: true })
@@ -85,7 +92,7 @@ test("machine from catalog: settings remembered into the session setup strip", a
           .eq("name", name)
           .maybeSingle();
         return (data?.machine_id as string) ?? null;
-      }, EX),
+      }, copy),
     )
     .not.toBeNull();
 
@@ -93,8 +100,8 @@ test("machine from catalog: settings remembered into the session setup strip", a
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
-  await page.getByTestId(`pick-exercise-${EX}`).click();
-  const strip = page.getByTestId(`setup-strip-${EX}`);
+  await page.getByTestId(`pick-exercise-${copy}`).click();
+  const strip = page.getByTestId(`setup-strip-${copy}`);
   await expect(strip).toBeVisible();
   await expect(strip).toContainText("Seat height 4");
 
@@ -104,7 +111,7 @@ test("machine from catalog: settings remembered into the session setup strip", a
   await page.keyboard.press("Escape");
   await expect(strip).toContainText("Seat height 5");
   await page.reload();
-  await expect(page.getByTestId(`setup-strip-${EX}`)).toContainText(
+  await expect(page.getByTestId(`setup-strip-${copy}`)).toContainText(
     "Seat height 5",
   );
 });

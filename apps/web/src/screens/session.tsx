@@ -2436,7 +2436,12 @@ function ExerciseBlock({
     })();
   }
   function forkExercise(ex: Exercise, patch: ExercisePatch) {
-    if (ex.isCustom) {
+    // Own custom rows patch in place; seed rows AND community-shared rows
+    // (is_custom true, owner_id null) are RLS-immutable — a mid-session
+    // laterality/machine edit forks a private copy for both (the shared-row
+    // gate mirrors the library's, so the two can't drift —
+    // docs/DECISIONS.md 2026-08-08).
+    if (ex.isCustom && ex.ownerId !== null) {
       updateExercise.mutate({ exerciseId: ex.id, patch });
       return;
     }
@@ -2445,7 +2450,9 @@ function ExerciseBlock({
     const copyId = newId();
     const creating = createExercise.mutateAsync({
       name: `${ex.name} (copy)`,
-      opts: { id: copyId, ...copyExerciseOpts(ex), ...patch },
+      // share: false — a mid-session copy-on-write fork is a private copy,
+      // never a publish (docs/DECISIONS.md 2026-08-08).
+      opts: { id: copyId, ...copyExerciseOpts(ex), ...patch, share: false },
     });
     onSwapExercise(block.seId, copyId, originalId);
     setCopying(true);

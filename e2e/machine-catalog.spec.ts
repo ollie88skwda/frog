@@ -90,7 +90,11 @@ test("in-session attach: catalog search attaches a machine to the block", async 
     "Life Fitness · Insignia Series Chest Press",
   );
 
-  // Server-side: the exercise really is attached (optimistic UI first).
+  // Server-side: the exercise really is attached (optimistic UI first). The
+  // picker-created exercise is a published shared row (owner_id null,
+  // RLS-immutable — community phase), so the attach forks a private copy
+  // named "<name> (copy)" and repoints the block; the machine_id lands on
+  // the copy, not the shared original.
   await expect
     .poll(async () =>
       page.evaluate(async (exerciseName) => {
@@ -100,7 +104,7 @@ test("in-session attach: catalog search attaches a machine to the block", async 
           .eq("name", exerciseName)
           .maybeSingle();
         return (data?.machine_id as string) ?? null;
-      }, NAME),
+      }, `${NAME} (copy)`),
     )
     .not.toBeNull();
 });

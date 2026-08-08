@@ -29,3 +29,19 @@ export const FIRST_WEEKDAY = 0;
  * once the domain is live — every share surface reads this one constant.
  */
 export const SHARE_DOMAIN: string | null = null;
+
+/**
+ * Community sharing — the dev-mode population-phase switch
+ * (frog-community-direction plan, docs/DECISIONS.md 2026-08-08).
+ * When true (dev default), every custom exercise a user creates is published
+ * to the shared library via the `publish_exercise` RPC (owner_id null +
+ * created_by = the publisher) instead of being inserted as a private row.
+ *
+ * Per the captain's temp-vs-permanent decision, this flag is the
+ * "temporary" switch: the durable seam (RPC + created_by + fork-on-edit) is
+ * what ships, and flipping this to false (plus revoking execute on the RPC)
+ * stops new shared rows — existing ones stay as ordinary seed-posture rows.
+ * Fork paths (duplicate, session copy-on-write) pass `share: false`
+ * explicitly and are never affected by this flag.
+ */
+export const COMMUNITY_SHARING = true;

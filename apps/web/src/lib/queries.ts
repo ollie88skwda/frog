@@ -98,6 +98,7 @@ function optimisticExercise(
     updatedAt: now,
     deletedAt: null,
     ownerId: null,
+    createdBy: null,
     name,
     tags: null,
     isCustom: true,
@@ -243,9 +244,16 @@ export function useCreateExercise() {
     // The refetch is deliberately not awaited: holding this callback open for
     // the whole ~1 MB round-trip would keep a create dispatched inside that
     // window from ever seeing the count reach zero.
-    onSettled: (_data, _err, vars, ctx) => {
+    onSettled: (data, _err, vars, ctx) => {
       const id = ctx?.id ?? vars.opts?.id;
       if (id) resolveExercisePending(id);
+      // Dupe-hit reconciliation (community sharing): the publish RPC's dedupe
+      // backstop returned an existing row's id, so this create's optimistic
+      // row never became real — drop it now rather than letting it linger
+      // until the invalidate below repaints the list with the canonical row.
+      if (data && id && data.id !== id) {
+        updateExerciseRows(qc, (old) => old.filter((e) => e.id !== id));
+      }
       if (trackCreateExercise(qc, -1) > 0) return;
       // Any fetch already running predates this insert, so its response can't
       // contain the row. Retire it first: `invalidateQueries` only cancels an
