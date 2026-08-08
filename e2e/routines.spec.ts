@@ -83,7 +83,7 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   // Build a routine: set 0 fixed (5 reps), set 1 rep-range (8–12). Weight is
   // not authored in the builder — only Update Routine Values writes it,
   // after a session is performed.
-  await page.goto("/train");
+  await page.goto("/routines");
   await page.getByTestId("new-routine-btn").click();
   await expect(page).toHaveURL(/\/routines\/new/);
   await page.getByTestId("routine-name-input").fill(ROUTINE);
@@ -99,7 +99,7 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await page.getByTestId("routine-ex-0-set-1-reps").fill("8");
   await page.getByTestId("routine-ex-0-set-1-repsmax").fill("12");
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/train$/);
+  await expect(page).toHaveURL(/\/routines$/);
 
   // Start the routine → prefilled session.
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
@@ -156,14 +156,14 @@ test("start routine still prefills when the session row resolves after its exerc
   await createExercise(page, EX);
   await waitForExercise(page, EX);
 
-  await page.goto("/train");
+  await page.goto("/routines");
   await page.getByTestId("new-routine-btn").click();
   await page.getByTestId("routine-name-input").fill(ROUTINE);
   await page.getByTestId("routine-add-exercise-btn").click();
   await page.getByTestId(`routine-pick-${EX}`).click();
   await page.getByTestId("routine-ex-0-set-0-reps").fill("5");
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/train$/);
+  await expect(page).toHaveURL(/\/routines$/);
 
   await page.route(/\/rest\/v1\/sessions\?/, async (route) => {
     if (route.request().method() !== "GET") return route.continue();
@@ -288,14 +288,14 @@ test("Exercise Note is a full-width row with no Rest select, and doesn't clip a 
   expect(box?.width).toBeGreaterThan(320);
 });
 
-test("training-page routine menu flips upward when it would render below the fold", async ({
+test("routines-page routine menu flips upward when it would render below the fold", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const stamp = Date.now();
   const names = Array.from({ length: 10 }, (_, i) => `MenuFlipR${i} ${stamp}`);
 
-  await page.goto("/train");
+  await page.goto("/routines");
   await page.evaluate(async (routineNames) => {
     const sb = window.__frog.supabase;
     const { data: userData } = await sb.auth.getUser();
@@ -323,7 +323,7 @@ test("training-page routine menu flips upward when it would render below the fol
     if (error) throw new Error(error.message);
   }, names);
 
-  await page.goto("/train");
+  await page.goto("/routines");
   await expect(
     page.locator('button[data-testid^="routine-menu-"]').last(),
   ).toBeVisible();
@@ -380,7 +380,7 @@ test("start routine materializes every configured set as a visible row, not just
   await waitForExercise(page, EX);
 
   // 5 identical rep-range sets (6-8), matching the reported repro exactly.
-  await page.goto("/train");
+  await page.goto("/routines");
   await page.getByTestId("new-routine-btn").click();
   await page.getByTestId("routine-name-input").fill(ROUTINE);
   await page.getByTestId("routine-add-exercise-btn").click();
@@ -392,7 +392,7 @@ test("start routine materializes every configured set as a visible row, not just
     await page.getByTestId(`routine-ex-0-set-${i}-repsmax`).fill("8");
   }
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/train$/);
+  await expect(page).toHaveURL(/\/routines$/);
 
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
@@ -454,7 +454,7 @@ test("exercise menu laterality/warm-up/superset round-trip into the session", as
   await page.getByTestId("routine-ex-0-superset").click();
   await page.getByTestId("routine-name-input").fill(ROUTINE);
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/train$/);
+  await expect(page).toHaveURL(/\/routines$/);
 
   const routineId = await routineIdByName(page, ROUTINE);
   expect(routineId).not.toBe("");
@@ -488,9 +488,13 @@ test("exercise menu laterality/warm-up/superset round-trip into the session", as
   expect(state.sets[0]?.every((s) => s.laterality === "unilateral")).toBe(true);
 
   // Start it: the warm-up is set 0, seeded unilateral (ᴸ marker on the type
-  // cell), and logging it commits a pair — two rows, one set_no.
+  // cell), and logging it commits a pair — two rows, one set_no. Committed
+  // rows render optimistically, so scope the set_logs read to this session
+  // and poll until both inserts land (the global last-2 pattern raced the
+  // fire-and-forget pair insert and caught it mid-flight).
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
+  const sessionId = page.url().split("/session/")[1];
   // Both exercises' blocks render; scope to the first block.
   await expect(
     page.locator('[data-testid^="block-"]').first().getByTestId("set-0-type"),
@@ -504,15 +508,49 @@ test("exercise menu laterality/warm-up/superset round-trip into the session", as
   // Horizontal pair (batch 8): the ᴿ side renders inside the same stripe,
   // its cells carrying the committed-0-right-* ids.
   await expect(page.getByTestId("committed-0-right-reps")).toBeVisible();
-  const pair = await page.evaluate(async () => {
+  // Both inserts can take up to ~7s to land (mutations retry 3x), and a
+  // touch tap on the add button can double-fire the commit — so poll for at
+  // least the pair rather than exactly two, on a longer-than-default window.
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(async (sid) => {
+          const { data: se } = await window.__frog.supabase
+            .from("session_exercises")
+            .select("id")
+            .eq("session_id", sid)
+            .is("deleted_at", null);
+          const ids = (se ?? []).map((s) => s.id);
+          if (!ids.length) return 0;
+          const { count, error } = await window.__frog.supabase
+            .from("set_logs")
+            .select("id", { count: "exact", head: true })
+            .in("session_exercise_id", ids)
+            .is("deleted_at", null);
+          if (error) throw new Error(error.message);
+          return count ?? 0;
+        }, sessionId),
+      { timeout: 15_000 },
+    )
+    .toBeGreaterThanOrEqual(2);
+  const pair = await page.evaluate(async (sid) => {
+    const { data: se } = await window.__frog.supabase
+      .from("session_exercises")
+      .select("id")
+      .eq("session_id", sid)
+      .is("deleted_at", null);
     const { data, error } = await window.__frog.supabase
       .from("set_logs")
       .select("set_no, side, set_type, reps")
+      .in(
+        "session_exercise_id",
+        (se ?? []).map((s) => s.id),
+      )
       .is("deleted_at", null)
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     return (data ?? []).slice(-2).sort((a, b) => (a.side < b.side ? -1 : 1));
-  });
+  }, sessionId);
   expect(pair).toEqual([
     { set_no: 0, side: "left", set_type: "warmup", reps: 8 },
     { set_no: 0, side: "right", set_type: "warmup", reps: 8 },
