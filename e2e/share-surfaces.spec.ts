@@ -9,9 +9,12 @@ import {
   waitForExercise,
 } from "./helpers";
 
-// The seed id of the globally-seeded Sleep condition (seed-ids.ts) — the
-// conditions chip pre-loads it for every session.
-const SLEEP_ID = "00000000-0000-4000-8000-0000000000a1";
+// Seed ids of the globally-seeded conditions (seed-ids.ts). The strip test
+// below records the Stress scale, NOT the Sleep input: the earlier
+// conditions-metrics "stop tracking" test untracks Sleep for the shared
+// seeded user (server-side), so relying on Sleep here would order-depend on
+// that spec — Stress is the one default no spec ever untracks.
+const STRESS_ID = "00000000-0000-4000-8000-0000000000a5";
 
 // The share surfaces share-summary.spec.ts doesn't reach:
 //
@@ -217,13 +220,13 @@ test("one layout engine paints every frame × ground of a session card", async (
     await expect(page.getByTestId(`committed-${i}-type`)).toBeVisible();
   }
   // Record a condition so the card's lab-report strip has data to paint
-  // (the strip only renders when the session recorded something).
+  // (the strip only renders when the session recorded something). Stress is
+  // used rather than Sleep — see the STRESS_ID comment above.
   await page.getByTestId("conditions-chip").click();
-  const sleep = page.getByTestId(`condition-input-${SLEEP_ID}`);
-  await expect(sleep).toBeVisible();
-  await sleep.fill("7.5");
-  await sleep.blur();
-  await expect(page.getByTestId("conditions-chip")).toContainText("7.5h");
+  const stress = page.getByTestId(`condition-scale-${STRESS_ID}-4`);
+  await expect(stress).toBeVisible();
+  await stress.click();
+  await expect(page.getByTestId("conditions-chip")).toContainText("stress 4");
   await page.keyboard.press("Escape"); // close the conditions sheet
   await page.getByTestId("end-session-btn").click();
   await page.getByTestId("finish-save").click();
