@@ -2362,19 +2362,54 @@ function ExerciseBlock({
   // cache from the create's onMutate, and the session_exercises repoint
   // waits for the insert so the FK can't race it. The repoint runs through a
   // retrying mutation (the logSet contract); when its retries exhaust, the
-  // orphan copy is soft-deleted and the failure is surfaced with a retry
-  // affordance instead of silently reverting. The Sides/Attach items stay
-  // disabled while a copy-on-write is in flight so a rapid re-toggle can't
-  // target the not-yet-inserted copy id.
+  // failure is resolved by reading the row before any cleanup — the PATCH
+  // can have committed with its response lost, so the orphan copy is
+  // soft-deleted only when the row still points at the seed; a row already
+  // on the copy means the edit landed and nothing is deleted. If the
+  // resolution read itself fails, the copy is never deleted (deleting could
+  // destroy a committed repoint) and the block stays on the copy with a
+  // couldn't-confirm banner. Retry resolves by read again and never mints a
+  // second copy while the row already points at one. The Sides/Attach items
+  // stay disabled while a copy-on-write is in flight so a rapid re-toggle
+  // can't target the not-yet-inserted copy id.
   const [copying, setCopying] = useState(false);
-  const [copyError, setCopyError] = useState<ExercisePatch | null>(null);
+  const [copyError, setCopyError] = useState<{
+    patch: ExercisePatch;
+    unresolved?: boolean;
+  } | null>(null);
   const repoint = useMutation({
     mutationFn: ({ seId, copyId }: { seId: string; copyId: string }) =>
       repo.updateSessionExercise(seId, { exerciseId: copyId }),
-    onError: (_err, { copyId }) => {
-      deleteExercise.mutate(copyId);
-    },
   });
+  function settleRepointFailure(
+    seId: string,
+    copyId: string,
+    originalId: string,
+    patch: ExercisePatch,
+  ) {
+    void (async () => {
+      let state: "committed" | "not-committed" | "unresolved";
+      try {
+        const row = await repo.getSessionExercise(seId);
+        state = row?.exerciseId === copyId ? "committed" : "not-committed";
+      } catch {
+        state = "unresolved";
+      }
+      if (state === "committed") {
+        setCopying(false);
+        return;
+      }
+      if (state === "unresolved") {
+        setCopying(false);
+        setCopyError({ patch, unresolved: true });
+        return;
+      }
+      onSwapExercise(seId, originalId, originalId);
+      setCopying(false);
+      setCopyError({ patch });
+      deleteExercise.mutate(copyId);
+    })();
+  }
   function editOrCopy(patch: ExercisePatch) {
     if (!exercise) return;
     if (exercise.isCustom) {
@@ -2393,11 +2428,50 @@ function ExerciseBlock({
     void creating
       .then(() => repoint.mutateAsync({ seId: block.seId, copyId }))
       .then(() => setCopying(false))
-      .catch(() => {
-        onSwapExercise(block.seId, originalId, originalId);
+      .catch(() => settleRepointFailure(block.seId, copyId, originalId, patch));
+  }
+  function retryCopy() {
+    if (!copyError) return;
+    const err = copyError;
+    setCopyError(null);
+    setCopying(true);
+    void (async () => {
+      let state: "committed" | "not-committed" | "unresolved";
+      try {
+        const row = await repo.getSessionExercise(block.seId);
+        state =
+          row?.exerciseId === block.exerciseId ? "committed" : "not-committed";
+      } catch {
+        state = "unresolved";
+      }
+      if (state === "committed") {
         setCopying(false);
-        setCopyError(patch);
-      });
+        return;
+      }
+      if (state === "unresolved") {
+        setCopying(false);
+        setCopyError(err);
+        return;
+      }
+      if (err.unresolved) {
+        // The block never left the live copy (nothing was soft-deleted); the
+        // repoint is all that remains — re-attempt it on the same copy.
+        void repoint
+          .mutateAsync({ seId: block.seId, copyId: block.exerciseId })
+          .then(() => setCopying(false))
+          .catch(() =>
+            settleRepointFailure(
+              block.seId,
+              block.exerciseId,
+              block.ghostExerciseId ?? block.exerciseId,
+              err.patch,
+            ),
+          );
+        return;
+      }
+      setCopying(false);
+      editOrCopy(err.patch);
+    })();
   }
 
   const type = (exercise?.exerciseType as ExerciseType) ?? "weight_reps";
@@ -2511,19 +2585,20 @@ function ExerciseBlock({
           className="flex items-center justify-between gap-2 border-b border-border px-4 py-2"
         >
           <span className="min-w-0 text-xs text-neg">
-            {t(
-              "Couldn't update this exercise — couldn't reach the server.",
-              "The frog couldn't reach the pond — that change didn't land.",
-            )}
+            {copyError.unresolved
+              ? t(
+                  "Couldn't confirm that change — check your connection and retry.",
+                  "The frog can't tell if that landed — check the pond and retry.",
+                )
+              : t(
+                  "Couldn't update this exercise — couldn't reach the server.",
+                  "The frog couldn't reach the pond — that change didn't land.",
+                )}
           </span>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              const patch = copyError;
-              setCopyError(null);
-              editOrCopy(patch);
-            }}
+            onClick={retryCopy}
             disabled={copying}
             data-testid={`block-${block.name}-copy-retry`}
           >

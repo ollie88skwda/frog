@@ -414,6 +414,17 @@ export interface Repo {
   ): Promise<void>;
 
   /**
+   * Reads one session_exercise row's current exercise id — the
+   * resolve-by-read for the copy-on-write repoint's ambiguous-failure path
+   * (the PATCH can have committed with its response lost, so cleanup must
+   * confirm the row no longer points at the seed before soft-deleting the
+   * copy). Null when the row is gone.
+   */
+  getSessionExercise(
+    sessionExerciseId: string,
+  ): Promise<{ exerciseId: string } | null>;
+
+  /**
    * Previous session's per-exercise note (carry-forward ghost). Latest prior
    * session_exercise of this exercise that has a note, or null.
    */

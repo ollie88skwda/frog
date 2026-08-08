@@ -1078,6 +1078,18 @@ export class SupabaseRepo implements Repo {
     throwIf(error);
   }
 
+  async getSessionExercise(
+    sessionExerciseId: string,
+  ): Promise<{ exerciseId: string } | null> {
+    const { data, error } = await this.client
+      .from("session_exercises")
+      .select("exercise_id")
+      .eq("id", sessionExerciseId)
+      .maybeSingle();
+    throwIf(error);
+    return data ? { exerciseId: data.exercise_id as string } : null;
+  }
+
   async recordsData(): Promise<RecordsSessionInput[]> {
     const rows = await this.selectAll<Row>((from, to) =>
       this.client
