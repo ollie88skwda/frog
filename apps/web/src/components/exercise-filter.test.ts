@@ -56,6 +56,20 @@ describe("filterExercises — muscle search aliases (Note 18)", () => {
       "Lateral Raise",
     ]);
   });
+
+  it("a region search reaches muscles with no alias of their own", () => {
+    // rotator-cuff has no "shoulders" alias — the region rollup supplies it.
+    const rows: Row[] = [
+      {
+        name: "Cuban Rotation",
+        muscleTargets: [{ muscle: "rotator-cuff", tier: null }],
+      },
+      UNRATED_ROW,
+    ];
+    expect(filterExercises(rows, "shoulders", "").map((r) => r.name)).toEqual([
+      "Cuban Rotation",
+    ]);
+  });
 });
 
 describe("filterExercises — quality tier (Note 17)", () => {

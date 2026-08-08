@@ -4,6 +4,8 @@ import {
   groupByPrimaryMuscle,
   JOINT_ACTIONS,
   MUSCLE_ALIASES,
+  MUSCLE_REGION,
+  MUSCLE_REGION_LABELS,
   MUSCLES,
   type MuscleTarget,
   muscleLabelMatches,
@@ -211,5 +213,23 @@ describe("muscleLabelMatches (search aliases)", () => {
     expect(muscleLabelMatches("side-delts", "lateral delts")).toBe(true);
     expect(muscleLabelMatches("rear-delts", "posterior deltoids")).toBe(true);
     expect(muscleLabelMatches("biceps", "shoulders")).toBe(false);
+  });
+
+  it("region names come from MUSCLE_REGION, so no muscle is left out", () => {
+    // rotator-cuff is a shoulder in MUSCLE_REGION but has no alias of its own
+    // — searching "shoulders" must still find it.
+    expect(muscleLabelMatches("rotator-cuff", "shoulders")).toBe(true);
+    for (const [key, region] of Object.entries(MUSCLE_REGION)) {
+      const label = MUSCLE_REGION_LABELS[region].toLowerCase();
+      expect(muscleLabelMatches(key, label), `${key} × ${label}`).toBe(true);
+    }
+  });
+
+  it("every region label is searchable", () => {
+    expect(muscleLabelMatches("lats", "back")).toBe(true);
+    expect(muscleLabelMatches("quads", "legs")).toBe(true);
+    expect(muscleLabelMatches("triceps", "arms")).toBe(true);
+    expect(muscleLabelMatches("abs", "core")).toBe(true);
+    expect(muscleLabelMatches("quads", "arms")).toBe(false);
   });
 });

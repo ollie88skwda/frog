@@ -250,6 +250,7 @@ export default function LibraryScreen() {
           onRetryLibrary={() => void refetch()}
         />
       </div>
+      <BulkAddFailures />
 
       {editorTarget && (
         <ExerciseEditor
@@ -272,9 +273,7 @@ export default function LibraryScreen() {
         <TierLegend
           className="mt-2"
           active={filterTier}
-          onSelect={(v) =>
-            setFilterTier((prev) => (prev === v ? "" : (v as TierFilter)))
-          }
+          onSelect={(v) => setFilterTier((prev) => (prev === v ? "" : v))}
         />
       </div>
 
@@ -427,118 +426,126 @@ function BulkAddDialog({
   }
 
   return (
-    <div>
-      <div className="flex items-center gap-2">
-        <Dialog
-          open={open}
-          onOpenChange={(next) => {
-            setOpen(next);
-            // Reopening is the retry path the notice points at, so hand the
-            // full failed list back as the draft — not the truncated preview.
-            if (next) setText(failed.join("\n"));
-            else {
-              setText("");
-              setSkipDuplicates(true);
-            }
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              // Duplicate detection reads the loaded library, so the dialog
-              // stays shut until there is one — otherwise "Skip duplicates"
-              // silently protects nothing.
-              disabled={!libraryLoaded}
-              title={
-                libraryLoaded
-                  ? undefined
-                  : libraryFailed
-                    ? "Couldn't load your library — retry first"
-                    : "Loading your library…"
-              }
-              data-testid="bulk-add-exercises-trigger"
-            >
-              Bulk add
-            </Button>
-          </DialogTrigger>
-          <DialogContent title="Bulk add exercises">
-            <form onSubmit={onSubmit} className="flex flex-col gap-3">
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="One exercise name per line"
-                rows={8}
-                className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
-                data-testid="bulk-add-textarea"
-              />
-              {duplicates.length > 0 && (
-                <p
-                  className="text-2xs text-warn"
-                  data-testid="bulk-add-duplicate-warning"
-                >
-                  {duplicates.length} name{duplicates.length === 1 ? "" : "s"}{" "}
-                  already in your library: {previewNames(duplicates)}
-                </p>
-              )}
-              <label className="flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={skipDuplicates}
-                  onChange={(e) => setSkipDuplicates(e.target.checked)}
-                  className="size-4 accent-(--accent)"
-                  data-testid="bulk-add-skip-duplicates"
-                />
-                Skip duplicates
-              </label>
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  disabled={!libraryLoaded || toCreate.length === 0}
-                  data-testid="bulk-add-submit"
-                >
-                  {toCreate.length > 0
-                    ? `Add ${toCreate.length} exercise${toCreate.length === 1 ? "" : "s"}`
-                    : "Add exercises"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-        {libraryFailed && (
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          // Reopening is the retry path the notice points at, so hand the
+          // full failed list back as the draft — not the truncated preview.
+          if (next) setText(failed.join("\n"));
+          else {
+            setText("");
+            setSkipDuplicates(true);
+          }
+        }}
+      >
+        <DialogTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
-            onClick={onRetryLibrary}
-            data-testid="bulk-add-retry-library"
+            // Duplicate detection reads the loaded library, so the dialog
+            // stays shut until there is one — otherwise "Skip duplicates"
+            // silently protects nothing.
+            disabled={!libraryLoaded}
+            title={
+              libraryLoaded
+                ? undefined
+                : libraryFailed
+                  ? "Couldn't load your library — retry first"
+                  : "Loading your library…"
+            }
+            data-testid="bulk-add-exercises-trigger"
           >
-            Retry loading library
+            Bulk add
           </Button>
-        )}
-      </div>
-      {failed.length > 0 && (
-        <p
-          role="status"
-          className="mt-1 flex items-start gap-1 text-2xs text-neg"
-          data-testid="bulk-add-failures"
+        </DialogTrigger>
+        <DialogContent title="Bulk add exercises">
+          <form onSubmit={onSubmit} className="flex flex-col gap-3">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="One exercise name per line"
+              rows={8}
+              className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
+              data-testid="bulk-add-textarea"
+            />
+            {duplicates.length > 0 && (
+              <p
+                className="text-2xs text-warn"
+                data-testid="bulk-add-duplicate-warning"
+              >
+                {duplicates.length} name{duplicates.length === 1 ? "" : "s"}{" "}
+                already in your library: {previewNames(duplicates)}
+              </p>
+            )}
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={skipDuplicates}
+                onChange={(e) => setSkipDuplicates(e.target.checked)}
+                className="size-4 accent-(--accent)"
+                data-testid="bulk-add-skip-duplicates"
+              />
+              Skip duplicates
+            </label>
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={!libraryLoaded || toCreate.length === 0}
+                data-testid="bulk-add-submit"
+              >
+                {toCreate.length > 0
+                  ? `Add ${toCreate.length} exercise${toCreate.length === 1 ? "" : "s"}`
+                  : "Add exercises"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {libraryFailed && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onRetryLibrary}
+          data-testid="bulk-add-retry-library"
         >
-          <span className="min-w-0 flex-1">
-            {failed.length} name{failed.length === 1 ? "" : "s"} didn't save:{" "}
-            {previewNames(failed)}. Open bulk add to try again.
-          </span>
-          <button
-            type="button"
-            title="Dismiss"
-            onClick={dismissBulkAddFailures}
-            className="shrink-0 px-1 text-faint transition-colors duration-100 hover:text-neg"
-            data-testid="bulk-add-failures-dismiss"
-          >
-            ×
-          </button>
-        </p>
+          Retry loading library
+        </Button>
       )}
-    </div>
+    </>
+  );
+}
+
+// The post-run failure notice, rendered as a sibling *below* the header row
+// rather than inside it: the row is `items-center`, so a two-line notice
+// stacked under the trigger would grow that flex item and lift "Bulk add"
+// off the primary button's vertical centre line (Note 16). Reads the same
+// module store the dialog does — it outlives both the dialog and the screen.
+function BulkAddFailures() {
+  const failed = useBulkAddFailures();
+  if (failed.length === 0) return null;
+  return (
+    <p
+      role="status"
+      className="mt-1 flex items-start gap-1 text-2xs text-neg"
+      data-testid="bulk-add-failures"
+    >
+      <span className="min-w-0 flex-1">
+        {failed.length} name{failed.length === 1 ? "" : "s"} didn't save:{" "}
+        {previewNames(failed)}. Open bulk add to try again.
+      </span>
+      <button
+        type="button"
+        title="Dismiss"
+        onClick={dismissBulkAddFailures}
+        className="shrink-0 px-1 text-faint transition-colors duration-100 hover:text-neg"
+        data-testid="bulk-add-failures-dismiss"
+      >
+        ×
+      </button>
+    </p>
   );
 }
 

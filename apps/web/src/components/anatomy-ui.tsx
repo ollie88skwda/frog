@@ -44,7 +44,14 @@ const TIER_LEGEND_ITEMS = [
   { value: "B", label: "Good", className: "text-soft" },
   { value: "C", label: "Weak", className: "text-faint" },
   { value: "unrated", label: "Unrated", className: "text-faint italic" },
-] as const;
+] as const satisfies readonly {
+  value: Tier | "unrated";
+  label: string;
+  className: string;
+}[];
+
+/** What a legend chip stands for: a real tier, or the untiered bucket. */
+export type TierLegendValue = Tier | "unrated";
 
 export function TierLegend({
   className,
@@ -53,9 +60,9 @@ export function TierLegend({
 }: {
   className?: string;
   /** Currently applied quality filter ("" = none). */
-  active?: string;
+  active?: TierLegendValue | "";
   /** When provided, chips are buttons that report their value on click. */
-  onSelect?: (value: string) => void;
+  onSelect?: (value: TierLegendValue) => void;
 }) {
   const chips = TIER_LEGEND_ITEMS.map((item) =>
     onSelect ? (
