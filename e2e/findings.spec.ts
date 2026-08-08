@@ -14,7 +14,9 @@ test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
   // Pin the neutral register so copy assertions don't depend on the device's
   // saved voice preference (frog is the default).
-  await page.addInitScript(() => localStorage.setItem("voiceRegister", "human"));
+  await page.addInitScript(() =>
+    localStorage.setItem("voiceRegister", "human"),
+  );
   await signIn(page);
 });
 
