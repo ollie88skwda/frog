@@ -2,11 +2,11 @@
 // (crawl -> extract -> normalize -> qa -> generate-migration).
 //
 // This is the pipeline's OWN staging shape — deliberately not a Drizzle
-// table type. The real `machine_catalog` table is being built by a parallel
-// task (frog-machine-catalog-phase1) in packages/core/src/db/schema.ts,
-// which this pipeline must not touch. The field set mirrors the plan
+// table type. The real `machine_catalog` table lives in
+// packages/core/src/db/schema.ts (shape: docs/schema.md), which this
+// pipeline must not touch. The field set mirrors the plan
 // (report.md §3) exactly so `generate-migration.ts` maps 1:1 onto that
-// table's columns once it exists; `MachineCategory` and `MuscleTarget` are
+// table's columns; `MachineCategory` and `MuscleTarget` are
 // imported (read-only) from the app's real domain types so the two shapes
 // can't drift on those two fields.
 import type { MachineCategory } from "../../packages/core/src/data/machine-catalog";
