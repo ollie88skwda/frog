@@ -1,9 +1,10 @@
 # Frog read API
 
-Read-only REST API over your own training data, authenticated with a
-personal access token (PAT). Create tokens in the app: **Settings → API
-tokens**. The plaintext is shown once; only its sha256 hash is stored, and a
-token can be revoked at any time.
+Read-only REST API over your own training data — plus the shared community
+exercise library, which every token can read (see `GET /v1/exercises`) —
+authenticated with a personal access token (PAT). Create tokens in the app:
+**Settings → API tokens**. The plaintext is shown once; only its sha256 hash
+is stored, and a token can be revoked at any time.
 
 - Base URL: `<SUPABASE_PROJECT_URL>/functions/v1/api` (local dev: `http://127.0.0.1:54321/functions/v1/api`)
 - Auth header: `Authorization: Bearer frog_...`

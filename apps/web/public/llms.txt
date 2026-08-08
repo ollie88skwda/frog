@@ -10,7 +10,8 @@
 
 Every API request needs a personal access token (created in-app under
 Settings → API tokens): `Authorization: Bearer frog_...`. Tokens are
-read-only and scoped to the owning user's data.
+read-only and scoped to the owning user's data, plus the shared community
+exercise library (see the exercises endpoint).
 
 ## REST API (read-only)
 
