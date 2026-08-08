@@ -359,6 +359,16 @@ describe("SupabaseRepo (integration, local supabase)", () => {
   });
 
   it("machine catalog: search matches brand/model/alias and browse filters by category", async () => {
+    // Single-term brand search (the captain's "matrix" repro, frog-machine-db-lookup-slow):
+    // regression guard for the 2026-08-07 hosted-DB-drift incident, where the whole
+    // machine_catalog table + this RPC never got pushed to the hosted project, so this exact
+    // query 404'd (PGRST202) instead of returning the first 20 (the repo's default
+    // max_rows) of Matrix's 53 rows. Pins both correctness and that a plain
+    // single-term brand query resolves quickly against a real Postgres round trip.
+    const bareMatrix = await repoA.searchMachineCatalog("matrix");
+    expect(bareMatrix.length).toBeGreaterThan(0);
+    expect(bareMatrix.every((r) => r.brand === "Matrix")).toBe(true);
+
     // Multi-term AND over brand+model, same interaction the old static scan
     // had.
     const byTerms = await repoA.searchMachineCatalog("matrix diverging seated");

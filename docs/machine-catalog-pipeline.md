@@ -11,10 +11,9 @@ you've personally fetched its robots.txt and skimmed its ToS.
 
 **Ownership boundary**: this pipeline does not touch
 `packages/core/src/db/schema.ts` or `supabase/migrations/` — the
-`machine_catalog` table itself belongs to the parallel
-`frog-machine-catalog-phase1` task. `generate-migration.ts` produces SQL
-text matching that table's planned shape (report.md §3) but never writes
-into `supabase/migrations/` on its own.
+`machine_catalog` table's shape is owned by `docs/schema.md`.
+`generate-migration.ts` produces SQL text matching that table but never
+writes into `supabase/migrations/` on its own.
 
 ## Pipeline stages
 
@@ -132,8 +131,8 @@ Turns a **reviewed** batch into SQL matching
 exactly: deterministic uuids (sha1 of `brand::model`, so a re-run is a
 no-op), `insert ... on conflict (id) do nothing`, `owner_id null` (global
 seed row). Prints to stdout by default (redirect straight into
-`supabase/migrations/` once that table exists), or `-o path` to write a
-file — never writes into `supabase/migrations/` on its own.
+`supabase/migrations/`), or `-o path` to write a file — never writes into
+`supabase/migrations/` on its own.
 
 **Input:** prefers `staging/qa/<brand>-review.json` — the QA-reviewed
 migration feed that `qa.ts` writes (batch minus phase-1-seed overlaps and
@@ -166,8 +165,9 @@ validated:
   batch still yields a non-trivial sample) and a clean (zero-group) dedupe
   check.
 - `migrations/hammer-strength.sql` — the generated SQL. **Not applied
-  anywhere** — `machine_catalog` doesn't exist yet (parallel task); this is
-  the reference shape for once it does.
+  anywhere** — a reference example only; the real Hammer Strength seed
+  ships as
+  `supabase/migrations/20260807083500_seed_machine_catalog_hammer_strength.sql`.
 
 Reproduce it yourself:
 

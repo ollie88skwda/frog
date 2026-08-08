@@ -12,10 +12,10 @@
 // before.
 //
 // IMPORTANT — this script never writes into supabase/migrations/ itself.
-// That table (and its migrations directory) belongs to the parallel
-// frog-machine-catalog-phase1 task; this generator only produces SQL text
-// (stdout, or a file under this pipeline's own staging/migrations/ with
-// -o). Once `machine_catalog` exists, run:
+// The `machine_catalog` table and its migrations directory are owned
+// outside this pipeline (table shape: docs/schema.md); this generator only
+// produces SQL text (stdout, or a file under this pipeline's own
+// staging/migrations/ with -o). To land a batch, run:
 //   bun scripts/machine-catalog/generate-migration.ts <brandKey> > supabase/migrations/<ts>_seed_machine_catalog_<brand>.sql
 //
 // Usage: bun scripts/machine-catalog/generate-migration.ts <brandKey> [-o path]
