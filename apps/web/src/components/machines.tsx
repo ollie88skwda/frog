@@ -8,8 +8,10 @@ import {
   useCreateMachine,
   useDeleteMachine,
   useMachinePhotoUrl,
+  useMachineSettingPhotoUrl,
   useUpdateMachine,
   useUploadMachinePhoto,
+  useUploadMachineSettingPhoto,
 } from "@/lib/queries";
 
 export function MachinesSection({ machines }: { machines: Machine[] }) {
@@ -162,31 +164,13 @@ export function MachineEditor({ machine }: { machine: Machine }) {
   return (
     <div className="flex flex-col gap-2 border-t border-border bg-surface-2 px-4 py-2">
       {settings.map((s, i) => (
-        <div key={s.label} className="flex items-center gap-2">
-          <span className="w-32 truncate text-xs text-soft">{s.label}</span>
-          <Input
-            inputMode="decimal"
-            value={s.value ?? ""}
-            onChange={(e) => {
-              const raw = e.target.value.trim();
-              const value = raw === "" ? null : Number(raw);
-              if (raw !== "" && Number.isNaN(value)) return;
-              setSettings(
-                settings.map((x, j) => (j === i ? { ...x, value } : x)),
-              );
-            }}
-            className="num h-6 w-20 text-xs"
-            data-testid={`setting-value-${machine.name}-${s.label}`}
-          />
-          <button
-            type="button"
-            title={`Remove ${s.label}`}
-            onClick={() => setSettings(settings.filter((_, j) => j !== i))}
-            className="p-1 text-faint hover:text-neg"
-          >
-            ×
-          </button>
-        </div>
+        <SettingRow
+          key={s.label}
+          machine={machine}
+          settings={settings}
+          index={i}
+          onChange={setSettings}
+        />
       ))}
       <div className="flex items-center gap-2">
         <Input
@@ -253,6 +237,94 @@ export function MachineEditor({ machine }: { machine: Machine }) {
           Delete
         </Button>
       </div>
+    </div>
+  );
+}
+
+// One numbered setup value — label, number input, and an optional per-setting
+// photo (e.g. a picture of the seat-notch position it refers to). The photo
+// path rides in the setting's jsonb, so it survives reorders and removals.
+function SettingRow({
+  machine,
+  settings,
+  index,
+  onChange,
+}: {
+  machine: Machine;
+  settings: MachineSetting[];
+  index: number;
+  onChange: (next: MachineSetting[]) => void;
+}) {
+  const s = settings[index];
+  const upload = useUploadMachineSettingPhoto();
+  const { data: photoUrl } = useMachineSettingPhotoUrl(s.photoPath);
+
+  async function onPhotoPicked(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const resized = await resizePhoto(file, 1280);
+    try {
+      const path = await upload.mutateAsync({
+        machineId: machine.id,
+        file: resized,
+        existingPath: s.photoPath ?? null,
+      });
+      onChange(
+        settings.map((x, j) => (j === index ? { ...x, photoPath: path } : x)),
+      );
+    } catch {
+      // A failed photo upload leaves the setting untouched — no partial state.
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-32 truncate text-xs text-soft">{s.label}</span>
+      <Input
+        inputMode="decimal"
+        value={s.value ?? ""}
+        onChange={(e) => {
+          const raw = e.target.value.trim();
+          const value = raw === "" ? null : Number(raw);
+          if (raw !== "" && Number.isNaN(value)) return;
+          onChange(settings.map((x, j) => (j === index ? { ...x, value } : x)));
+        }}
+        className="num h-6 w-20 text-xs"
+        data-testid={`setting-value-${machine.name}-${s.label}`}
+      />
+      <label
+        className="flex h-6 cursor-pointer items-center gap-1 border border-border bg-surface px-1.5 text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+        title={s.photoPath ? "Replace setting photo" : "Add setting photo"}
+        data-testid={`setting-photo-${machine.name}-${s.label}`}
+      >
+        {photoUrl && (
+          <img
+            src={photoUrl}
+            alt={`${s.label} setting`}
+            loading="lazy"
+            className="h-5 w-5 border border-border object-cover"
+            data-testid={`setting-photo-img-${machine.name}-${s.label}`}
+          />
+        )}
+        <Camera className="size-3.5" />
+        <input
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={(e) => void onPhotoPicked(e)}
+          className="hidden"
+          data-testid={`setting-photo-input-${machine.name}-${s.label}`}
+        />
+      </label>
+      <button
+        type="button"
+        title={`Remove ${s.label}`}
+        onClick={() => onChange(settings.filter((_, j) => j !== index))}
+        className="p-1 text-faint hover:text-neg"
+      >
+        ×
+      </button>
     </div>
   );
 }

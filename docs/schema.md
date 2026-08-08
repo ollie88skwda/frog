@@ -23,7 +23,7 @@ The user's gym equipment — settings entered once, recalled in every session.
 | name | text | |
 | brand | text? | |
 | catalog_key | text? | the `machine_catalog` row's uuid when added from the catalog (denormalized, no FK) |
-| settings | jsonb | `{label, value}[]` remembered setup |
+| settings | jsonb | `{label, value, photoPath?}[]` remembered setup — `photoPath` is a per-setting photo in the `machine-photos` bucket (2026-08-08) |
 | notes | text? | freeform setup notes |
 | photo_path | text? | storage path of the user's photo |
 | owner_id | uuid | |

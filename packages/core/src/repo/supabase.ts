@@ -599,6 +599,31 @@ export class SupabaseRepo implements Repo {
     return data?.signedUrl ?? null;
   }
 
+  async uploadMachineSettingPhoto(
+    machineId: string,
+    file: Blob,
+    existingPath: string | null,
+  ): Promise<string> {
+    const uid = await this.ownerId();
+    // Reuse the existing object when one is being replaced (upsert, no
+    // orphan); a fresh setting mints a unique path. The path rides in the
+    // setting's jsonb (`photoPath`), so it survives settings reorders.
+    const path = existingPath ?? `${uid}/${machineId}-${newId()}.jpg`;
+    const { error: uploadError } = await this.client.storage
+      .from("machine-photos")
+      .upload(path, file, { upsert: true, contentType: "image/jpeg" });
+    throwIf(uploadError);
+    return path;
+  }
+
+  async machineSettingPhotoUrl(path: string): Promise<string | null> {
+    const { data, error } = await this.client.storage
+      .from("machine-photos")
+      .createSignedUrl(path, 60 * 60);
+    throwIf(error);
+    return data?.signedUrl ?? null;
+  }
+
   async uploadExerciseMedia(
     exerciseId: string,
     file: Blob,

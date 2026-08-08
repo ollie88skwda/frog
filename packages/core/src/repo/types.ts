@@ -279,6 +279,19 @@ export interface Repo {
   uploadMachinePhoto(machineId: string, file: Blob): Promise<void>;
   /** Short-lived signed URL for the machine's photo, or null if none. */
   machinePhotoUrl(machine: Machine): Promise<string | null>;
+  /**
+   * Uploads a photo for ONE machine setting (the setup strip's per-value
+   * photos). Returns the stored path for the caller to save into that
+   * setting's `photoPath`. Re-uploading with an existing path replaces that
+   * same object (no orphans on replace); a fresh path is minted otherwise.
+   */
+  uploadMachineSettingPhoto(
+    machineId: string,
+    file: Blob,
+    existingPath: string | null,
+  ): Promise<string>;
+  /** Short-lived signed URL for a machine-setting photo path, or null. */
+  machineSettingPhotoUrl(path: string): Promise<string | null>;
 
   /**
    * Uploads a user demo image (already resized) or video for a custom
