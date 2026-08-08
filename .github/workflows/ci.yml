@@ -39,7 +39,16 @@ jobs:
       # pinned version downloads the release asset directly. Bump deliberately.
       - uses: supabase/setup-cli@v1
         with:
-          version: v2.112.0
+          # Pin, not `latest` (see the comment above on rate-limits) — and
+          # v2.112.0 bumped the bundled edge-runtime image to v1.74.3,
+          # which flakily dies with SIGBUS ("Bus error (core dumped)") at
+          # `supabase start` on x86_64 runners — hit 2026-08-08 (same image
+          # passed main's run 20 minutes earlier; the container startup code
+          # is identical between the two CLI releases, only the image moved).
+          # v2.111.0 ships edge-runtime v1.74.2, the last version with a
+          # clean CI record. Bump deliberately after a newer image has proven
+          # itself (docs/DECISIONS.md 2026-08-08).
+          version: 2.111.0
       - run: bun install --frozen-lockfile
       - run: supabase start
       - run: bun run test:integration
@@ -82,8 +91,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - uses: supabase/setup-cli@v1
         with:
-          # Pinned — see the integration-e2e job above for why (rate limit on `latest`).
-          version: v2.112.0
+          # Same pin as integration-e2e — one known-good CLI everywhere, and
+          # `latest` resolution itself has flaked (rate-limit, 2026-08-08).
+          version: 2.111.0
       - run: bun scripts/check-migration-drift.ts
         env:
           SUPABASE_DRIFT_DB_URL: ${{ secrets.SUPABASE_DRIFT_DB_URL }}
