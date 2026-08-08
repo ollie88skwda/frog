@@ -263,13 +263,13 @@ pure device behavior (theme, display unit, sounds…) stays in localStorage.
 | column | type | notes |
 |---|---|---|
 | id | uuid | PK |
-| first_weekday | integer | 0=Sun … 6=Sat (streak/calendar semantics) |
 | include_warmups_in_stats | boolean | toggling recomputes records client-side |
 | default_rest_sec | integer? | dormant — retained, but the Settings row that set it is gone and nothing reads it since rest became an up-counting stopwatch with no target |
 | previous_values_scope | text | 'any' \| 'routine' |
 | body_diagram | text | heat-map figure variant |
 | plate_config | jsonb | `{barKg, platesKg[], barLb, platesLb[], dumbbellStepKg}` |
 | display_name | text? | |
+| bio | text? | short self-description on the Profile header (edit control covers name + bio; see DECISIONS.md 2026-08-08) |
 | owner_id | text | unique |
 
 ### session_media
