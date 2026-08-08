@@ -8,6 +8,14 @@ export type FindingsSessionInput = {
     exerciseName: string;
     weightKg: number | null;
     reps: number | null;
+    // Effort/set-type context for recommendation stats (note 12). Optional:
+    // absent means "not logged", matching the DB's nulls. The trend baseline
+    // itself reads only weight/reps and is unchanged.
+    setType?: string | null;
+    rir?: number | null;
+    rirMin?: number | null;
+    rirMax?: number | null;
+    rpe?: number | null;
   }[];
 };
 
@@ -19,6 +27,8 @@ export type TrendFinding = {
   pctChange: number;
   perMonth: number;
   n: number;
+  /** Days between the first and last session the verdict was fit over. */
+  spanDays: number;
 };
 
 export type CountdownFinding = {

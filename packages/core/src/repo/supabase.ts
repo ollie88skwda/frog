@@ -988,7 +988,7 @@ export class SupabaseRepo implements Repo {
       this.client
         .from("sessions")
         .select(
-          "id, started_at, condition_values, deleted_at, session_exercises(exercise_id, deleted_at, exercises(name), set_logs(weight_kg, reps, deleted_at))",
+          "id, started_at, condition_values, deleted_at, session_exercises(exercise_id, deleted_at, exercises(name), set_logs(weight_kg, reps, set_type, rir, rir_min, rir_max, rpe, deleted_at))",
           { count: "exact" },
         )
         .is("deleted_at", null)
@@ -1013,6 +1013,11 @@ export class SupabaseRepo implements Repo {
             exerciseName: ((se.exercises as Row | null)?.name as string) ?? "",
             weightKg: (sl.weight_kg as number | null) ?? null,
             reps: (sl.reps as number | null) ?? null,
+            setType: (sl.set_type as string | null) ?? null,
+            rir: (sl.rir as number | null) ?? null,
+            rirMin: (sl.rir_min as number | null) ?? null,
+            rirMax: (sl.rir_max as number | null) ?? null,
+            rpe: (sl.rpe as number | null) ?? null,
           })),
         ),
     }));
