@@ -47,6 +47,7 @@ import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
   filterExercises,
+  type TierFilter,
 } from "@/components/exercise-filter";
 import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
@@ -165,14 +166,15 @@ export default function LibraryScreen() {
   );
   const [query, setQuery] = useState("");
   const [filterMuscle, setFilterMuscle] = useState("");
+  const [filterTier, setFilterTier] = useState<TierFilter>("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  // One shared editor sheet for both "+ New exercise" and every row's "Edit"
+  // One shared editor sheet for both "+ Custom exercise" and every row's "Edit"
   // — mode/exercise together decide create vs. edit.
   const [editorTarget, setEditorTarget] = useState<
     { mode: "create" } | { mode: "edit"; exercise: Exercise } | null
   >(null);
-  // Deep-link from Home's "+ New" affordance: opens straight into the create
+  // Deep-link from Home's "+ Custom" affordance: opens straight into the create
   // sheet instead of landing on the list and requiring a second tap.
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
@@ -196,8 +198,8 @@ export default function LibraryScreen() {
   // Derived off the whole ~900-row library: every optimistic write re-renders
   // this screen, and a bulk run does one write per pasted name.
   const filtered = useMemo(
-    () => filterExercises(exercises, query, filterMuscle),
-    [exercises, query, filterMuscle],
+    () => filterExercises(exercises, query, filterMuscle, filterTier),
+    [exercises, query, filterMuscle, filterTier],
   );
   const groups = useMemo(() => groupByPrimaryMuscle(filtered), [filtered]);
 
@@ -239,7 +241,7 @@ export default function LibraryScreen() {
           data-testid="new-exercise-btn"
         >
           <Plus className="size-4" />
-          New exercise
+          Custom exercise
         </Button>
         <BulkAddDialog
           exercises={exercises}
@@ -267,7 +269,13 @@ export default function LibraryScreen() {
           muscle={filterMuscle}
           onMuscle={setFilterMuscle}
         />
-        <TierLegend className="mt-2" />
+        <TierLegend
+          className="mt-2"
+          active={filterTier}
+          onSelect={(v) =>
+            setFilterTier((prev) => (prev === v ? "" : (v as TierFilter)))
+          }
+        />
       </div>
 
       <div className="mt-4 overflow-hidden border border-border bg-surface">
@@ -419,7 +427,7 @@ function BulkAddDialog({
   }
 
   return (
-    <div className="mt-2">
+    <div>
       <div className="flex items-center gap-2">
         <Dialog
           open={open}
@@ -854,15 +862,17 @@ const ExerciseRow = memo(function ExerciseRow({
 });
 
 // "Last set" line — reuses the ghost-prefill lookup (most recent prior
-// session's sets), no separate history query needed.
+// session's sets), no separate history query needed. useLastSets already
+// scopes to the single most recent session; the set_logs rows come back
+// grouped by set_no ascending (set 1, 2, …), so the last entry is the last
+// set they did — that one line, not the whole session (Note 15).
 function LastSetSummary({ exerciseId }: { exerciseId: string }) {
   const { unit } = useUnit();
   const { data: sets = [] } = useLastSets(exerciseId);
   if (sets.length === 0) return null;
-  const summary = sets
-    .map((s) => formatPrevious(s, (kg) => formatWeight(kg, unit)))
-    .filter((s): s is string => s != null)
-    .join(", ");
+  const summary = formatPrevious(sets[sets.length - 1], (kg) =>
+    formatWeight(kg, unit),
+  );
   if (!summary) return null;
   return (
     <span className="flex items-center gap-1 truncate">

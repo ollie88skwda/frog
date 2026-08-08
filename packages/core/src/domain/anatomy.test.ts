@@ -3,8 +3,10 @@ import {
   ACTION_RATINGS,
   groupByPrimaryMuscle,
   JOINT_ACTIONS,
+  MUSCLE_ALIASES,
   MUSCLES,
   type MuscleTarget,
+  muscleLabelMatches,
   primaryMuscles,
   ratingsForExercise,
   ratingsForMuscle,
@@ -179,5 +181,35 @@ describe("primaryMuscles / secondaryMuscles", () => {
   it("handles null", () => {
     expect(primaryMuscles(null)).toEqual([]);
     expect(secondaryMuscles(null)).toEqual([]);
+  });
+});
+
+describe("muscleLabelMatches (search aliases)", () => {
+  it("every alias key is a real muscle key", () => {
+    const keys = new Set(MUSCLES.map((m) => m.key));
+    for (const key of Object.keys(MUSCLE_ALIASES)) {
+      expect(keys.has(key), key).toBe(true);
+    }
+  });
+
+  it("matches the label itself", () => {
+    expect(muscleLabelMatches("pecs", "pecs")).toBe(true);
+    expect(muscleLabelMatches("front-delts", "front delts")).toBe(true);
+  });
+
+  it("chest finds the pecs, upper chest finds upper pecs", () => {
+    expect(muscleLabelMatches("pecs", "chest")).toBe(true);
+    expect(muscleLabelMatches("upper-pecs", "chest")).toBe(true);
+    expect(muscleLabelMatches("upper-pecs", "upper chest")).toBe(true);
+    expect(muscleLabelMatches("quads", "chest")).toBe(false);
+  });
+
+  it("shoulders finds every delt head", () => {
+    for (const key of ["front-delts", "side-delts", "rear-delts"]) {
+      expect(muscleLabelMatches(key, "shoulders"), key).toBe(true);
+    }
+    expect(muscleLabelMatches("side-delts", "lateral delts")).toBe(true);
+    expect(muscleLabelMatches("rear-delts", "posterior deltoids")).toBe(true);
+    expect(muscleLabelMatches("biceps", "shoulders")).toBe(false);
   });
 });

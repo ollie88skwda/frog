@@ -580,6 +580,34 @@ export function muscleLabel(key: string): string {
   return MUSCLE_BY_KEY.get(key)?.label ?? key;
 }
 
+// Alternate names for muscles, resolved by free-text search so a query like
+// "chest" finds the pecs and "shoulders" finds the delts. Mirrors the
+// MatchCandidate.aliases precedent (match-exercise.ts): the label is the
+// primary name, these are extra strings that resolve to the same muscle —
+// the captain's preference is the more universal term, but searching the
+// label works too.
+export const MUSCLE_ALIASES: Record<string, readonly string[]> = {
+  pecs: ["chest"],
+  "upper-pecs": ["upper chest"],
+  "front-delts": ["front shoulders", "anterior deltoids", "front deltoids"],
+  "side-delts": [
+    "side shoulders",
+    "lateral deltoids",
+    "lateral delts",
+    "side deltoids",
+  ],
+  "rear-delts": ["rear shoulders", "posterior deltoids", "rear deltoids"],
+};
+
+/**
+ * Does a lowercased query match this muscle's label or any of its aliases?
+ * Substring match on both, so "chest" finds "upper chest" too.
+ */
+export function muscleLabelMatches(muscleKey: string, q: string): boolean {
+  if (muscleLabel(muscleKey).toLowerCase().includes(q)) return true;
+  return (MUSCLE_ALIASES[muscleKey] ?? []).some((a) => a.includes(q));
+}
+
 export function jointActionLabel(key: string): string {
   return JOINT_ACTION_BY_KEY.get(key)?.label ?? key;
 }

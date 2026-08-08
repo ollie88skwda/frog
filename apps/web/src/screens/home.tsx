@@ -63,7 +63,7 @@ export default function HomeScreen() {
       </Link>
 
       {/* Exercises lives on Home — promoted above Findings and retitled so the
-          "+ New" affordance (a straight deep-link into the create sheet,
+          "+ Custom" affordance (a straight deep-link into the create sheet,
           docs/DECISIONS.md) is reachable without a second navigation. */}
       <div className="mt-4 rounded-lg border border-border bg-surface p-4">
         <div className="flex items-start justify-between gap-2">
@@ -89,7 +89,7 @@ export default function HomeScreen() {
             data-testid="home-exercises-new"
           >
             <Plus className="size-3.5" />
-            New
+            Custom
           </Link>
         </div>
       </div>

@@ -26,7 +26,7 @@ export async function signIn(page: Page) {
   await expect(page.getByTestId("start-session-btn")).toBeVisible();
 }
 
-/** Creates a custom exercise via the Library "+ New exercise" sheet. Assumes
+/** Creates a custom exercise via the Library "+ Custom exercise" sheet. Assumes
  * the caller is already on /library. */
 export async function createExercise(page: Page, name: string) {
   await page.getByTestId("new-exercise-btn").click();
