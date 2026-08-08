@@ -57,7 +57,7 @@ function toLocalInput(ms: number): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-/** The share card's data — the whole session list (for the "Workout #N"
+/** The share card's data — the whole session list (for the "Experiment #N"
  * ordinal), the exercise catalog and the latest bodyweight — is only ever read
  * once the sheet is open, so it hangs off this component rather than the
  * screen: opening history detail must not pull a whole-table session fetch. */
@@ -161,7 +161,7 @@ function ShareWorkoutSheet({
   // Every one of these feeds a value the card states as fact — the ordinal,
   // per-exercise volume, the identity handle, the conditions strip. Painting
   // before they land would render (and, once the export blob resolves, let the
-  // user share) a card saying "Workout #1" with a missing volume. Hold the
+  // user share) a card saying "Experiment #1" with a missing volume. Hold the
   // card, not the truth.
   if (
     exercisesPending ||
