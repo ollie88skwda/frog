@@ -2878,7 +2878,7 @@ function ExerciseBlock({
                   onClick={() => editOrCopy({ laterality: l })}
                   disabled={busy}
                   className={cn(
-                    "h-8 rounded px-3 text-xs transition-colors duration-100",
+                    "h-10 rounded px-3 text-xs transition-colors duration-100",
                     currentLaterality === l
                       ? "bg-accent-soft text-accent"
                       : "text-soft hover:text-ink",
@@ -4749,7 +4749,7 @@ function ActiveRow({
 
   const segCls = (active: boolean) =>
     cn(
-      "h-6 rounded px-2 text-2xs transition-colors duration-100",
+      "h-10 rounded px-2.5 text-xs transition-colors duration-100",
       active
         ? "bg-accent-soft font-medium text-accent"
         : "text-faint hover:text-soft",
