@@ -45,7 +45,7 @@ async function startAndLog(
   for (let i = 0; i < sets.length; i++) {
     await page.getByTestId(`set-${i}-weight`).fill(sets[i][0]);
     await page.getByTestId(`set-${i}-reps`).fill(sets[i][1]);
-    await page.getByTestId(`set-${i}-add`).click();
+    await page.getByTestId(`set-${i}-done`).click();
     await expect(page.getByTestId(`committed-${i}`)).toBeVisible();
   }
   return id;

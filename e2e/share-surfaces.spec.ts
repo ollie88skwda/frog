@@ -83,7 +83,7 @@ async function logSession(
   await page.getByTestId(`pick-exercise-${name}`).click();
   for (const [i, value] of values.entries()) {
     await page.getByTestId(`set-${i}-${field}`).fill(value);
-    await page.getByTestId(`set-${i}-add`).click();
+    await page.getByTestId(`set-${i}-done`).click();
     await expect(page.getByTestId(`committed-${i}-type`)).toBeVisible();
   }
   await page.getByTestId("end-session-btn").click();
@@ -216,7 +216,7 @@ test("one layout engine paints every frame × ground of a session card", async (
   ].entries()) {
     await page.getByTestId(`set-${i}-weight`).fill(w);
     await page.getByTestId(`set-${i}-reps`).fill(r);
-    await page.getByTestId(`set-${i}-add`).click();
+    await page.getByTestId(`set-${i}-done`).click();
     await expect(page.getByTestId(`committed-${i}-type`)).toBeVisible();
   }
   // Record a condition so the card's lab-report strip has data to paint

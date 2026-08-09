@@ -3400,7 +3400,10 @@ function UnitOverrideMenu({
         type="button"
         onClick={() => setOpen((o) => !o)}
         title="Weight unit for this exercise"
-        className="flex items-center gap-1 tracking-widest uppercase transition-colors duration-100 hover:text-ink"
+        // `relative`: without it the static button paints BELOW its own
+        // positioned (`relative`) wrapper span, which then swallows the
+        // click — the span's flex-stretched box covers the button's.
+        className="relative flex min-h-8 min-w-9 items-center justify-center gap-1 px-1 tracking-widest uppercase transition-colors duration-100 hover:text-ink"
         data-testid={`block-${blockName}-unit`}
       >
         {header}
