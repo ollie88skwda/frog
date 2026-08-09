@@ -111,9 +111,7 @@ test("logs a unilateral set as two rows sharing one set_no, and counts it once",
   // Same weight both sides: the ᴿ weight cell labels it "same" (no longer a
   // blank span that reads as an unstated mirror), the ᴿ reps print their own
   // value.
-  await expect(page.getByTestId("committed-0-right-weight")).toHaveText(
-    "same",
-  );
+  await expect(page.getByTestId("committed-0-right-weight")).toHaveText("same");
   await expect(page.getByTestId("committed-0-right-reps")).toContainText("10");
 
   // Both rows share one set_no. The two upserts run in the background behind
@@ -493,16 +491,16 @@ test("laterality menu speaks unilateral/bilateral, not sides (note 15)", async (
   // unilateral/bilateral vocabulary (note 15) — not the old "Both sides /
   // One side" names — and alternating is gone (note 5), folded into
   // bilateral.
-  await expect(
-    page.getByTestId("set-0-laterality-bilateral"),
-  ).toHaveAttribute("title", "Bilateral — both sides together");
-  await expect(
-    page.getByTestId("set-0-laterality-unilateral"),
-  ).toHaveAttribute("title", "Unilateral — each side separately");
-  // Alternating is gone (note 5) — there is no third segment.
-  await expect(page.getByTestId("set-0-laterality-alternating")).toHaveCount(
-    0,
+  await expect(page.getByTestId("set-0-laterality-bilateral")).toHaveAttribute(
+    "title",
+    "Bilateral — both sides together",
   );
+  await expect(page.getByTestId("set-0-laterality-unilateral")).toHaveAttribute(
+    "title",
+    "Unilateral — each side separately",
+  );
+  // Alternating is gone (note 5) — there is no third segment.
+  await expect(page.getByTestId("set-0-laterality-alternating")).toHaveCount(0);
 });
 
 test("library last-set summary shows both sides of a divergent unilateral pair", async ({
