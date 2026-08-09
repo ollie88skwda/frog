@@ -285,22 +285,23 @@ function columnsFor(
   return cols;
 }
 
-// `2.5rem` set-number + one flexible column each + a FIXED `5rem` laterality
-// track + a FIXED `2.5rem` menu track + a FIXED `2.5rem` check track — the one
-// column template shared by the column-header row, every committed row, the
-// active row and the upcoming rows, so every value column stays a straight line
-// regardless of type. The laterality track carries the active row's B / L·R
-// toggle (two 40px segments — the logging-path tap minimum) and each committed
-// row's laterality state chip in the same slot; the menu track carries the
-// draft row's ⋯; the check track carries its "Mark set done" button (note 2:
-// the check sits at the far right), so the draft's ✓ lands at the same x as
-// every committed row's ⋯ (right-anchored in the same track); committed rows
-// leave the menu track empty — the same quiet gap the pre-redesign commit
-// track always was. The tracks are fixed, not auto: the RIR/RPE modifier
-// readout lives as a badge OUT of the grid flow (see SetRow), so no row content
-// can ever widen a track and nudge its siblings.
+// `2.5rem` set-number + one flexible column each + a FIXED `2.5rem` menu
+// track + a FIXED `2.5rem` check track — the one column template shared by
+// the column-header row, every committed row, the active row and the upcoming
+// rows, so every value column stays a straight line regardless of type. The
+// menu track carries the draft row's ⋯; the check track carries its "Mark set
+// done" button (note 2: the check sits at the far right), so the draft's ✓
+// lands at the same x as every committed row's ⋯ (right-anchored in the same
+// track); committed rows leave the menu track empty — the same quiet gap the
+// pre-redesign commit track always was. The tracks are fixed, not auto: the
+// RIR/RPE modifier readout lives as a badge OUT of the grid flow (see SetRow),
+// so no row content can ever widen a track and nudge its siblings. The laterality
+// toggle deliberately does NOT claim a track: at 320px the five tracks resolve
+// to 40px value minimums (the committed cells' min tap target) and there is no
+// room for a sixth — the toggle lives on the active row's full-width sub-line
+// instead (see ActiveSetRow).
 function gridTemplate(cols: Column[]): string {
-  return `2.5rem ${cols.map(() => "1fr").join(" ")} 5rem 2.5rem 2.5rem`;
+  return `2.5rem ${cols.map(() => "1fr").join(" ")} 2.5rem 2.5rem`;
 }
 
 // mm:ss for a rest stopwatch readout (the sticky RestPill's clock).
@@ -3762,6 +3763,12 @@ function RestPill({
 // details-sheet checkbox. Rendered on the active row (flips the draft's
 // per-set override) and on committed rows (flips the saved set structurally
 // via onSetLaterality).
+// In-row laterality control: a two-segment B / L·R toggle, 40px per segment
+// (the logging-path tap minimum), one tap flips just this set — no menu, no
+// details-sheet checkbox. Rendered on the active row's full-width sub-line
+// (alongside the labeled routine target), flipping the draft's per-set
+// override; it lives outside the value grid on purpose — the grid's fixed
+// tracks leave no room for a sixth column at 320px.
 function LateralityToggle({
   value,
   onChange,
@@ -3773,7 +3780,7 @@ function LateralityToggle({
 }) {
   const cls = (active: boolean) =>
     cn(
-      "flex h-10 shrink-0 items-center justify-center px-2 text-2xs font-medium tabular-nums transition-colors duration-100 md:h-8",
+      "flex h-10 min-w-0 flex-1 items-center justify-center text-2xs font-medium tabular-nums transition-colors duration-100 md:h-8",
       active
         ? "bg-accent-soft text-accent"
         : "text-faint hover:bg-surface-hover hover:text-ink",
@@ -3786,7 +3793,7 @@ function LateralityToggle({
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
-        onClick={() => value !== "bilateral" && onChange("bilateral")}
+        onClick={() => onChange("bilateral")}
         className={cls(value === "bilateral")}
         data-testid={`${testIdPrefix}-laterality-bilateral`}
         aria-pressed={value === "bilateral"}
@@ -3796,7 +3803,7 @@ function LateralityToggle({
       <button
         type="button"
         onMouseDown={(e) => e.preventDefault()}
-        onClick={() => value !== "unilateral" && onChange("unilateral")}
+        onClick={() => onChange("unilateral")}
         className={cn(cls(value === "unilateral"), "border-l border-border")}
         data-testid={`${testIdPrefix}-laterality-unilateral`}
         aria-pressed={value === "unilateral"}
@@ -3887,8 +3894,7 @@ function UpcomingSetRow({
           {seedText(c.key, seed, unit, distUnit)}
         </span>
       ))}
-      {/* Laterality / menu / check tracks — nothing to show on a plan row. */}
-      <span />
+      {/* Menu / check tracks — nothing to show on a plan row. */}
       <span />
       <span />
     </div>
@@ -3935,7 +3941,6 @@ function CommittedSetRow({
   const isPaired = secondary != null;
   // A completed bilateral pair collapses to one line (the pair flex) once both
   // sides are logged — the two-row data model stays, the UI is one row.
-  const laterality: Laterality = isPaired ? "unilateral" : "bilateral";
 
   const [editingRow, setEditingRow] = useState<LoggedSet | null>(null);
   const [inline, setInline] = useState(false);
@@ -4124,11 +4129,6 @@ function CommittedSetRow({
     return String(toDisplayWeight(secondary.weightKg, unit));
   }
 
-  const toggle = (unilateral: boolean) => {
-    setInline(false);
-    onSetLaterality(unilateral);
-  };
-
   return (
     // The row keeps the block's `subgrid` for the non-paired case, so value
     // columns line up across every row (the one-column-template invariant).
@@ -4201,11 +4201,6 @@ function CommittedSetRow({
             </span>
 
             <span className="flex shrink-0 items-center gap-1">
-              <LateralityToggle
-                value={laterality}
-                onChange={(l) => toggle(l === "unilateral")}
-                testIdPrefix={`committed-${index}`}
-              />
               <Dots
                 onClick={() => openDetails(primary)}
                 title="Set details"
@@ -4342,16 +4337,6 @@ function CommittedSetRow({
                 </button>
               ),
             )}
-            {/* The laterality track: the row's B / L·R toggle, one tap flips
-                just this set (note 7, now in-row rather than a sheet
-                checkbox). */}
-            <span className="flex items-center justify-start">
-              <LateralityToggle
-                value={laterality}
-                onChange={(l) => toggle(l === "unilateral")}
-                testIdPrefix={`committed-${index}`}
-              />
-            </span>
             {/* A fixed empty cell keeps the ⋯ right-anchored in the last
                 (check) track — the same x as the draft row's ✓ (note 2), so
                 every row's actions land on the same vertical line. In inline
@@ -4447,11 +4432,28 @@ function CommittedSetRow({
           className="md:max-w-sm"
         >
           <div className="flex flex-col gap-4">
-            {/* Note 7: the set-level unilateral toggle lives on the row now
-                (the B / L·R control), not in the sheet — the sheet's ᴸ-limb
-                instance is deliberately gone, since flipping the set away
-                from unilateral while editing the ᴿ limb would delete the
-                very row being edited. */}
+            {/* Note 7: the set-level unilateral toggle lives in the ᴸ limb's
+                sheet (opened from the ⋯ or a ᴸ value cell) — flipping the set
+                away from unilateral while editing the ᴿ limb would delete the
+                very row being edited. Mirrors the draft row's in-row B / L·R
+                control, but writes the committed pair structurally. */}
+            {editingRow != null && editingRow.id === primary.id && (
+              <label className="flex items-start gap-2 rounded-md border border-border bg-surface-2 p-2">
+                <input
+                  type="checkbox"
+                  checked={isPaired}
+                  onChange={(e) => onSetLaterality(e.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 accent-(--accent)"
+                  data-testid={`set-menu-${index}-unilateral`}
+                />
+                <span className="text-xs text-soft">
+                  <span className="font-medium text-ink">Unilateral</span>
+                  <br />
+                  Just this set: same weight both sides, log each side's reps
+                  separately.
+                </span>
+              </label>
+            )}
             <div className="grid grid-cols-2 gap-3">
               {columns.map((c, i) => (
                 <div key={c.key} className="flex flex-col gap-1">
@@ -5084,7 +5086,6 @@ function ActiveSetRow({
     if (next && rowRef.current?.contains(next)) return;
     if (weight.trim() !== "" && reps.trim() !== "") commit(false);
   }
-
   // One input cell per data column (weight / reps / time / distance). The time
   // cell also carries the inline stopwatch control. `last` picks the mobile
   // keyboard's Return-key hint — "next" mid-row, "done" on the row's final
@@ -5234,7 +5235,7 @@ function ActiveSetRow({
           className="truncate text-2xs text-faint"
           aria-hidden="true"
         >
-          same weight
+          same
         </span>
       );
     if (key === "reps")
@@ -5337,15 +5338,6 @@ function ActiveSetRow({
         {columns.map((c, i) =>
           dataCell(c.key, autoFocusWeight && i === 0, i === columns.length - 1),
         )}
-        {/* The in-row laterality toggle — one tap flips just this set; no
-            details-sheet checkbox. */}
-        <span className="flex items-center justify-start">
-          <LateralityToggle
-            value={laterality}
-            onChange={setLateralityOverride}
-            testIdPrefix={`set-${index}`}
-          />
-        </span>
         {/* Commit + details share the two right-most fixed tracks (menu +
             check) inside one guard span, so tabbing into either button can't
             check the set off. The check sits at the far right, right of the
@@ -5390,20 +5382,32 @@ function ActiveSetRow({
         </span>
       )}
 
-      {/* The routine target, labeled — the plan next to the set number, so
-          "what I planned" and "what I did last time" (the last tags above)
-          can never read the same. */}
-      {targetSummary && (
-        <div
-          className="col-span-full -mx-4 flex items-center gap-1 px-4 text-2xs text-faint"
-          data-testid={`set-${index}-target`}
-        >
-          <span className="font-medium tracking-widest text-faint uppercase">
-            target
-          </span>
-          <span className="num truncate">{targetSummary}</span>
-        </div>
-      )}
+      {/* The row's second line: the routine target, labeled, on the left —
+          the plan, so "what I planned" and "what I did last time" (the last
+          tags in the inputs) can never read the same — and the in-row B / L·R
+          laterality toggle on the right, one tap flips just this set (no
+          details-sheet checkbox). Lives OUTSIDE the value grid on purpose:
+          the grid's fixed tracks leave no room for a sixth column at 320px. */}
+      <div className="col-span-full -mx-4 flex items-center justify-between gap-2 px-4 py-1.5">
+        <span className="flex min-w-0 items-center gap-1 text-2xs text-faint">
+          {targetSummary && (
+            <>
+              <span
+                className="font-medium tracking-widest text-faint uppercase"
+                data-testid={`set-${index}-target`}
+              >
+                target
+              </span>
+              <span className="num truncate">{targetSummary}</span>
+            </>
+          )}
+        </span>
+        <LateralityToggle
+          value={laterality}
+          onChange={setLateralityOverride}
+          testIdPrefix={`set-${index}`}
+        />
+      </div>
 
       {/* Right side of a unilateral pair: no ring, no ⋯ — set type/RIR/RPE/
           note are entered once above and seed both rows at commit. Only set
@@ -5415,7 +5419,6 @@ function ActiveSetRow({
             {index + 1}ᴿ
           </span>
           {columns.map((c) => rDataCell(c.key))}
-          <span />
           <span />
           <span />
         </div>
