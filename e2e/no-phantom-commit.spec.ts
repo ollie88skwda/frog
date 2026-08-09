@@ -193,6 +193,11 @@ test("tabbing to the set-details trigger does not auto-check the set off", async
   const before = await rowCount(page, "set_logs");
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
+  // Tab passes through the in-row B/L·R segmented control (two segments)
+  // before reaching the "…" trigger — the guard must hold across all of
+  // them.
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Tab");
   await page.keyboard.press("Tab");
 
   await expect(page.getByTestId("set-0-more")).toBeFocused();

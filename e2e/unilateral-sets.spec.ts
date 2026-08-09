@@ -88,11 +88,14 @@ test("logs a unilateral set as two rows sharing one set_no, and counts it once",
   await expect(block).not.toContainText("reps/side");
 
   // Draft row: ᴸ line you type into, ᴿ line mirrors reps live as you type.
-  // Same weight both sides (note 1) — the ᴿ line has NO weight input.
+  // Same weight both sides — now explicit and labeled ("same weight") in the
+  // ᴿ line's weight cell instead of an invisible rule (Option A · Anchor).
   await expect(page.getByTestId("set-0-type")).toContainText("1ᴸ");
   await page.getByTestId("set-0-weight").fill("30");
   await page.getByTestId("set-0-reps").fill("10");
-  await expect(page.getByTestId("set-0-right-weight")).toHaveCount(0);
+  await expect(page.getByTestId("set-0-right-weight")).toHaveText(
+    "same weight",
+  );
   await expect(page.getByTestId("set-0-right-reps")).toHaveAttribute(
     "placeholder",
     "10",
@@ -105,9 +108,12 @@ test("logs a unilateral set as two rows sharing one set_no, and counts it once",
   // ONE physical set, not two — the bug this feature fixes.
   await expect(page.getByTestId("session-stats")).toContainText("1 set");
   await expect(page.getByTestId("committed-0-type")).toContainText("1ᴸ");
-  // Same weight both sides: the ᴿ weight cell is blank (reads "same as left"),
-  // the ᴿ reps print their own value.
-  await expect(page.getByTestId("committed-0-right-weight")).toHaveText("");
+  // Same weight both sides: the ᴿ weight cell labels it "same" (no longer a
+  // blank span that reads as an unstated mirror), the ᴿ reps print their own
+  // value.
+  await expect(page.getByTestId("committed-0-right-weight")).toHaveText(
+    "same",
+  );
   await expect(page.getByTestId("committed-0-right-reps")).toContainText("10");
 
   // Both rows share one set_no. The two upserts run in the background behind
@@ -165,7 +171,7 @@ test("logs a unilateral set as two rows sharing one set_no, and counts it once",
   await page.getByTestId("set-1-done").click();
 
   await expect(page.getByTestId("session-stats")).toContainText("2 sets");
-  await expect(page.getByTestId("committed-1-right-weight")).toHaveText("");
+  await expect(page.getByTestId("committed-1-right-weight")).toHaveText("same");
   await expect(page.getByTestId("committed-1-right-reps")).toContainText("8");
 });
 
@@ -220,7 +226,7 @@ test("editing only the ᴿ row's RIR/RPE/note surfaces them in the collapsed rea
   // Same weight both sides — the ᴿ weight cell is blank, still the tap target
   // that opens this limb's own details sheet.
   await expect(page.getByTestId("committed-0-right-weight")).toBeVisible();
-  await expect(page.getByTestId("committed-0-right-weight")).toHaveText("");
+  await expect(page.getByTestId("committed-0-right-weight")).toHaveText("same");
   await page.getByTestId("committed-0-right-weight").click();
   await page.getByTestId("edit-0-rirmin").fill("1");
   await page.getByTestId("edit-0-rpe").selectOption("9");
@@ -284,11 +290,13 @@ test("a mirrored pair prints no ᴿ readout; clearing the ᴿ side prints — be
 
   // The draft row's ᴸ line now carries a preview badge its ᴿ line doesn't.
   // Both lines size their columns from one grid, so the values stay
-  // pixel-aligned anyway — the whole point of the shared track. The ᴿ line
-  // has no weight input (note 1: same weight both sides) — only its reps
-  // column lines up with the ᴸ line's.
+  // pixel-aligned anyway — the whole point of the shared track. The ᴿ line's
+  // weight cell labels the shared weight explicitly ("same weight") — only
+  // its reps column lines up with the ᴸ line's.
   await expect(page.getByTestId(`block-${copy}`)).toContainText("@2 RPE 8");
-  await expect(page.getByTestId("set-0-right-weight")).toHaveCount(0);
+  await expect(page.getByTestId("set-0-right-weight")).toHaveText(
+    "same weight",
+  );
   expect(await cellX(page, "set-0-right-reps")).toBeCloseTo(
     await cellX(page, "set-0-reps"),
     0,
@@ -299,9 +307,9 @@ test("a mirrored pair prints no ᴿ readout; clearing the ᴿ side prints — be
 
   // Both rows carry the same effort: the ᴿ line prints nothing at all, and
   // the ᴸ line's readout stays desktop-only chrome at this viewport (the
-  // suite's iPhone 13 default, below `md:`). The ᴿ weight cell is blank
-  // (same weight both sides).
-  await expect(page.getByTestId("committed-0-right-weight")).toHaveText("");
+  // suite's iPhone 13 default, below `md:`). The ᴿ weight cell labels the
+  // shared weight (same both sides).
+  await expect(page.getByTestId("committed-0-right-weight")).toHaveText("same");
   await expect(page.getByTestId("committed-0-right-effort")).toHaveCount(0);
   await expect(page.getByTestId("committed-0-effort")).toBeHidden();
 
@@ -349,7 +357,7 @@ test("a mirrored pair prints no ᴿ readout; clearing the ᴿ side prints — be
   await page.getByTestId("set-1-weight").fill("20");
   await page.getByTestId("set-1-reps").fill("8");
   await page.getByTestId("set-1-done").click();
-  await expect(page.getByTestId("committed-1-right-weight")).toHaveText("");
+  await expect(page.getByTestId("committed-1-right-weight")).toHaveText("same");
   // Open the next draft too — the alignment assertions below include its
   // cells (set-2-*).
   await page.getByTestId("set-2-add").click();
@@ -412,14 +420,16 @@ test("a legacy alternating exercise reads as bilateral (note 5)", async ({
   await expect(block).not.toContainText("total reps");
   // No paired ᴿ line — it logs identically to bilateral.
   await expect(page.getByTestId("set-0-right-weight")).toHaveCount(0);
-  // And the per-set Unilateral toggle IS available — legacy alternating reads
-  // as bilateral, so nothing contradicts a per-set override anymore.
-  await page.getByTestId("set-0-more").click();
-  await expect(page.getByTestId("set-0-unilateral")).toBeVisible();
-  await page.keyboard.press("Escape");
+  // And the per-set B/L·R control IS available — legacy alternating reads as
+  // bilateral, so nothing contradicts a per-set override anymore.
+  await expect(page.getByTestId("set-0-laterality-bilateral")).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await expect(page.getByTestId("set-0-laterality-unilateral")).toBeVisible();
 });
 
-test("a single set's menu makes just that one set unilateral (note 1)", async ({
+test("a single set's in-row B/L·R control makes just that one set unilateral (note 1)", async ({
   page,
 }) => {
   const EX = `One-Off Curl ${Date.now()}`;
@@ -437,13 +447,10 @@ test("a single set's menu makes just that one set unilateral (note 1)", async ({
   // No ᴿ line by default.
   await expect(page.getByTestId("set-0-right-reps")).toHaveCount(0);
 
-  // The set's ⋯ menu (details sheet) carries the Unilateral toggle. Weight
-  // only so far, so opening the sheet can't race auto-checkoff.
+  // One tap on the in-row L·R segment flips just this set — no menu, no
+  // details sheet. Weight only so far, so the flip can't race auto-checkoff.
   await page.getByTestId("set-0-weight").fill("20");
-  await page.getByTestId("set-0-more").click();
-  await expect(page.getByTestId("set-0-unilateral")).toBeVisible();
-  await page.getByTestId("set-0-unilateral").check();
-  await page.keyboard.press("Escape");
+  await page.getByTestId("set-0-laterality-unilateral").click();
 
   // Just this set gained its ᴿ line.
   await expect(page.getByTestId("set-0-right-reps")).toBeVisible();
@@ -453,7 +460,7 @@ test("a single set's menu makes just that one set unilateral (note 1)", async ({
 
   // Logged as a pair — same weight both sides, divergent reps.
   await expect(page.getByTestId("committed-0-right-reps")).toContainText("8");
-  await expect(page.getByTestId("committed-0-right-weight")).toHaveText("");
+  await expect(page.getByTestId("committed-0-right-weight")).toHaveText("same");
   await waitForSetLogs(page, EX, 2);
 
   // The NEXT set is back to bilateral — the override was for set 1 only.
@@ -474,19 +481,28 @@ test("laterality menu speaks unilateral/bilateral, not sides (note 15)", async (
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
+  // Laterality lives in the in-row B/L·R control now — it's gone from the
+  // block ⋯ menu (Option A · Anchor), so the menu speaks superset/warm-up/
+  // remove only.
   await page.getByTestId(`block-${EX}-menu`).click();
   const menu = page.getByTestId(`block-${EX}-menu-popup`);
-  await expect(menu).toContainText("Laterality");
-  // The labels are the unilateral/bilateral vocabulary, not the old
-  // "Both sides / One side" names (note 15) — and alternating is gone
-  // (note 5), folded into bilateral.
-  await expect(menu).toContainText("Unilateral");
-  await expect(menu).toContainText("Bilateral");
-  await expect(menu).not.toContainText("Alternating");
-  // The explainers tell the two remaining options apart.
-  await expect(menu).toContainText("one row per set");
-  await expect(menu).toContainText("logged separately");
+  await expect(menu).not.toContainText("Laterality");
   await page.keyboard.press("Escape");
+
+  // The draft row's segmented control labels the two options with the
+  // unilateral/bilateral vocabulary (note 15) — not the old "Both sides /
+  // One side" names — and alternating is gone (note 5), folded into
+  // bilateral.
+  await expect(
+    page.getByTestId("set-0-laterality-bilateral"),
+  ).toHaveAttribute("title", "Bilateral — both sides together");
+  await expect(
+    page.getByTestId("set-0-laterality-unilateral"),
+  ).toHaveAttribute("title", "Unilateral — each side separately");
+  // Alternating is gone (note 5) — there is no third segment.
+  await expect(page.getByTestId("set-0-laterality-alternating")).toHaveCount(
+    0,
+  );
 });
 
 test("library last-set summary shows both sides of a divergent unilateral pair", async ({
@@ -537,7 +553,7 @@ test("library last-set summary shows both sides of a divergent unilateral pair",
   );
 });
 
-test("the committed set's ⋯ flips the set to unilateral and back (note 7)", async ({
+test("the committed row's in-row B/L·R flips the set to unilateral and back (note 7)", async ({
   page,
 }) => {
   const EX = `Committed Toggle ${Date.now()}`;
@@ -583,12 +599,9 @@ test("the committed set's ⋯ flips the set to unilateral and back (note 7)", as
       return count ?? 0;
     }, EX);
 
-  // The ⋯ → details sheet carries the unilateral toggle; flipping it adds
-  // the paired ᴿ row mirroring the ᴸ values — nothing else changes.
-  await page.getByTestId("set-menu-0").click();
-  await expect(page.getByTestId("set-menu-0-unilateral")).toBeVisible();
-  await page.getByTestId("set-menu-0-unilateral").check();
-  await page.keyboard.press("Escape");
+  // The committed row's in-row L·R segment flips it: the paired ᴿ row is
+  // added mirroring the ᴸ values — nothing else changes.
+  await page.getByTestId("committed-0-laterality-unilateral").click();
   await expect(page.getByTestId("committed-0-right-reps")).toContainText("10");
   await expect.poll(liveRows).toBe(2);
 
@@ -599,11 +612,9 @@ test("the committed set's ⋯ flips the set to unilateral and back (note 7)", as
   await expect(page.getByTestId("committed-0-right-reps")).toContainText("10");
   await expect(page.getByTestId("committed-1")).toHaveCount(0);
 
-  // Flip it back — the ᴿ row is soft-deleted and the set is one row again.
-  await page.getByTestId("set-menu-0").click();
-  await expect(page.getByTestId("set-menu-0-unilateral")).toBeVisible();
-  await page.getByTestId("set-menu-0-unilateral").uncheck();
-  await page.keyboard.press("Escape");
+  // Flip it back with the B segment — the ᴿ row is soft-deleted and the set
+  // is one row again.
+  await page.getByTestId("committed-0-laterality-bilateral").click();
   await expect(page.getByTestId("committed-0-right-weight")).toHaveCount(0);
   await expect.poll(liveRows).toBe(1);
 

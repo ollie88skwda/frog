@@ -69,12 +69,11 @@ test("in-session attach: catalog search attaches a machine to the block", async 
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);
 
-  // No machine set → the attach action lives in the block's ⋯ menu (no
-  // full-width strip under the header).
-  await page.getByTestId(`block-${NAME}-menu`).click();
-  const strip = page.getByTestId(`setup-attach-${NAME}`);
-  await expect(strip).toBeVisible();
-  await strip.click();
+  // No machine set → the attach affordance is the header chip (visible on
+  // the logging path, not a ⋯ menu item).
+  const chip = page.getByTestId(`setup-attach-${NAME}`);
+  await expect(chip).toBeVisible();
+  await chip.click();
 
   // Search the catalog inside the dialog and pick a Life Fitness press (a
   // machine no other spec creates, so the shared e2e user stays clean).
@@ -85,7 +84,7 @@ test("in-session attach: catalog search attaches a machine to the block", async 
     .getByTestId("catalog-result-life-fitness-insignia-series-chest-press")
     .click();
 
-  // Dialog closes; the block now shows the remembered-setup strip.
+  // Dialog closes; the header chip now shows the remembered setup.
   await expect(page.getByTestId(`setup-strip-${NAME}`)).toContainText(
     "Life Fitness · Insignia Series Chest Press",
   );
@@ -142,7 +141,6 @@ test("in-session attach: picks an existing machine from my gym", async ({
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);
-  await page.getByTestId(`block-${NAME}-menu`).click();
   await page.getByTestId(`setup-attach-${NAME}`).click();
 
   // The dialog lists the user's own machines first — no duplicate created.

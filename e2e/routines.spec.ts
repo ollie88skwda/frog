@@ -106,10 +106,13 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await expect(page).toHaveURL(/\/session\//);
 
   // Set 0 draft: reps seeded from the fixed target, weight blank (never
-  // authored). PREVIOUS is blank too (never logged).
+  // authored). The labeled reference line is up — target shown, no prior
+  // performance, so "use last" is disabled.
   await expect(page.getByTestId("set-0-weight")).toHaveValue("");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
-  await expect(page.getByTestId("set-0-previous")).toHaveText("—");
+  await expect(page.getByTestId(`ref-${EX}-target`)).toBeVisible();
+  await expect(page.getByTestId(`ref-${EX}-prev`)).toHaveCount(0);
+  await expect(page.getByTestId(`ref-${EX}-use-last`)).toBeDisabled();
 
   // Perform set 0 at 65.
   await page.getByTestId("set-0-weight").fill("65");

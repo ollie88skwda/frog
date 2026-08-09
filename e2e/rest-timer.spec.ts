@@ -8,13 +8,13 @@ import {
 } from "./helpers";
 
 // Rest stopwatch: completing a set auto-starts a per-exercise up-counting
-// stopwatch (docked above the mobile tab island); it never reaches a "done"
-// state, has no target/preset, and is dismissed by Stop. It's scoped to normal
-// working sets on rep/weight-based exercises, so it's suppressed when the
-// completed set is a drop set (drops chain into the next reduction with no
-// rest) or a warm-up, and on duration/distance-type exercises (plank, running)
-// where "resting between sets" isn't meaningful — those blocks don't even show
-// the header badge.
+// stopwatch (an inline strip anchored under the committed set it belongs to,
+// Option A · Anchor); it never reaches a "done" state, has no target/preset,
+// and is dismissed by Stop. It's scoped to normal working sets on
+// rep/weight-based exercises, so it's suppressed when the completed set is a
+// drop set (drops chain into the next reduction with no rest) or a warm-up,
+// and on duration/distance-type exercises (plank, running) where "resting
+// between sets" isn't meaningful — those blocks never show the strip.
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
@@ -133,7 +133,7 @@ test("suppressed when the completed set is a warm-up", async ({ page }) => {
   await expect(page.getByTestId(`rest-${EX}`)).toBeVisible();
 });
 
-test("suppressed on a duration exercise, which hides the badge too", async ({
+test("suppressed on a duration exercise — no rest strip at all", async ({
   page,
 }) => {
   const EX = `RestPlank ${Date.now()}`;
@@ -143,9 +143,8 @@ test("suppressed on a duration exercise, which hides the badge too", async ({
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
-  // No rest badge in the header — it could never activate on this type.
-  await expect(page.getByTestId(`block-${EX}-rest-timer`)).toBeHidden();
-
+  // Duration/distance-type exercises never rest — the strip (and the old
+  // header badge) can never appear on this type.
   await page.getByTestId("set-0-duration").fill("1:30");
   await page.getByTestId("set-0-add").click();
 
