@@ -311,7 +311,8 @@ function previousText(g: GhostSet, unit: Unit): string | null {
 // Compact target string for the reference line's target segment — the seed for
 // the set about to be logged ("82.5 × 5", a range as "6–8"). Weight-first,
 // the same order every row and the prev segment use.
-function seedTargetText(seed: SeedSet, unit: Unit): string | null {
+function seedTargetText(seed: SeedSet | undefined, unit: Unit): string | null {
+  if (!seed) return null;
   const reps =
     seed.repsMax != null
       ? `${seed.reps ?? ""}–${seed.repsMax}`

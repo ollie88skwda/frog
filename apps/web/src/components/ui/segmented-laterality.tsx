@@ -26,7 +26,7 @@ export function SegmentedLaterality({
   return (
     <fieldset
       className={cn(
-        "flex h-6 w-full min-w-12 overflow-hidden rounded-md border border-border-strong bg-surface-2",
+        "flex h-6 min-w-12 overflow-hidden rounded-md border border-border-strong bg-surface-2",
         disabled && "opacity-50",
       )}
     >
