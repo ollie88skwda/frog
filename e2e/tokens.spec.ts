@@ -42,13 +42,26 @@ test("create token, read own data via PAT API, revoke → 401", async ({
     (await page.getByTestId("token-plaintext").textContent())?.trim() ?? "";
   expect(token).toMatch(/^frog_/);
 
-  // Valid PAT → 200 with own data (seeds + the new exercise).
-  const ok = await request.get(`${API_BASE}/v1/exercises?limit=1000`, {
-    headers: { authorization: `Bearer ${token}` },
-  });
-  expect(ok.status()).toBe(200);
-  const body = (await ok.json()) as { exercises: { name: string }[] };
-  expect(body.exercises.map((e) => e.name)).toContain(EX);
+  // Valid PAT → 200 with own data (seeds + the new exercise). The API caps a
+  // single call at limit=1000 and orders by name, and the local dev DB
+  // accumulates exercises across suite runs — the fresh "Token Lift" name can
+  // fall past the first 1000. Paginate until it shows up (one page on a clean
+  // DB; the seeds are only ~111 rows from the cap).
+  let found = false;
+  for (let offset = 0; !found; offset += 1000) {
+    const ok = await request.get(
+      `${API_BASE}/v1/exercises?limit=1000&offset=${offset}`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    expect(ok.status()).toBe(200);
+    const body = (await ok.json()) as { exercises: { name: string }[] };
+    if (body.exercises.some((e) => e.name === EX)) {
+      found = true;
+    } else if (body.exercises.length < 1000) {
+      break;
+    }
+  }
+  expect(found).toBe(true);
 
   // Bad token → 401.
   const bad = await request.get(`${API_BASE}/v1/exercises`, {
