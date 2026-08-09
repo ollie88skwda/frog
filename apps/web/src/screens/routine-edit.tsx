@@ -6,8 +6,10 @@ import {
   isConfidentMatch,
   LATERALITY_EXPLAINERS,
   LATERALITY_LABELS,
+  type Machine,
   matchExerciseName,
   type NewRoutineInput,
+  newId,
   type ParsedExercise,
   parseRoutineText,
   type RoutineExerciseInput,
@@ -26,10 +28,12 @@ import {
   MoreVertical,
   Plus,
   Trash2,
+  Wrench,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { MachineAttachDialog } from "@/components/attach-machine";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
@@ -40,10 +44,17 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
+import { SegmentedLaterality } from "@/components/ui/segmented-laterality";
 import { SetTypeCell } from "@/components/ui/set-type-cell";
 import { formatMMSS, parseDuration, parseIntOrNull } from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
-import { useExercises } from "@/lib/queries";
+import {
+  copyExerciseOpts,
+  useCreateExercise,
+  useExercises,
+  useMachines,
+  useUpdateExercise,
+} from "@/lib/queries";
 import { parseTargetRirFields } from "@/lib/rir";
 import {
   useCreateRoutine,
@@ -232,7 +243,7 @@ function pickerSeed(rawName: string): string {
 // ~125px on desktop); minmax(0,·) lets the caps yield on narrow phones. The
 // last track absorbs the leftover and right-anchors the per-set ⋯ menu.
 const ROW_GRID =
-  "grid grid-cols-[2.5rem_minmax(0,5rem)_minmax(0,6rem)_minmax(0,1fr)] items-center gap-1";
+  "grid grid-cols-[2.5rem_minmax(0,5rem)_minmax(0,6rem)_3.5rem_minmax(0,1fr)] items-center gap-1";
 
 export default function RoutineEditScreen() {
   const { id } = useParams(); // undefined on /routines/new
@@ -247,6 +258,9 @@ export default function RoutineEditScreen() {
   // Saving the routine inserts routine_exercises against a real FK, so a row
   // whose own create is still queued can't be drafted in.
   const pendingExercises = usePendingExercises();
+  const { data: machines = [] } = useMachines();
+  const updateExercise = useUpdateExercise();
+  const createExercise = useCreateExercise();
   const { data: folders = [] } = useRoutineFolders();
   const { data: detail, isError: detailFailed } = useRoutineDetail(id ?? null);
   const createRoutine = useCreateRoutine();
@@ -354,6 +368,30 @@ export default function RoutineEditScreen() {
     setDrafts((prev) =>
       (prev ?? []).map((d, j) => (j === i ? { ...d, ...patch } : d)),
     );
+  }
+
+  // Machine attach on an exercise card — writes exercises.machine_id (the
+  // session's machine memory), mirroring the session block's chip. Owned
+  // custom rows patch in place; seed/community rows are RLS-immutable, so the
+  // routine draft is pointed at a private copy (the session's copy-on-write
+  // convention, minus the repoint-retry machinery — the builder is a draft,
+  // not a live session).
+  function attachMachine(i: number, machineId: string) {
+    const d = list[i];
+    if (!d) return;
+    const ex = byId.get(d.exerciseId);
+    if (!ex) return;
+    if (ex.isCustom && ex.ownerId !== null) {
+      updateExercise.mutate({ exerciseId: ex.id, patch: { machineId } });
+      return;
+    }
+    const copyId = newId();
+    const copyName = `${ex.name} (copy)`;
+    createExercise.mutate({
+      name: copyName,
+      opts: { id: copyId, ...copyExerciseOpts(ex), machineId, share: false },
+    });
+    patchExercise(i, { exerciseId: copyId, name: copyName });
   }
 
   function patchSet(i: number, si: number, patch: Partial<DraftSet>) {
@@ -792,6 +830,18 @@ export default function RoutineEditScreen() {
                 />
               </div>
 
+              {/* The machine chip — the routine editor's twin of the session
+                  block-header chip (parity rule): attach the remembered
+                  machine here so a routine-started session starts with it.
+                  Edits the exercise row, so the same setup appears in every
+                  future session. */}
+              <RoutineMachineChip
+                exercise={byId.get(d.exerciseId)}
+                machines={machines}
+                index={i}
+                onPick={(mid) => attachMachine(i, mid)}
+              />
+
               <div className={cn("num mt-2 text-2xs text-faint", ROW_GRID)}>
                 <span>SET</span>
                 {fields.reps ? (
@@ -810,6 +860,7 @@ export default function RoutineEditScreen() {
                 ) : (
                   <span />
                 )}
+                <span />
                 <span />
               </div>
 
@@ -911,11 +962,18 @@ export default function RoutineEditScreen() {
                   ) : (
                     <span />
                   )}
+                  {/* In-row B/L·R — the session parity control (Option A ·
+                      Anchor): visible on every set row, one tap flips just
+                      this set. Replaces the per-set ⋯ menu's laterality
+                      section. */}
+                  <SegmentedLaterality
+                    value={s.laterality}
+                    onChange={(l) => patchSet(i, si, { laterality: l })}
+                    testId={`routine-ex-${i}-set-${si}-laterality`}
+                  />
                   <SetMenu
                     index={i}
                     si={si}
-                    laterality={s.laterality}
-                    onSetLaterality={(l) => patchSet(i, si, { laterality: l })}
                     onRemove={() =>
                       patchExercise(i, {
                         sets: d.sets.filter((_, k) => k !== si),
@@ -1382,27 +1440,21 @@ function ExerciseMenu({
   );
 }
 
-// The per-set row's small ⋯ menu (note 13: the oversized remove X becomes a
-// menu — laterality + remove set now, room for future per-set options). A
-// unilateral routine set prescribes one pair — two sides, reps per side —
-// exactly how the session logs it.
+// The per-set row's small ⋯ menu — Remove set only now (the per-set
+// laterality moved to the in-row B/L·R segmented control, Option A ·
+// Anchor). A unilateral routine set prescribes one pair — two sides, reps
+// per side — exactly how the session logs it.
 function SetMenu({
   index,
   si,
-  laterality,
-  onSetLaterality,
   onRemove,
 }: {
   index: number;
   si: number;
-  laterality: SetLaterality;
-  onSetLaterality: (l: SetLaterality) => void;
   onRemove: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
-  const itemCls =
-    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink";
 
   return (
     <span className="relative flex justify-self-end">
@@ -1428,32 +1480,6 @@ function SetMenu({
             className="floating absolute top-full right-0 z-20 mt-1 min-w-44 py-1"
             data-testid={`routine-ex-${index}-set-${si}-menu-popup`}
           >
-            <p className="px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
-              Laterality
-            </p>
-            {(
-              [
-                ["bilateral", LATERALITY_LABELS.bilateral],
-                ["unilateral", LATERALITY_LABELS.unilateral],
-              ] as const
-            ).map(([l, label]) => (
-              <button
-                key={l}
-                type="button"
-                onClick={() => {
-                  onSetLaterality(l);
-                  close();
-                }}
-                data-testid={`routine-ex-${index}-set-${si}-laterality-${l}`}
-                className={itemCls}
-              >
-                {label}
-                {laterality === l && (
-                  <Check className="ml-auto size-3.5 shrink-0 text-accent" />
-                )}
-              </button>
-            ))}
-            <div className="border-t border-border" />
             <button
               type="button"
               onClick={() => {
@@ -1470,5 +1496,57 @@ function SetMenu({
         </>
       )}
     </span>
+  );
+}
+
+// The machine chip on a routine exercise card — the editor's twin of the
+// session block-header chip (AGENTS.md parity rule 2026-08-08): empty reads
+// "Attach machine", attached shows the remembered setup. Tap opens the shared
+// MachineAttachDialog (catalog search + "from your gym"); the write lands on
+// exercises.machine_id via the card's attachMachine handler, so a
+// routine-started session picks the machine up from the exercise row.
+function RoutineMachineChip({
+  exercise,
+  machines,
+  index,
+  onPick,
+}: {
+  exercise: Exercise | undefined;
+  machines: Machine[];
+  index: number;
+  onPick: (machineId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const machine = exercise
+    ? machines.find((m) => m.id === exercise.machineId)
+    : undefined;
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        title={machine ? "Machine setup" : "Attach a machine"}
+        className={cn(
+          "mt-2 flex h-7 min-w-0 items-center gap-1.5 rounded-md border px-2 text-2xs transition-colors duration-100",
+          machine
+            ? "border-border bg-surface-2 text-soft hover:bg-surface-hover"
+            : "border-dashed border-border-strong bg-surface-2 text-soft hover:bg-surface-hover",
+        )}
+        data-testid={`routine-ex-${index}-machine`}
+      >
+        <Wrench className="size-3.5 shrink-0 text-faint" />
+        <span className="truncate">
+          {machine
+            ? `${machine.brand ? `${machine.brand} · ` : ""}${machine.name}`
+            : "Attach machine"}
+        </span>
+      </button>
+      <MachineAttachDialog
+        blockName={exercise?.name ?? "this exercise"}
+        open={open}
+        onOpenChange={setOpen}
+        onAttach={onPick}
+      />
+    </>
   );
 }
