@@ -332,7 +332,10 @@ function Trends({
   onEdit: (d: string) => void;
 }) {
   const del = useDeleteMeasurement();
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  // Armed by measuredOn, not row id: a refetch swapping an optimistic id for
+  // the server id must not cancel an armed confirm (it made the Delete button
+  // vanish mid-click — the row reverted and the e2e delete-confirm flaked).
+  const [confirmDate, setConfirmDate] = useState<string | null>(null);
 
   // Entries carrying the selected metric, with its display value attached.
   const rows = useMemo(() => {
@@ -442,14 +445,14 @@ function Trends({
                   {value} {suffix}
                 </span>
               </button>
-              {confirmId === m.id ? (
+              {confirmDate === m.measuredOn ? (
                 <span className="flex shrink-0 items-center gap-1 px-2">
                   <Button
                     variant="danger"
                     size="sm"
                     onClick={() => {
                       del.mutate(m.id);
-                      setConfirmId(null);
+                      setConfirmDate(null);
                     }}
                     data-testid={`measure-delete-confirm-${m.measuredOn}`}
                   >
@@ -458,7 +461,7 @@ function Trends({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setConfirmId(null)}
+                    onClick={() => setConfirmDate(null)}
                   >
                     Cancel
                   </Button>
@@ -467,7 +470,7 @@ function Trends({
                 <button
                   type="button"
                   title="Delete entry"
-                  onClick={() => setConfirmId(m.id)}
+                  onClick={() => setConfirmDate(m.measuredOn)}
                   className="flex size-11 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-neg"
                   data-testid={`measure-delete-${m.measuredOn}`}
                 >
