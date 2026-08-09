@@ -3687,7 +3687,10 @@ function CommittedChip({
             </span>
           )}
           <span
-            className={cn(zone === "right" && "text-soft")}
+            className={cn(
+              "inline-block min-w-6 text-left",
+              zone === "right" && "text-soft",
+            )}
             data-testid={`committed-${index}${zone ? `-${zone}` : ""}-${c.key}`}
           >
             {text}
@@ -4668,7 +4671,7 @@ function ActiveRow({
     if (key === "weight") return null;
     if (key === "reps")
       return (
-        <span key={key} className="w-16 shrink-0">
+        <span key={`right-${key}`} className="w-16 shrink-0">
           <Field
             className="leading-5"
             inputMode="numeric"
@@ -4689,7 +4692,7 @@ function ActiveRow({
       );
     if (key === "distance")
       return (
-        <span key={key} className="w-20 shrink-0">
+        <span key={`right-${key}`} className="w-20 shrink-0">
           <Field
             className="leading-5"
             inputMode="decimal"
@@ -4708,7 +4711,7 @@ function ActiveRow({
       );
     // duration — no second timer button: one physical set has one clock.
     return (
-      <span key={key} className="w-20 shrink-0">
+      <span key={`right-${key}`} className="w-20 shrink-0">
         <Field
           className="leading-5"
           inputMode="text"

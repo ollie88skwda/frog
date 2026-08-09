@@ -16,7 +16,8 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-// Fills the active weight/reps row and commits it via its Add-set button.
+// Fills the active weight/reps row and commits it via the strip's ✓ (the
+// strip auto-advances after every commit).
 async function logSet(
   page: import("@playwright/test").Page,
   index: number,
@@ -25,7 +26,7 @@ async function logSet(
 ) {
   await page.getByTestId(`set-${index}-weight`).fill(weight);
   await page.getByTestId(`set-${index}-reps`).fill(reps);
-  await page.getByTestId(`set-${index}-add`).click();
+  await page.getByTestId(`set-${index}-done`).click();
   await expect(page.getByTestId(`committed-${index}-type`)).toBeVisible();
 }
 
