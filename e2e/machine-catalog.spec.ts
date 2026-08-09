@@ -69,9 +69,9 @@ test("in-session attach: catalog search attaches a machine to the block", async 
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);
 
-  // No machine set → the attach action lives in the block's ⋯ menu (no
-  // full-width strip under the header).
-  await page.getByTestId(`block-${NAME}-menu`).click();
+  // No machine set → the attach affordance lives in the pre-flight card
+  // (visible on the logging path, never buried in a menu).
+  await expect(page.getByTestId(`block-${NAME}-setup`)).toBeVisible();
   const strip = page.getByTestId(`setup-attach-${NAME}`);
   await expect(strip).toBeVisible();
   await strip.click();
@@ -142,7 +142,6 @@ test("in-session attach: picks an existing machine from my gym", async ({
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);
-  await page.getByTestId(`block-${NAME}-menu`).click();
   await page.getByTestId(`setup-attach-${NAME}`).click();
 
   // The dialog lists the user's own machines first — no duplicate created.

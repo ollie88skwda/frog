@@ -140,7 +140,7 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
   const blockA = page.getByTestId(`block-${A}`);
   await blockA.getByTestId("set-0-weight").fill("100");
   await blockA.getByTestId("set-0-reps").fill("5");
-  await blockA.getByTestId("set-0-add").click();
+  await blockA.getByTestId("set-0-done").click();
 
   await expect
     .poll(() =>
@@ -171,9 +171,8 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
   });
   await page.reload();
   const blockA2 = page.getByTestId(`block-${A}`);
-  // No auto-advance: the reloaded block has one committed set and no open
-  // draft (nothing was typed into one before reloading) — open it explicitly.
-  await blockA2.getByTestId("set-1-add").click();
+  // The strip is always open (the protocol's rapid-fire strip) — the
+  // reloaded block's next-set slot is at index 1, ready to type into.
   await blockA2.getByTestId("set-1-weight").fill("100");
   await blockA2.getByTestId("set-1-reps").fill("5");
   // Re-install the spy (reload cleared it).
@@ -190,7 +189,7 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
       return (orig as (...a: unknown[]) => void).apply(this, args);
     };
   });
-  await blockA2.getByTestId("set-1-add").click();
+  await blockA2.getByTestId("set-1-done").click();
   await expect(
     page.getByTestId(`block-${A}`).getByTestId("committed-1"),
   ).toBeVisible();

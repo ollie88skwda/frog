@@ -108,7 +108,7 @@ test("a 600s Rest default does not target the in-workout stopwatch", async ({
 
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
 
   // Starts at zero and counts UP — never seeded from (or counting down to)
   // the 10:00 default.

@@ -105,23 +105,30 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
 
-  // Set 0 draft: reps seeded from the fixed target, weight blank (never
-  // authored). PREVIOUS is blank too (never logged).
+  // Pre-flight: the routine's plan is stated once ("Planned · 2 sets"); no
+  // previous sets exist yet. The strip below it is already live and seeded
+  // from the routine: reps from the fixed target, weight blank (never
+  // authored).
+  await expect(page.getByTestId(`block-${EX}-setup-plan`)).toHaveText(
+    "Planned · 2 sets",
+  );
+  await expect(page.getByTestId(`block-${EX}-setup-last`)).toContainText(
+    "No previous sets",
+  );
   await expect(page.getByTestId("set-0-weight")).toHaveValue("");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
-  await expect(page.getByTestId("set-0-previous")).toHaveText("—");
 
-  // Perform set 0 at 65.
+  // Perform set 0 at 65 — the strip auto-advances to set 1.
   await page.getByTestId("set-0-weight").fill("65");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
   await expect(page.getByTestId("committed-0")).toBeVisible();
 
-  // Set 1 draft: weight and reps both blank for the 8–12 range.
+  // Set 1: weight and reps both blank for the 8–12 range.
   await expect(page.getByTestId("set-1-weight")).toHaveValue("");
   await expect(page.getByTestId("set-1-reps")).toHaveValue("");
   await page.getByTestId("set-1-weight").fill("50");
   await page.getByTestId("set-1-reps").fill("10");
-  await page.getByTestId("set-1-add").click();
+  await page.getByTestId("set-1-done").click();
   await expect(page.getByTestId("committed-1")).toBeVisible();
 
   // Finish with Update Routine Values ON (default).
@@ -367,8 +374,9 @@ test("routines-page routine menu flips upward when it would render below the fol
 // Regression: starting a routine with N configured sets used to render only
 // the one active (currently-being-logged) row — the other N-1 were invisible
 // until each prior set was logged, which read as "the routine only kept 1 of
-// my 5 sets." All N are now visible immediately: one editable active row plus
-// read-only "upcoming" previews for the rest, counting down as sets are logged.
+// my 5 sets." The count is now visible immediately: the pre-flight states
+// the plan ("Planned · N sets") and every strip slot is seeded from the
+// routine as it advances.
 test("start routine materializes every configured set as a visible row, not just the active one", async ({
   page,
 }) => {
@@ -397,24 +405,29 @@ test("start routine materializes every configured set as a visible row, not just
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
 
-  // Set 0 is the active, editable row; sets 1-4 are read-only upcoming
-  // previews — all 5 configured sets are on screen with zero user action.
+  // The pre-flight states the plan once; the strip's set 0 is live with the
+  // rep-range seeded as a placeholder ("6–8") — the full configured count is
+  // visible from the moment the session starts.
+  await expect(page.getByTestId(`block-${EX}-setup-plan`)).toHaveText(
+    "Planned · 5 sets",
+  );
   await expect(page.getByTestId("set-0-reps")).toBeVisible();
-  for (let i = 1; i < 5; i++) {
-    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
-  }
+  await expect(page.getByTestId("set-0-reps")).toHaveAttribute(
+    "placeholder",
+    "6–8",
+  );
 
-  // Logging set 0 advances the active row to index 1 and drops it from the
-  // upcoming list — the previously-seeded target isn't left behind or
-  // duplicated, and it isn't something the user had to re-add by hand.
+  // Logging set 0 advances the strip to index 1, seeded with the next target
+  // — the previously-seeded target isn't left behind or duplicated, and it
+  // isn't something the user had to re-add by hand.
   await page.getByTestId("set-0-reps").fill("7");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
   await expect(page.getByTestId("committed-0")).toBeVisible();
   await expect(page.getByTestId("set-1-reps")).toBeVisible();
-  await expect(page.getByTestId("upcoming-1-reps")).toHaveCount(0);
-  for (let i = 2; i < 5; i++) {
-    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
-  }
+  await expect(page.getByTestId("set-1-reps")).toHaveAttribute(
+    "placeholder",
+    "6–8",
+  );
 });
 
 // Routine editor ↔ session parity (UI feedback batch 8, notes 10/13): the
@@ -503,10 +516,9 @@ test("exercise menu laterality/warm-up/superset round-trip into the session", as
   await block.getByTestId("set-0-weight").fill("20");
   await block.getByTestId("set-0-reps").fill("8");
   await block.getByTestId("set-0-right-reps").fill("8");
-  await block.getByTestId("set-0-add").click();
+  await block.getByTestId("set-0-done").click();
   await expect(page.getByTestId("committed-0")).toBeVisible();
-  // Horizontal pair (batch 8): the ᴿ side renders inside the same stripe,
-  // its cells carrying the committed-0-right-* ids.
+  // The pair is ONE chip with a ᴿ zone carrying the committed-0-right-* ids.
   await expect(page.getByTestId("committed-0-right-reps")).toBeVisible();
   // Both inserts can take up to ~7s to land (mutations retry 3x), and a
   // touch tap on the add button can double-fire the commit — so poll for at

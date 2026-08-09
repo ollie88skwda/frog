@@ -67,26 +67,29 @@ test("log sets persists to set_logs, and ghost prefill shows the prior session",
   await page.getByTestId("set-0-reps").press("Enter");
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
 
-  // The committed row renders; no new draft row auto-spawns — logging a set
-  // never auto-adds the next one, only an explicit "Add set" tap does.
+  // The committed chip renders; the strip auto-advances to set 1 — logging a
+  // set never needs an explicit "Add set" tap (rapid fire).
   await expect(page.getByTestId("committed-0-type")).toBeVisible();
-  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
-  await expect(page.getByTestId("set-1-add")).toBeVisible();
+  await expect(page.getByTestId("set-1-weight")).toBeVisible();
 
-  // Session 2: ghost prefill surfaces the prior session's values as placeholders.
+  // Session 2: the pre-flight card answers "what did I do last time" —
+  // labeled, once, never mistaken for a target or a placeholder.
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
-  await expect(page.getByTestId("set-0-weight")).toHaveAttribute(
-    "placeholder",
-    "135",
+  await expect(page.getByTestId(`block-${EX}-setup-last`)).toContainText(
+    "Last workout",
   );
-  await expect(page.getByTestId("set-0-reps")).toHaveAttribute(
-    "placeholder",
-    "5",
+  await expect(page.getByTestId(`block-${EX}-setup-last-0`)).toContainText(
+    "135 × 5",
   );
 
-  // Enter with empty fields adopts the ghost (tap-to-accept) and commits.
+  // One tap on the summary value uses it as this set's input.
+  await page.getByTestId(`block-${EX}-setup-last-0`).click();
+  await expect(page.getByTestId("set-0-weight")).toHaveValue("135");
+  await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
+
+  // Enter commits the filled strip.
   const before2 = await rowCount(page, "set_logs");
   await page.getByTestId("set-0-weight").press("Enter");
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before2 + 1);

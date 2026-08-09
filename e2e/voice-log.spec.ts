@@ -177,7 +177,7 @@ test("spoken set fills the matching block's active row and never commits it", as
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // Committing stays an explicit user action.
-  await target.getByTestId("set-0-add").click();
+  await target.getByTestId("set-0-done").click();
   await expect(target.getByTestId("committed-0")).toBeVisible();
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
   await expect(target.getByTestId("committed-0-weight")).toHaveText("250");

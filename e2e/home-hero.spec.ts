@@ -126,7 +126,7 @@ test("the hero names today's routine, previews it, and starts it in one tap", as
 
   await page.getByTestId("set-0-weight").fill("60");
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
   await expect(page.getByTestId("committed-0")).toBeVisible();
   await page.getByTestId("end-session-btn").click();
   await page.getByTestId("finish-save").click();
