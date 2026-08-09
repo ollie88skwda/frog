@@ -3688,7 +3688,7 @@ function CommittedChip({
           )}
           <span
             className={cn(
-              "inline-block min-w-6 text-left",
+              "inline-block min-h-5 min-w-6 text-left",
               zone === "right" && "text-soft",
             )}
             data-testid={`committed-${index}${zone ? `-${zone}` : ""}-${c.key}`}
