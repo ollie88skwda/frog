@@ -49,7 +49,7 @@ test("mid-logging: an RIR range fills the collapsed badge and commits as a pair"
   );
 
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
 
   // Committed row's own edit sheet reads the range back unchanged.
   await page.getByTestId("committed-0-weight").click();
@@ -72,7 +72,7 @@ test("min equal to max collapses to a single number, not a zero-width range", as
   await page.getByTestId("set-0-rirmax").fill("2");
   await page.keyboard.press("Escape");
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
 
   const row = page.getByTestId("committed-0");
   await expect(row).toContainText("@2");
@@ -90,7 +90,7 @@ test("read-time compat: a legacy scalar-only rir reads back as min=max, never a 
   await page.getByTestId(`pick-exercise-${EX}`).click();
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
   await expect(page.getByTestId("committed-0-weight")).toBeVisible();
 
   // Simulate a pre-migration row: only the legacy scalar `rir` column set,

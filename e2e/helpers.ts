@@ -26,6 +26,31 @@ export async function signIn(page: Page) {
   await expect(page.getByTestId("start-session-btn")).toBeVisible();
 }
 
+/**
+ * The session screen is a Focus Deck: exactly ONE station (exercise, or a
+ * superset's shared card) is mounted at a time. Anything that touches a
+ * second exercise has to bring its station to the front first — that's this.
+ * Idempotent: switching to the station already showing is a no-op.
+ */
+export async function openStation(page: Page, label: string) {
+  const tab = page.getByTestId(`station-tab-${label}`);
+  await tab.waitFor();
+  await tab.click();
+  // Assert the switch actually stuck before handing back: adding an exercise
+  // brings its own station to the front asynchronously, so a station opened
+  // inside that window can be deactivated a beat later.
+  await expect(tab).toHaveAttribute("data-state", "active");
+  await expect(
+    page.getByTestId(`block-${label.split(" + ")[0]}`),
+  ).toBeVisible();
+}
+
+/** Flips a superset station's shared card to one of its members. */
+export async function openMember(page: Page, name: string) {
+  await page.getByTestId(`station-member-${name}`).click();
+  await expect(page.getByTestId(`block-${name}`)).toBeVisible();
+}
+
 /** Creates a custom exercise via the Library "+ Custom exercise" sheet. Assumes
  * the caller is already on /library. */
 export async function createExercise(page: Page, name: string) {

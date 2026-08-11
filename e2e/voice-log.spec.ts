@@ -141,8 +141,13 @@ test("spoken set fills the matching block's active row and never commits it", as
   page,
 }) => {
   await startSession(page, [EX, OTHER]);
+  // The deck is showing OTHER (the last exercise picked) — a spoken set for
+  // EX has to bring EX's station to the front itself.
+  await expect(page.getByTestId(`station-tab-${OTHER}`)).toHaveAttribute(
+    "data-state",
+    "active",
+  );
   const target = page.getByTestId(`block-${EX}`);
-  const untouched = page.getByTestId(`block-${OTHER}`);
   const before = await rowCount(page, "set_logs");
 
   await page.getByTestId("voice-log-mic").click();
@@ -156,11 +161,14 @@ test("spoken set fills the matching block's active row and never commits it", as
     window.__voice.say("rear delt flies 250 lbs for 5 reps"),
   );
 
-  // Fuzzy match ("flies" → "Flyes") lands on the right block, and only it.
+  // Fuzzy match ("flies" → "Flyes") switches the deck to that station and
+  // fills it — and only it.
+  await expect(page.getByTestId(`station-tab-${EX}`)).toHaveAttribute(
+    "data-state",
+    "active",
+  );
   await expect(target.getByTestId("set-0-weight")).toHaveValue("250");
   await expect(target.getByTestId("set-0-reps")).toHaveValue("5");
-  await expect(untouched.getByTestId("set-0-weight")).toHaveValue("");
-  await expect(untouched.getByTestId("set-0-reps")).toHaveValue("");
   await shot(page, "02-filled-not-committed");
 
   // The filled row is a draft: nothing was written and no committed row exists.
@@ -177,7 +185,11 @@ test("spoken set fills the matching block's active row and never commits it", as
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // Committing stays an explicit user action.
-  await target.getByTestId("set-0-add").click();
+  await expect(page.getByTestId(`station-tab-${OTHER}`)).toHaveAttribute(
+    "data-state",
+    "inactive",
+  );
+  await target.getByTestId("set-0-done").click();
   await expect(target.getByTestId("committed-0")).toBeVisible();
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
   await expect(target.getByTestId("committed-0-weight")).toHaveText("250");

@@ -39,7 +39,7 @@ test("edit a committed set; delete a set; both survive reload", async ({
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-reps").press("Enter");
   await expect(page.getByTestId("committed-0-type")).toBeVisible();
-  await page.getByTestId("set-1-add").click();
+  // The deck's strip already advanced to set 2 — no explicit "add" step.
   await page.getByTestId("set-1-weight").fill("110");
   await page.getByTestId("set-1-reps").fill("3");
   await page.getByTestId("set-1-reps").press("Enter");

@@ -67,26 +67,34 @@ test("log sets persists to set_logs, and ghost prefill shows the prior session",
   await page.getByTestId("set-0-reps").press("Enter");
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
 
-  // The committed row renders; no new draft row auto-spawns — logging a set
-  // never auto-adds the next one, only an explicit "Add set" tap does.
+  // The committed row renders and the strip advances to the next, empty set —
+  // the deck always shows exactly one strip, never a planned-row preview.
   await expect(page.getByTestId("committed-0-type")).toBeVisible();
-  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
-  await expect(page.getByTestId("set-1-add")).toBeVisible();
+  await expect(page.getByTestId("set-1-weight")).toHaveValue("");
 
-  // Session 2: ghost prefill surfaces the prior session's values as placeholders.
+  // Session 2: last time's values are a LABELED reference line, not ghost
+  // text hiding inside the inputs — the inputs only ever say what they are.
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
+  await expect(page.getByTestId(`reference-${EX}-last`)).toHaveText("135 × 5");
   await expect(page.getByTestId("set-0-weight")).toHaveAttribute(
     "placeholder",
-    "135",
+    "lbs",
   );
   await expect(page.getByTestId("set-0-reps")).toHaveAttribute(
     "placeholder",
-    "5",
+    "reps",
   );
 
-  // Enter with empty fields adopts the ghost (tap-to-accept) and commits.
+  // `use` fills the inputs from that line (tap-to-fill).
+  await page.getByTestId(`reference-${EX}-use`).click();
+  await expect(page.getByTestId("set-0-weight")).toHaveValue("135");
+  await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
+  await page.getByTestId("set-0-weight").fill("");
+  await page.getByTestId("set-0-reps").fill("");
+
+  // Enter with empty fields adopts last time's values (tap-to-accept) and commits.
   const before2 = await rowCount(page, "set_logs");
   await page.getByTestId("set-0-weight").press("Enter");
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before2 + 1);

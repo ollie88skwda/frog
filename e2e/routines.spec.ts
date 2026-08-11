@@ -2,14 +2,16 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   createExercise,
   EMAIL,
+  openMember,
   PASSWORD,
   signIn,
   waitForExercise,
 } from "./helpers";
 
 // M2 routine → session integration: build a routine with a fixed-target set and
-// a rep-range set, start it (draft grid prefilled from the targets, PREVIOUS
-// blank the first time), log the sets, finish with Update-Routine-Values ON,
+// a rep-range set, start it (the set strip prefilled from the targets, the
+// reference line's LAST blank the first time), log the sets, finish with
+// Update-Routine-Values ON,
 // and confirm the fixed set's target updated while the rep-range set did not.
 
 test.beforeEach(async ({ page }) => {
@@ -69,7 +71,7 @@ async function routineSetTargets(
   }, routineId);
 }
 
-test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Values writes back fixed (not rep-range) sets", async ({
+test("start routine prefills the strip, LAST is blank, and Update Routine Values writes back fixed (not rep-range) sets", async ({
   page,
 }) => {
   const EX = `RoutineEx ${Date.now()}`;
@@ -105,15 +107,19 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
 
-  // Set 0 draft: reps seeded from the fixed target, weight blank (never
-  // authored). PREVIOUS is blank too (never logged).
+  // Set 0 strip: reps seeded from the fixed target, weight blank (never
+  // authored). The labeled reference line says LAST is blank (never logged)
+  // and prints the routine's TARGET beside it.
   await expect(page.getByTestId("set-0-weight")).toHaveValue("");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
-  await expect(page.getByTestId("set-0-previous")).toHaveText("—");
+  await expect(page.getByTestId(`reference-${EX}-last`)).toHaveText(
+    "— (new set)",
+  );
+  await expect(page.getByTestId(`reference-${EX}-target`)).toHaveText("5");
 
   // Perform set 0 at 65.
   await page.getByTestId("set-0-weight").fill("65");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
   await expect(page.getByTestId("committed-0")).toBeVisible();
 
   // Set 1 draft: weight and reps both blank for the 8–12 range.
@@ -121,7 +127,7 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await expect(page.getByTestId("set-1-reps")).toHaveValue("");
   await page.getByTestId("set-1-weight").fill("50");
   await page.getByTestId("set-1-reps").fill("10");
-  await page.getByTestId("set-1-add").click();
+  await page.getByTestId("set-1-done").click();
   await expect(page.getByTestId("committed-1")).toBeVisible();
 
   // Finish with Update Routine Values ON (default).
@@ -365,11 +371,13 @@ test("routines-page routine menu flips upward when it would render below the fol
 });
 
 // Regression: starting a routine with N configured sets used to render only
-// the one active (currently-being-logged) row — the other N-1 were invisible
-// until each prior set was logged, which read as "the routine only kept 1 of
-// my 5 sets." All N are now visible immediately: one editable active row plus
-// read-only "upcoming" previews for the rest, counting down as sets are logged.
-test("start routine materializes every configured set as a visible row, not just the active one", async ({
+// the one active row, which read as "the routine only kept 1 of my 5 sets."
+// The Focus Deck answers that differently — the read-only "upcoming" preview
+// rows are gone with the rest of the draft/upcoming/committed tri-state — so
+// the plan is carried by the station rail's own progress badge (0/5) and by
+// the labeled TARGET on the reference line, both visible with zero user
+// action, and both counting as sets are logged.
+test("start routine shows the whole plan on the rail badge and the reference line", async ({
   page,
 }) => {
   const EX = `MaterializeEx ${Date.now()}`;
@@ -397,24 +405,20 @@ test("start routine materializes every configured set as a visible row, not just
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
 
-  // Set 0 is the active, editable row; sets 1-4 are read-only upcoming
-  // previews — all 5 configured sets are on screen with zero user action.
+  // All 5 planned sets are accounted for before anything is typed.
+  await expect(page.getByTestId(`station-tab-${EX}`)).toContainText("0/5");
+  await expect(page.getByTestId(`reference-${EX}-target`)).toHaveText("6–8");
   await expect(page.getByTestId("set-0-reps")).toBeVisible();
-  for (let i = 1; i < 5; i++) {
-    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
-  }
+  // …and no read-only preview rows pretending to be logged sets.
+  await expect(page.getByTestId("upcoming-1-reps")).toHaveCount(0);
 
-  // Logging set 0 advances the active row to index 1 and drops it from the
-  // upcoming list — the previously-seeded target isn't left behind or
-  // duplicated, and it isn't something the user had to re-add by hand.
+  // Logging set 0 advances the strip and the badge; the plan is unchanged.
   await page.getByTestId("set-0-reps").fill("7");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
   await expect(page.getByTestId("committed-0")).toBeVisible();
   await expect(page.getByTestId("set-1-reps")).toBeVisible();
-  await expect(page.getByTestId("upcoming-1-reps")).toHaveCount(0);
-  for (let i = 2; i < 5; i++) {
-    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
-  }
+  await expect(page.getByTestId(`station-tab-${EX}`)).toContainText("1/5");
+  await expect(page.getByTestId(`reference-${EX}-target`)).toHaveText("6–8");
 });
 
 // Routine editor ↔ session parity (UI feedback batch 8, notes 10/13): the
@@ -503,7 +507,10 @@ test("exercise menu laterality/warm-up/superset round-trip into the session", as
   await block.getByTestId("set-0-weight").fill("20");
   await block.getByTestId("set-0-reps").fill("8");
   await block.getByTestId("set-0-right-reps").fill("8");
-  await block.getByTestId("set-0-add").click();
+  await block.getByTestId("set-0-done").click();
+  // The pair is in a superset, so Smart Superset advance flips the shared
+  // card to the other member — come back to read the committed row.
+  await openMember(page, EX1);
   await expect(page.getByTestId("committed-0")).toBeVisible();
   // Horizontal pair (batch 8): the ᴿ side renders inside the same stripe,
   // its cells carrying the committed-0-right-* ids.

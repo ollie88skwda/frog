@@ -1145,6 +1145,7 @@ export class SupabaseRepo implements Repo {
       restSec?: number | null;
       note?: string | null;
       exerciseId?: string;
+      orderIndex?: number;
     },
   ): Promise<void> {
     const row: Row = { updated_at: Date.now() };
@@ -1153,6 +1154,7 @@ export class SupabaseRepo implements Repo {
     if ("restSec" in patch) row.rest_sec = patch.restSec ?? null;
     if ("note" in patch) row.note = patch.note ?? null;
     if ("exerciseId" in patch) row.exercise_id = patch.exerciseId;
+    if ("orderIndex" in patch) row.order_index = patch.orderIndex;
     const { error } = await this.client
       .from("session_exercises")
       .update(row)

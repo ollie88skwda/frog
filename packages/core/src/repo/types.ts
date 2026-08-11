@@ -433,7 +433,10 @@ export interface Repo {
    * `exerciseId` repoints the block at a different exercise row (the
    * session-side copy-on-write: a seed exercise is RLS-read-only, so an
    * in-session laterality/machine edit clones it into a private custom
-   * exercise and the session_exercise follows the copy).
+   * exercise and the session_exercise follows the copy). `orderIndex` moves
+   * the block within the session (the deck's overview reorder) — callers
+   * renumber every affected row, since the column carries no uniqueness
+   * constraint of its own.
    */
   updateSessionExercise(
     sessionExerciseId: string,
@@ -442,6 +445,7 @@ export interface Repo {
       restSec?: number | null;
       note?: string | null;
       exerciseId?: string;
+      orderIndex?: number;
     },
   ): Promise<void>;
 

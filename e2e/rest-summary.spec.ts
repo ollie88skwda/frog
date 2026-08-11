@@ -32,7 +32,7 @@ async function startSession(page: Page, name: string) {
 async function commitSet(page: Page, n: number, weight: string) {
   await page.getByTestId(`set-${n}-weight`).fill(weight);
   await page.getByTestId(`set-${n}-reps`).fill("5");
-  await page.getByTestId(`set-${n}-add`).click();
+  await page.getByTestId(`set-${n}-done`).click();
 }
 
 test("stats line carries no session-wide rest; per-exercise rest avg appears in the block header", async ({

@@ -1,4 +1,5 @@
 import type { Laterality, SetType } from "@frog/core";
+import type { SideMode } from "@/screens/session";
 
 // Per-block uncommitted draft persistence. The active (unlogged) row's
 // keystrokes are mirrored to localStorage keyed by session_exercise id, so a
@@ -19,15 +20,19 @@ export type DraftSnapshot = {
   setType: SetType;
   extras: string[];
   metricDraft: Record<string, string>;
-  // Right-side keystrokes for a unilateral pair (blank until overridden — the
-  // left values mirror across as placeholders, not draft state).
+  // Right-side keystrokes for an L+R pair (blank until overridden — the left
+  // values mirror across as placeholders, not draft state).
   rWeight?: string;
   rReps?: string;
   rDuration?: string;
   rDistance?: string;
-  // Per-set laterality override ("just this one set") — persisted so a reload
-  // restores the ᴿ line and the right-side keystrokes it protects. Null = no
-  // override, the exercise's own laterality applies.
+  // The strip's visible laterality state (BOTH · L · R · L+R) and whether the
+  // two sides' weights are linked — persisted so a reload restores the ᴿ
+  // panel and the right-side keystrokes it protects.
+  sideMode?: SideMode;
+  linked?: boolean;
+  /** @deprecated Pre-Focus-Deck per-set override; read for back-compat only
+   * (a draft written before the four-state toggle shipped). */
   laterality?: Laterality | null;
 };
 
@@ -71,7 +76,8 @@ export function saveDraft(seId: string, snapshot: DraftSnapshot): void {
       !snapshot.rReps &&
       !snapshot.rDuration &&
       !snapshot.rDistance &&
-      !snapshot.laterality;
+      (snapshot.sideMode ?? "both") === "both" &&
+      snapshot.linked !== false;
     if (empty) {
       clearDraft(seId);
       return;

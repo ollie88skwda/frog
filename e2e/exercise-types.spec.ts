@@ -51,7 +51,7 @@ test("duration exercise logs a typed m:ss time and shows the inline timer", asyn
   await expect(page.getByTestId("set-0-weight")).toBeHidden();
 
   await page.getByTestId("set-0-duration").fill("1:30");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
 
   await expect(page.getByTestId("committed-0-duration")).toHaveText("1:30");
 
@@ -87,6 +87,6 @@ test("weighted-bodyweight exercise shows a +weight header and per-exercise unit 
   // A logged set survives with the override in place.
   await page.getByTestId("set-0-weight").fill("20");
   await page.getByTestId("set-0-reps").fill("6");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
   await expect(page.getByTestId("committed-0-weight")).toHaveText("20");
 });

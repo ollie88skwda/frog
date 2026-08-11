@@ -73,8 +73,10 @@ test("filling weight+reps then tapping away auto-checks off the set", async ({
 
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
   await expect(page.getByTestId("committed-0")).toBeVisible();
-  // Auto-checkoff commits the set but does not auto-spawn the next draft.
-  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
+  // The deck's strip is always the NEXT set, so one appears — but empty, and
+  // nothing extra was written.
+  await expect(page.getByTestId("set-1-weight")).toHaveValue("");
+  await expect(page.getByTestId("committed-1")).not.toBeVisible();
 });
 
 test("the checkmark commits the filled draft row", async ({ page }) => {
@@ -97,9 +99,10 @@ test("the checkmark commits the filled draft row", async ({ page }) => {
   await page.getByTestId("set-0-done").click();
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
 
-  // The committed row renders; no new draft row auto-spawns.
+  // The committed row renders; the next strip is empty, not a second commit.
   await expect(page.getByTestId("committed-0")).toBeVisible();
-  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
+  await expect(page.getByTestId("set-1-weight")).toHaveValue("");
+  await expect(page.getByTestId("committed-1")).not.toBeVisible();
 });
 
 test("opening the set-details sheet does not auto-check the set off", async ({
@@ -178,7 +181,8 @@ test("tabbing to the set-details trigger does not auto-check the set off", async
   // "…" button (mousedown-preventDefault only covers pointers), and that blur
   // lands before any click can arm the guard. Committing there would unmount
   // the button mid-Tab, so set details would be unreachable by keyboard on a
-  // complete-but-uncommitted row.
+  // complete-but-uncommitted set. On the deck the ⋯ sits above the fields in
+  // the strip's header row, so the keyboard reaches it with Shift+Tab.
   const EX = `DetailsTab ${Date.now()}`;
 
   await page.goto("/library");
@@ -195,11 +199,20 @@ test("tabbing to the set-details trigger does not auto-check the set off", async
   await page.getByTestId("set-0-reps").fill("5");
   await page.keyboard.press("Tab");
 
-  await expect(page.getByTestId("set-0-more")).toBeFocused();
+  // Focus landed on another control INSIDE the strip. That is not "done with
+  // this set" — committing here would unmount whatever was tabbed to.
+  const stillInStrip = await page.evaluate(
+    () =>
+      document.activeElement?.closest("[data-testid='set-strip-0']") != null,
+  );
+  expect(stillInStrip).toBe(true);
   await expect(page.getByTestId("committed-0")).not.toBeVisible();
   expect(await rowCount(page, "set_logs")).toBe(before);
 
-  // …and the trigger still opens the sheet from there.
+  // …and set details stays reachable from the keyboard on that same
+  // complete-but-uncommitted set.
+  await page.getByTestId("set-0-more").focus();
+  await expect(page.getByTestId("set-0-more")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("set-0-note")).toBeVisible();
   expect(await rowCount(page, "set_logs")).toBe(before);
@@ -238,7 +251,7 @@ test("a set-details sheet opened with no field focused still allows a later chec
 
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
   await expect(page.getByTestId("committed-0")).toBeVisible();
-  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
+  await expect(page.getByTestId("set-1-weight")).toHaveValue("");
 });
 
 test("closing the set-details sheet from inside it still allows a later checkoff", async ({
@@ -293,5 +306,5 @@ test("tapping the checkmark on a touch device commits exactly one set", async ({
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
   await expect(page.getByTestId("committed-0")).toBeVisible();
   await expect(page.getByTestId("committed-1")).not.toBeVisible();
-  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
+  await expect(page.getByTestId("set-1-weight")).toHaveValue("");
 });

@@ -25,7 +25,7 @@ async function logSet(
 ) {
   await page.getByTestId(`set-${index}-weight`).fill(weight);
   await page.getByTestId(`set-${index}-reps`).fill(reps);
-  await page.getByTestId(`set-${index}-add`).click();
+  await page.getByTestId(`set-${index}-done`).click();
   await expect(page.getByTestId(`committed-${index}-type`)).toBeVisible();
 }
 

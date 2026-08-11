@@ -69,23 +69,26 @@ test("in-session attach: catalog search attaches a machine to the block", async 
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);
 
-  // No machine set → the attach action lives in the block's ⋯ menu (no
-  // full-width strip under the header).
-  await page.getByTestId(`block-${NAME}-menu`).click();
-  const strip = page.getByTestId(`setup-attach-${NAME}`);
-  await expect(strip).toBeVisible();
-  await strip.click();
+  // R3: machine is FIRST-CLASS — a visible chip on the station card reading
+  // "machine" while unset, never an item inside the ⋯ menu.
+  const chip = page.getByTestId(`station-${NAME}-machine`);
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText("machine");
+  await expect(page.getByTestId(`setup-attach-${NAME}`)).toHaveCount(0);
+  await chip.click();
 
-  // Search the catalog inside the dialog and pick a Life Fitness press (a
+  // One Command search over both sources; pick a Life Fitness press (a
   // machine no other spec creates, so the shared e2e user stays clean).
-  await page
-    .getByTestId("machine-catalog-search")
-    .fill("life fitness insignia");
+  await page.getByTestId("machine-search").fill("life fitness insignia");
   await page
     .getByTestId("catalog-result-life-fitness-insignia-series-chest-press")
     .click();
 
-  // Dialog closes; the block now shows the remembered-setup strip.
+  // Dialog closes; the chip now names the machine, and the remembered-setup
+  // line sits under it.
+  await expect(page.getByTestId(`station-${NAME}-machine`)).toContainText(
+    "Life Fitness · Insignia Series Chest Press",
+  );
   await expect(page.getByTestId(`setup-strip-${NAME}`)).toContainText(
     "Life Fitness · Insignia Series Chest Press",
   );
@@ -142,14 +145,13 @@ test("in-session attach: picks an existing machine from my gym", async ({
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);
-  await page.getByTestId(`block-${NAME}-menu`).click();
-  await page.getByTestId(`setup-attach-${NAME}`).click();
+  await page.getByTestId(`station-${NAME}-machine`).click();
 
   // The dialog lists the user's own machines first — no duplicate created.
   await page
     .getByTestId("attach-existing-Ultra Converging Chest Press")
     .click();
-  await expect(page.getByTestId(`setup-strip-${NAME}`)).toContainText(
+  await expect(page.getByTestId(`station-${NAME}-machine`)).toContainText(
     "Matrix · Ultra Converging Chest Press",
   );
 });

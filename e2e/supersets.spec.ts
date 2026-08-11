@@ -2,15 +2,18 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   createExercise,
   EMAIL,
+  openMember,
+  openStation,
   PASSWORD,
   signIn,
   waitForExercise,
 } from "./helpers";
 
 // M3 supersets: the exercise ⋯ menu links two blocks into a superset (color
-// bar + data-superset marker), persists the grouping server-side, dissolves a
-// lone remainder on unlink, and — with Smart Superset Scrolling on — scrolls to
-// the next member when a set is completed.
+// bar + data-superset marker) — on the Focus Deck that means the two share ONE
+// station card behind an A/B flip. The grouping persists server-side, a lone
+// remainder dissolves on unlink, and — with Smart Superset Scrolling on —
+// logging a set flips the card to the next member.
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
@@ -38,7 +41,10 @@ test("link two exercises into a superset, persist across reload, unlink dissolve
   await page.getByTestId("open-exercise-picker").click();
   await page.getByTestId(`pick-exercise-${B}`).click();
 
-  // Neither is grouped yet.
+  // Two separate stations in the rail, neither grouped.
+  await expect(page.getByTestId(`station-tab-${A}`)).toBeVisible();
+  await expect(page.getByTestId(`station-tab-${B}`)).toBeVisible();
+  await openStation(page, A);
   await expect(page.getByTestId(`block-${A}`)).not.toHaveAttribute(
     "data-superset",
     "1",
@@ -50,10 +56,14 @@ test("link two exercises into a superset, persist across reload, unlink dissolve
   await page.getByTestId(`block-${A}-superset`).click();
   await page.getByTestId(`block-${A}-superset-${B}`).click();
 
+  // The pair collapses into ONE station whose card carries an A/B flip.
+  await expect(page.getByTestId(`station-tab-${A} + ${B}`)).toBeVisible();
+  await expect(page.getByTestId(`station-tab-${A}`)).toHaveCount(0);
   await expect(page.getByTestId(`block-${A}`)).toHaveAttribute(
     "data-superset",
     "1",
   );
+  await openMember(page, B);
   await expect(page.getByTestId(`block-${B}`)).toHaveAttribute(
     "data-superset",
     "1",
@@ -79,29 +89,29 @@ test("link two exercises into a superset, persist across reload, unlink dissolve
     )
     .toBe(true);
   await page.reload();
+  await expect(page.getByTestId(`station-tab-${A} + ${B}`)).toBeVisible();
   await expect(page.getByTestId(`block-${A}`)).toHaveAttribute(
     "data-superset",
     "1",
   );
-  await expect(page.getByTestId(`block-${B}`)).toHaveAttribute(
-    "data-superset",
-    "1",
-  );
 
-  // Unlinking A leaves B alone → the group dissolves for both.
+  // Unlinking A leaves B alone → the group dissolves for both, and the deck
+  // splits back into two stations.
   await page.getByTestId(`block-${A}-menu`).click();
   await page.getByTestId(`block-${A}-unsuperset`).click();
   await expect(page.getByTestId(`block-${A}`)).not.toHaveAttribute(
     "data-superset",
     "1",
   );
+  await expect(page.getByTestId(`station-tab-${A}`)).toBeVisible();
+  await openStation(page, B);
   await expect(page.getByTestId(`block-${B}`)).not.toHaveAttribute(
     "data-superset",
     "1",
   );
 });
 
-test("Smart Superset Scrolling advances to the next member (and respects the off pref)", async ({
+test("Smart Superset advance flips the shared card to the next member (and respects the off pref)", async ({
   page,
 }) => {
   const A = `ScrollA ${Date.now()}`;
@@ -114,45 +124,28 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
   await page.getByTestId(`pick-exercise-${A}`).click();
   await page.getByTestId("open-exercise-picker").click();
   await page.getByTestId(`pick-exercise-${B}`).click();
+  // Wait for B's station to exist before switching back: picking an exercise
+  // brings its own station to the front, which would otherwise steal the deck
+  // right after we switched away from it.
+  await expect(page.getByTestId(`station-tab-${B}`)).toBeVisible();
 
+  await openStation(page, A);
   await page.getByTestId(`block-${A}-menu`).click();
   // Superset opens the partner picker sheet; the member is chosen there.
   await page.getByTestId(`block-${A}-superset`).click();
   await page.getByTestId(`block-${A}-superset-${B}`).click();
+  await expect(page.getByTestId(`block-${A}`)).toBeVisible();
 
-  // Spy on scrollIntoView so the assertion is deterministic (headless can't
-  // observe smooth-scroll position reliably).
-  await page.evaluate(() => {
-    (window as unknown as { __scrolled: (string | null)[] }).__scrolled = [];
-    const orig = Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView = function scrollIntoView(
-      this: Element,
-      ...args: unknown[]
-    ) {
-      (window as unknown as { __scrolled: (string | null)[] }).__scrolled.push(
-        this.getAttribute("data-testid"),
-      );
-      return (orig as (...a: unknown[]) => void).apply(this, args);
-    };
-  });
+  // Log a set in A → the shared card flips to B. On the deck the sibling
+  // isn't further down the page, it's the other side of one card, so the old
+  // scrollIntoView advance is now a tab flip.
+  await page.getByTestId("set-0-weight").fill("100");
+  await page.getByTestId("set-0-reps").fill("5");
+  await page.getByTestId("set-0-done").click();
 
-  // Complete a set in A → the view scrolls to B (the next superset member).
-  const blockA = page.getByTestId(`block-${A}`);
-  await blockA.getByTestId("set-0-weight").fill("100");
-  await blockA.getByTestId("set-0-reps").fill("5");
-  await blockA.getByTestId("set-0-add").click();
+  await expect(page.getByTestId(`block-${B}`)).toBeVisible();
+  await expect(page.getByTestId(`block-${A}`)).toHaveCount(0);
 
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () =>
-          (window as unknown as { __scrolled: (string | null)[] }).__scrolled,
-      ),
-    )
-    .toContain(`block-${B}`);
-
-  // Wait for set 0 to persist before reloading — otherwise the restored block
-  // has no committed set and the active row is still index 0.
   await expect
     .poll(() =>
       page.evaluate(async () => {
@@ -164,38 +157,16 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
     )
     .toBeGreaterThan(0);
 
-  // Turn the pref off → completing another set no longer scrolls.
-  await page.evaluate(() => {
-    localStorage.setItem("smartSupersetScroll", "0");
-    (window as unknown as { __scrolled: (string | null)[] }).__scrolled = [];
-  });
+  // Turn the pref off → logging another set no longer advances.
+  await page.evaluate(() => localStorage.setItem("smartSupersetScroll", "0"));
   await page.reload();
-  const blockA2 = page.getByTestId(`block-${A}`);
-  // No auto-advance: the reloaded block has one committed set and no open
-  // draft (nothing was typed into one before reloading) — open it explicitly.
-  await blockA2.getByTestId("set-1-add").click();
-  await blockA2.getByTestId("set-1-weight").fill("100");
-  await blockA2.getByTestId("set-1-reps").fill("5");
-  // Re-install the spy (reload cleared it).
-  await page.evaluate(() => {
-    (window as unknown as { __scrolled: (string | null)[] }).__scrolled = [];
-    const orig = Element.prototype.scrollIntoView;
-    Element.prototype.scrollIntoView = function scrollIntoView(
-      this: Element,
-      ...args: unknown[]
-    ) {
-      (window as unknown as { __scrolled: (string | null)[] }).__scrolled.push(
-        this.getAttribute("data-testid"),
-      );
-      return (orig as (...a: unknown[]) => void).apply(this, args);
-    };
-  });
-  await blockA2.getByTestId("set-1-add").click();
+  await openMember(page, A);
+  await page.getByTestId("set-1-weight").fill("100");
+  await page.getByTestId("set-1-reps").fill("5");
+  await page.getByTestId("set-1-done").click();
+
   await expect(
     page.getByTestId(`block-${A}`).getByTestId("committed-1"),
   ).toBeVisible();
-  const scrolled = await page.evaluate(
-    () => (window as unknown as { __scrolled: (string | null)[] }).__scrolled,
-  );
-  expect(scrolled).not.toContain(`block-${B}`);
+  await expect(page.getByTestId(`block-${B}`)).toHaveCount(0);
 });

@@ -449,7 +449,13 @@ export const setLogs = pgTable(
     rirMax: integer("rir_max"),
     rpe: real("rpe"), // 1–10 perceived exertion (halves allowed); RIR ≈ 10 − RPE
     note: text("note"),
-    restSec: integer("rest_sec"), // seconds rested before this set (null = first/unknown)
+    // Seconds rested AFTER this set — the measured gap the session's rest
+    // stopwatch froze onto it when it stopped (null = still resting, never
+    // measured, or the last set of the exercise). Pre-2026-08-09 rows carry
+    // the same gaps stamped onto the FOLLOWING set instead; aggregates
+    // (averages, exports) are unaffected, per-set reads are off by one for
+    // that older data. See docs/DECISIONS.md 2026-08-09.
+    restSec: integer("rest_sec"),
     metricValues: jsonb("metric_values").$type<Record<string, unknown>>(), // {metricId: value}
     completed: boolean("completed").notNull().default(false),
     // Which limb this row records. Null = the whole set (bilateral, and every

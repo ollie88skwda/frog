@@ -19,7 +19,7 @@ test.beforeEach(async ({ page }) => {
 async function logFirstSet(page: Page, weight: string, reps: string) {
   await page.getByTestId("set-0-weight").fill(weight);
   await page.getByTestId("set-0-reps").fill(reps);
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-done").click();
   await expect(page.getByTestId("committed-0")).toBeVisible();
 }
 
