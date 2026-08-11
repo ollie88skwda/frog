@@ -404,6 +404,24 @@
   animation: commit-flash 480ms var(--ease-out-quad);
 }
 
+/* The rest stopwatch's live dot — the one "something is running" signal on
+   the session screen. Opacity-only, and honours reduced-motion. */
+@keyframes rest-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+@utility rest-pulse {
+  animation: rest-pulse 1.4s var(--ease-out-quad) infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 /* Floating-layer entrance: fade + 2px rise, 160ms out-quad. */
 @keyframes float-in {
   from {

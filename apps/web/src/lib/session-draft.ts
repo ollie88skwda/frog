@@ -1,4 +1,5 @@
-import type { Laterality, SetType } from "@frog/core";
+import type { SetType } from "@frog/core";
+import type { LatMode } from "@/components/session/shared";
 
 // Per-block uncommitted draft persistence. The active (unlogged) row's
 // keystrokes are mirrored to localStorage keyed by session_exercise id, so a
@@ -25,10 +26,13 @@ export type DraftSnapshot = {
   rReps?: string;
   rDuration?: string;
   rDistance?: string;
-  // Per-set laterality override ("just this one set") — persisted so a reload
-  // restores the ᴿ line and the right-side keystrokes it protects. Null = no
-  // override, the exercise's own laterality applies.
-  laterality?: Laterality | null;
+  // Per-set laterality (BOTH · L · R · L+R) — persisted so a reload restores
+  // the ᴿ panel and the right-side keystrokes it protects. Absent = fall back
+  // to the routine's per-set prescription / the exercise default.
+  latMode?: LatMode;
+  // Same-weight link for an L+R set (default on; false = the ᴿ weight is its
+  // own value).
+  linked?: boolean;
 };
 
 const PREFIX = "frog.sdraft.";
@@ -71,7 +75,8 @@ export function saveDraft(seId: string, snapshot: DraftSnapshot): void {
       !snapshot.rReps &&
       !snapshot.rDuration &&
       !snapshot.rDistance &&
-      !snapshot.laterality;
+      (snapshot.latMode ?? "both") === "both" &&
+      snapshot.linked !== false;
     if (empty) {
       clearDraft(seId);
       return;

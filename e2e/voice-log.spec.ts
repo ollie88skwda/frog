@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   rowCount,
   signIn,
   waitForExercise,
@@ -137,12 +138,11 @@ test.beforeEach(async ({ page }) => {
   await ensureExercise(page, EX);
 });
 
-test("spoken set fills the matching block's active row and never commits it", async ({
+test("a spoken set points the logger at the matching exercise and fills it, without committing", async ({
   page,
 }) => {
   await startSession(page, [EX, OTHER]);
   const target = page.getByTestId(`block-${EX}`);
-  const untouched = page.getByTestId(`block-${OTHER}`);
   const before = await rowCount(page, "set_logs");
 
   await page.getByTestId("voice-log-mic").click();
@@ -156,15 +156,19 @@ test("spoken set fills the matching block's active row and never commits it", as
     window.__voice.say("rear delt flies 250 lbs for 5 reps"),
   );
 
-  // Fuzzy match ("flies" → "Flyes") lands on the right block, and only it.
-  await expect(target.getByTestId("set-0-weight")).toHaveValue("250");
-  await expect(target.getByTestId("set-0-reps")).toHaveValue("5");
-  await expect(untouched.getByTestId("set-0-weight")).toHaveValue("");
-  await expect(untouched.getByTestId("set-0-reps")).toHaveValue("");
+  // Fuzzy match ("flies" → "Flyes") repoints the one logger at that exercise
+  // and opens it with the values in place.
+  await expect(page.getByTestId("logger-peek")).toContainText(EX);
+  await pullUpLogger(page);
+  await expect(page.getByTestId("set-0-weight")).toHaveValue("250");
+  await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
   await shot(page, "02-filled-not-committed");
 
-  // The filled row is a draft: nothing was written and no committed row exists.
+  // Nothing was written and no committed row exists in either ledger section.
   await expect(target.getByTestId("committed-0")).toHaveCount(0);
+  await expect(
+    page.getByTestId(`block-${OTHER}`).getByTestId("committed-0"),
+  ).toHaveCount(0);
   await expect(page.getByTestId("voice-log-mic")).toHaveAttribute(
     "aria-pressed",
     "false",
@@ -177,7 +181,7 @@ test("spoken set fills the matching block's active row and never commits it", as
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // Committing stays an explicit user action.
-  await target.getByTestId("set-0-add").click();
+  await page.getByTestId("set-0-add").click();
   await expect(target.getByTestId("committed-0")).toBeVisible();
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
   await expect(target.getByTestId("committed-0-weight")).toHaveText("250");
@@ -192,15 +196,15 @@ test("a unitless spoken weight uses the block's own unit override, not the sessi
   // lbs in the block's own column, not 250 kg re-displayed as 551.5 lbs.
   await page.addInitScript(() => localStorage.setItem("unit", "kg"));
   await startSession(page, [EX]);
-  const target = page.getByTestId(`block-${EX}`);
-  await page.getByTestId(`block-${EX}-unit`).click();
+  await page.getByTestId(`block-${EX}-menu`).click();
   await page.getByTestId(`block-${EX}-unit-lb`).click();
-  await expect(page.getByTestId(`block-${EX}-unit`)).toContainText("lbs");
+  await pullUpLogger(page);
+  await expect(page.getByTestId("set-0-weight-unit")).toContainText("lbs");
 
   await speak(page, "rear delt flies 250 for 5 reps");
 
-  await expect(target.getByTestId("set-0-weight")).toHaveValue("250");
-  await expect(target.getByTestId("set-0-reps")).toHaveValue("5");
+  await expect(page.getByTestId("set-0-weight")).toHaveValue("250");
+  await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
   await shot(page, "05-block-unit-override");
 });
 
@@ -208,7 +212,6 @@ test("an unmatched name opens the in-session picker, and a blocked mic says so",
   page,
 }) => {
   await startSession(page, [EX, OTHER]);
-  const picked = page.getByTestId(`block-${OTHER}`);
 
   await speak(page, "incline dumbbell press 135 for 8");
 
@@ -222,9 +225,13 @@ test("an unmatched name opens the in-session picker, and a blocked mic says so",
   await shot(page, "06-picker-fallback");
 
   await page.getByTestId(`voice-pick-${OTHER}`).click();
-  await expect(picked.getByTestId("set-0-weight")).toHaveValue("135");
-  await expect(picked.getByTestId("set-0-reps")).toHaveValue("8");
-  await expect(picked.getByTestId("committed-0")).toHaveCount(0);
+  await expect(page.getByTestId("logger-peek")).toContainText(OTHER);
+  await pullUpLogger(page);
+  await expect(page.getByTestId("set-0-weight")).toHaveValue("135");
+  await expect(page.getByTestId("set-0-reps")).toHaveValue("8");
+  await expect(
+    page.getByTestId(`block-${OTHER}`).getByTestId("committed-0"),
+  ).toHaveCount(0);
   await shot(page, "07-picked-block-filled");
 
   // A denied mic reads as denied — not as "didn't catch that", which would

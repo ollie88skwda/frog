@@ -145,3 +145,46 @@ export async function rowCount(page: Page, table: string): Promise<number> {
     return count ?? 0;
   }, table);
 }
+
+// --- the session's split read/write surfaces (redesign option E) ------------
+// The ledger (`block-<name>` sections) is read-only; every input lives in the
+// one logger drawer at the bottom, which points at a single exercise at a
+// time. So a spec that wants to type has to point the logger first — these
+// three helpers are how, and nothing else should reach into the drawer's
+// internals.
+
+/** Points the logger at an exercise and pulls it open (also ends any rest). */
+export async function openLogger(page: Page, exerciseName: string) {
+  await page.getByTestId(`block-${exerciseName}-open`).click();
+  await expect(page.getByTestId("session-logger")).toHaveAttribute(
+    "data-open",
+    "1",
+  );
+}
+
+/** Pulls the logger open on whatever exercise it already points at. The
+ * drawer closes after every commit, so this runs before each new set. */
+export async function pullUpLogger(page: Page) {
+  const logger = page.getByTestId("session-logger");
+  await expect(logger).toBeAttached();
+  if ((await logger.getAttribute("data-open")) === "1") return;
+  // While a rest stopwatch is running the bar IS the stopwatch — pulling it
+  // up is what ends the rest.
+  const resting = page.getByTestId("rest-open");
+  if (await resting.count()) await resting.click();
+  else await page.getByTestId("logger-peek").click();
+  await expect(logger).toHaveAttribute("data-open", "1");
+}
+
+/** Fills the logger's fields for set `index` and commits it. */
+export async function logSet(
+  page: Page,
+  index: number,
+  values: Partial<Record<"weight" | "reps" | "duration" | "distance", string>>,
+) {
+  await pullUpLogger(page);
+  for (const [field, value] of Object.entries(values)) {
+    await page.getByTestId(`set-${index}-${field}`).fill(value);
+  }
+  await page.getByTestId(`set-${index}-add`).click();
+}

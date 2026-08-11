@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -105,7 +106,7 @@ test("machine from catalog: settings remembered into the session setup strip", a
   await expect(strip).toBeVisible();
   await expect(strip).toContainText("Seat height 4");
 
-  // Edit in the dialog → persists (machine row is the memory).
+  // Tapping the chip opens the machine dialog on its remembered setup.
   await strip.click();
   await page.getByTestId(`setting-value-${MACHINE}-Seat height`).fill("5");
   await page.keyboard.press("Escape");
@@ -120,6 +121,7 @@ test("RIR InfoTip opens the lesson", async ({ page }) => {
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId("pick-exercise-Squat").click();
+  await pullUpLogger(page);
   await page.getByTestId("set-0-more").click();
   await page.getByTestId("infotip-rir").click();
   await expect(page.getByText("RIR — reps in reserve")).toBeVisible();

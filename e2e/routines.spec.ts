@@ -2,7 +2,9 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   createExercise,
   EMAIL,
+  openLogger,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -105,18 +107,21 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
 
-  // Set 0 draft: reps seeded from the fixed target, weight blank (never
-  // authored). PREVIOUS is blank too (never logged).
+  // Logger set 1: reps seeded from the fixed target, weight blank (never
+  // authored). The reference line shows the TARGET and no LAST (never logged).
+  await pullUpLogger(page);
   await expect(page.getByTestId("set-0-weight")).toHaveValue("");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
-  await expect(page.getByTestId("set-0-previous")).toHaveText("—");
+  await expect(page.getByTestId("logger-target")).toHaveText("5");
+  await expect(page.getByTestId("logger-last")).toHaveCount(0);
 
   // Perform set 0 at 65.
   await page.getByTestId("set-0-weight").fill("65");
   await page.getByTestId("set-0-add").click();
   await expect(page.getByTestId("committed-0")).toBeVisible();
 
-  // Set 1 draft: weight and reps both blank for the 8–12 range.
+  // Logger set 2: weight and reps both blank for the 8–12 range.
+  await pullUpLogger(page);
   await expect(page.getByTestId("set-1-weight")).toHaveValue("");
   await expect(page.getByTestId("set-1-reps")).toHaveValue("");
   await page.getByTestId("set-1-weight").fill("50");
@@ -173,6 +178,7 @@ test("start routine still prefills when the session row resolves after its exerc
 
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
+  await pullUpLogger(page);
   await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
 });
 
@@ -364,12 +370,13 @@ test("routines-page routine menu flips upward when it would render below the fol
   expect(popupBox?.y).toBeGreaterThanOrEqual(0);
 });
 
-// Regression: starting a routine with N configured sets used to render only
-// the one active (currently-being-logged) row — the other N-1 were invisible
-// until each prior set was logged, which read as "the routine only kept 1 of
-// my 5 sets." All N are now visible immediately: one editable active row plus
-// read-only "upcoming" previews for the rest, counting down as sets are logged.
-test("start routine materializes every configured set as a visible row, not just the active one", async ({
+// Regression, re-aimed for the ledger/logger split: the ledger only ever
+// records what happened, so a routine's not-yet-performed sets are no longer
+// preview ROWS. What must still be visible with zero user action is how many
+// sets the routine prescribed (the section's `0/5` count) and what the next
+// one asks for (the logger's TARGET reference line) — the original bug ("the
+// routine only kept 1 of my 5 sets") stays impossible.
+test("start routine shows the full prescribed set count and the next set's target", async ({
   page,
 }) => {
   const EX = `MaterializeEx ${Date.now()}`;
@@ -397,24 +404,25 @@ test("start routine materializes every configured set as a visible row, not just
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
 
-  // Set 0 is the active, editable row; sets 1-4 are read-only upcoming
-  // previews — all 5 configured sets are on screen with zero user action.
-  await expect(page.getByTestId("set-0-reps")).toBeVisible();
-  for (let i = 1; i < 5; i++) {
-    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
-  }
+  // All 5 prescribed sets are accounted for immediately, and the logger's
+  // reference line carries the range for the one being logged.
+  await expect(page.getByTestId(`block-${EX}-count`)).toHaveText("0/5");
+  await expect(page.getByTestId("logger-target")).toHaveText("6–8");
+  await pullUpLogger(page);
+  await expect(page.getByTestId("set-0-reps")).toHaveAttribute(
+    "placeholder",
+    "6–8",
+  );
 
-  // Logging set 0 advances the active row to index 1 and drops it from the
-  // upcoming list — the previously-seeded target isn't left behind or
-  // duplicated, and it isn't something the user had to re-add by hand.
+  // Logging set 1 advances the logger to set 2 and moves the count on; the
+  // remaining prescription is neither lost nor duplicated.
   await page.getByTestId("set-0-reps").fill("7");
   await page.getByTestId("set-0-add").click();
   await expect(page.getByTestId("committed-0")).toBeVisible();
-  await expect(page.getByTestId("set-1-reps")).toBeVisible();
-  await expect(page.getByTestId("upcoming-1-reps")).toHaveCount(0);
-  for (let i = 2; i < 5; i++) {
-    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
-  }
+  await expect(page.getByTestId(`block-${EX}-count`)).toHaveText("1/5");
+  await pullUpLogger(page);
+  await expect(page.getByTestId("set-1-add")).toContainText("Log set 2");
+  await expect(page.getByTestId("logger-target")).toHaveText("6–8");
 });
 
 // Routine editor ↔ session parity (UI feedback batch 8, notes 10/13): the
@@ -495,15 +503,18 @@ test("exercise menu laterality/warm-up/superset round-trip into the session", as
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
   const sessionId = page.url().split("/session/")[1];
-  // Both exercises' blocks render; scope to the first block.
-  await expect(
-    page.locator('[data-testid^="block-"]').first().getByTestId("set-0-type"),
-  ).toHaveText("Wᴸ");
-  const block = page.locator('[data-testid^="block-"]').first();
-  await block.getByTestId("set-0-weight").fill("20");
-  await block.getByTestId("set-0-reps").fill("8");
-  await block.getByTestId("set-0-right-reps").fill("8");
-  await block.getByTestId("set-0-add").click();
+  // Both exercises' ledger sections render; the logger opens on the first,
+  // seeded warm-up + L+R from the routine's per-set prescription.
+  await openLogger(page, EX1);
+  await expect(page.getByTestId("set-0-type")).toHaveText("W");
+  await expect(page.getByTestId("set-0-lat-pair")).toHaveAttribute(
+    "data-state",
+    "on",
+  );
+  await page.getByTestId("set-0-weight").fill("20");
+  await page.getByTestId("set-0-reps").fill("8");
+  await page.getByTestId("set-0-right-reps").fill("8");
+  await page.getByTestId("set-0-add").click();
   await expect(page.getByTestId("committed-0")).toBeVisible();
   // Horizontal pair (batch 8): the ᴿ side renders inside the same stripe,
   // its cells carrying the committed-0-right-* ids.

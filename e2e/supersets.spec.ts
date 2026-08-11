@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -137,10 +138,12 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
   });
 
   // Complete a set in A → the view scrolls to B (the next superset member).
-  const blockA = page.getByTestId(`block-${A}`);
-  await blockA.getByTestId("set-0-weight").fill("100");
-  await blockA.getByTestId("set-0-reps").fill("5");
-  await blockA.getByTestId("set-0-add").click();
+  // The logger writes for whichever exercise it points at, so the set goes to
+  // A by pointing it there first.
+  await openLogger(page, A);
+  await page.getByTestId("set-0-weight").fill("100");
+  await page.getByTestId("set-0-reps").fill("5");
+  await page.getByTestId("set-0-add").click();
 
   await expect
     .poll(() =>
@@ -170,12 +173,9 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
     (window as unknown as { __scrolled: (string | null)[] }).__scrolled = [];
   });
   await page.reload();
-  const blockA2 = page.getByTestId(`block-${A}`);
-  // No auto-advance: the reloaded block has one committed set and no open
-  // draft (nothing was typed into one before reloading) — open it explicitly.
-  await blockA2.getByTestId("set-1-add").click();
-  await blockA2.getByTestId("set-1-weight").fill("100");
-  await blockA2.getByTestId("set-1-reps").fill("5");
+  await openLogger(page, A);
+  await page.getByTestId("set-1-weight").fill("100");
+  await page.getByTestId("set-1-reps").fill("5");
   // Re-install the spy (reload cleared it).
   await page.evaluate(() => {
     (window as unknown as { __scrolled: (string | null)[] }).__scrolled = [];
@@ -190,7 +190,7 @@ test("Smart Superset Scrolling advances to the next member (and respects the off
       return (orig as (...a: unknown[]) => void).apply(this, args);
     };
   });
-  await blockA2.getByTestId("set-1-add").click();
+  await page.getByTestId("set-1-add").click();
   await expect(
     page.getByTestId(`block-${A}`).getByTestId("committed-1"),
   ).toBeVisible();

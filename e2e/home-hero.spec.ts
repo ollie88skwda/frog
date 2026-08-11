@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -124,6 +125,7 @@ test("the hero names today's routine, previews it, and starts it in one tap", as
   await page.getByTestId("hero-resume-btn").click();
   await expect(page).toHaveURL(/\/session\//);
 
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("60");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-add").click();

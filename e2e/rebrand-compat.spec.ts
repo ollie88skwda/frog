@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   rowCount,
   signIn,
   waitForExercise,
@@ -45,6 +46,7 @@ test("a pre-rename set draft survives the rebrand and dies on commit", async ({
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("142.5");
   await page.getByTestId("set-0-reps").fill("7");
   await expect.poll(() => draftKeys(page)).toHaveLength(1);
@@ -67,6 +69,7 @@ test("a pre-rename set draft survives the rebrand and dies on commit", async ({
   );
 
   await page.reload();
+  await pullUpLogger(page);
   await expect(page.getByTestId("set-0-weight")).toHaveValue("137.5");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("7");
   await page.screenshot({ path: testInfo.outputPath("draft-restored.png") });
@@ -81,7 +84,9 @@ test("a pre-rename set draft survives the rebrand and dies on commit", async ({
   await page.reload();
   // No auto-advance: the next draft only appears once explicitly opened —
   // and once it is, it must not inherit anything from the stale legacy blob.
+  await pullUpLogger(page);
   await page.getByTestId("set-1-add").click();
+  await pullUpLogger(page);
   await expect(page.getByTestId("set-1-weight")).toHaveValue("");
   await expect.poll(() => draftKeys(page)).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("draft-cleared.png") });

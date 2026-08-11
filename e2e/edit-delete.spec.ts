@@ -4,6 +4,7 @@ import {
   EMAIL,
   liveRowCount,
   PASSWORD,
+  pullUpLogger,
   rowCount,
   signIn,
   waitForExercise,
@@ -35,11 +36,13 @@ test("edit a committed set; delete a set; both survive reload", async ({
 
   // Log two sets — with no auto-advance, the block-level "Add set" button
   // opens the next draft between commits.
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-reps").press("Enter");
   await expect(page.getByTestId("committed-0-type")).toBeVisible();
   await page.getByTestId("set-1-add").click();
+  await pullUpLogger(page);
   await page.getByTestId("set-1-weight").fill("110");
   await page.getByTestId("set-1-reps").fill("3");
   await page.getByTestId("set-1-reps").press("Enter");

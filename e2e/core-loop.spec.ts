@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   rowCount,
   signIn,
   waitForExercise,
@@ -35,6 +36,7 @@ test("core loop: add exercise, pick in session, persistence", async ({
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${EX}`).click();
+  await pullUpLogger(page);
   await expect(page.getByTestId("set-0-weight")).toBeVisible();
   await expect.poll(() => rowCount(page, "sessions")).toBeGreaterThanOrEqual(1);
   await expect
@@ -57,26 +59,31 @@ test("log sets persists to set_logs, and ghost prefill shows the prior session",
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 
-  // Session 1: log one set (135 x 5) — row commits on Enter once both are set.
+  // Session 1: log one set (135 x 5) — Enter in the logger commits it.
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   const before = await rowCount(page, "set_logs");
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("135");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-reps").press("Enter");
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
 
-  // The committed row renders; no new draft row auto-spawns — logging a set
-  // never auto-adds the next one, only an explicit "Add set" tap does.
+  // The committed row lands in the ledger and the logger advances to set 2 —
+  // one drawer, always pointed at the next set (there is no draft row).
   await expect(page.getByTestId("committed-0-type")).toBeVisible();
-  await expect(page.getByTestId("set-1-weight")).not.toBeVisible();
-  await expect(page.getByTestId("set-1-add")).toBeVisible();
+  await expect(page.getByTestId("set-1-add")).toContainText("Log set 2");
+  await expect(page.getByTestId("session-logger")).toHaveAttribute(
+    "data-open",
+    "0",
+  );
 
   // Session 2: ghost prefill surfaces the prior session's values as placeholders.
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
+  await pullUpLogger(page);
   await expect(page.getByTestId("set-0-weight")).toHaveAttribute(
     "placeholder",
     "135",

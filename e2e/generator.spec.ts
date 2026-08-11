@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn } from "./helpers";
+import { EMAIL, PASSWORD, pullUpLogger, signIn } from "./helpers";
 
 // M11 Trainer: answer the questionnaire → a generated program materializes into
 // a folder of routines + an active `programs` row; the Next-workout card starts
@@ -60,6 +60,7 @@ test("questionnaire generates a program and starts the next workout prefilled", 
   await page.getByTestId("start-next-workout-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   // The first exercise's draft row is present (rep-range target seeded).
+  await pullUpLogger(page);
   await expect(page.getByTestId("set-0-reps").first()).toBeVisible();
 
   // The session carries routine provenance and at least one exercise block.

@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -17,6 +18,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function logFirstSet(page: Page, weight: string, reps: string) {
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill(weight);
   await page.getByTestId("set-0-reps").fill(reps);
   await page.getByTestId("set-0-add").click();

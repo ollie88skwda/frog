@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import {
+  EMAIL,
+  PASSWORD,
+  pullUpLogger,
+  rowCount,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // Radix Select shows option labels, not values (and @frog/core isn't resolvable
 // from e2e/), so map the exercise-type values this spec uses to their labels.
@@ -46,6 +53,7 @@ test("duration exercise logs a typed m:ss time and shows the inline timer", asyn
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
   // Duration column (not weight/reps) with a stopwatch control.
+  await pullUpLogger(page);
   await expect(page.getByTestId("set-0-duration")).toBeVisible();
   await expect(page.getByTestId("set-0-timer")).toBeVisible();
   await expect(page.getByTestId("set-0-weight")).toBeHidden();
@@ -74,15 +82,18 @@ test("weighted-bodyweight exercise shows a +weight header and per-exercise unit 
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
-  // Added-weight header carries the "+" prefix; reps column is present.
-  const unitHeader = page.getByTestId(`block-${EX}-unit`);
-  await expect(unitHeader).toContainText("+");
+  // Added-weight label on the logger's weight field carries the "+" prefix;
+  // the reps field is present.
+  await pullUpLogger(page);
+  const unitLabel = page.getByTestId("set-0-weight-unit");
+  await expect(unitLabel).toContainText("+");
   await expect(page.getByTestId("set-0-reps")).toBeVisible();
 
-  // Override this exercise to kg → header reads +kg regardless of global unit.
-  await unitHeader.click();
+  // Override this exercise to kg (ledger section ⋯ → Weight unit) → the
+  // logger's label reads +kg regardless of the global unit.
+  await page.getByTestId(`block-${EX}-menu`).click();
   await page.getByTestId(`block-${EX}-unit-kg`).click();
-  await expect(unitHeader).toContainText("+kg");
+  await expect(unitLabel).toContainText("+kg");
 
   // A logged set survives with the override in place.
   await page.getByTestId("set-0-weight").fill("20");

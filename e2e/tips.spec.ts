@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { signIn } from "./helpers";
+import { pullUpLogger, signIn } from "./helpers";
 
 // /tips browse screen: reachable from the ⌘K palette and from Settings (the
 // keyboard-free path), renders every LESSONS entry, and browsing marks lessons
@@ -24,6 +24,7 @@ test("/tips lists lessons and browsing clears the InfoTip dot", async ({
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId("pick-exercise-Squat").click();
+  await pullUpLogger(page);
   await page.getByTestId("set-0-more").click();
   const tip = page.getByTestId("infotip-rir");
   await expect(tip).toBeVisible();

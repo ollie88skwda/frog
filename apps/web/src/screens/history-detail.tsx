@@ -14,6 +14,7 @@ import { ArrowLeft, Copy, ListPlus, Share2, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router";
 import { PostSaveSummary } from "@/components/post-save-summary";
+import type { SeedSet } from "@/components/session/shared";
 import { SessionPhotoCarousel } from "@/components/session-photos";
 import { ShareSheet } from "@/components/share-sheet";
 import { Button } from "@/components/ui/button";
@@ -36,7 +37,6 @@ import { sessionConditionsLine } from "@/lib/share/conditions";
 import { ordinalFor } from "@/lib/share/ordinal";
 import { useLatestBodyweightQuery, useMuscleMap } from "@/lib/stats-queries";
 import { useVoice } from "@/lib/voice";
-import type { SeedSet } from "./session";
 
 /** Average rest (mm:ss) across a block's sets, or null if none recorded. */
 function avgRestLabel(sets: { restSec: number | null }[]): string | null {

@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -33,8 +34,7 @@ test("mid-logging: an RIR range fills the collapsed badge and commits as a pair"
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
-  // Weight only, so far — auto-checkoff (weight+reps both filled) hasn't
-  // armed yet, so opening the details sheet next can't race it.
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
 
   await page.getByTestId("set-0-more").click();
@@ -43,10 +43,8 @@ test("mid-logging: an RIR range fills the collapsed badge and commits as a pair"
   await expect(page.getByTestId("set-0-note")).toBeVisible(); // sheet is open
   await page.keyboard.press("Escape");
 
-  // Live preview badge next to the details trigger, sheet closed.
-  await expect(page.locator(`[data-testid="block-${EX}"]`)).toContainText(
-    "@1-2",
-  );
+  // Live preview badge next to the logger's details trigger, sheet closed.
+  await expect(page.getByTestId("set-0-effort")).toHaveText("@1-2");
 
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-add").click();
@@ -66,6 +64,7 @@ test("min equal to max collapses to a single number, not a zero-width range", as
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-more").click();
   await page.getByTestId("set-0-rirmin").fill("2");
@@ -88,6 +87,7 @@ test("read-time compat: a legacy scalar-only rir reads back as min=max, never a 
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-add").click();

@@ -951,6 +951,9 @@ export function useGhost(
         excludeSessionExerciseId,
         routineId ?? undefined,
       ),
+    // The session screen calls this for whichever exercise the logger points
+    // at, which is nothing at all until a block exists.
+    enabled: exerciseId !== "",
     staleTime: Number.POSITIVE_INFINITY,
   });
 }

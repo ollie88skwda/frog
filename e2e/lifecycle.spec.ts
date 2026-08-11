@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   rowCount,
   signIn,
   waitForExercise,
@@ -39,6 +40,7 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   const sessionUrl = page.url();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   const before = await rowCount(page, "set_logs");
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-reps").press("Enter");

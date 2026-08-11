@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForConditionUntracked,
   waitForExercise,
@@ -205,6 +206,7 @@ test("custom set metric: create, enable on an exercise, log a value", async ({
   await page.getByTestId(`pick-exercise-${EX}`).click();
   // Reveal the custom-metric field via the ⋯ "add field" menu (named by
   // metric) — enabling it opens the big details sheet where it lives.
+  await pullUpLogger(page);
   await page.getByTestId("set-0-more").click();
   await page.getByRole("button", { name: METRIC, exact: true }).click();
 

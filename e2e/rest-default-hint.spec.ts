@@ -1,7 +1,13 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
+import {
+  EMAIL,
+  PASSWORD,
+  pullUpLogger,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // The exercise editor's "Rest — seconds" default stopped driving anything
 // in-workout when rest became an untargeted, up-counting stopwatch
@@ -106,6 +112,7 @@ test("a 600s Rest default does not target the in-workout stopwatch", async ({
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-add").click();

@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -131,6 +132,7 @@ test("Save as routine and Copy workout from history detail", async ({
   await page.goto(`/history/${id}`);
   await page.getByTestId("copy-workout-btn").click();
   await expect(page).toHaveURL(new RegExp(`/session/(?!${id})`));
+  await pullUpLogger(page);
   await expect(page.getByTestId("set-0-weight")).toHaveValue("100");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
 });

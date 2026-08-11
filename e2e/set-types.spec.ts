@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -66,13 +67,15 @@ test("assign W/F/D markers on the draft row, edit a committed type, persist acro
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
-  // Set 0 → Warm-up before committing.
+  // Set 0 → Warm-up before committing (the type control lives in the logger).
+  await pullUpLogger(page);
   await page.getByTestId("set-0-type").click();
   await page.getByTestId("set-0-type-warmup").click();
   await logSet(page, 0, "60", "12");
   await expect(page.getByTestId("committed-0-type")).toHaveText("W");
 
   // Set 1 → Drop.
+  await pullUpLogger(page);
   await page.getByTestId("set-1-type").click();
   await page.getByTestId("set-1-type-drop").click();
   await logSet(page, 1, "40", "10");

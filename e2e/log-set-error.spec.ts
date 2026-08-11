@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -41,6 +42,7 @@ test("a set write that exhausts its retries shows an error with a retry", async 
     await route.fulfill({ status: 500, body: "simulated outage" });
   });
 
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-done").click();
