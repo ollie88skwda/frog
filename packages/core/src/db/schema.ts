@@ -449,7 +449,14 @@ export const setLogs = pgTable(
     rirMax: integer("rir_max"),
     rpe: real("rpe"), // 1–10 perceived exertion (halves allowed); RIR ≈ 10 − RPE
     note: text("note"),
-    restSec: integer("rest_sec"), // seconds rested before this set (null = first/unknown)
+    // Seconds rested AFTER this set — the measured stopwatch reading, stamped
+    // on the set that earned it when the rest ends (docs/DECISIONS.md
+    // 2026-08-09). Null = not measured (last set, rest suppressed, or the
+    // clock was never stopped). Pre-2026-08-09 rows hold the old attribution
+    // ("rested BEFORE this set", derived from commit timestamps); only
+    // per-exercise/per-session averages read this column, so the aggregate is
+    // the same either way.
+    restSec: integer("rest_sec"),
     metricValues: jsonb("metric_values").$type<Record<string, unknown>>(), // {metricId: value}
     completed: boolean("completed").notNull().default(false),
     // Which limb this row records. Null = the whole set (bilateral, and every

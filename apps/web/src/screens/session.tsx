@@ -8,6 +8,7 @@ import {
   type ExerciseType,
   e1rmFromEffort,
   formatWeight,
+  type GhostSet,
   ghostFor,
   groupByPrimaryMuscle,
   groupSetsBySetNo,
@@ -228,6 +229,30 @@ function micErrorMessage(error: string): string {
       "Voice recognition unavailable — the frog's line dropped. Try again in a moment.",
     );
   return micUnheard();
+}
+
+// The most recent physical set of a block, shaped as a GhostSet so the
+// reference line formats it through `formatPrevious` like any other prior set
+// (a unilateral pair keeps its ᴿ side — reading the left row inline would
+// drop it).
+function lastCommittedAsGhost(committed: LoggedSet[]): GhostSet | null {
+  const rows = groupSetsBySetNo(committed).at(-1);
+  if (!rows) return null;
+  const [left, right] = rows;
+  return {
+    weightKg: left.weightKg,
+    reps: left.reps,
+    durationSec: left.durationSec,
+    distanceM: left.distanceM,
+    otherSide: right
+      ? {
+          weightKg: right.weightKg,
+          reps: right.reps,
+          durationSec: right.durationSec,
+          distanceM: right.distanceM,
+        }
+      : null,
+  };
 }
 
 export default function SessionScreen() {
@@ -1329,8 +1354,13 @@ export default function SessionScreen() {
       nextSeedType: seeds[index + 1]?.setType ?? null,
       ghost: ghostFor(activeGhost, index),
       hasGhost: activeGhost.length > 0,
+      // LAST prefers what this exercise did at this set index last time; with
+      // nothing there (a brand-new exercise, or a set beyond last session's
+      // count) it falls back to the set just logged in THIS session, which is
+      // the reference actually in mind mid-workout.
       previous:
-        previousCells(activeGhost, [], index + 1)[index]?.previous ?? null,
+        previousCells(activeGhost, [], index + 1)[index]?.previous ??
+        lastCommittedAsGhost(activeBlock.committed),
       enabledMetrics: metrics.filter(
         (m) =>
           m.scope === "set" && m.exerciseIds?.includes(activeBlock.exerciseId),

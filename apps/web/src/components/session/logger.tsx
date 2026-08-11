@@ -229,10 +229,9 @@ export function SessionLogger({
             ref={panelRef}
             className={cn(
               "mx-auto flex w-full max-w-2xl flex-col border-t border-border-strong bg-bg shadow-(--shadow-6)",
-              // Mobile: the floating tab island overlaps the drawer's bottom
-              // edge, so reserve its height rather than putting a control
-              // underneath it.
-              "pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-3",
+              // The open sheet covers the floating tab island, so it only has
+              // to clear the home indicator.
+              "pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
             )}
           >
             <PanelMeasure panelRef={panelRef} onMeasure={setContentPx} />
