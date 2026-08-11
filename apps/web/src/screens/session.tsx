@@ -83,11 +83,11 @@ import {
   filterExercises,
 } from "@/components/exercise-filter";
 import {
-  type LoggerHandle,
   type LoggerTarget,
   MachineChip,
   type RestState,
   SessionLogger,
+  type VoiceFill,
 } from "@/components/session/logger";
 import {
   ModifierField,
@@ -442,15 +442,12 @@ export default function SessionScreen() {
     [],
   );
 
-  // The one logger's imperative handle — the voice mic's target for applying a
-  // parsed weight/reps without going through onCommit. There is exactly one
-  // now (the logger points at one exercise at a time), so a voice match for
-  // another exercise repoints the logger first and applies on the next tick.
-  const loggerRef = useRef<LoggerHandle | null>(null);
-  const pendingVoice = useRef<{
-    seId: string;
-    parsed: ParsedSetUtterance;
-  } | null>(null);
+  // Voice fill: a parsed utterance is handed to the logger as DATA, not
+  // through an imperative handle. The logger's form only exists while the
+  // drawer is open, and Vaul mounts that content on its own schedule — a ref
+  // the screen pokes at is null exactly when the voice path needs it.
+  const voiceNonce = useRef(0);
+  const [voiceFill, setVoiceFill] = useState<VoiceFill | null>(null);
 
   // Voice logging: speak a full utterance ("bench press 135 lbs for 8 reps")
   // to fill the matching block's active row — parse → fuzzy-match against
@@ -518,32 +515,39 @@ export default function SessionScreen() {
   }
 
   function applyVoiceToBlock(seId: string, parsed: ParsedSetUtterance) {
-    // The logger points at one exercise at a time. A match for a different one
-    // repoints it first; the fill lands once that logger has mounted (the
-    // effect below), so the values never go to the wrong exercise.
-    if (seId !== activeSeId) {
-      pendingVoice.current = { seId, parsed };
-      setActiveSeId(seId);
-      setLoggerOpen(true);
-      return;
-    }
     const block = (voiceCtx.current.blocks ?? []).find((b) => b.seId === seId);
-    // False when the row's type has no field the utterance could fill (a weight
-    // against a bodyweight row, anything against a duration row) — say so
-    // rather than opening a logger that silently stayed empty.
-    const applied =
-      loggerRef.current?.applyVoice({
-        weightKg: voiceWeightKg(parsed, block?.exerciseId ?? null),
-        reps: parsed.reps,
-      }) ?? false;
-    setLoggerOpen(true);
-    if (!applied)
+    const ex = exercises.find((e) => e.id === block?.exerciseId);
+    const fields =
+      TYPE_FIELDS[(ex?.exerciseType as ExerciseType) ?? "weight_reps"];
+    const weightKg = voiceWeightKg(parsed, block?.exerciseId ?? null);
+    // Nothing lands when this exercise type has no field the utterance could
+    // fill (a weight against a bodyweight row, anything against a duration
+    // row) — say so rather than opening a logger that silently stayed empty.
+    if (
+      !(
+        (fields.weight && weightKg != null) ||
+        (fields.reps && parsed.reps != null)
+      )
+    ) {
       showMicMessage(
         `${block?.name ?? "That exercise"}: ${voice(
           "nothing there to fill.",
           "nothing there to fill — wrong shape of set.",
         )}`,
       );
+      return;
+    }
+    voiceNonce.current += 1;
+    setVoiceFill({
+      seId,
+      nonce: voiceNonce.current,
+      weightKg,
+      reps: parsed.reps,
+    });
+    setActiveSeId(seId);
+    setLoggerOpen(true);
+    // Speaking a set is typing a set — it ends the rest, same rule.
+    stopRest();
   }
 
   function handleVoiceResult(transcript: string) {
@@ -1352,15 +1356,6 @@ export default function SessionScreen() {
     unit,
   ]);
 
-  // A voice match for a different exercise repoints the logger first; the fill
-  // lands once that logger has mounted.
-  useEffect(() => {
-    const pending = pendingVoice.current;
-    if (!pending || pending.seId !== activeBlock?.seId) return;
-    pendingVoice.current = null;
-    applyVoiceToBlock(pending.seId, pending.parsed);
-  });
-
   // Structural drift vs the routine template — gates the Update-Routine /
   // Keep-Original prompt: an added ad-hoc exercise, a template exercise dropped
   // from the session, or extra sets logged beyond the template. Logging *fewer*
@@ -1794,8 +1789,10 @@ export default function SessionScreen() {
       {/* THE LOGGER — one persistent bottom drawer does all the writing, and
           its peek bar IS the rest stopwatch (R1). */}
       <SessionLogger
-        ref={loggerRef}
         target={loggerTarget}
+        voiceFill={
+          voiceFill && voiceFill.seId === activeBlock?.seId ? voiceFill : null
+        }
         rest={rest}
         open={loggerOpen}
         onOpenChange={(open) => {

@@ -82,10 +82,8 @@ test("a pre-rename set draft survives the rebrand and dies on commit", async ({
   await expect.poll(() => draftKeys(page)).toEqual([]);
 
   await page.reload();
-  // No auto-advance: the next draft only appears once explicitly opened —
-  // and once it is, it must not inherit anything from the stale legacy blob.
-  await pullUpLogger(page);
-  await page.getByTestId("set-1-add").click();
+  // The logger comes back up on the next set, and it must not inherit
+  // anything from the stale legacy draft blob.
   await pullUpLogger(page);
   await expect(page.getByTestId("set-1-weight")).toHaveValue("");
   await expect.poll(() => draftKeys(page)).toEqual([]);

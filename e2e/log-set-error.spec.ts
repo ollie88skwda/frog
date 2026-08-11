@@ -45,7 +45,7 @@ test("a set write that exhausts its retries shows an error with a retry", async 
   await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-done").click();
+  await page.getByTestId("set-0-add").click();
 
   // The optimistic row appears immediately regardless...
   await expect(page.getByTestId("committed-0")).toBeVisible();

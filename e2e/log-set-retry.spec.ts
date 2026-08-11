@@ -57,7 +57,7 @@ test("a retried log-set write after a lost response does not duplicate the set",
   await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-done").click();
+  await page.getByTestId("set-0-add").click();
 
   // The retry lands asynchronously (exponential backoff) — poll for it.
   await expect.poll(() => posts, { timeout: 15_000 }).toBeGreaterThanOrEqual(2);

@@ -90,9 +90,12 @@ test("weighted-bodyweight exercise shows a +weight header and per-exercise unit 
   await expect(page.getByTestId("set-0-reps")).toBeVisible();
 
   // Override this exercise to kg (ledger section ⋯ → Weight unit) → the
-  // logger's label reads +kg regardless of the global unit.
+  // logger's label reads +kg regardless of the global unit. The ledger is
+  // behind the open logger's overlay, so drop the drawer first.
+  await page.keyboard.press("Escape");
   await page.getByTestId(`block-${EX}-menu`).click();
   await page.getByTestId(`block-${EX}-unit-kg`).click();
+  await pullUpLogger(page);
   await expect(unitLabel).toContainText("+kg");
 
   // A logged set survives with the override in place.

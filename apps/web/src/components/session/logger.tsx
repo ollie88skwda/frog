@@ -24,10 +24,8 @@ import {
   Wrench,
 } from "lucide-react";
 import {
-  type Ref,
   type RefObject,
   useEffect,
-  useImperativeHandle,
   useMemo,
   useReducer,
   useRef,
@@ -110,10 +108,13 @@ export type RestState = {
   startedAt: number;
 };
 
-export type LoggerHandle = {
-  /** Fills weight/reps from a parsed voice utterance. False when this
-   * exercise type has no field the values could land in. */
-  applyVoice: (v: { weightKg: number | null; reps: number | null }) => boolean;
+/** A parsed voice utterance, handed to the logger as data. `nonce` makes a
+ * repeat of the same values a distinct fill. */
+export type VoiceFill = {
+  seId: string;
+  nonce: number;
+  weightKg: number | null;
+  reps: number | null;
 };
 
 export type LoggerTarget = {
@@ -140,6 +141,7 @@ export type LoggerTarget = {
 
 export function SessionLogger({
   target,
+  voiceFill,
   rest,
   open,
   onOpenChange,
@@ -151,9 +153,9 @@ export function SessionLogger({
   timerStartedAt,
   onToggleTimer,
   onCommit,
-  ref,
 }: {
   target: LoggerTarget | null;
+  voiceFill: VoiceFill | null;
   rest: RestState | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -165,7 +167,6 @@ export function SessionLogger({
   timerStartedAt: number | null;
   onToggleTimer: () => void;
   onCommit: (set: CommitInput, ctx: CommitCtx) => void;
-  ref: Ref<LoggerHandle>;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [viewportH, setViewportH] = useState(() =>
@@ -241,6 +242,7 @@ export function SessionLogger({
               <LoggerForm
                 key={`${target.seId}-${target.index}-${target.nonce}`}
                 target={target}
+                voiceFill={voiceFill}
                 onFocusChange={() => setSnap(1)}
                 onTypingStarted={onTypingStarted}
                 onOpenMachine={onOpenMachine}
@@ -249,7 +251,6 @@ export function SessionLogger({
                 timerStartedAt={timerStartedAt}
                 onToggleTimer={onToggleTimer}
                 onCommit={onCommit}
-                ref={ref}
               />
             )}
           </div>
@@ -449,6 +450,7 @@ export function MachineChip({
 // ---------------------------------------------------------------------------
 function LoggerForm({
   target,
+  voiceFill,
   onFocusChange,
   onTypingStarted,
   onOpenMachine,
@@ -457,9 +459,9 @@ function LoggerForm({
   timerStartedAt,
   onToggleTimer,
   onCommit,
-  ref,
 }: {
   target: LoggerTarget;
+  voiceFill: VoiceFill | null;
   /** Reports keyboard focus up so the drawer can go full-height. */
   onFocusChange: () => void;
   onTypingStarted: () => void;
@@ -469,7 +471,6 @@ function LoggerForm({
   timerStartedAt: number | null;
   onToggleTimer: () => void;
   onCommit: (set: CommitInput, ctx: CommitCtx) => void;
-  ref: Ref<LoggerHandle>;
 }) {
   const {
     seId,
@@ -595,20 +596,17 @@ function LoggerForm({
     linked,
   ]);
 
-  useImperativeHandle(ref, () => ({
-    applyVoice({ weightKg, reps: repsValue }) {
-      let applied = false;
-      if (f.weight && weightKg != null) {
-        setWeight(String(toDisplayWeight(weightKg, unit)));
-        applied = true;
-      }
-      if (f.reps && repsValue != null) {
-        setReps(String(repsValue));
-        applied = true;
-      }
-      return applied;
-    },
-  }));
+  // Voice fill lands here, not through a ref the screen pokes: this form is
+  // mounted and unmounted with the drawer, so an imperative handle is null
+  // exactly when the voice path needs it.
+  const appliedVoice = useRef(0);
+  useEffect(() => {
+    if (!voiceFill || appliedVoice.current === voiceFill.nonce) return;
+    appliedVoice.current = voiceFill.nonce;
+    if (f.weight && voiceFill.weightKg != null)
+      setWeight(String(toDisplayWeight(voiceFill.weightKg, unit)));
+    if (f.reps && voiceFill.reps != null) setReps(String(voiceFill.reps));
+  }, [voiceFill, f.weight, f.reps, unit]);
 
   useEffect(() => {
     if (!timerRunning) return;

@@ -105,7 +105,18 @@ async function startSession(page: Page, names: string[]) {
   }
 }
 
+// The mic lives in the session header, behind the logger drawer's overlay
+// while it is open — a spoken set opens the drawer, so speaking again means
+// dropping it back to peek first.
+async function closeLogger(page: Page) {
+  const logger = page.getByTestId("session-logger");
+  if ((await logger.getAttribute("data-open")) !== "1") return;
+  await page.keyboard.press("Escape");
+  await expect(logger).toHaveAttribute("data-open", "0");
+}
+
 async function speak(page: Page, transcript: string) {
+  await closeLogger(page);
   await page.getByTestId("voice-log-mic").click();
   await expect(page.getByTestId("voice-log-mic")).toHaveAttribute(
     "aria-pressed",
@@ -158,7 +169,7 @@ test("a spoken set points the logger at the matching exercise and fills it, with
 
   // Fuzzy match ("flies" → "Flyes") repoints the one logger at that exercise
   // and opens it with the values in place.
-  await expect(page.getByTestId("logger-peek")).toContainText(EX);
+  await expect(page.getByTestId("logger-title")).toContainText(EX);
   await pullUpLogger(page);
   await expect(page.getByTestId("set-0-weight")).toHaveValue("250");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
@@ -202,6 +213,7 @@ test("a unitless spoken weight uses the block's own unit override, not the sessi
   await expect(page.getByTestId("set-0-weight-unit")).toContainText("lbs");
 
   await speak(page, "rear delt flies 250 for 5 reps");
+  await expect(page.getByTestId("logger-title")).toContainText(EX);
 
   await expect(page.getByTestId("set-0-weight")).toHaveValue("250");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
@@ -225,7 +237,7 @@ test("an unmatched name opens the in-session picker, and a blocked mic says so",
   await shot(page, "06-picker-fallback");
 
   await page.getByTestId(`voice-pick-${OTHER}`).click();
-  await expect(page.getByTestId("logger-peek")).toContainText(OTHER);
+  await expect(page.getByTestId("logger-title")).toContainText(OTHER);
   await pullUpLogger(page);
   await expect(page.getByTestId("set-0-weight")).toHaveValue("135");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("8");
@@ -236,6 +248,7 @@ test("an unmatched name opens the in-session picker, and a blocked mic says so",
 
   // A denied mic reads as denied — not as "didn't catch that", which would
   // invite an endless retry.
+  await closeLogger(page);
   await page.getByTestId("voice-log-mic").click();
   await page.evaluate(() => window.__voice.fail("not-allowed"));
   await expect(page.getByRole("status")).toHaveText(/Microphone blocked/);

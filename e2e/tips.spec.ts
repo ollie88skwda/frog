@@ -63,6 +63,7 @@ test("/tips lists lessons and browsing clears the InfoTip dot", async ({
   // to reach the InfoTip.
   await page.goBack();
   await expect(page).toHaveURL(/\/session\//);
+  await pullUpLogger(page);
   await page.getByTestId("set-0-more").click();
   await expect(page.getByTestId("infotip-rir")).toBeVisible();
   await expect(
