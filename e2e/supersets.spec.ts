@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   createExercise,
   EMAIL,
+  openLogger,
   PASSWORD,
   signIn,
   waitForExercise,

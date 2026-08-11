@@ -24,6 +24,7 @@ async function logSet(
   weight: string,
   reps: string,
 ) {
+  await pullUpLogger(page);
   await page.getByTestId(`set-${index}-weight`).fill(weight);
   await page.getByTestId(`set-${index}-reps`).fill(reps);
   await page.getByTestId(`set-${index}-add`).click();

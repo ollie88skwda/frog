@@ -407,6 +407,7 @@ test("start routine shows the full prescribed set count and the next set's targe
   // All 5 prescribed sets are accounted for immediately, and the logger's
   // reference line carries the range for the one being logged.
   await expect(page.getByTestId(`block-${EX}-count`)).toHaveText("0/5");
+  await pullUpLogger(page);
   await expect(page.getByTestId("logger-target")).toHaveText("6–8");
   await pullUpLogger(page);
   await expect(page.getByTestId("set-0-reps")).toHaveAttribute(

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn } from "./helpers";
+import { EMAIL, PASSWORD, pullUpLogger, signIn } from "./helpers";
 
 // M8 statistics hub: log two sessions across different muscle groups, then the
 // /stats screen aggregates them — last-7-day heat map, sets-per-muscle chart
@@ -17,6 +17,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function logSet(page: Page, index: number, weight: string, reps: string) {
+  await pullUpLogger(page);
   await page.getByTestId(`set-${index}-weight`).fill(weight);
   await page.getByTestId(`set-${index}-reps`).fill(reps);
   await page.getByTestId(`set-${index}-add`).click();

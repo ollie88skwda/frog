@@ -97,24 +97,29 @@ test("machine from catalog: settings remembered into the session setup strip", a
     )
     .not.toBeNull();
 
-  // In a session, the setup strip shows the remembered settings.
+  // In a session, the ledger section's machine chip names the machine (R3:
+  // visible on the logging path, and on the record afterwards).
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${copy}`).click();
   const strip = page.getByTestId(`setup-strip-${copy}`);
   await expect(strip).toBeVisible();
-  await expect(strip).toContainText("Seat height 4");
+  await expect(strip).toContainText("Ultra Diverging Seated Row");
 
-  // Tapping the chip opens the machine dialog on its remembered setup.
+  // Tapping the chip opens the machine dialog on its remembered setup, which
+  // is where the settings are read and edited.
   await strip.click();
+  await expect(
+    page.getByTestId(`setting-value-${MACHINE}-Seat height`),
+  ).toHaveValue("4");
   await page.getByTestId(`setting-value-${MACHINE}-Seat height`).fill("5");
   await page.keyboard.press("Escape");
-  await expect(strip).toContainText("Seat height 5");
   await page.reload();
-  await expect(page.getByTestId(`setup-strip-${copy}`)).toContainText(
-    "Seat height 5",
-  );
+  await strip.click();
+  await expect(
+    page.getByTestId(`setting-value-${MACHINE}-Seat height`),
+  ).toHaveValue("5");
 });
 
 test("RIR InfoTip opens the lesson", async ({ page }) => {

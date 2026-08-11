@@ -5,6 +5,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -82,6 +83,7 @@ async function logSession(
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${name}`).click();
   for (const [i, value] of values.entries()) {
+    await pullUpLogger(page);
     await page.getByTestId(`set-${i}-${field}`).fill(value);
     await page.getByTestId(`set-${i}-add`).click();
     await expect(page.getByTestId(`committed-${i}-type`)).toBeVisible();
@@ -214,6 +216,7 @@ test("one layout engine paints every frame × ground of a session card", async (
     ["100", "8"],
     ["120", "3"],
   ].entries()) {
+    await pullUpLogger(page);
     await page.getByTestId(`set-${i}-weight`).fill(w);
     await page.getByTestId(`set-${i}-reps`).fill(r);
     await page.getByTestId(`set-${i}-add`).click();

@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -30,6 +31,7 @@ async function startSession(page: Page, name: string) {
 }
 
 async function commitSet(page: Page, n: number, weight: string) {
+  await pullUpLogger(page);
   await page.getByTestId(`set-${n}-weight`).fill(weight);
   await page.getByTestId(`set-${n}-reps`).fill("5");
   await page.getByTestId(`set-${n}-add`).click();

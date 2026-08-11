@@ -853,7 +853,11 @@ function LoggerForm({
     } as const;
     if (key === "weight")
       return (
-        <FieldBox key={key} label={labelFor("weight")}>
+        <FieldBox
+          key={key}
+          label={labelFor("weight")}
+          testId={`set-${index}-weight-unit`}
+        >
           <Field
             {...common}
             inputMode="decimal"
@@ -950,7 +954,11 @@ function LoggerForm({
     const common = { onFocus: onFieldFocus, onKeyDown } as const;
     if (key === "weight")
       return (
-        <FieldBox key={key} label={labelFor("weight")}>
+        <FieldBox
+          key={key}
+          label={labelFor("weight")}
+          testId={`set-${index}-right-weight-unit`}
+        >
           <Field
             {...common}
             inputMode="decimal"

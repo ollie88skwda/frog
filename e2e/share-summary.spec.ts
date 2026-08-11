@@ -5,6 +5,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -43,6 +44,7 @@ async function startAndLog(
   const id = page.url().split("/session/")[1];
   await page.getByTestId(`pick-exercise-${ex}`).click();
   for (let i = 0; i < sets.length; i++) {
+    await pullUpLogger(page);
     await page.getByTestId(`set-${i}-weight`).fill(sets[i][0]);
     await page.getByTestId(`set-${i}-reps`).fill(sets[i][1]);
     await page.getByTestId(`set-${i}-add`).click();
