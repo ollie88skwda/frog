@@ -153,6 +153,22 @@ export async function rowCount(page: Page, table: string): Promise<number> {
 // three helpers are how, and nothing else should reach into the drawer's
 // internals.
 
+/** The drawer animates to its snap point after `data-open` flips, so a click
+ * dispatched the moment it opens can land on a moving target. Wait for the
+ * panel to stop translating. */
+async function settled(page: Page) {
+  const drawer = page.getByTestId("logger-drawer");
+  await expect(drawer).toBeVisible();
+  await expect
+    .poll(async () => {
+      const a = (await drawer.boundingBox())?.y ?? -1;
+      await page.waitForTimeout(120);
+      const b = (await drawer.boundingBox())?.y ?? -2;
+      return a === b;
+    })
+    .toBe(true);
+}
+
 /** Points the logger at an exercise and pulls it open (also ends any rest). */
 export async function openLogger(page: Page, exerciseName: string) {
   await page.getByTestId(`block-${exerciseName}-open`).click();
@@ -160,6 +176,7 @@ export async function openLogger(page: Page, exerciseName: string) {
     "data-open",
     "1",
   );
+  await settled(page);
 }
 
 /** Pulls the logger open on whatever exercise it already points at. The
@@ -174,6 +191,7 @@ export async function pullUpLogger(page: Page) {
   if (await resting.count()) await resting.click();
   else await page.getByTestId("logger-peek").click();
   await expect(logger).toHaveAttribute("data-open", "1");
+  await settled(page);
 }
 
 /** Fills the logger's fields for set `index` and commits it. */
