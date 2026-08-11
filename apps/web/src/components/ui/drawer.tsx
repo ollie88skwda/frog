@@ -20,7 +20,7 @@ export function DrawerOverlay({
   return (
     <DrawerPrimitive.Overlay
       data-slot="drawer-overlay"
-      className={cn("fixed inset-0 z-40 bg-(--overlay)", className)}
+      className={cn("fixed inset-0 z-30 bg-(--overlay)", className)}
       {...props}
     />
   );
@@ -53,7 +53,7 @@ export function DrawerContent({
           // are computed against window.innerHeight, so a shorter element gets
           // translated clean off the screen. Only the top `snapPoint` px of
           // this element is ever on screen.
-          "fixed inset-x-0 bottom-0 z-30 flex h-full flex-col outline-none",
+          "fixed inset-x-0 bottom-0 z-40 flex h-full flex-col outline-none",
           className,
         )}
         {...props}

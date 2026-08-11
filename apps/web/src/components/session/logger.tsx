@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import {
   type Ref,
+  type RefObject,
   useEffect,
   useImperativeHandle,
   useMemo,
@@ -174,9 +175,6 @@ export function SessionLogger({
   // drawer is exactly as tall as what it has to show (mockup E2) rather than a
   // fixed fraction that clips the taller ᴸ/ᴿ layout.
   const [contentPx, setContentPx] = useState(360);
-  // A focused field takes the drawer to full height, so the on-screen keyboard
-  // can never cover the fields.
-  const [focused, setFocused] = useState(false);
 
   useEffect(() => {
     const onResize = () => setViewportH(window.innerHeight);
@@ -188,11 +186,20 @@ export function SessionLogger({
   const restSnap = `${restPx}px`;
   const snapPoints = useMemo(() => [restSnap, 1], [restSnap]);
 
-  // Closing always drops the keyboard state too, so re-opening starts from the
-  // content-sized snap rather than a stale full-height one.
+  // Plain controlled snap state. It must NOT be derived from another flag:
+  // Vaul reports its own snap changes through setActiveSnapPoint mid-animation,
+  // and a derived setter turns that into an oscillation the drawer never
+  // settles out of.
+  const [snap, setSnap] = useState<number | string>(restSnap);
+  // Re-measured content moves the resting snap; follow it unless the keyboard
+  // has taken the drawer to full height.
   useEffect(() => {
-    if (!open) setFocused(false);
-  }, [open]);
+    setSnap((s) => (s === 1 ? 1 : restSnap));
+  }, [restSnap]);
+  // Closing drops the keyboard height too, so re-opening starts content-sized.
+  useEffect(() => {
+    if (!open) setSnap(restSnap);
+  }, [open, restSnap]);
 
   return (
     <>
@@ -207,8 +214,8 @@ export function SessionLogger({
         open={open}
         onOpenChange={onOpenChange}
         snapPoints={snapPoints}
-        activeSnapPoint={focused ? 1 : restSnap}
-        setActiveSnapPoint={(value) => setFocused(value === 1)}
+        activeSnapPoint={snap}
+        setActiveSnapPoint={(value) => value != null && setSnap(value)}
         shouldScaleBackground={false}
       >
         <DrawerContent className="md:left-56" data-testid="logger-drawer">
@@ -218,10 +225,7 @@ export function SessionLogger({
               : "Log a set"}
           </DrawerTitle>
           <div
-            ref={(el) => {
-              panelRef.current = el;
-              if (el) setContentPx(el.scrollHeight);
-            }}
+            ref={panelRef}
             className={cn(
               "mx-auto flex w-full max-w-2xl flex-col border-t border-border-strong bg-bg shadow-(--shadow-6)",
               // Mobile: the floating tab island overlaps the drawer's bottom
@@ -230,13 +234,14 @@ export function SessionLogger({
               "pb-[calc(4.75rem+env(safe-area-inset-bottom))] md:pb-3",
             )}
           >
+            <PanelMeasure panelRef={panelRef} onMeasure={setContentPx} />
             <DrawerHandle />
             <LoggerHeader target={target} />
             {target && (
               <LoggerForm
                 key={`${target.seId}-${target.index}-${target.nonce}`}
                 target={target}
-                onFocusChange={setFocused}
+                onFocusChange={() => setSnap(1)}
                 onTypingStarted={onTypingStarted}
                 onOpenMachine={onOpenMachine}
                 onOpenPlates={onOpenPlates}
@@ -254,11 +259,36 @@ export function SessionLogger({
   );
 }
 
+/** Reports the drawer panel's natural height so the resting snap point is
+ * exactly as tall as the content (the ᴸ/ᴿ layout is taller than the plain
+ * one). Mounted with the drawer, so the observer's life matches the panel's. */
+function PanelMeasure({
+  panelRef,
+  onMeasure,
+}: {
+  panelRef: RefObject<HTMLDivElement | null>;
+  onMeasure: (px: number) => void;
+}) {
+  useEffect(() => {
+    const el = panelRef.current;
+    if (!el) return;
+    onMeasure(el.scrollHeight);
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => onMeasure(el.scrollHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [panelRef, onMeasure]);
+  return null;
+}
+
 /** The open drawer's own title row: what is being logged, and on what. */
 function LoggerHeader({ target }: { target: LoggerTarget | null }) {
   if (!target) return null;
   return (
-    <div className="flex items-center gap-2 px-3 pb-1">
+    <div
+      className="flex items-center gap-2 px-3 pb-1"
+      data-testid="logger-title"
+    >
       <span className="min-w-0 truncate text-sm font-semibold">
         {target.exerciseName}
       </span>
@@ -431,7 +461,7 @@ function LoggerForm({
 }: {
   target: LoggerTarget;
   /** Reports keyboard focus up so the drawer can go full-height. */
-  onFocusChange: (focused: boolean) => void;
+  onFocusChange: () => void;
   onTypingStarted: () => void;
   onOpenMachine: () => void;
   onOpenPlates: (target: number | null) => void;
@@ -516,7 +546,6 @@ function LoggerForm({
   const [lastAdded, setLastAdded] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [, tick] = useReducer((n: number) => n + 1, 0);
-  const formRef = useRef<HTMLDivElement>(null);
   const committed = useRef(false);
   // R1: the FIRST keystroke of the next set ends the rest. Once per form.
   const typedRef = useRef(false);
@@ -602,15 +631,7 @@ function LoggerForm({
   function onFieldFocus() {
     // Keyboard-safe: a focused field takes the drawer to full height, so the
     // on-screen keyboard can never cover what is being typed into.
-    onFocusChange(true);
-  }
-
-  // Focus leaving the fields (not moving between them) releases the
-  // full-height keyboard snap. `relatedTarget` inside the panel = still typing.
-  function onFieldBlur(e: React.FocusEvent<HTMLInputElement>) {
-    const next = e.relatedTarget as Node | null;
-    if (next && formRef.current?.contains(next)) return;
-    onFocusChange(false);
+    onFocusChange();
   }
 
   function toggleTimer() {
@@ -827,7 +848,6 @@ function LoggerForm({
     const enterKeyHint = last ? "done" : "next";
     const common = {
       onFocus: onFieldFocus,
-      onBlur: onFieldBlur,
       onKeyDown,
       enterKeyHint,
     } as const;
@@ -927,11 +947,7 @@ function LoggerForm({
   }
 
   function rightCell(key: ColKey) {
-    const common = {
-      onFocus: onFieldFocus,
-      onBlur: onFieldBlur,
-      onKeyDown,
-    } as const;
+    const common = { onFocus: onFieldFocus, onKeyDown } as const;
     if (key === "weight")
       return (
         <FieldBox key={key} label={labelFor("weight")}>
@@ -1018,7 +1034,6 @@ function LoggerForm({
 
   return (
     <div
-      ref={formRef}
       className="flex flex-col gap-2.5 px-3 pt-1 pb-2"
       data-testid="logger-body"
     >

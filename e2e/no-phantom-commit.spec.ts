@@ -3,6 +3,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   rowCount,
   signIn,
   waitForExercise,
@@ -38,8 +39,10 @@ test("leaving a half-filled logger does not commit a set", async ({ page }) => {
   await startWith(page, `Phantom ${Date.now()}`);
 
   const before = await rowCount(page, "set_logs");
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
-  await page.getByRole("heading", { level: 1 }).click();
+  // Leave the field without touching Log set — tap the drawer's own title.
+  await page.getByTestId("logger-title").click();
 
   await expect(page.getByTestId("set-0-weight")).toHaveValue("100");
   await expect(page.getByTestId("committed-0")).not.toBeVisible();
@@ -52,9 +55,10 @@ test("leaving a fully-filled logger does not commit a set either", async ({
   await startWith(page, `Checkoff ${Date.now()}`);
 
   const before = await rowCount(page, "set_logs");
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
-  await page.getByRole("heading", { level: 1 }).click();
+  await page.getByTestId("logger-title").click();
 
   // Both fields are filled — and still nothing is written until Log set.
   await expect(page.getByTestId("committed-0")).not.toBeVisible();
@@ -67,6 +71,7 @@ test("Log set commits the filled set", async ({ page }) => {
   await startWith(page, `Check ${Date.now()}`);
 
   const before = await rowCount(page, "set_logs");
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-add").click();
@@ -82,6 +87,7 @@ test("opening the set-details sheet does not commit the set", async ({
   await startWith(page, `Details ${Date.now()}`);
 
   const before = await rowCount(page, "set_logs");
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-more").click();
@@ -104,6 +110,7 @@ test("tapping the set-details sheet open on a touch device does not commit", asy
   await startWith(page, `DetailsTap ${Date.now()}`);
 
   const before = await rowCount(page, "set_logs");
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-more").tap();
@@ -122,6 +129,7 @@ test("switching the laterality toggle does not commit the set", async ({
   await startWith(page, `Lat ${Date.now()}`);
 
   const before = await rowCount(page, "set_logs");
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("40");
   await page.getByTestId("set-0-reps").fill("8");
   await page.getByTestId("set-0-lat-pair").click();
@@ -136,6 +144,7 @@ test("tapping Log set on a touch device commits exactly one set", async ({
   await startWith(page, `Tap ${Date.now()}`);
 
   const before = await rowCount(page, "set_logs");
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   await page.getByTestId("set-0-add").tap();

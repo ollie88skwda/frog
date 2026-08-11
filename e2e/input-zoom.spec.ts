@@ -9,6 +9,7 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
+  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
@@ -69,6 +70,7 @@ async function openLoggingRow(page: Page, name: string) {
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${name}`).click();
+  await pullUpLogger(page);
   await expect(page.getByTestId("set-0-weight")).toBeVisible();
 }
 
@@ -93,6 +95,7 @@ test("touch pointer: every visible form control computes to >= 16px", async ({
   await shot(page, testInfo, "touch-new-exercise-sheet.png");
 
   await openLoggingRow(page, EX);
+  await pullUpLogger(page);
   await page.getByTestId("set-0-weight").fill("100");
   await page.getByTestId("set-0-reps").fill("5");
   const logging = await formControls(page);
@@ -139,6 +142,7 @@ test.describe("mouse pointer (desktop) is untouched", () => {
     ).toBe(false);
 
     await openLoggingRow(page, `Desk ${Date.now()}`);
+    await pullUpLogger(page);
     await page.getByTestId("set-0-weight").fill("100");
     const controls = await formControls(page);
     await shot(page, testInfo, "desktop-logging-row.png");

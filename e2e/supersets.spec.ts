@@ -3,7 +3,6 @@ import {
   createExercise,
   EMAIL,
   PASSWORD,
-  pullUpLogger,
   signIn,
   waitForExercise,
 } from "./helpers";
