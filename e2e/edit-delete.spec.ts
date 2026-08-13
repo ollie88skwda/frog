@@ -59,9 +59,12 @@ test("edit a committed set; delete a set; both survive reload", async ({
   // "Confirm delete") actually deletes.
   await page.getByTestId("set-type-delete").click();
   await page.getByTestId("set-type-delete").click();
+  // Ad-hoc session (no routine), so there's no pre-rendered "todo" slot past
+  // the last committed set — deleting set 1 leaves set 0 as the only
+  // committed set, so slot 1 becomes the next set to log ("current").
   await expect(page.getByTestId("set-mark-1-state")).toHaveAttribute(
     "data-state",
-    "todo",
+    "current",
   );
   // The removal above is optimistic — wait for the soft delete to land
   // server-side, otherwise the reload can abort the in-flight request and the
@@ -74,7 +77,7 @@ test("edit a committed set; delete a set; both survive reload", async ({
   await expect(page.getByTestId("weight-field")).toHaveValue("105");
   await expect(page.getByTestId("set-mark-1-state")).toHaveAttribute(
     "data-state",
-    "todo",
+    "current",
   );
 });
 

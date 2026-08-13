@@ -50,7 +50,9 @@ test("warm-up marks a set, persists across reload, via the set-type menu", async
 });
 
 test("the set-type menu never offers Failure or Drop", async ({ page }) => {
-  const EX = await makeExercise(page, "SetTypeNoFailDrop");
+  // Name avoids the substrings "failure"/"drop" — the exercise name itself
+  // renders on screen and would false-positive the absence assertions below.
+  const EX = await makeExercise(page, "SetTypeMenuScope");
   await startSessionWith(page, EX);
 
   await openSetTypeMenu(page);
@@ -77,8 +79,11 @@ test("delete via the set-type menu is a same-hook two-tap confirm", async ({
   ); // not deleted yet — armed only
   await page.getByTestId("set-type-delete").click();
 
+  // Ad-hoc session, no routine — deleting the only set leaves nothing
+  // committed, so slot 0 becomes the next set to log ("current"), not a
+  // pre-rendered "todo" placeholder.
   await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
     "data-state",
-    "todo",
+    "current",
   );
 });

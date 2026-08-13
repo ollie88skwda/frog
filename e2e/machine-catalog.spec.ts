@@ -77,9 +77,10 @@ test("in-session attach: catalog search attaches a machine to the block", async 
 
   // Search the catalog inside the dialog and pick a Life Fitness press (a
   // machine no other spec creates, so the shared e2e user stays clean).
-  await page
-    .getByTestId("machine-catalog-search")
-    .fill("life fitness insignia");
+  // This in-session dialog (MachineChip's cmdk command) is a different
+  // component from the library's standalone MachineCatalogPicker — its
+  // search input testid is `machine-search`, not `machine-catalog-search`.
+  await page.getByTestId("machine-search").fill("life fitness insignia");
   await page
     .getByTestId("catalog-result-life-fitness-insignia-series-chest-press")
     .click();

@@ -76,12 +76,15 @@ test("a failed exercise load in the in-session picker shows an error, not an emp
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
 
-  // The picker auto-opens on a session with no blocks — this is the first
-  // thing the user sees under exactly the drift being guarded against.
+  // The picker still auto-opens on a session with no blocks (unchanged by
+  // the redesign) — this is the first thing the user sees under exactly the
+  // drift being guarded against. The session's own "No exercises yet."
+  // empty state sits behind the dialog and stays in the DOM (Radix doesn't
+  // unmount background content), so it isn't a meaningful assertion here —
+  // what matters is the dialog itself shows an error, not its own empty list.
   await expect(page.getByTestId("picker-error")).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByText("No exercises yet")).not.toBeVisible();
   await expect(
     page.getByText(/couldn't reach the (server|pond)/i),
   ).toBeVisible();

@@ -71,13 +71,9 @@ async function createTypedExercise(page: Page, name: string, label: string) {
 }
 
 /** Logs one session of this exercise, one set per value, into the field
- * `field` ("reps" / "duration"), and saves it.
- *
- * "reps" is re-aimed to the Spotlight spotlight input (reps-field/log-set).
- * "duration" keeps the pre-Spotlight `set-${i}-duration` testid —
- * testid-contract.md only covers the weight/reps spotlight shape and is
- * silent on duration/distance-type exercises, so this half is unverified
- * against the real implementation until Phase 2 (see AGENTS.md/PR notes). */
+ * `field` ("reps" / "duration"), and saves it. Both fields follow the same
+ * generic Spotlight field shape (`${key}-field` + the single `log-set`
+ * commit button) — duration just takes MM:SS text instead of a number. */
 async function logSession(
   page: Page,
   name: string,
@@ -87,21 +83,14 @@ async function logSession(
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${name}`).click();
-  if (field === "reps") {
-    for (const [i, value] of values.entries()) {
-      await page.getByTestId("reps-field").fill(value);
-      await page.getByTestId("log-set").click();
-      await expect(page.getByTestId(`set-mark-${i}-state`)).toHaveAttribute(
-        "data-state",
-        "done",
-      );
-    }
-  } else {
-    for (const [i, value] of values.entries()) {
-      await page.getByTestId(`set-${i}-duration`).fill(value);
-      await page.getByTestId(`set-${i}-add`).click();
-      await expect(page.getByTestId(`committed-${i}-type`)).toBeVisible();
-    }
+  const fieldTestId = field === "reps" ? "reps-field" : "duration-field";
+  for (const [i, value] of values.entries()) {
+    await page.getByTestId(fieldTestId).fill(value);
+    await page.getByTestId("log-set").click();
+    await expect(page.getByTestId(`set-mark-${i}-state`)).toHaveAttribute(
+      "data-state",
+      "done",
+    );
   }
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();

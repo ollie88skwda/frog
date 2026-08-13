@@ -45,8 +45,8 @@ test("a pre-rename set draft survives the rebrand and dies on commit", async ({
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
-  await page.getByTestId("set-0-weight").fill("142.5");
-  await page.getByTestId("set-0-reps").fill("7");
+  await page.getByTestId("weight-field").fill("142.5");
+  await page.getByTestId("reps-field").fill("7");
   await expect.poll(() => draftKeys(page)).toHaveLength(1);
 
   // Rewrite the draft under the pre-rename key, with a weight the user never
@@ -67,22 +67,22 @@ test("a pre-rename set draft survives the rebrand and dies on commit", async ({
   );
 
   await page.reload();
-  await expect(page.getByTestId("set-0-weight")).toHaveValue("137.5");
-  await expect(page.getByTestId("set-0-reps")).toHaveValue("7");
+  await expect(page.getByTestId("weight-field")).toHaveValue("137.5");
+  await expect(page.getByTestId("reps-field")).toHaveValue("7");
   await page.screenshot({ path: testInfo.outputPath("draft-restored.png") });
 
   // Committing the restored draft must clear both keys, or the draft would
   // reappear on the next load.
   const before = await rowCount(page, "set_logs");
-  await page.getByTestId("set-0-reps").press("Enter");
+  await page.getByTestId("log-set").click();
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
   await expect.poll(() => draftKeys(page)).toEqual([]);
 
   await page.reload();
-  // No auto-advance: the next draft only appears once explicitly opened —
-  // and once it is, it must not inherit anything from the stale legacy blob.
-  await page.getByTestId("set-1-add").click();
-  await expect(page.getByTestId("set-1-weight")).toHaveValue("");
+  // Committing auto-advances straight into the next set (no separate "add"
+  // tap under Spotlight) — it must not inherit anything from the stale
+  // legacy blob either.
+  await expect(page.getByTestId("weight-field")).toHaveValue("");
   await expect.poll(() => draftKeys(page)).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("draft-cleared.png") });
 });
