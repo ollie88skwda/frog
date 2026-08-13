@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
-import { logBilateralSet, makeExercise, startSessionWith } from "./spotlight-helpers";
+import { logBilateralSet, makeExercise, openSetTypeMenu, startSessionWith } from "./spotlight-helpers";
 
 // Set types under the Spotlight redesign (testid-contract.md): the ⋯ menu
 // only offers warm-up / per-side / delete. Failure and Drop, and the old
@@ -23,7 +23,7 @@ test("warm-up marks a set, persists across reload, via the set-type menu", async
 
   await startSessionWith(page, EX);
 
-  await page.getByTestId("set-type-menu").click();
+  await openSetTypeMenu(page);
   await page.getByTestId("set-type-warmup").click();
   await logBilateralSet(page, "60", "12");
   await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
@@ -53,23 +53,28 @@ test("the set-type menu never offers Failure or Drop", async ({ page }) => {
   const EX = await makeExercise(page, "SetTypeNoFailDrop");
   await startSessionWith(page, EX);
 
-  await page.getByTestId("set-type-menu").click();
+  await openSetTypeMenu(page);
   await expect(page.getByText(/failure/i)).toHaveCount(0);
   await expect(page.getByText(/drop/i)).toHaveCount(0);
 });
 
-test("delete via the set-type menu requires no separate confirmation step beyond the menu item itself", async ({
+test("delete via the set-type menu is a same-hook two-tap confirm", async ({
   page,
 }) => {
-  // Contract only names set-type-delete — one item, no *-confirm hook, so
-  // this pins that the delete item alone is enough (the old two-step
-  // committed-row confirm sheet is gone with the committed row).
+  // Contract only names set-type-delete — one item, no *-confirm hook. The
+  // real implementation reuses that same testid for both taps: the first
+  // arms a confirm step (label flips to "Confirm delete"), the second commits.
   const EX = await makeExercise(page, "SetTypeDelete");
   await startSessionWith(page, EX);
 
   await logBilateralSet(page, "50", "5");
   await page.getByTestId("set-mark-0").click();
-  await page.getByTestId("set-type-menu").click();
+  await openSetTypeMenu(page);
+  await page.getByTestId("set-type-delete").click();
+  await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
+    "data-state",
+    "done",
+  ); // not deleted yet — armed only
   await page.getByTestId("set-type-delete").click();
 
   await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(

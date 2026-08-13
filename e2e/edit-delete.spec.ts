@@ -8,6 +8,7 @@ import {
   signIn,
   waitForExercise,
 } from "./helpers";
+import { openSetTypeMenu } from "./spotlight-helpers";
 
 // G2 + G3: edit/delete logged data + exercise tags.
 
@@ -53,7 +54,10 @@ test("edit a committed set; delete a set; both survive reload", async ({
   // Delete set 1 via the set-type menu's Delete item.
   const liveBefore = await liveRowCount(page, "set_logs");
   await page.getByTestId("set-mark-1").click();
-  await page.getByTestId("set-type-menu").click();
+  await openSetTypeMenu(page);
+  // First tap arms the confirm step; the second (same testid, label flips to
+  // "Confirm delete") actually deletes.
+  await page.getByTestId("set-type-delete").click();
   await page.getByTestId("set-type-delete").click();
   await expect(page.getByTestId("set-mark-1-state")).toHaveAttribute(
     "data-state",

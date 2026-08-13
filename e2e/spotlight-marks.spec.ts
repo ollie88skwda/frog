@@ -4,6 +4,7 @@ import {
   fillSet,
   logBilateralSet,
   makeExercise,
+  openSetTypeMenu,
   startSessionWith,
 } from "./spotlight-helpers";
 
@@ -51,7 +52,7 @@ test("a completed warm-up set carries the warmup mark state, not done", async ({
   const EX = await makeExercise(page, "MarksWarmup");
   await startSessionWith(page, EX);
 
-  await page.getByTestId("set-type-menu").click();
+  await openSetTypeMenu(page);
   await page.getByTestId("set-type-warmup").click();
   await logBilateralSet(page, "40", "12");
 
@@ -75,7 +76,7 @@ test("a per-side set carries the ᴸᴿ tag on its mark; a bilateral one does no
   await startSessionWith(page, EX);
 
   await expect(page.getByTestId("set-mark-0-side-tag")).toHaveCount(0);
-  await page.getByTestId("set-type-menu").click();
+  await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click();
   await expect(page.getByTestId("set-mark-0-side-tag")).toBeVisible();
 });

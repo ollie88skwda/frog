@@ -14,11 +14,17 @@ test.beforeEach(async ({ page }) => {
 test("the header shows name + position, and the edge rail is present", async ({
   page,
 }) => {
+  // EdgeDots renders nothing for a single-exercise session (session.tsx:
+  // `if (total <= 1) return null`) — the rail only makes sense once there's
+  // more than one position to show, so this needs a second exercise.
   const EX = await makeExercise(page, "NavHeader");
+  const OTHER = await makeExercise(page, "NavHeaderOther");
   await startSessionWith(page, EX);
+  await page.getByTestId("open-exercise-picker").click();
+  await page.getByTestId(`pick-exercise-${OTHER}`).click();
 
-  await expect(page.getByTestId("exercise-name")).toHaveText(EX);
-  await expect(page.getByTestId("exercise-position")).toContainText("1");
+  await expect(page.getByTestId("exercise-name")).toHaveText(OTHER);
+  await expect(page.getByTestId("exercise-position")).toContainText("2");
   await expect(page.getByTestId("exercise-edge-rail")).toBeVisible();
 });
 

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
-import { fillSet, logBilateralSet, makeExercise, startSessionWith } from "./spotlight-helpers";
+import { fillSet, logBilateralSet, makeExercise, openSetTypeMenu, startSessionWith } from "./spotlight-helpers";
 
 // Rest stopwatch (testid-contract.md "Rest" + behavioural clause #5): exactly
 // one count-UP stopwatch, starting on commit, stopping on first input to the
@@ -97,7 +97,7 @@ test("warm-up and the very first set of the exercise still follow the same singl
   const EX = await makeExercise(page, "RestWarmupModel");
   await startSessionWith(page, EX);
 
-  await page.getByTestId("set-type-menu").click();
+  await openSetTypeMenu(page);
   await page.getByTestId("set-type-warmup").click();
   await logBilateralSet(page, "40", "12");
 

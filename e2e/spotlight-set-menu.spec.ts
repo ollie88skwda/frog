@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
-import { logBilateralSet, makeExercise, startSessionWith } from "./spotlight-helpers";
+import { logBilateralSet, makeExercise, openSetTypeMenu, startSessionWith } from "./spotlight-helpers";
 
 // Set-type menu (testid-contract.md "The spotlight input" + behavioural
 // clause #7): the ⋯ menu offers exactly warm-up / per-side / delete — no
@@ -17,7 +17,7 @@ test("warm-up marks the current set and shows on its mark once logged", async ({
   const EX = await makeExercise(page, "MenuWarmup");
   await startSessionWith(page, EX);
 
-  await page.getByTestId("set-type-menu").click();
+  await openSetTypeMenu(page);
   await page.getByTestId("set-type-warmup").click();
   await logBilateralSet(page, "40", "12");
   await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
@@ -30,7 +30,7 @@ test("per-side splits the current set's reps by side", async ({ page }) => {
   const EX = await makeExercise(page, "MenuPerSide");
   await startSessionWith(page, EX);
 
-  await page.getByTestId("set-type-menu").click();
+  await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click();
   await expect(page.getByTestId("reps-field-left")).toBeVisible();
   await expect(page.getByTestId("reps-field-right")).toBeVisible();
@@ -43,9 +43,11 @@ test("delete removes the current set", async ({ page }) => {
   await logBilateralSet(page, "50", "8");
   await logBilateralSet(page, "55", "6"); // set 1 now open
 
-  // Reopen set 0 and delete it.
+  // Reopen set 0 and delete it (same testid, two-tap confirm: the first
+  // arms the delete, the second — label now "Confirm delete" — commits it).
   await page.getByTestId("set-mark-0").click();
-  await page.getByTestId("set-type-menu").click();
+  await openSetTypeMenu(page);
+  await page.getByTestId("set-type-delete").click();
   await page.getByTestId("set-type-delete").click();
 
   const rows = await page.evaluate(async () => {
@@ -66,7 +68,13 @@ test("the set-type menu offers no superset or drop-set control", async ({
   const EX = await makeExercise(page, "MenuNoSuperset");
   await startSessionWith(page, EX);
 
-  await page.getByTestId("set-type-menu").click();
+  // set-type-delete only renders once reopened on an already-committed set
+  // (session.tsx: onDelete is null for the still-open current set) — commit
+  // one first so all three menu items are present to check.
+  await logBilateralSet(page, "50", "5");
+  await page.getByTestId("set-mark-0").click();
+
+  await openSetTypeMenu(page);
   await expect(page.getByTestId("set-type-warmup")).toBeVisible();
   await expect(page.getByTestId("set-type-perside")).toBeVisible();
   await expect(page.getByTestId("set-type-delete")).toBeVisible();

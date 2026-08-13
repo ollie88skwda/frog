@@ -188,10 +188,11 @@ test("typing values and switching exercises does not commit a set (Log is the on
   await expect(page.getByTestId("exercise-sheet")).toBeVisible();
   await page.getByTestId("exercise-sheet-row-0").click();
 
-  // Back on EX, the set must still be uncommitted — index 0 is still "todo".
+  // Back on EX, the set must still be uncommitted — index 0 is the only set,
+  // so its mark reads "current" (the open/active set), never "done".
   await expect(page.getByTestId("exercise-name")).toHaveText(EX);
   await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
     "data-state",
-    "todo",
+    "current",
   );
 });

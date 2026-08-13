@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
-import { logBilateralSet, makeExercise, startSessionWith } from "./spotlight-helpers";
+import { logBilateralSet, makeExercise, openSetTypeMenu, startSessionWith } from "./spotlight-helpers";
 
 // Per-side sets (testid-contract.md: "Per-side variants append -left/-right
 // ... The shared weight in per-side mode stays weight-field, plus
@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function makePerSide(page: import("@playwright/test").Page) {
-  await page.getByTestId("set-type-menu").click();
+  await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click();
 }
 
@@ -84,26 +84,27 @@ test("per-side RIR is independent per side", async ({ page }) => {
   expect(leftRir).not.toBe(rightRir);
 });
 
-test("unlinking the shared weight splits it per side; linking recombines it", async ({
+test("unlinking the shared weight reveals a right-side override; linking hides it again", async ({
   page,
 }) => {
+  // weight-field IS the left/primary value in per-side mode (testid-contract.
+  // md: "the shared weight ... stays weight-field") — unlinking adds only a
+  // weight-field-right override next to it, it never becomes weight-field-left.
   const EX = await makeExercise(page, "PerSideLink");
   await startSessionWith(page, EX);
   await makePerSide(page);
 
-  // Linked (default per the mockup): one shared weight-field.
+  // Linked (default per the mockup): one shared weight-field, no right override.
   await expect(page.getByTestId("weight-field")).toBeVisible();
-  await expect(page.getByTestId("weight-field-left")).toHaveCount(0);
+  await expect(page.getByTestId("weight-field-right")).toHaveCount(0);
 
   await page.getByTestId("weight-link-toggle").click();
-  // Unlinked: weight follows the same per-side testid pattern as reps/RIR.
-  await expect(page.getByTestId("weight-field-left")).toBeVisible();
+  await expect(page.getByTestId("weight-field")).toBeVisible();
   await expect(page.getByTestId("weight-field-right")).toBeVisible();
 
   await page.getByTestId("weight-link-toggle").click();
-  // Re-linked: back to one shared field.
-  await expect(page.getByTestId("weight-field")).toBeVisible();
-  await expect(page.getByTestId("weight-field-left")).toHaveCount(0);
+  // Re-linked: the right override disappears again.
+  await expect(page.getByTestId("weight-field-right")).toHaveCount(0);
 });
 
 test("a per-side set and a bilateral set can sit back to back in one exercise", async ({

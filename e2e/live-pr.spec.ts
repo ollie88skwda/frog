@@ -68,9 +68,9 @@ test("beating a prior session raises the PR banner + medal; first log never PRs"
   await expect(page.getByTestId("pr-banner-types")).toContainText(
     "Heaviest weight",
   );
-  // The old committed-row medal badge has no contract equivalent under the
-  // Spotlight redesign (testid-contract.md doesn't name one) — the banner
-  // assertion above is this test's remaining PR-on-a-set coverage.
+  // Not a contract-named hook, but present in the real implementation
+  // (session.tsx's MarksBand: `set-mark-{i}-medal`) — the winning set's mark.
+  await expect(page.getByTestId("set-mark-0-medal")).toBeVisible();
 
   // Regression: the banner used to sit on a ~5% alpha wash (bg-accent-soft),
   // reading as nearly see-through over whatever scrolled underneath it.

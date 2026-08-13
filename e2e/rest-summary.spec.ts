@@ -2,16 +2,52 @@ import { expect, type Page, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 import { logBilateralSet, makeExercise, startSessionWith } from "./spotlight-helpers";
 
-// The Spotlight redesign replaced the old per-exercise live rest-average
-// dock (`block-${name}-rest-avg`) with a single per-session rest stopwatch
-// that stamps each committed set (`set-rest-stamp-{index}`) — see
-// spotlight-rest.spec.ts, which owns that coverage now. This file keeps only
-// the part of the original spec unrelated to that redesign: the Log
-// Conditions chip's layout on a narrow phone.
+// Session rest reporting (2026-08-08 captain feedback, still true under the
+// Spotlight redesign — apps/web/src/screens/session.tsx): no session-wide
+// average rest in the stats line — rest is a per-exercise gap, computed from
+// each committed set's stamped rest (set-rest-stamp-{index}) and shown in the
+// exercise header once there's at least one gap to average.
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
   await signIn(page);
+});
+
+async function makeExerciseAndStart(page: Page, label: string) {
+  const name = await makeExercise(page, label);
+  await startSessionWith(page, name);
+  return name;
+}
+
+test("stats line carries no session-wide rest; per-exercise rest avg appears in the exercise header", async ({
+  page,
+}) => {
+  const EX = await makeExerciseAndStart(page, "RestAvg");
+
+  // First set of the exercise has no rest gap yet — no per-exercise average,
+  // and the stats line never shows a session-wide rest average at all.
+  await logBilateralSet(page, "100", "5");
+  await expect(page.getByTestId("stats-line")).toContainText("1 set");
+  await expect(page.getByTestId("stats-line")).not.toContainText("rest");
+  await expect(page.getByTestId(`block-${EX}-rest-avg`)).toHaveCount(0);
+
+  // Commit a second set after a real rest gap → the header shows its own
+  // average rest (mm:ss), which only makes sense per exercise.
+  await page.waitForTimeout(2200);
+  await logBilateralSet(page, "100", "5"); // typing into weight-field stops the rest
+  await expect(page.getByTestId(`block-${EX}-rest-avg`)).toBeVisible();
+  await expect(page.getByTestId(`block-${EX}-rest-avg`)).toHaveText(
+    /^rest \d+:\d{2} avg$/,
+  );
+  await expect(page.getByTestId("stats-line")).toContainText("2 sets");
+  await expect(page.getByTestId("stats-line")).not.toContainText("rest");
+
+  // The average survives a reload — it's computed from committed rows.
+  await page.reload();
+  await expect(page.getByTestId(`block-${EX}-rest-avg`)).toBeVisible();
+  await expect(page.getByTestId(`block-${EX}-rest-avg`)).toHaveText(
+    /^rest \d+:\d{2} avg$/,
+  );
 });
 
 test("Log Conditions chip is fully visible on a 320px phone", async ({
@@ -27,14 +63,10 @@ test("Log Conditions chip is fully visible on a 320px phone", async ({
   const chip = page.getByTestId("conditions-chip");
   await expect(chip).toBeVisible();
   const chipBox = (await chip.boundingBox()) ?? { x: 0, y: 0, width: 0 };
-  // The whole button (icon + label) fits on screen and isn't squeezed to a
-  // sliver by the stats text (the pre-fix bug: shrink-0 stats crushed it) —
-  // the stats line wraps / drops to its own row instead.
   expect(chipBox.width).toBeGreaterThanOrEqual(130);
   expect(chipBox.x).toBeGreaterThanOrEqual(0);
   expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(320);
 
-  // Still tappable mid-session: opens the conditions dialog.
   await chip.click();
   await expect(page.getByRole("dialog")).toBeVisible();
 });

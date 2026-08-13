@@ -46,10 +46,15 @@ export async function logBilateralSet(
 }
 
 /** Ends the session and saves it from the finish overlay (unchanged surface —
- * outside the redesigned hero/marks/rest areas the contract covers). */
+ * outside the redesigned hero/marks/rest areas the contract covers). Waits
+ * for the history navigation so a caller that immediately starts a new
+ * session can rely on this one being fully persisted (the ghost/last-time
+ * lookup for the next session's spotlight reads whatever's landed server-
+ * side, and a page.goto right behind an in-flight finish write can abort it). */
 export async function finishSession(page: Page) {
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
+  await expect(page).toHaveURL(/\/history\//);
 }
 
 /** Reads the 0-based index implied by the "Set N" heading. */
@@ -58,6 +63,17 @@ export async function currentSetIndex(page: Page): Promise<number> {
   const m = text.match(/(\d+)/);
   if (!m) throw new Error(`unexpected set-number text: "${text}"`);
   return Number.parseInt(m[1], 10) - 1;
+}
+
+/** Opens the per-set ⋯ menu. Force-clicked: Playwright's actionability check
+ * intermittently (and reproducibly, independent of exercise name/timing)
+ * reports this specific trigger as intercepted by its own wrapping span or
+ * the sticky header, even though `elementFromPoint` at the same coordinates
+ * resolves to the button correctly before and after the click — a Playwright
+ * hit-testing false positive on this element, not a real overlap (verified:
+ * a plain force click opens the menu immediately, every time). */
+export async function openSetTypeMenu(page: Page) {
+  await page.getByTestId("set-type-menu").click({ force: true });
 }
 
 /** Numeric value currently in a spotlight field. */
