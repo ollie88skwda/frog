@@ -1,6 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
-import { fillSet, logBilateralSet, makeExercise, openSetTypeMenu, startSessionWith } from "./spotlight-helpers";
+import {
+  fillSet,
+  logBilateralSet,
+  makeExercise,
+  openSetTypeMenu,
+  startSessionWith,
+} from "./spotlight-helpers";
 
 // Rest stopwatch (testid-contract.md "Rest" + behavioural clause #5): exactly
 // one count-UP stopwatch, starting on commit, stopping on first input to the
@@ -18,7 +24,10 @@ test.beforeEach(async ({ page }) => {
 });
 
 function toSeconds(mmss: string): number {
-  const [m, s] = mmss.trim().split(":").map((n) => Number.parseInt(n, 10));
+  const [m, s] = mmss
+    .trim()
+    .split(":")
+    .map((n) => Number.parseInt(n, 10));
   return m * 60 + s;
 }
 
@@ -121,5 +130,7 @@ test("warm-up and the very first set of the exercise still follow the same singl
   await page.getByTestId("set-type-warmup").click();
   await logBilateralSet(page, "40", "12");
 
-  expect(await page.getByTestId("rest-stopwatch").count()).toBeLessThanOrEqual(1);
+  expect(await page.getByTestId("rest-stopwatch").count()).toBeLessThanOrEqual(
+    1,
+  );
 });

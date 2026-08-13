@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
-import { logBilateralSet, makeExercise, openSetTypeMenu, startSessionWith } from "./spotlight-helpers";
+import {
+  logBilateralSet,
+  makeExercise,
+  openSetTypeMenu,
+  startSessionWith,
+} from "./spotlight-helpers";
 
 // Set-type menu (testid-contract.md "The spotlight input" + behavioural
 // clause #7): the ⋯ menu offers exactly warm-up / per-side / delete — no

@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  rowCount,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // Parity port of the legacy Expo E2E (archived at tag expo-final,
 // e2e/web.spec.ts): add exercise → session → log sets → persistence.

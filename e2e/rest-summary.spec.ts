@@ -1,6 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
-import { logBilateralSet, makeExercise, startSessionWith } from "./spotlight-helpers";
+import {
+  logBilateralSet,
+  makeExercise,
+  startSessionWith,
+} from "./spotlight-helpers";
 
 // Session rest reporting (2026-08-08 captain feedback, still true under the
 // Spotlight redesign — apps/web/src/screens/session.tsx): no session-wide

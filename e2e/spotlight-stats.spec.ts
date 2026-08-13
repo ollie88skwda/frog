@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
-import { logBilateralSet, makeExercise, startSessionWith } from "./spotlight-helpers";
+import {
+  logBilateralSet,
+  makeExercise,
+  startSessionWith,
+} from "./spotlight-helpers";
 
 // Stats band (testid-contract.md "Stats" + behavioural clause #6):
 // stats-growth-toggle expands stats-growth-chart (absent when collapsed),

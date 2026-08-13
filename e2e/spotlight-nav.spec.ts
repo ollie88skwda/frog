@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
-import { logBilateralSet, makeExercise, startSessionWith } from "./spotlight-helpers";
+import {
+  logBilateralSet,
+  makeExercise,
+  startSessionWith,
+} from "./spotlight-helpers";
 
 // Exercise navigation (testid-contract.md "Context band"): tapping the
 // header opens the exercise sheet, a row switches the spotlight to it, and

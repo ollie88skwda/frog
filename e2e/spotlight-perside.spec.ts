@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
-import { logBilateralSet, makeExercise, openSetTypeMenu, startSessionWith } from "./spotlight-helpers";
+import {
+  logBilateralSet,
+  makeExercise,
+  openSetTypeMenu,
+  startSessionWith,
+} from "./spotlight-helpers";
 
 // Per-side sets (testid-contract.md: "Per-side variants append -left/-right
 // ... The shared weight in per-side mode stays weight-field, plus

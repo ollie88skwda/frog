@@ -1,6 +1,17 @@
 import { expect, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
-import { logBilateralSet, makeExercise, openSetTypeMenu, startSessionWith } from "./spotlight-helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  signIn,
+  waitForExercise,
+} from "./helpers";
+import {
+  logBilateralSet,
+  makeExercise,
+  openSetTypeMenu,
+  startSessionWith,
+} from "./spotlight-helpers";
 
 // Set types under the Spotlight redesign (testid-contract.md): the ⋯ menu
 // only offers warm-up / per-side / delete. Failure and Drop, and the old

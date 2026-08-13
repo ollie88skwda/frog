@@ -1,5 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
-import { createExercise, EMAIL, PASSWORD, rowCount, signIn, waitForExercise } from "./helpers";
+import {
+  createExercise,
+  EMAIL,
+  PASSWORD,
+  rowCount,
+  signIn,
+  waitForExercise,
+} from "./helpers";
 
 // Voice set logging: tap the mic, speak one utterance ("rear delt flies 250
 // lbs for 5 reps"), and the CURRENT spotlight fields get filled — never

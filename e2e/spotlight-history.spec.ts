@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
-import { logBilateralSet, makeExercise, startSessionWith } from "./spotlight-helpers";
+import {
+  logBilateralSet,
+  makeExercise,
+  startSessionWith,
+} from "./spotlight-helpers";
 
 // Behavioural clause #7 (testid-contract.md): supersets and drop sets are
 // gone from the session UI entirely, but a session carrying legacy

@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 import {
-  fillSet,
   fieldValue,
+  fillSet,
   finishSession,
   logBilateralSet,
   logSet,
@@ -114,7 +114,8 @@ test("weight and reps never go below zero, however many times a jump is pressed"
   await startSessionWith(page, EX);
 
   await page.getByTestId("weight-field").fill("8");
-  for (let i = 0; i < 4; i++) await page.getByTestId("weight-adjust--5").click();
+  for (let i = 0; i < 4; i++)
+    await page.getByTestId("weight-adjust--5").click();
   expect(await fieldValue(page, "weight-field")).toBeGreaterThanOrEqual(0);
 
   await page.getByTestId("reps-field").fill("1");
@@ -138,7 +139,9 @@ test("beating last session's value flips data-beat true and states the gain", as
   const weightRow = page
     .locator("[data-beat]")
     .filter({ has: page.getByTestId("weight-compare") });
-  await expect(page.getByTestId("weight-compare")).toContainText(/same as last/i);
+  await expect(page.getByTestId("weight-compare")).toContainText(
+    /same as last/i,
+  );
 
   // Push weight above last session's value.
   await page.getByTestId("weight-adjust-5").click();
@@ -148,7 +151,9 @@ test("beating last session's value flips data-beat true and states the gain", as
   // Drop back below last session's value.
   await page.getByTestId("weight-adjust--10").click();
   await expect(weightRow).toHaveAttribute("data-beat", "false");
-  await expect(page.getByTestId("weight-compare")).not.toContainText(/same as last/i);
+  await expect(page.getByTestId("weight-compare")).not.toContainText(
+    /same as last/i,
+  );
 });
 
 test("reps-compare mirrors the same beat/same/below contract independently of weight", async ({
