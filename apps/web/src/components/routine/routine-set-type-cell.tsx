@@ -1,63 +1,39 @@
-import {
-  SET_TYPE_LABELS,
-  SET_TYPE_MARKERS,
-  SET_TYPES,
-  type SetType,
-} from "@frog/core";
+import { SET_TYPE_LABELS, SET_TYPE_MARKERS, type SetType } from "@frog/core";
 import { Check } from "lucide-react";
 import { useState } from "react";
-import { StatusRing } from "@/components/ui/status-ring";
+import { markerColorClass } from "@/components/ui/set-type-cell";
 import { cn } from "@/lib/utils";
 
-// Marker letter color for a set type (drop = accent per spec; warm-up/failure
-// keep quiet semantic tints; normal is just the faint set number).
-export function markerColorClass(setType: SetType): string {
-  switch (setType) {
-    case "warmup":
-      return "text-warn";
-    case "failure":
-      return "text-neg";
-    case "drop":
-      return "text-accent";
-    default:
-      return "text-faint";
-  }
-}
+// Routine-editor-scoped copy of the session's set-type marker+menu (see
+// AdjustField's note on the file above — session.tsx is mid-rewrite on
+// another branch, so this isn't refactored into the shared
+// `components/ui/set-type-cell.tsx`; imports its color helper read-only).
+//
+// Selectable types are capped to normal/warmup: supersets and drop sets are
+// being removed from the product (session-redesign-r3 decisions.md #8 — "not
+// super science-based") and a routine can't prescribe "failure" ahead of
+// time anyway. A set that already carries a removed type (legacy failure/drop
+// data from before this change) keeps rendering its own marker and color —
+// never silently relabeled — it's just not offered going forward.
+const SELECTABLE_TYPES: readonly SetType[] = ["normal", "warmup"];
 
-// The set-number cell: shows the number, or a W/F/D marker once a type is
-// assigned, and opens a small menu to set the type. Boxless (text marker +
-// StatusRing, no border/fill) so a set row reads as a row, not a grid of
-// boxes. Session-only now — the routine editor renders a routine-scoped
-// `RoutineSetTypeCell` (`components/routine/routine-set-type-cell.tsx`, a
-// deliberate copy with its picker capped to normal/warmup) rather than
-// importing this shared file, to keep it untouched while session.tsx is
-// mid-rewrite on another branch; `ringState` stays optional for callers
-// with no completion state to show.
-export function SetTypeCell({
+export function RoutineSetTypeCell({
   index,
   setType,
-  ringState,
   onChange,
   testId,
-  sideLabel,
 }: {
   index: number;
   setType: SetType;
-  ringState?: "done" | "empty";
   onChange: (t: SetType) => void;
   testId?: string;
-  /** "L" on a unilateral pair's top line — appends ᴸ to the number or type marker. */
-  sideLabel?: "L";
 }) {
   const [open, setOpen] = useState(false);
   const marker = SET_TYPE_MARKERS[setType];
   return (
     <span className="relative flex items-center gap-2">
-      {ringState && <StatusRing state={ringState} />}
       <button
         type="button"
-        // Keep the row's input focused so tapping doesn't blur it (avoids
-        // closing the mobile keyboard).
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => setOpen((o) => !o)}
         title="Set type"
@@ -68,7 +44,7 @@ export function SetTypeCell({
         )}
         data-testid={testId}
       >
-        {sideLabel ? `${marker || index + 1}ᴸ` : marker || index + 1}
+        {marker || index + 1}
       </button>
       {open && (
         <>
@@ -81,7 +57,7 @@ export function SetTypeCell({
             className="fixed inset-0 z-10 cursor-default"
           />
           <div className="floating absolute top-full left-0 z-20 mt-1 min-w-32 py-1">
-            {SET_TYPES.map((t) => (
+            {SELECTABLE_TYPES.map((t) => (
               <button
                 key={t}
                 type="button"

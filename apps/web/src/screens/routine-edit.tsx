@@ -1,19 +1,26 @@
 import {
   EXERCISE_TYPES,
   type Exercise,
+  type ExercisePatch,
   type ExerciseType,
   groupByPrimaryMuscle,
   isConfidentMatch,
   LATERALITY_EXPLAINERS,
   LATERALITY_LABELS,
+  type Laterality,
+  lbToKg,
   matchExerciseName,
   type NewRoutineInput,
+  newId,
   type ParsedExercise,
   parseRoutineText,
   type RoutineExerciseInput,
   type SetType,
   sameExerciseName,
   TYPE_FIELDS,
+  toDisplayWeight,
+  unitLabel,
+  weightLabel,
 } from "@frog/core";
 import { Select } from "@radix-ui/themes";
 import {
@@ -21,6 +28,7 @@ import {
   ArrowUp,
   Check,
   ClipboardPaste,
+  Dumbbell,
   Flame,
   Link2,
   MoreVertical,
@@ -28,22 +36,41 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { MachineAttachDialog } from "@/components/attach-machine";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
   filterExercises,
 } from "@/components/exercise-filter";
+import {
+  AdjustField,
+  REPS_DELTAS,
+  REPS_DELTAS_COMPACT,
+  WEIGHT_DELTAS,
+} from "@/components/routine/adjust-field";
+import { RoutineSetTypeCell } from "@/components/routine/routine-set-type-cell";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
-import { SetTypeCell } from "@/components/ui/set-type-cell";
-import { formatMMSS, parseDuration, parseIntOrNull } from "@/lib/format";
+import {
+  formatMMSS,
+  parseDuration,
+  parseFloatOrNull,
+  parseIntOrNull,
+} from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
-import { useExercises } from "@/lib/queries";
+import {
+  copyExerciseOpts,
+  useCreateExercise,
+  useDeleteExercise,
+  useExercises,
+  useMachines,
+  useUpdateExercise,
+} from "@/lib/queries";
 import { parseTargetRirFields } from "@/lib/rir";
 import {
   useCreateRoutine,
@@ -65,21 +92,23 @@ type SetLaterality = "bilateral" | "unilateral";
 
 // Draft model for the builder: targets in DISPLAY units (converted to kg on
 // save). Rep range mode = repsMax non-empty.
+//
+// `reps` doubles as the per-side target on a unilateral set (session-redesign-
+// r3 A3): routine_sets carries one reps value per row, which the session
+// already reads as "reps per side" for a unilateral prescription, so the
+// ᴸ/ᴿ grid below edits the same field from both columns rather than a second
+// column with nowhere to persist independently — see the PR body.
 type DraftSet = {
   key: string;
   setType: SetType;
   laterality: SetLaterality;
+  weight: string; // display-unit weight target, editable (session-redesign-r3)
   reps: string;
   repsMax: string;
   duration: string; // mm:ss or seconds
   distance: string; // km/mi display
   rirMin: string; // target RIR range (reps-based types only)
   rirMax: string;
-  // Not authored here (the weight input was dropped from the builder) but
-  // carried through the draft so a save doesn't erase a generator-seeded or
-  // session-written-back target — updateRoutine re-creates the set graph from
-  // this input rather than merging into it. Null for genuinely new sets.
-  existingTargetWeightKg: number | null;
 };
 
 type DraftExercise = {
@@ -134,25 +163,30 @@ function emptySet(): DraftSet {
     key: crypto.randomUUID(),
     setType: "normal",
     laterality: "bilateral",
+    weight: "",
     reps: "",
     repsMax: "",
     duration: "",
     distance: "",
     rirMin: DEFAULT_RIR_MIN,
     rirMax: DEFAULT_RIR_MAX,
-    existingTargetWeightKg: null,
   };
 }
 
-// + Add set inherits the prescription (reps/range/duration/distance/RIR
-// range) from the previous set — not weight (intentionally variable
-// set-to-set, e.g. ramping/drop sets) and not setType (a warmup/failure/drop
-// label carried forward would silently mislabel a new working set).
+// + Add set inherits the prescription (weight/reps/range/duration/distance/
+// RIR range) from the previous set — so a third set added to a 3×5 doesn't
+// mean typing it all again (session-redesign-r3 #3, the editor's analogue of
+// the session's "start from last time") — but not setType (a
+// warmup/failure/drop label carried forward would silently mislabel a new
+// working set). Weight now inherits too: superseding the 2026-07-31 call
+// that excluded it for being "intentionally variable set-to-set" — see
+// docs/DECISIONS.md.
 function inheritedSet(prev: DraftSet | undefined): DraftSet {
   const base = emptySet();
   return prev
     ? {
         ...base,
+        weight: prev.weight,
         reps: prev.reps,
         repsMax: prev.repsMax,
         duration: prev.duration,
@@ -227,13 +261,6 @@ function pickerSeed(rawName: string): string {
     .reduce((best, w) => (w.length > best.length ? w : best), "");
 }
 
-// N8: the RIR and REPS/TIME groups are capped tracks so they sit close
-// together instead of each claiming a wide 1fr column (fields stretched to
-// ~125px on desktop); minmax(0,·) lets the caps yield on narrow phones. The
-// last track absorbs the leftover and right-anchors the per-set ⋯ menu.
-const ROW_GRID =
-  "grid grid-cols-[2.5rem_minmax(0,5rem)_minmax(0,6rem)_minmax(0,1fr)] items-center gap-1";
-
 export default function RoutineEditScreen() {
   const { id } = useParams(); // undefined on /routines/new
   const navigate = useNavigate();
@@ -251,6 +278,15 @@ export default function RoutineEditScreen() {
   const { data: detail, isError: detailFailed } = useRoutineDetail(id ?? null);
   const createRoutine = useCreateRoutine();
   const updateRoutine = useUpdateRoutine();
+  // Exercise-level defaults (machine, laterality) that the session header
+  // now reads to pre-load a block — these live on `exercises`, not
+  // `routine_exercises`, so they're written straight through the same
+  // optimistic patch the session's own block ⋯ menu uses (docs/DECISIONS.md
+  // 2026-08-08, first entry).
+  const { data: machines = [] } = useMachines();
+  const updateExercise = useUpdateExercise();
+  const createExercise = useCreateExercise();
+  const deleteExercise = useDeleteExercise();
 
   const [name, setName] = useState<string | null>(null);
   const [folderId, setFolderId] = useState<string | null | undefined>(
@@ -262,6 +298,9 @@ export default function RoutineEditScreen() {
   const [muscle, setMuscle] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Index into `list` of the exercise whose machine-attach dialog is open
+  // (mirrors the session block menu's controlled MachineAttachDialog).
+  const [attachMachineFor, setAttachMachineFor] = useState<number | null>(null);
 
   // Paste-workout import: raw text -> matched drafts + a resolvable
   // unmatched list. `pickFor` routes the (shared) exercise picker's
@@ -329,7 +368,12 @@ export default function RoutineEditScreen() {
           // claim a prescription that was never made.
           rirMin: s.targetRirMin != null ? String(s.targetRirMin) : "",
           rirMax: s.targetRirMax != null ? String(s.targetRirMax) : "",
-          existingTargetWeightKg: s.targetWeightKg ?? null,
+          // Same blank-not-fabricated rule as RIR above: a pre-existing set
+          // with no authored weight target shows blank, not 0.
+          weight:
+            s.targetWeightKg != null
+              ? String(toDisplayWeight(s.targetWeightKg, unit))
+              : "",
           laterality:
             s.laterality === "unilateral" ? "unilateral" : "bilateral",
         })),
@@ -356,6 +400,99 @@ export default function RoutineEditScreen() {
     );
   }
 
+  // Exercise-level edits (item 6: default machine + laterality) target
+  // `exercises`, and a seed row OR a community-shared row (is_custom true,
+  // owner_id null) is RLS-immutable — a plain UPDATE silently affects zero
+  // rows there. Mirrors the session BlockMenu's `forkExercise` and the
+  // library's "Duplicate as custom" gate (docs/DECISIONS.md 2026-08-08): an
+  // owned custom row patches in place, anything else forks a private copy
+  // (`share: false`) and repoints this draft row at it.
+  //
+  // The create settles asynchronously, and a second exercise-level write
+  // before it lands would target the not-yet-inserted fork id — a plain
+  // .update().eq('id', …) against a missing row resolves with error:null and
+  // zero rows affected, silently dropping the patch (the same silent-loss
+  // family this gate exists to prevent). Writes for an in-flight fork queue
+  // up and flush onto the fork id once the create resolves; the draft keeps
+  // its optimistic repoint so the UI never visibly waits.
+  //
+  // The registry is keyed by the fork id itself, never by draft index or
+  // original id: removing, reordering or replacing a draft row mid-flight,
+  // or re-adding the same shared exercise elsewhere, must not alias one
+  // fork's queue onto another's or misroute a later edit onto a stale queue.
+  const forkingRef = useRef<Map<string, ExercisePatch[]>>(new Map());
+  const draftRowsRef = useRef<Map<string, string>>(new Map());
+  useLayoutEffect(() => {
+    draftRowsRef.current = new Map(
+      (drafts ?? []).map((d) => [d.key, d.exerciseId]),
+    );
+  }, [drafts]);
+
+  function repointRow(key: string | undefined, patch: Partial<DraftExercise>) {
+    if (!key) return;
+    setDrafts((prev) =>
+      (prev ?? []).map((d) => (d.key === key ? { ...d, ...patch } : d)),
+    );
+  }
+
+  function patchExerciseField(
+    i: number,
+    exercise: Exercise,
+    patch: ExercisePatch,
+  ) {
+    const queue = forkingRef.current.get(exercise.id);
+    if (queue) {
+      queue.push(patch);
+      return;
+    }
+    if (exercise.isCustom && exercise.ownerId !== null) {
+      updateExercise.mutate({ exerciseId: exercise.id, patch });
+      return;
+    }
+    const id = newId();
+    const name = `${exercise.name} (copy)`;
+    const rowKey = list[i]?.key;
+    forkingRef.current.set(id, []);
+    patchExercise(i, { exerciseId: id, name });
+    void (async () => {
+      let settledId = id;
+      try {
+        const res = await createExercise.mutateAsync({
+          name,
+          opts: { id, ...copyExerciseOpts(exercise), ...patch, share: false },
+        });
+        settledId = res.id;
+        if (
+          rowKey === undefined ||
+          (draftRowsRef.current.get(rowKey) !== id &&
+            draftRowsRef.current.get(rowKey) !== settledId)
+        ) {
+          deleteExercise.mutate(settledId);
+          return;
+        }
+        if (settledId !== id) {
+          repointRow(rowKey, { exerciseId: settledId, name: res.name });
+          const q = forkingRef.current.get(id);
+          if (q) {
+            forkingRef.current.delete(id);
+            forkingRef.current.set(settledId, q);
+          }
+        }
+        for (const p of forkingRef.current.get(settledId) ?? []) {
+          updateExercise.mutate({ exerciseId: settledId, patch: p });
+        }
+      } catch {
+        // The fork never landed — the draft must not keep pointing at a row
+        // that doesn't exist. Revert to the original; queued patches were
+        // never applied anywhere and drop with the queue.
+        repointRow(rowKey, { exerciseId: exercise.id, name: exercise.name });
+      } finally {
+        forkingRef.current.delete(id);
+        forkingRef.current.delete(settledId);
+      }
+    })();
+  }
+
   function patchSet(i: number, si: number, patch: Partial<DraftSet>) {
     setDrafts((prev) =>
       (prev ?? []).map((d, j) =>
@@ -375,36 +512,6 @@ export default function RoutineEditScreen() {
       const j = i + dir;
       if (j < 0 || j >= arr.length) return arr;
       [arr[i], arr[j]] = [arr[j], arr[i]];
-      return arr;
-    });
-  }
-
-  // Superset toggle: joins this exercise with the NEXT one (Hevy pairs any
-  // two exercises; adjacent pairing covers the common case without a second
-  // picker — reorder first, then link).
-  function toggleSupersetWithNext(i: number) {
-    setDrafts((prev) => {
-      const arr = [...(prev ?? [])];
-      if (i + 1 >= arr.length) return arr;
-      const cur = arr[i];
-      const next = arr[i + 1];
-      if (
-        cur.supersetGroup != null &&
-        cur.supersetGroup === next.supersetGroup
-      ) {
-        // Unlink the pair (next keeps group if a third member follows it).
-        arr[i] = { ...cur, supersetGroup: null };
-        const third = arr[i + 2];
-        if (!third || third.supersetGroup !== next.supersetGroup)
-          arr[i + 1] = { ...next, supersetGroup: null };
-        return arr;
-      }
-      const group =
-        cur.supersetGroup ??
-        next.supersetGroup ??
-        Math.max(0, ...arr.map((d) => (d.supersetGroup ?? -1) + 1));
-      arr[i] = { ...cur, supersetGroup: group };
-      arr[i + 1] = { ...next, supersetGroup: group };
       return arr;
     });
   }
@@ -580,14 +687,17 @@ export default function RoutineEditScreen() {
         // session's logging path swaps instead (a performed set is data, not a
         // prescription); both rules live in lib/rir.ts.
         const { rirMin, rirMax } = parseTargetRirFields(s.rirMin, s.rirMax);
+        const weight = parseFloatOrNull(s.weight);
         return {
           setNo: si,
           setType: s.setType,
-          // Weight is no longer authored ahead of time (dropped from the
-          // form), but an existing target still round-trips: Update Routine
-          // Values and the generator both write it, and updateRoutine
-          // re-creates the set graph from this input rather than merging.
-          targetWeightKg: s.existingTargetWeightKg ?? null,
+          targetWeightKg: fields.weight
+            ? weight != null
+              ? unit === "kg"
+                ? weight
+                : lbToKg(weight)
+              : null
+            : null,
           targetReps: fields.reps ? reps : null,
           targetRepsMax: fields.reps ? repsMax : null,
           targetDurationSec: fields.duration ? parseDuration(s.duration) : null,
@@ -636,10 +746,6 @@ export default function RoutineEditScreen() {
     () => groupByPrimaryMuscle(filterExercises(exercises, query, muscle)),
     [exercises, query, muscle],
   );
-
-  // Superset color coding: group index → accent border tint.
-  const supersetClass = (g: number | null) =>
-    g == null ? "" : "border-l-2 border-l-accent";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
@@ -727,27 +833,41 @@ export default function RoutineEditScreen() {
       <div className="mt-4 flex flex-col gap-3">
         {list.map((d, i) => {
           const fields = TYPE_FIELDS[d.exerciseType];
-          const linkedWithNext =
-            i + 1 < list.length &&
-            d.supersetGroup != null &&
-            list[i + 1].supersetGroup === d.supersetGroup;
+          const exercise = byId.get(d.exerciseId);
+          const machine = machines.find((m) => m.id === exercise?.machineId);
+          const defaultLaterality: Laterality =
+            exercise?.laterality === "unilateral" ? "unilateral" : "bilateral";
           return (
             <div
               key={d.key}
-              className={cn(
-                "rounded-lg border border-border bg-surface p-3",
-                supersetClass(d.supersetGroup),
-              )}
+              className="rounded-lg border border-border bg-surface p-3"
               data-testid={`routine-ex-${i}`}
             >
               <div className="flex items-center gap-2">
-                <span className="flex-1 truncate text-sm font-medium">
-                  {d.name}
-                </span>
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">
+                    {d.name}
+                  </span>
+                  {/* Exercise-level context the session header now reads
+                      (item 6): machine + default laterality, set below via
+                      the ⋯ menu. */}
+                  {(machine || defaultLaterality === "unilateral") && (
+                    <span className="block truncate text-2xs text-faint">
+                      {[
+                        machine &&
+                          [machine.brand, machine.name]
+                            .filter(Boolean)
+                            .join(" · "),
+                        defaultLaterality === "unilateral" &&
+                          "Unilateral by default",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  )}
+                </div>
                 <ExerciseMenu
                   index={i}
-                  hasNext={i + 1 < list.length}
-                  linkedWithNext={linkedWithNext}
                   canMoveUp={i > 0}
                   canMoveDown={i < list.length - 1}
                   setsLaterality={d.sets[0]?.laterality ?? "bilateral"}
@@ -774,11 +894,33 @@ export default function RoutineEditScreen() {
                       ],
                     })
                   }
-                  onToggleSuperset={() => toggleSupersetWithNext(i)}
-                  onMove={(dir) => move(i, dir)}
-                  onRemove={() =>
-                    setDrafts((prev) => (prev ?? []).filter((_, j) => j !== i))
+                  machineName={
+                    machine
+                      ? [machine.brand, machine.name]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : null
                   }
+                  onAttachMachine={() => setAttachMachineFor(i)}
+                  onRemoveMachine={
+                    exercise
+                      ? () =>
+                          patchExerciseField(i, exercise, { machineId: null })
+                      : undefined
+                  }
+                  defaultLaterality={defaultLaterality}
+                  onSetDefaultLaterality={
+                    exercise
+                      ? (l) =>
+                          patchExerciseField(i, exercise, { laterality: l })
+                      : undefined
+                  }
+                  onMove={(dir) => move(i, dir)}
+                  onRemove={() => {
+                    const key = list[i]?.key;
+                    if (key) draftRowsRef.current.delete(key);
+                    setDrafts((prev) => (prev ?? []).filter((_, j) => j !== i));
+                  }}
                 />
               </div>
 
@@ -792,143 +934,242 @@ export default function RoutineEditScreen() {
                 />
               </div>
 
-              <div className={cn("num mt-2 text-2xs text-faint", ROW_GRID)}>
-                <span>SET</span>
-                {fields.reps ? (
-                  <span>RIR</span>
-                ) : fields.duration && !fields.weight ? (
-                  <span>TIME</span>
-                ) : (
-                  <span />
-                )}
-                {fields.reps ? (
-                  <span>MIN</span>
-                ) : fields.distance ? (
-                  <span>{unit === "kg" ? "KM" : "MI"}</span>
-                ) : fields.weight && fields.duration ? (
-                  <span>TIME</span>
-                ) : (
-                  <span />
-                )}
-                <span />
-              </div>
+              <div className="mt-3 flex flex-col gap-2">
+                {d.sets.map((s, si) => {
+                  const prev = si > 0 ? d.sets[si - 1] : undefined;
+                  const weightHint =
+                    prev && s.weight !== "" && s.weight === prev.weight
+                      ? `same as set ${si}`
+                      : undefined;
+                  const repsHint =
+                    prev && s.reps !== "" && s.reps === prev.reps
+                      ? `same as set ${si}`
+                      : undefined;
+                  const unilateral =
+                    fields.reps && s.laterality === "unilateral";
+                  const testBase = `routine-ex-${i}-set-${si}`;
+                  return (
+                    <div
+                      key={s.key}
+                      className={cn(
+                        "-mx-3 border-t border-border px-3 pt-2 pb-3",
+                        si % 2 === 0 ? "bg-surface" : "bg-surface-2",
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <RoutineSetTypeCell
+                          index={si}
+                          setType={s.setType}
+                          onChange={(t) => patchSet(i, si, { setType: t })}
+                          testId={`${testBase}-type`}
+                        />
+                        <span className="text-2xs text-faint">
+                          Set {si + 1}
+                        </span>
+                        {unilateral && (
+                          <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-2xs text-faint">
+                            per side
+                          </span>
+                        )}
+                        <SetMenu
+                          index={i}
+                          si={si}
+                          laterality={s.laterality}
+                          onSetLaterality={(l) =>
+                            patchSet(i, si, { laterality: l })
+                          }
+                          onRemove={() =>
+                            patchExercise(i, {
+                              sets: d.sets.filter((_, k) => k !== si),
+                            })
+                          }
+                        />
+                      </div>
 
-              {d.sets.map((s, si) => (
-                <div
-                  key={s.key}
-                  className={cn(
-                    "-mx-3 border-t border-border px-3",
-                    ROW_GRID,
-                    si % 2 === 0 ? "bg-surface" : "bg-surface-2",
-                  )}
-                >
-                  <SetTypeCell
-                    setType={s.setType}
-                    index={si}
-                    onChange={(t) => patchSet(i, si, { setType: t })}
-                    testId={`routine-ex-${i}-set-${si}-type`}
-                  />
-                  {fields.reps ? (
-                    <div className="flex items-center gap-1">
-                      <Field
-                        inputMode="numeric"
-                        placeholder="RIR"
-                        value={s.rirMin}
-                        onChange={(e) =>
-                          patchSet(i, si, { rirMin: e.target.value })
-                        }
-                        className="flex-1 min-w-0"
-                        data-testid={`routine-ex-${i}-set-${si}-rirmin`}
-                      />
-                      <span className="text-2xs text-faint">–</span>
-                      <Field
-                        inputMode="numeric"
-                        placeholder="RIR"
-                        title="Target RIR range max"
-                        value={s.rirMax}
-                        onChange={(e) =>
-                          patchSet(i, si, { rirMax: e.target.value })
-                        }
-                        className="flex-1 min-w-0"
-                        data-testid={`routine-ex-${i}-set-${si}-rirmax`}
-                      />
+                      <div className="mt-2 flex flex-col gap-2">
+                        {fields.weight && (
+                          <AdjustField
+                            label={
+                              unilateral ? "Weight · both sides" : "Weight"
+                            }
+                            hint={weightHint}
+                            unit={weightLabel(d.exerciseType, unitLabel(unit))}
+                            value={s.weight}
+                            onValueChange={(v) =>
+                              patchSet(i, si, { weight: v })
+                            }
+                            deltas={WEIGHT_DELTAS}
+                            testId={`${testBase}-weight`}
+                          />
+                        )}
+
+                        {fields.reps &&
+                          (unilateral ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="grid grid-cols-2 gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
+                                <span>ᴸ Left</span>
+                                <span>ᴿ Right</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <AdjustField
+                                  label="Reps"
+                                  compact
+                                  integer
+                                  value={s.reps}
+                                  onValueChange={(v) =>
+                                    patchSet(i, si, { reps: v })
+                                  }
+                                  deltas={REPS_DELTAS_COMPACT}
+                                  testId={`${testBase}-reps-l`}
+                                />
+                                <AdjustField
+                                  label="Reps"
+                                  compact
+                                  integer
+                                  value={s.reps}
+                                  onValueChange={(v) =>
+                                    patchSet(i, si, { reps: v })
+                                  }
+                                  deltas={REPS_DELTAS_COMPACT}
+                                  testId={`${testBase}-reps-r`}
+                                />
+                              </div>
+                              {/* routine_sets has one reps target per set — the
+                                  same value the session already reads as
+                                  "reps per side" for a unilateral prescription
+                                  — so both columns write it and there's no
+                                  independent value to unlink to. Real
+                                  per-side authoring needs a schema column; see
+                                  the PR body. */}
+                              <div className="flex items-center gap-1">
+                                <span className="text-2xs text-faint">to</span>
+                                <Field
+                                  inputMode="numeric"
+                                  placeholder="max"
+                                  title="Optional rep-range max"
+                                  value={s.repsMax}
+                                  onChange={(e) =>
+                                    patchSet(i, si, {
+                                      repsMax: e.target.value,
+                                    })
+                                  }
+                                  className="w-14 text-center"
+                                  data-testid={`${testBase}-repsmax`}
+                                />
+                              </div>
+                              <p className="flex items-center gap-1 text-2xs text-faint">
+                                <Link2 className="size-3 shrink-0" />
+                                Same target both sides — log a different result
+                                per side in the session.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex items-end gap-2">
+                              <AdjustField
+                                label="Reps"
+                                hint={repsHint}
+                                integer
+                                value={s.reps}
+                                onValueChange={(v) =>
+                                  patchSet(i, si, { reps: v })
+                                }
+                                deltas={REPS_DELTAS}
+                                testId={`${testBase}-reps`}
+                                className="flex-1"
+                              />
+                              <div className="flex flex-col items-center pb-1.5">
+                                <span className="text-2xs text-faint">to</span>
+                                <Field
+                                  inputMode="numeric"
+                                  placeholder="max"
+                                  title="Optional rep-range max"
+                                  value={s.repsMax}
+                                  onChange={(e) =>
+                                    patchSet(i, si, {
+                                      repsMax: e.target.value,
+                                    })
+                                  }
+                                  className="w-14 text-center"
+                                  data-testid={`${testBase}-repsmax`}
+                                />
+                              </div>
+                            </div>
+                          ))}
+
+                        {fields.duration && (
+                          <div className="flex items-center gap-2">
+                            <span className="w-12 shrink-0 text-2xs font-medium tracking-widest text-faint uppercase">
+                              Time
+                            </span>
+                            <Field
+                              inputMode="numeric"
+                              placeholder="mm:ss"
+                              value={s.duration}
+                              onChange={(e) =>
+                                patchSet(i, si, { duration: e.target.value })
+                              }
+                              className="flex-1"
+                              data-testid={`${testBase}-duration`}
+                            />
+                          </div>
+                        )}
+                        {fields.distance && (
+                          <div className="flex items-center gap-2">
+                            <span className="w-12 shrink-0 text-2xs font-medium tracking-widest text-faint uppercase">
+                              {unit === "kg" ? "Km" : "Mi"}
+                            </span>
+                            <Field
+                              inputMode="decimal"
+                              placeholder="—"
+                              value={s.distance}
+                              onChange={(e) =>
+                                patchSet(i, si, { distance: e.target.value })
+                              }
+                              className="flex-1"
+                              data-testid={`${testBase}-distance`}
+                            />
+                          </div>
+                        )}
+
+                        {fields.reps && (
+                          <div className="flex items-center gap-1">
+                            <span className="w-8 shrink-0 text-2xs font-medium tracking-widest text-faint uppercase">
+                              RIR
+                            </span>
+                            <Field
+                              inputMode="numeric"
+                              placeholder="RIR"
+                              value={s.rirMin}
+                              onChange={(e) =>
+                                patchSet(i, si, { rirMin: e.target.value })
+                              }
+                              className="w-12 flex-none"
+                              data-testid={`${testBase}-rirmin`}
+                            />
+                            <span className="text-2xs text-faint">–</span>
+                            <Field
+                              inputMode="numeric"
+                              placeholder="RIR"
+                              title="Target RIR range max"
+                              value={s.rirMax}
+                              onChange={(e) =>
+                                patchSet(i, si, { rirMax: e.target.value })
+                              }
+                              className="w-12 flex-none"
+                              data-testid={`${testBase}-rirmax`}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  ) : fields.duration && !fields.weight ? (
-                    <Field
-                      inputMode="numeric"
-                      placeholder="mm:ss"
-                      value={s.duration}
-                      onChange={(e) =>
-                        patchSet(i, si, { duration: e.target.value })
-                      }
-                    />
-                  ) : (
-                    <span />
-                  )}
-                  {fields.reps ? (
-                    <div className="flex items-center gap-1">
-                      <Field
-                        inputMode="numeric"
-                        placeholder="min"
-                        value={s.reps}
-                        onChange={(e) =>
-                          patchSet(i, si, { reps: e.target.value })
-                        }
-                        className="flex-1 min-w-0"
-                        data-testid={`routine-ex-${i}-set-${si}-reps`}
-                      />
-                      <span className="text-2xs text-faint">–</span>
-                      <Field
-                        inputMode="numeric"
-                        placeholder="max"
-                        title="Optional rep-range max"
-                        value={s.repsMax}
-                        onChange={(e) =>
-                          patchSet(i, si, { repsMax: e.target.value })
-                        }
-                        className="flex-1 min-w-0"
-                        data-testid={`routine-ex-${i}-set-${si}-repsmax`}
-                      />
-                    </div>
-                  ) : fields.distance ? (
-                    <Field
-                      inputMode="decimal"
-                      placeholder="—"
-                      value={s.distance}
-                      onChange={(e) =>
-                        patchSet(i, si, { distance: e.target.value })
-                      }
-                    />
-                  ) : fields.weight && fields.duration ? (
-                    <Field
-                      inputMode="numeric"
-                      placeholder="mm:ss"
-                      value={s.duration}
-                      onChange={(e) =>
-                        patchSet(i, si, { duration: e.target.value })
-                      }
-                    />
-                  ) : (
-                    <span />
-                  )}
-                  <SetMenu
-                    index={i}
-                    si={si}
-                    laterality={s.laterality}
-                    onSetLaterality={(l) => patchSet(i, si, { laterality: l })}
-                    onRemove={() =>
-                      patchExercise(i, {
-                        sets: d.sets.filter((_, k) => k !== si),
-                      })
-                    }
-                  />
-                </div>
-              ))}
+                  );
+                })}
+              </div>
 
               <Button
                 variant="ghost"
                 size="sm"
-                className="mt-2 ml-10"
+                className="mt-2"
                 onClick={() =>
                   patchExercise(i, {
                     sets: [...d.sets, inheritedSet(d.sets.at(-1))],
@@ -1214,39 +1455,66 @@ export default function RoutineEditScreen() {
           </Button>
         </DialogContent>
       </Dialog>
+
+      {attachMachineFor != null && list[attachMachineFor] && (
+        <MachineAttachDialog
+          blockName={list[attachMachineFor].name}
+          open={attachMachineFor != null}
+          onOpenChange={(o) => !o && setAttachMachineFor(null)}
+          onAttach={(machineId) => {
+            const exercise = byId.get(list[attachMachineFor].exerciseId);
+            if (exercise)
+              patchExerciseField(attachMachineFor, exercise, { machineId });
+            setAttachMachineFor(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 // The exercise header's ⋯ menu (note 10: parity with the session's BlockMenu
-// — move-up/down, superset, warm-up and remove moved in here so the header
-// keeps only the name + ⋯). The menu mirrors the session's popup styling:
-// `floating` surface, label sections, hover rows. Exercise-level laterality
-// writes to every set of the exercise (the session's BlockMenu makes "every
-// set of the exercise unilateral (as before)", same bulk semantics) — the
-// per-set rows can still diverge via their own ⋯ menu.
+// — move-up/down, warm-up and remove moved in here so the header keeps only
+// the name + ⋯). The menu mirrors the session's popup styling: `floating`
+// surface, label sections, hover rows.
+//
+// Superset is GONE (session-redesign-r3 decisions.md #8 — "not super
+// science-based"): no toggle here any more. A routine saved before this
+// change that still carries a supersetGroup keeps it — save/load round-trips
+// the field untouched — it just no longer renders or is offered in the UI.
+//
+// Two distinct "Laterality" concepts live in this menu, deliberately
+// labeled apart: "Laterality" (this routine's sets — bulk-writes every
+// routine_sets.laterality below, the session BlockMenu's own bulk semantics)
+// vs "Default laterality" (exercises.laterality — an app-wide default the
+// session header pre-loads for every routine/session that uses this
+// exercise, item 6).
 function ExerciseMenu({
   index,
-  hasNext,
-  linkedWithNext,
   canMoveUp,
   canMoveDown,
   setsLaterality,
   onSetLaterality,
   onAddWarmup,
-  onToggleSuperset,
+  machineName,
+  onAttachMachine,
+  onRemoveMachine,
+  defaultLaterality,
+  onSetDefaultLaterality,
   onMove,
   onRemove,
 }: {
   index: number;
-  hasNext: boolean;
-  linkedWithNext: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
   setsLaterality: SetLaterality;
   onSetLaterality: (l: SetLaterality) => void;
   onAddWarmup: () => void;
-  onToggleSuperset: () => void;
+  machineName: string | null;
+  onAttachMachine: () => void;
+  onRemoveMachine?: () => void;
+  defaultLaterality: Laterality;
+  onSetDefaultLaterality?: (l: Laterality) => void;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
 }) {
@@ -1276,24 +1544,9 @@ function ExerciseMenu({
             className="fixed inset-0 z-10 cursor-default"
           />
           <div
-            className="floating absolute top-full right-0 z-20 mt-1 max-h-80 min-w-52 overflow-y-auto py-1"
+            className="floating absolute top-full right-0 z-20 mt-1 max-h-96 min-w-56 overflow-y-auto py-1"
             data-testid={`routine-ex-${index}-menu-popup`}
           >
-            <p className={labelCls}>Superset</p>
-            <button
-              type="button"
-              onClick={() => {
-                onToggleSuperset();
-                close();
-              }}
-              disabled={!hasNext && !linkedWithNext}
-              data-testid={`routine-ex-${index}-superset`}
-              className={itemCls}
-            >
-              <Link2 className="size-3.5 shrink-0 text-faint" />
-              {linkedWithNext ? "Remove from superset" : "Superset with next"}
-            </button>
-            <div className="border-t border-border" />
             <button
               type="button"
               onClick={() => {
@@ -1331,6 +1584,65 @@ function ExerciseMenu({
                   </span>
                 </span>
                 {setsLaterality === l && (
+                  <Check className="ml-auto size-3.5 shrink-0 text-accent" />
+                )}
+              </button>
+            ))}
+            <div className="border-t border-border" />
+            <p className={labelCls}>Machine</p>
+            <button
+              type="button"
+              onClick={() => {
+                onAttachMachine();
+                close();
+              }}
+              data-testid={`routine-ex-${index}-machine-attach`}
+              className={itemCls}
+            >
+              <Dumbbell className="size-3.5 shrink-0 text-faint" />
+              <span className="truncate">
+                {machineName ? `Change — ${machineName}` : "Attach machine…"}
+              </span>
+            </button>
+            {machineName && onRemoveMachine && (
+              <button
+                type="button"
+                onClick={() => {
+                  onRemoveMachine();
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-machine-remove`}
+                className={itemCls}
+              >
+                <X className="size-3.5 shrink-0 text-faint" />
+                Remove machine
+              </button>
+            )}
+            <div className="border-t border-border" />
+            <p className={labelCls}>Default laterality</p>
+            <p className="px-3 pb-1 text-2xs text-faint">
+              Applies everywhere this exercise is used — pre-loads the session
+              header.
+            </p>
+            {(
+              [
+                ["bilateral", LATERALITY_LABELS.bilateral],
+                ["unilateral", LATERALITY_LABELS.unilateral],
+              ] as const
+            ).map(([l, label]) => (
+              <button
+                key={l}
+                type="button"
+                disabled={!onSetDefaultLaterality}
+                onClick={() => {
+                  onSetDefaultLaterality?.(l);
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-default-laterality-${l}`}
+                className={itemCls}
+              >
+                {label}
+                {defaultLaterality === l && (
                   <Check className="ml-auto size-3.5 shrink-0 text-accent" />
                 )}
               </button>

@@ -32,9 +32,9 @@ async function routineIdByName(page: Page, name: string): Promise<string> {
   }, name);
 }
 
-// Weight is no longer authored in the routine builder (dropped from the
-// form), so this reads target_weight_kg/target_reps straight from
-// routine_sets instead of the (now-removed) routine-editor weight input.
+// Reads target_weight_kg/target_reps straight from routine_sets — used both
+// to confirm an authored weight round-trips and (in the first test below) to
+// confirm Update Routine Values writes back a target the editor left blank.
 async function routineSetTargets(
   page: Page,
   routineId: string,
@@ -80,9 +80,9 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await createExercise(page, EX);
   await waitForExercise(page, EX);
 
-  // Build a routine: set 0 fixed (5 reps), set 1 rep-range (8–12). Weight is
-  // not authored in the builder — only Update Routine Values writes it,
-  // after a session is performed.
+  // Build a routine: set 0 fixed (5 reps), set 1 rep-range (8–12). Both are
+  // left with no weight target here (the weight field is optional) —
+  // Update Routine Values writes one in after a session is performed.
   await page.goto("/routines");
   await page.getByTestId("new-routine-btn").click();
   await expect(page).toHaveURL(/\/routines\/new/);
@@ -105,8 +105,8 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
 
-  // Set 0 draft: reps seeded from the fixed target, weight blank (never
-  // authored). PREVIOUS is blank too (never logged).
+  // Set 0 draft: reps seeded from the fixed target, weight blank (left
+  // unauthored above). PREVIOUS is blank too (never logged).
   await expect(page.getByTestId("set-0-weight")).toHaveValue("");
   await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
   await expect(page.getByTestId("set-0-previous")).toHaveText("—");
@@ -181,7 +181,7 @@ test("start routine still prefills when the session row resolves after its exerc
 // weight field, the exercise note is full-width, and the training-page menu
 // flips upward when clipped.
 
-test("+ Add set inherits reps/range/RIR from the previous set, not weight or set type", async ({
+test("+ Add set inherits weight/reps/range/RIR from the previous set, not set type", async ({
   page,
 }) => {
   const EX = `InheritEx ${Date.now()}`;
@@ -193,10 +193,8 @@ test("+ Add set inherits reps/range/RIR from the previous set, not weight or set
   await page.getByTestId("routine-add-exercise-btn").click();
   await page.getByTestId(`routine-pick-${EX}`).click();
 
-  // No weight field anywhere in the authoring form (dropped per #3).
-  await expect(page.getByTestId("routine-ex-0-set-0-weight")).toHaveCount(0);
-
   // Set 0: give it a distinctive prescription and mark it a warm-up.
+  await page.getByTestId("routine-ex-0-set-0-weight").fill("62.5");
   await page.getByTestId("routine-ex-0-set-0-reps").fill("6");
   await page.getByTestId("routine-ex-0-set-0-repsmax").fill("8");
   await page.getByTestId("routine-ex-0-set-0-rirmin").fill("2");
@@ -213,7 +211,12 @@ test("+ Add set inherits reps/range/RIR from the previous set, not weight or set
   await page.getByTestId("routine-ex-0-set-1-remove").click();
   await page.getByTestId("routine-ex-0-add-set").click();
 
-  // The new set (index 1) inherited reps/range/RIR range…
+  // The new set (index 1) inherited weight/reps/range/RIR range — the
+  // editor's analogue of "start from last time" (session-redesign-r3 #3), so
+  // adding a third set to a 3×5 doesn't mean typing it all again…
+  await expect(page.getByTestId("routine-ex-0-set-1-weight")).toHaveValue(
+    "62.5",
+  );
   await expect(page.getByTestId("routine-ex-0-set-1-reps")).toHaveValue("6");
   await expect(page.getByTestId("routine-ex-0-set-1-repsmax")).toHaveValue("8");
   await expect(page.getByTestId("routine-ex-0-set-1-rirmin")).toHaveValue("2");
@@ -221,6 +224,47 @@ test("+ Add set inherits reps/range/RIR from the previous set, not weight or set
   // …but not the warm-up type — a carried-forward label would silently
   // mislabel a new working set.
   await expect(page.getByTestId("routine-ex-0-set-1-type")).toHaveText("2");
+});
+
+test("weight and reps adjust chips step the boxed target fields, and a typed weight round-trips to the saved routine", async ({
+  page,
+}) => {
+  const EX = `AdjustEx ${Date.now()}`;
+  const ROUTINE = `Adjust routine ${Date.now()}`;
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await waitForExercise(page, EX);
+
+  await page.goto("/routines/new");
+  await page.getByTestId("routine-name-input").fill(ROUTINE);
+  await page.getByTestId("routine-add-exercise-btn").click();
+  await page.getByTestId(`routine-pick-${EX}`).click();
+
+  const weight = page.getByTestId("routine-ex-0-set-0-weight");
+  const reps = page.getByTestId("routine-ex-0-set-0-reps");
+  await weight.fill("60");
+  await reps.fill("5");
+  // Weight: −15 −10 −5 −1 | +1 +5 +10 +15 (session-redesign-r3 A1/A2).
+  await page.getByTestId("routine-ex-0-set-0-weight-delta-5").click();
+  await page.getByTestId("routine-ex-0-set-0-weight-delta--5").click();
+  await page.getByTestId("routine-ex-0-set-0-weight-delta-10").click();
+  await expect(weight).toHaveValue("70");
+  // Reps: −2 −1 | +1 +2.
+  await page.getByTestId("routine-ex-0-set-0-reps-delta-2").click();
+  await page.getByTestId("routine-ex-0-set-0-reps-delta--1").click();
+  await expect(reps).toHaveValue("6");
+
+  await page.getByTestId("routine-save-btn").click();
+  await expect(page).toHaveURL(/\/routines$/);
+
+  const routineId = await routineIdByName(page, ROUTINE);
+  expect(routineId).not.toBe("");
+  const targets = await routineSetTargets(page, routineId);
+  expect(targets[0]).toEqual({
+    set_no: 0,
+    target_weight_kg: 70,
+    target_reps: 6,
+  });
 });
 
 test("a fresh set defaults its target RIR range to 1-2, and the RIR/name controls meet the 40px floor", async ({
@@ -417,53 +461,47 @@ test("start routine materializes every configured set as a visible row, not just
   }
 });
 
-// Routine editor ↔ session parity (UI feedback batch 8, notes 10/13): the
-// exercise ⋯ menu owns laterality (writes every set), warm-up (inserts a
-// warmup-typed set at the top) and superset (adjacent pair); the per-set ⋯
-// menu owns per-set laterality + Remove set. The prescription round-trips:
-// a unilateral warm-up set starts a session as a unilateral pair (two
-// committed rows, W marker on the left line) with the superset group intact.
-test("exercise menu laterality/warm-up/superset round-trip into the session", async ({
+// Routine editor ↔ session parity (UI feedback batch 8, notes 10/13; superset
+// removed per session-redesign-r3 #8): the exercise ⋯ menu owns laterality
+// (writes every set) and warm-up (inserts a warmup-typed set at the top); the
+// per-set ⋯ menu owns per-set laterality + Remove set. The prescription
+// round-trips: a unilateral warm-up set starts a session as a unilateral pair
+// (two committed rows, W marker on the left line).
+test("exercise menu laterality/warm-up round-trip into the session", async ({
   page,
 }) => {
   const EX1 = `MenuEx1 ${Date.now()}`;
-  const EX2 = `MenuEx2 ${Date.now()}`;
   const ROUTINE = `Menu routine ${Date.now()}`;
 
   await page.goto("/library");
   await createExercise(page, EX1);
-  await createExercise(page, EX2);
   await waitForExercise(page, EX1);
-  await waitForExercise(page, EX2);
 
   await page.goto("/routines/new");
   await page.getByTestId("routine-add-exercise-btn").click();
   await page.getByTestId(`routine-pick-${EX1}`).click();
-  await page.getByTestId("routine-add-exercise-btn").click();
-  await page.getByTestId(`routine-pick-${EX2}`).click();
 
   // Exercise-level Unilateral writes every set of the exercise.
   await page.getByTestId("routine-ex-0-menu").click();
+  // Superset is gone: no toggle in this menu any more (session-redesign-r3
+  // #8) — checked while the menu is open, not after it's already closed.
+  await expect(page.getByTestId("routine-ex-0-superset")).toHaveCount(0);
   await page.getByTestId("routine-ex-0-laterality-unilateral").click();
   // Warm-up inserts a warmup-typed set at the top (marker W on set 0).
   await page.getByTestId("routine-ex-0-menu").click();
   await page.getByTestId("routine-ex-0-warmup").click();
   await expect(page.getByTestId("routine-ex-0-set-0-type")).toHaveText("W");
-  // Superset with next, from the same menu.
-  await page.getByTestId("routine-ex-0-menu").click();
-  await page.getByTestId("routine-ex-0-superset").click();
   await page.getByTestId("routine-name-input").fill(ROUTINE);
   await page.getByTestId("routine-save-btn").click();
   await expect(page).toHaveURL(/\/routines$/);
 
   const routineId = await routineIdByName(page, ROUTINE);
   expect(routineId).not.toBe("");
-  // The set graph persisted: warmup + 2 normal sets, all unilateral; the two
-  // exercises share a superset group.
+  // The set graph persisted: warmup + 2 normal sets, all unilateral.
   const state = await page.evaluate(async (rid) => {
     const { data: ex } = await window.__frog.supabase
       .from("routine_exercises")
-      .select("id, superset_group")
+      .select("id")
       .eq("routine_id", rid)
       .is("deleted_at", null)
       .order("order_index");
@@ -478,12 +516,8 @@ test("exercise menu laterality/warm-up/superset round-trip into the session", as
         return data;
       }),
     );
-    return {
-      groups: (ex ?? []).map((e) => e.superset_group),
-      sets,
-    };
+    return { sets };
   }, routineId);
-  expect(state.groups).toEqual([0, 0]);
   expect(state.sets[0]?.[0]?.set_type).toBe("warmup");
   expect(state.sets[0]?.every((s) => s.laterality === "unilateral")).toBe(true);
 
@@ -495,7 +529,6 @@ test("exercise menu laterality/warm-up/superset round-trip into the session", as
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
   const sessionId = page.url().split("/session/")[1];
-  // Both exercises' blocks render; scope to the first block.
   await expect(
     page.locator('[data-testid^="block-"]').first().getByTestId("set-0-type"),
   ).toHaveText("Wᴸ");
@@ -555,4 +588,119 @@ test("exercise menu laterality/warm-up/superset round-trip into the session", as
     { set_no: 0, side: "left", set_type: "warmup", reps: 8 },
     { set_no: 0, side: "right", set_type: "warmup", reps: 8 },
   ]);
+});
+
+// session-redesign-r3 A3: a unilateral set gets a shared weight row (one
+// field, applies to both sides) plus a two-column ᴸ/ᴿ reps grid. routine_sets
+// carries one reps value per row (the session already reads it as "reps per
+// side"), so both columns write the same field — there's no per-side value
+// to persist independently yet (see the PR body) — but the grid still saves
+// correctly and both columns always agree.
+test("a unilateral set shows a shared weight row and a two-column ᴸ/ᴿ reps grid that stay in sync", async ({
+  page,
+}) => {
+  const EX = `SideEx ${Date.now()}`;
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await waitForExercise(page, EX);
+
+  await page.goto("/routines/new");
+  await page.getByTestId("routine-add-exercise-btn").click();
+  await page.getByTestId(`routine-pick-${EX}`).click();
+
+  // Per-set ⋯ menu — flip just set 0 to unilateral (not the whole exercise).
+  await page.getByTestId("routine-ex-0-set-0-menu").click();
+  await page.getByTestId("routine-ex-0-set-0-laterality-unilateral").click();
+
+  // One shared weight field, not two.
+  await expect(page.getByTestId("routine-ex-0-set-0-weight")).toHaveCount(1);
+  await page.getByTestId("routine-ex-0-set-0-weight").fill("40");
+
+  // Two reps columns, compact ±1 chips, both bound to the same target.
+  const left = page.getByTestId("routine-ex-0-set-0-reps-l");
+  const right = page.getByTestId("routine-ex-0-set-0-reps-r");
+  await left.fill("6");
+  await expect(right).toHaveValue("6");
+  await page.getByTestId("routine-ex-0-set-0-reps-r-delta-1").click();
+  await expect(left).toHaveValue("7");
+  await expect(right).toHaveValue("7");
+
+  await page.getByTestId("routine-save-btn").click();
+  await expect(page).toHaveURL(/\/routines$/);
+});
+
+// Machine and default laterality (item 6) live on `exercises`, not the
+// routine — editable from the exercise ⋯ menu so the session header can
+// pre-load them for every routine that uses this exercise.
+test("exercise ⋯ menu edits the exercise's default machine and laterality", async ({
+  page,
+}) => {
+  const EX = `DefaultsEx ${Date.now()}`;
+  const MACHINE = `Defaults Row ${Date.now()}`;
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await waitForExercise(page, EX);
+
+  // Add a machine to "my gym" first. Custom name+timestamp rather than a
+  // catalog pick: AddMachine's catalog path (machines.tsx) doesn't dedupe
+  // by brand+model the way the exercise-menu's MachineAttachDialog does, so
+  // reusing a catalog entry another spec also adds (machines.spec.ts and
+  // machine-catalog.spec.ts both already claim Matrix Ultra rows) leaves
+  // two same-named rows in "my gym" and a strict-mode locator violation —
+  // same collision-avoidance convention as machines.spec.ts's "Photo Row".
+  await page.getByTestId("machine-name-input").fill(MACHINE);
+  await page.getByTestId("add-machine-btn").click();
+  await expect(page.getByTestId(`machine-row-${MACHINE}`)).toBeVisible();
+
+  await page.goto("/routines/new");
+  await page.getByTestId("routine-add-exercise-btn").click();
+  await page.getByTestId(`routine-pick-${EX}`).click();
+
+  await page.getByTestId("routine-ex-0-menu").click();
+  await page.getByTestId("routine-ex-0-default-laterality-unilateral").click();
+  // The card's subline now names the default.
+  await expect(page.getByTestId("routine-ex-0")).toContainText(
+    "Unilateral by default",
+  );
+
+  await page.getByTestId("routine-ex-0-menu").click();
+  await page.getByTestId("routine-ex-0-machine-attach").click();
+  await page.getByTestId(`attach-existing-${MACHINE}`).click();
+  await expect(page.getByTestId("routine-ex-0")).toContainText(MACHINE);
+
+  // Server-side: the exercise's default machine + laterality both wrote.
+  // `createExercise` publishes a shared row by default (COMMUNITY_SHARING,
+  // owner_id null) unless a machine/media is staged at creation time, and a
+  // shared row is RLS-immutable — so patchExerciseField forks a private
+  // "<name> (copy)" row rather than patching EX in place (same gate as the
+  // session BlockMenu's forkExercise, docs/DECISIONS.md 2026-08-08). Query
+  // by prefix, newest first, to land on whichever row actually holds the
+  // edit. Long timeout: a mutation can retry up to 3x (app.tsx).
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(async (name) => {
+          const { data } = await window.__frog.supabase
+            .from("exercises")
+            .select("machine_id, laterality")
+            .ilike("name", `${name}%`)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          return data;
+        }, EX),
+      { timeout: 15_000 },
+    )
+    .toMatchObject({ laterality: "unilateral" });
+  const row = await page.evaluate(async (name) => {
+    const { data } = await window.__frog.supabase
+      .from("exercises")
+      .select("machine_id")
+      .ilike("name", `${name}%`)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data?.machine_id ?? null;
+  }, EX);
+  expect(row).not.toBeNull();
 });

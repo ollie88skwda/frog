@@ -71,6 +71,13 @@ export function parseIntOrNull(raw: string): number | null {
   return Number.isFinite(v) ? v : null;
 }
 
+/** Same contract as parseIntOrNull, for decimal fields (weight targets). */
+export function parseFloatOrNull(raw: string): number | null {
+  if (raw.trim() === "") return null;
+  const v = Number.parseFloat(raw);
+  return Number.isFinite(v) ? v : null;
+}
+
 /**
  * Parses a duration entry into whole seconds. Accepts `m:ss` / `mm:ss` or a
  * plain seconds count (`90`). Returns null for empty / unparseable input.
