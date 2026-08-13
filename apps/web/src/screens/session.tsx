@@ -94,6 +94,7 @@ import {
 import { useLocation, useNavigate, useParams } from "react-router";
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ExerciseRibbon, ExerciseThumb } from "@/components/anatomy-ui";
+import { ConditionsChip } from "@/components/conditions";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
@@ -1458,8 +1459,17 @@ export default function SessionScreen() {
         </div>
       </header>
 
-      <div className="mx-auto max-w-2xl px-4 py-1.5 flex items-center justify-between gap-3 border-b border-border">
-        <p className="num text-xs text-faint" data-testid="session-stats">
+      <div className="mx-auto flex max-w-2xl flex-wrap items-center gap-3 border-b border-border px-4 py-1.5">
+        {/* The chip owns the leftover space (flex-1) while the stats text
+            stays shrink-0, so the chip never gets squeezed to a sliver on a
+            narrow phone — it wraps to its own row before that happens. */}
+        <div className="min-w-max flex-1">
+          <ConditionsChip sessionId={sessionId} />
+        </div>
+        <p
+          className="num shrink-0 text-xs text-faint"
+          data-testid="session-stats"
+        >
           {setCount} {setCount === 1 ? "set" : "sets"} ·{" "}
           {volume.toLocaleString()} {unitLabel(unit)}
         </p>
@@ -2834,7 +2844,12 @@ function ExerciseSpotlight({
   ) => void;
   onSwapExercise: (seId: string, exerciseId: string, ghostId: string) => void;
 }) {
-  const { data: ghost = [] } = useGhost(
+  // isLoading (not just `data`) matters here: the live spotlight FILLS
+  // weight/reps from this on mount via a plain useState initializer (a
+  // one-shot read, not a subscription), so mounting it before this query
+  // has settled would freeze the fields at "no last time" forever even
+  // once the real ghost lands a moment later — gated below.
+  const { data: ghost = [], isLoading: ghostLoading } = useGhost(
     block.ghostExerciseId ?? block.exerciseId,
     block.seId,
     previousRoutineId,
@@ -3201,57 +3216,76 @@ function ExerciseSpotlight({
 
       {/* 4 + 5. The spotlight + action zone — one persistent spotlight, live
           or focused on a committed set via a marks-band tap (never a second
-          modal copy of the same fields; testid-contract.md). */}
-      <Spotlight
-        key={`${block.seId}-${focusedIndex}-${seedNonce}-${
-          committedGroups[focusedIndex]?.map((r) => r.id).join(",") ?? "live"
-        }`}
-        seId={block.seId}
-        index={focusedIndex}
-        unit={blockUnit}
-        distUnit={distUnit}
-        type={type}
-        seed={seedSets[focusedIndex]}
-        nextSeedType={seedSets[focusedIndex + 1]?.setType ?? null}
-        ghost={ghostFor(ghost, focusedIndex)}
-        hasGhost={ghost.length > 0}
-        committedGroup={committedGroups[focusedIndex] ?? null}
-        barLoaded={barLoaded}
-        exerciseLaterality={exercise?.laterality ?? null}
-        lateralityOverride={lateralityOverride}
-        onLateralityOverrideChange={setLateralityOverride}
-        onOpenPlates={(target) => {
-          setPlateTarget(target);
-          setPlateOpen(true);
-        }}
-        timerRunning={timerRunning}
-        timerStartedAt={timerStartedAt}
-        onToggleTimer={onToggleTimer}
-        restStartedAt={focusedIndex === activeIndex ? restStartedAt : null}
-        onStopRest={onStopRest}
-        onCommit={onCommit}
-        onSaveCommitted={(setId, patch) => onSaveSet(setId, patch)}
-        onSaveType={(patch) => {
-          const group = committedGroups[focusedIndex];
-          if (group) for (const r of group) onSaveSet(r.id, patch);
-        }}
-        onDeleteCommitted={() => {
-          const group = committedGroups[focusedIndex];
-          if (group) for (const r of group) onRemoveSet(r.id);
-          focusLive();
-        }}
-        onSetLaterality={(unilateral) => {
-          const group = committedGroups[focusedIndex];
-          if (group) onSetLaterality(block.seId, type, group[0], unilateral);
-        }}
-        onFocusLive={focusLive}
-        history={history}
-        liveTopKg={liveTopKg}
-        exerciseId={block.exerciseId}
-        prSnapshot={prSnapshot}
-        voiceFill={voiceFill}
-        onVoiceFillConsumed={onVoiceFillConsumed}
-      />
+          modal copy of the same fields; testid-contract.md).
+
+          Held back on its FIRST paint until the ghost query settles when
+          it's the live (not-yet-logged) set that's showing: Spotlight fills
+          weight/reps from `ghost` once, via a useState initializer, on
+          mount — mounting it while the query is still loading would freeze
+          the fields at "no last time" even after the real ghost data lands,
+          which is exactly the bug this guards ("opens already filled, no
+          user action" has to be true the instant it's visible, not after a
+          blank flash). Editing an already-committed set never depends on
+          ghost — its values come straight from `committedGroup`. */}
+      {committedGroups[focusedIndex] == null && ghostLoading ? (
+        <p
+          className="px-4 py-10 text-center text-xs text-faint"
+          data-testid="spotlight-loading"
+        >
+          Loading…
+        </p>
+      ) : (
+        <Spotlight
+          key={`${block.seId}-${focusedIndex}-${seedNonce}-${
+            committedGroups[focusedIndex]?.map((r) => r.id).join(",") ?? "live"
+          }`}
+          seId={block.seId}
+          index={focusedIndex}
+          unit={blockUnit}
+          distUnit={distUnit}
+          type={type}
+          seed={seedSets[focusedIndex]}
+          nextSeedType={seedSets[focusedIndex + 1]?.setType ?? null}
+          ghost={ghostFor(ghost, focusedIndex)}
+          hasGhost={ghost.length > 0}
+          committedGroup={committedGroups[focusedIndex] ?? null}
+          barLoaded={barLoaded}
+          exerciseLaterality={exercise?.laterality ?? null}
+          lateralityOverride={lateralityOverride}
+          onLateralityOverrideChange={setLateralityOverride}
+          onOpenPlates={(target) => {
+            setPlateTarget(target);
+            setPlateOpen(true);
+          }}
+          timerRunning={timerRunning}
+          timerStartedAt={timerStartedAt}
+          onToggleTimer={onToggleTimer}
+          restStartedAt={focusedIndex === activeIndex ? restStartedAt : null}
+          onStopRest={onStopRest}
+          onCommit={onCommit}
+          onSaveCommitted={(setId, patch) => onSaveSet(setId, patch)}
+          onSaveType={(patch) => {
+            const group = committedGroups[focusedIndex];
+            if (group) for (const r of group) onSaveSet(r.id, patch);
+          }}
+          onDeleteCommitted={() => {
+            const group = committedGroups[focusedIndex];
+            if (group) for (const r of group) onRemoveSet(r.id);
+            focusLive();
+          }}
+          onSetLaterality={(unilateral) => {
+            const group = committedGroups[focusedIndex];
+            if (group) onSetLaterality(block.seId, type, group[0], unilateral);
+          }}
+          onFocusLive={focusLive}
+          history={history}
+          liveTopKg={liveTopKg}
+          exerciseId={block.exerciseId}
+          prSnapshot={prSnapshot}
+          voiceFill={voiceFill}
+          onVoiceFillConsumed={onVoiceFillConsumed}
+        />
+      )}
 
       <PlateSheet
         open={plateOpen}

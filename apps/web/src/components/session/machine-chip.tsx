@@ -1,6 +1,6 @@
 import type { Machine, MachineCatalogEntry } from "@frog/core";
 import { Command } from "cmdk";
-import { Plus, Wrench } from "lucide-react";
+import { Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -60,13 +60,9 @@ export function MachineChip({
         className="max-w-full self-start"
         data-testid="exercise-machine-chip"
       >
-        {machine ? (
-          <Wrench className="size-3.5 shrink-0" />
-        ) : (
-          <Plus className="size-3.5 shrink-0" />
-        )}
+        {machine && <Wrench className="size-3.5 shrink-0" />}
         <span className="truncate">
-          {machine ? machineLabel(machine) : "machine"}
+          {machine ? machineLabel(machine) : "+ add machine"}
         </span>
       </Button>
       <MachineCommandDialog
