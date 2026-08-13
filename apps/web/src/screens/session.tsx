@@ -92,14 +92,7 @@ import {
   useState,
 } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import {
-  Bar,
-  BarChart,
-  Cell,
-  ResponsiveContainer,
-  XAxis,
-  YAxis,
-} from "recharts";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ExerciseRibbon, ExerciseThumb } from "@/components/anatomy-ui";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import {
@@ -2385,16 +2378,41 @@ function GrowthBars({
               stroke="var(--faint)"
             />
             <YAxis hide domain={[0, "dataMax"]} />
-            <Bar dataKey="value" radius={0} maxBarSize={28}>
-              {points.bars.map((b) => (
-                <Cell
-                  key={b.label}
-                  fill={b.isToday ? "var(--accent-soft)" : "var(--accent)"}
-                  stroke={b.isToday ? "var(--accent)" : undefined}
-                  strokeDasharray={b.isToday ? "3 2" : undefined}
-                />
-              ))}
-            </Bar>
+            <Bar
+              dataKey="value"
+              radius={0}
+              maxBarSize={28}
+              // A custom shape (not <Cell> children) so each bar can carry
+              // its own testid — Cell doesn't forward arbitrary DOM props.
+              shape={(props: {
+                x?: number;
+                y?: number;
+                width?: number;
+                height?: number;
+                index?: number;
+              }) => {
+                const {
+                  x = 0,
+                  y = 0,
+                  width = 0,
+                  height = 0,
+                  index = 0,
+                } = props;
+                const bar = points.bars[index];
+                return (
+                  <rect
+                    x={x}
+                    y={y}
+                    width={width}
+                    height={height}
+                    fill={bar?.isToday ? "var(--accent-soft)" : "var(--accent)"}
+                    stroke={bar?.isToday ? "var(--accent)" : undefined}
+                    strokeDasharray={bar?.isToday ? "3 2" : undefined}
+                    data-testid={`stats-growth-bar-${index}`}
+                  />
+                );
+              }}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -3369,33 +3387,52 @@ function Spotlight({
         ? String(toDisplayDistance(left.distanceM, distUnit))
         : "";
     }
+    // Contract: a value FILLS the field only from an uncommitted draft or
+    // last time's own performance (ghost) — never from the routine target,
+    // which is placeholder-only (seedPlaceholder below) when there's no
+    // ghost to prefill from.
     if (kind === "weight") {
       if (draft?.weight) return draft.weight;
       if (ghost.weightKg != null)
         return String(toDisplayWeight(ghost.weightKg, unit));
-      if (seed?.weightKg != null)
-        return String(toDisplayWeight(seed.weightKg, unit));
       return "";
     }
     if (kind === "reps") {
       if (draft?.reps) return draft.reps;
       if (ghost.reps != null) return String(ghost.reps);
-      if (seed && seed.repsMax == null && seed.reps != null)
-        return String(seed.reps);
       return "";
     }
     if (kind === "duration") {
       if (draft?.duration) return draft.duration;
       if (ghost.durationSec != null) return formatMMSS(ghost.durationSec);
-      if (seed?.durationSec != null) return formatMMSS(seed.durationSec);
       return "";
     }
     if (draft?.distance) return draft.distance;
     if (ghost.distanceM != null)
       return String(toDisplayDistance(ghost.distanceM, distUnit));
-    if (seed?.distanceM != null)
-      return String(toDisplayDistance(seed.distanceM, distUnit));
     return "";
+  };
+  // Routine/copy-workout target, shown as a placeholder only — never a
+  // silent fill — when there's no ghost (last-time) value for this field.
+  const seedPlaceholder = (
+    kind: "weight" | "reps" | "duration" | "distance",
+  ): string | undefined => {
+    if (isEditing || !seed) return undefined;
+    if (kind === "weight")
+      return seed.weightKg != null
+        ? String(toDisplayWeight(seed.weightKg, unit))
+        : undefined;
+    if (kind === "reps") {
+      if (seed.repsMax != null) return `${seed.reps ?? ""}–${seed.repsMax}`;
+      return seed.reps != null ? String(seed.reps) : undefined;
+    }
+    if (kind === "duration")
+      return seed.durationSec != null
+        ? formatMMSS(seed.durationSec)
+        : undefined;
+    return seed.distanceM != null
+      ? String(toDisplayDistance(seed.distanceM, distUnit))
+      : undefined;
   };
   const seedRightReps = () => {
     if (isEditing) return right?.reps != null ? String(right.reps) : "";
@@ -3870,11 +3907,7 @@ function Spotlight({
                   : "decimal"
             }
             value={value}
-            placeholder={
-              key === "reps" && seed?.repsMax != null
-                ? `${seed.reps ?? ""}–${seed.repsMax}`
-                : undefined
-            }
+            placeholder={seedPlaceholder(key)}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") e.preventDefault();
