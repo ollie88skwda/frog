@@ -8,6 +8,9 @@ import { logBilateralSet, makeExercise, openSetTypeMenu, startSessionWith } from
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
+  // Display kg so typed weights map 1:1 to the canonical weight_kg store
+  // this file asserts directly (the app defaults to lb).
+  await page.addInitScript(() => localStorage.setItem("unit", "kg"));
   await signIn(page);
 });
 

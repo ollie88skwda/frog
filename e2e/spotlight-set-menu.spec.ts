@@ -43,6 +43,35 @@ test("delete removes the current set", async ({ page }) => {
   await logBilateralSet(page, "50", "8");
   await logBilateralSet(page, "55", "6"); // set 1 now open
 
+  // Scoped by this exercise's own session_exercise, not a bare weight match
+  // (the account's display unit isn't forced to kg here, so a raw "50"
+  // filter would silently match zero rows even before deleting anything).
+  const liveRowCount = async () =>
+    page.evaluate(async (exerciseName) => {
+      const sb = window.__frog.supabase;
+      const { data: ex, error: exErr } = await sb
+        .from("exercises")
+        .select("id")
+        .eq("name", exerciseName)
+        .single();
+      if (exErr) throw new Error(exErr.message);
+      const { data: se, error: seErr } = await sb
+        .from("session_exercises")
+        .select("id")
+        .eq("exercise_id", (ex as { id: string }).id)
+        .single();
+      if (seErr) throw new Error(seErr.message);
+      const { count, error } = await sb
+        .from("set_logs")
+        .select("id", { count: "exact", head: true })
+        .eq("session_exercise_id", (se as { id: string }).id)
+        .eq("set_no", 0)
+        .is("deleted_at", null);
+      if (error) throw new Error(error.message);
+      return count ?? 0;
+    }, EX);
+  expect(await liveRowCount()).toBe(1);
+
   // Reopen set 0 and delete it (same testid, two-tap confirm: the first
   // arms the delete, the second — label now "Confirm delete" — commits it).
   await page.getByTestId("set-mark-0").click();
@@ -50,22 +79,13 @@ test("delete removes the current set", async ({ page }) => {
   await page.getByTestId("set-type-delete").click();
   await page.getByTestId("set-type-delete").click();
 
-  const rows = await page.evaluate(async () => {
-    const sb = window.__frog.supabase;
-    const { data, error } = await sb
-      .from("set_logs")
-      .select("id")
-      .eq("weight_kg", 50);
-    if (error) throw new Error(error.message);
-    return data;
-  });
-  expect(rows).toHaveLength(0);
+  await expect.poll(liveRowCount).toBe(0);
 });
 
 test("the set-type menu offers no superset or drop-set control", async ({
   page,
 }) => {
-  const EX = await makeExercise(page, "MenuNoSuperset");
+  const EX = await makeExercise(page, "MenuNoSSType");
   await startSessionWith(page, EX);
 
   // set-type-delete only renders once reopened on an already-committed set
@@ -86,8 +106,8 @@ test("the set-type menu offers no superset or drop-set control", async ({
 test("no superset or drop-set control exists anywhere in the session screen", async ({
   page,
 }) => {
-  const A = await makeExercise(page, "NoSupersetGlobalA");
-  const B = await makeExercise(page, "NoSupersetGlobalB");
+  const A = await makeExercise(page, "NoSSControlGlobalA");
+  const B = await makeExercise(page, "NoSSControlGlobalB");
   await startSessionWith(page, A);
   await page.getByTestId("open-exercise-picker").click();
   await page.getByTestId(`pick-exercise-${B}`).click();

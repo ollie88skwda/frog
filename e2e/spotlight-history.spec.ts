@@ -15,8 +15,8 @@ test.beforeEach(async ({ page }) => {
 test("a session carrying legacy superset + drop-set data still renders on reload, with no superset/drop UI", async ({
   page,
 }) => {
-  const A = await makeExercise(page, "LegacySupersetA");
-  const B = await makeExercise(page, "LegacySupersetB");
+  const A = await makeExercise(page, "LegacyGroupedA");
+  const B = await makeExercise(page, "LegacyGroupedB");
 
   await startSessionWith(page, A);
   await logBilateralSet(page, "80", "8");
