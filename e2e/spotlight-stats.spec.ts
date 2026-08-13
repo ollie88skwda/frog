@@ -20,6 +20,9 @@ test("stats-growth-chart is absent until the toggle is tapped, then shows bars",
   await expect(page.getByTestId("stats-line")).toBeVisible();
   await expect(page.getByTestId("stats-growth-chart")).toHaveCount(0);
 
+  // The chart falls back to "Not enough history yet." (no bars at all) until
+  // there's at least a live top weight to show as today's bar — log a set first.
+  await logBilateralSet(page, "60", "10");
   await page.getByTestId("stats-growth-toggle").click();
   await expect(page.getByTestId("stats-growth-chart")).toBeVisible();
   await expect(page.getByTestId("stats-growth-bar-0")).toBeVisible();

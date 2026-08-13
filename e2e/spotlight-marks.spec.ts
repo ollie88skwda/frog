@@ -23,15 +23,15 @@ test("marks progress todo -> current -> done as sets are logged", async ({
   const EX = await makeExercise(page, "MarksProgress");
   await startSessionWith(page, EX);
 
-  // Set 0 is the open (current) set; everything after is todo.
+  // Ad-hoc session (no routine seed): marks only exist for committed sets
+  // plus the one currently open — there's no known future set count to
+  // pre-render as "todo" (session.tsx: totalMarks = max(committed+1,
+  // seedSets+1), and seedSets is empty here). Set 0 is the only mark yet.
   await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
     "data-state",
     "current",
   );
-  await expect(page.getByTestId("set-mark-1-state")).toHaveAttribute(
-    "data-state",
-    "todo",
-  );
+  await expect(page.getByTestId("set-mark-1")).toHaveCount(0);
 
   await logBilateralSet(page, "60", "10");
 
@@ -75,10 +75,22 @@ test("a per-side set carries the ᴸᴿ tag on its mark; a bilateral one does no
   const EX = await makeExercise(page, "MarksSideTag");
   await startSessionWith(page, EX);
 
-  await expect(page.getByTestId("set-mark-0-side-tag")).toHaveCount(0);
+  // The side-tag is only computed for a COMMITTED set's mark (session.tsx:
+  // `paired` is hardcoded false on the live "current" mark regardless of
+  // the per-side toggle) — it needs an actual logged pair to check.
   await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click();
+  await page.getByTestId("weight-field").fill("40");
+  await page.getByTestId("reps-field-left").fill("8");
+  await page.getByTestId("reps-field-right").fill("7");
+  await page.getByTestId("log-set").click();
   await expect(page.getByTestId("set-mark-0-side-tag")).toBeVisible();
+
+  // A bilateral set logged next carries no side-tag on its own mark.
+  await openSetTypeMenu(page);
+  await page.getByTestId("set-type-perside").click(); // toggle off
+  await logBilateralSet(page, "45", "10");
+  await expect(page.getByTestId("set-mark-1-side-tag")).toHaveCount(0);
 });
 
 test("tapping a done mark reopens that finished set for editing", async ({
