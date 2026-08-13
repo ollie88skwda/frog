@@ -39,10 +39,13 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   const sessionUrl = page.url();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   const before = await rowCount(page, "set_logs");
-  await page.getByTestId("set-0-weight").fill("100");
-  await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-reps").press("Enter");
-  await expect(page.getByTestId("committed-0-type")).toBeVisible();
+  await page.getByTestId("weight-field").fill("100");
+  await page.getByTestId("reps-field").fill("5");
+  await page.getByTestId("log-set").click();
+  await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
+    "data-state",
+    "done",
+  );
   // Ensure the background write landed before navigating away (goto is a full
   // page load and would abort the in-flight insert).
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
@@ -52,11 +55,12 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   await expect(page.getByTestId("resume-session-btn")).toBeVisible();
   await page.getByTestId("resume-session-btn").click();
   await expect(page).toHaveURL(sessionUrl);
-  await expect(page.getByTestId("committed-0-weight")).toHaveText("100");
+  await page.getByTestId("set-mark-0").click();
+  await expect(page.getByTestId("weight-field")).toHaveValue("100");
 
   // Finish: the End button opens the finish overlay; Save stamps ended_at and
   // lands on the session's history.
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).toHaveURL(/\/history\//);
   // Back on Train, resume is gone (no open session).

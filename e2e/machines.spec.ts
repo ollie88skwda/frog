@@ -96,22 +96,23 @@ test("machine from catalog: settings remembered into the session setup strip", a
     )
     .not.toBeNull();
 
-  // In a session, the setup strip shows the remembered settings.
+  // In a session, the machine chip shows the remembered settings
+  // (testid-contract.md: exercise-machine-chip replaces the old setup strip).
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${copy}`).click();
-  const strip = page.getByTestId(`setup-strip-${copy}`);
-  await expect(strip).toBeVisible();
-  await expect(strip).toContainText("Seat height 4");
+  const chip = page.getByTestId("exercise-machine-chip");
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText("Seat height 4");
 
   // Edit in the dialog → persists (machine row is the memory).
-  await strip.click();
+  await chip.click();
   await page.getByTestId(`setting-value-${MACHINE}-Seat height`).fill("5");
   await page.keyboard.press("Escape");
-  await expect(strip).toContainText("Seat height 5");
+  await expect(chip).toContainText("Seat height 5");
   await page.reload();
-  await expect(page.getByTestId(`setup-strip-${copy}`)).toContainText(
+  await expect(page.getByTestId("exercise-machine-chip")).toContainText(
     "Seat height 5",
   );
 });

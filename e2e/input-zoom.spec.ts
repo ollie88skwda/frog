@@ -69,7 +69,7 @@ async function openLoggingRow(page: Page, name: string) {
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${name}`).click();
-  await expect(page.getByTestId("set-0-weight")).toBeVisible();
+  await expect(page.getByTestId("weight-field")).toBeVisible();
 }
 
 test.beforeEach(async ({ page }) => {
@@ -93,17 +93,17 @@ test("touch pointer: every visible form control computes to >= 16px", async ({
   await shot(page, testInfo, "touch-new-exercise-sheet.png");
 
   await openLoggingRow(page, EX);
-  await page.getByTestId("set-0-weight").fill("100");
-  await page.getByTestId("set-0-reps").fill("5");
+  await page.getByTestId("weight-field").fill("100");
+  await page.getByTestId("reps-field").fill("5");
   const logging = await formControls(page);
   await shot(page, testInfo, "touch-logging-row.png");
 
   const all = [...sheet, ...logging];
   console.log(`[touch] ${JSON.stringify(all, null, 2)}`);
   expect(all.length).toBeGreaterThan(2);
-  // The logging path specifically — `Field` puts `text-sm` (15px) straight on
-  // the <input>, the class-vs-tag specificity loss that kept the bug alive.
-  expect(logging.some((c) => c.testid === "set-0-weight")).toBe(true);
+  // The logging path specifically — the Spotlight weight/reps fields are the
+  // surface that regressed before (a class-vs-tag specificity loss).
+  expect(logging.some((c) => c.testid === "weight-field")).toBe(true);
   for (const c of all) {
     expect(
       c.fontSize,
@@ -131,20 +131,25 @@ test.describe("mouse pointer (desktop) is untouched", () => {
     devices["Desktop Chrome"];
   test.use(desktop);
 
-  test("logging row keeps its 15px text-sm sizing", async ({
+  test("logging row keeps its large Spotlight sizing on desktop (no coarse-pointer downscale)", async ({
     page,
   }, testInfo) => {
+    // Pre-Spotlight this pinned an exact 15px (text-sm) value for the old
+    // boxless logging field. The redesign (session-redesign-r3.html, "What
+    // changed") deliberately jumped the weight/reps values to ~52px — this
+    // now pins only the directional guarantee (desktop isn't downscaled to
+    // the old size), not implementation's exact px.
     expect(
       await page.evaluate(() => matchMedia("(pointer: coarse)").matches),
     ).toBe(false);
 
     await openLoggingRow(page, `Desk ${Date.now()}`);
-    await page.getByTestId("set-0-weight").fill("100");
+    await page.getByTestId("weight-field").fill("100");
     const controls = await formControls(page);
     await shot(page, testInfo, "desktop-logging-row.png");
     console.log(`[desktop] ${JSON.stringify(controls, null, 2)}`);
 
-    const weight = controls.find((c) => c.testid === "set-0-weight");
-    expect(weight?.fontSize).toBe(15);
+    const weight = controls.find((c) => c.testid === "weight-field");
+    expect(weight?.fontSize).toBeGreaterThanOrEqual(40);
   });
 });

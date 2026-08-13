@@ -1,82 +1,28 @@
 import { expect, type Page, test } from "@playwright/test";
-import {
-  createExercise,
-  EMAIL,
-  PASSWORD,
-  signIn,
-  waitForExercise,
-} from "./helpers";
+import { EMAIL, PASSWORD, signIn } from "./helpers";
+import { logBilateralSet, makeExercise, startSessionWith } from "./spotlight-helpers";
 
-// Session rest reporting (2026-08-08 captain feedback): no session-wide
-// average rest in the stats line — rest is a per-exercise gap, so each block
-// header shows its own average once it has a committed set that carries one,
-// and the Log Conditions chip stays fully visible on narrow phones.
+// The Spotlight redesign replaced the old per-exercise live rest-average
+// dock (`block-${name}-rest-avg`) with a single per-session rest stopwatch
+// that stamps each committed set (`set-rest-stamp-{index}`) — see
+// spotlight-rest.spec.ts, which owns that coverage now. This file keeps only
+// the part of the original spec unrelated to that redesign: the Log
+// Conditions chip's layout on a narrow phone.
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
   await signIn(page);
 });
 
-async function makeExercise(page: Page, name: string) {
-  await page.goto("/library");
-  await createExercise(page, name);
-  await waitForExercise(page, name);
-}
-
-async function startSession(page: Page, name: string) {
-  await page.goto("/train");
-  await page.getByTestId("start-session-btn").click();
-  await page.getByTestId(`pick-exercise-${name}`).click();
-}
-
-async function commitSet(page: Page, n: number, weight: string) {
-  await page.getByTestId(`set-${n}-weight`).fill(weight);
-  await page.getByTestId(`set-${n}-reps`).fill("5");
-  await page.getByTestId(`set-${n}-add`).click();
-}
-
-test("stats line carries no session-wide rest; per-exercise rest avg appears in the block header", async ({
-  page,
-}) => {
-  const EX = `RestAvg ${Date.now()}`;
-  await makeExercise(page, EX);
-  await startSession(page, EX);
-
-  // First set of the exercise has no rest gap yet — no per-exercise average,
-  // and the stats line never shows a session-wide rest average at all.
-  await commitSet(page, 0, "100");
-  await expect(page.getByTestId("session-stats")).toContainText("1 set");
-  await expect(page.getByTestId("session-stats")).not.toContainText("rest");
-  await expect(page.getByTestId("session-stats")).not.toContainText("avg");
-  await expect(page.getByTestId(`block-${EX}-rest-avg`)).toBeHidden();
-
-  // Commit a second set after a real rest gap → the block shows its own
-  // average rest (mm:ss), which only makes sense per exercise.
-  await page.waitForTimeout(2200);
-  await commitSet(page, 1, "100");
-  await expect(page.getByTestId(`block-${EX}-rest-avg`)).toBeVisible();
-  await expect(page.getByTestId(`block-${EX}-rest-avg`)).toHaveText(
-    /^rest \d+:\d{2} avg$/,
-  );
-  await expect(page.getByTestId("session-stats")).toContainText("2 sets");
-  await expect(page.getByTestId("session-stats")).not.toContainText("rest");
-
-  // The average survives a reload — it's computed from committed rows.
-  await page.reload();
-  await expect(page.getByTestId(`block-${EX}-rest-avg`)).toBeVisible();
-  await expect(page.getByTestId(`block-${EX}-rest-avg`)).toHaveText(
-    /^rest \d+:\d{2} avg$/,
-  );
-});
-
 test("Log Conditions chip is fully visible on a 320px phone", async ({
   page,
+}: {
+  page: Page;
 }) => {
   await page.setViewportSize({ width: 320, height: 700 });
-  const EX = `RestChip ${Date.now()}`;
-  await makeExercise(page, EX);
-  await startSession(page, EX);
-  await commitSet(page, 0, "100");
+  const EX = await makeExercise(page, "RestChip");
+  await startSessionWith(page, EX);
+  await logBilateralSet(page, "100", "5");
 
   const chip = page.getByTestId("conditions-chip");
   await expect(chip).toBeVisible();

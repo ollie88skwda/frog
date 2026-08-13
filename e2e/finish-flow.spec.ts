@@ -17,11 +17,17 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
+// Re-aimed for the Spotlight session screen (fm/frog-session-spotlight):
+// there's no per-index draft/committed row anymore, so sets are logged one
+// at a time through the always-current spotlight fields.
 async function logSet(page: Page, index: number, weight: string, reps: string) {
-  await page.getByTestId(`set-${index}-weight`).fill(weight);
-  await page.getByTestId(`set-${index}-reps`).fill(reps);
-  await page.getByTestId(`set-${index}-add`).click();
-  await expect(page.getByTestId(`committed-${index}`)).toBeVisible();
+  await page.getByTestId("weight-field").fill(weight);
+  await page.getByTestId("reps-field").fill(reps);
+  await page.getByTestId("log-set").click();
+  await expect(page.getByTestId(`set-mark-${index}-state`)).toHaveAttribute(
+    "data-state",
+    "done",
+  );
 }
 
 async function newExercise(page: Page, name: string) {
@@ -52,7 +58,7 @@ test("finish overlay edits title + start-time (duration), and persists the backd
   const id = await startAndLog(page, EX, [["100", "5"]]);
 
   // Open the finish overlay.
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await expect(page.getByTestId("finish-summary")).toContainText("1 set");
 
   // Title is editable.
@@ -81,7 +87,7 @@ test("discard abandons the session (soft-deleted, home)", async ({ page }) => {
   await newExercise(page, EX);
   const id = await startAndLog(page, EX, [["80", "8"]]);
 
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-discard").click();
   await page.getByTestId("finish-discard-confirm").click();
   await expect(page).toHaveURL(/\/$/);
@@ -114,7 +120,7 @@ test("Save as routine and Copy workout from history detail", async ({
   ]);
 
   // Finish → lands on the session's history, over the post-save summary (M9).
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).toHaveURL(new RegExp(`/history/${id}`));
   // Dismiss the celebration overlay to reach the history-detail actions.
@@ -131,6 +137,6 @@ test("Save as routine and Copy workout from history detail", async ({
   await page.goto(`/history/${id}`);
   await page.getByTestId("copy-workout-btn").click();
   await expect(page).toHaveURL(new RegExp(`/session/(?!${id})`));
-  await expect(page.getByTestId("set-0-weight")).toHaveValue("100");
-  await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
+  await expect(page.getByTestId("weight-field")).toHaveValue("100");
+  await expect(page.getByTestId("reps-field")).toHaveValue("5");
 });

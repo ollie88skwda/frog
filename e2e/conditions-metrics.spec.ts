@@ -200,6 +200,12 @@ test("custom set metric: create, enable on an exercise, log a value", async ({
   await expect(enable).toBeChecked();
 
   // Log a set carrying the metric value.
+  //
+  // NEEDS-DECISION (see AGENTS.md / PR notes): testid-contract.md's
+  // set-type-menu only lists warm-up/per-side/delete — it's silent on where
+  // a custom per-set metric field (this exercise's enabled custom metric)
+  // lives under the Spotlight redesign. Left on the pre-Spotlight testids
+  // (`set-0-more`, `set-0-metric-*`) unverified rather than inventing a shape.
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();

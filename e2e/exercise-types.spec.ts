@@ -11,6 +11,14 @@ const TYPE_LABEL: Record<string, string> = {
 // M1 exercise types: per-type logging columns. A duration exercise logs time
 // (typed as m:ss) with an inline stopwatch; a weighted-bodyweight exercise
 // shows a "+weight" column header and honours a per-exercise unit override.
+//
+// NEEDS-DECISION (see AGENTS.md / PR notes): testid-contract.md's spotlight
+// input hooks (weight-field/reps-field/etc.) only cover weight+reps sets —
+// it's silent on what a duration/distance-type exercise's spotlight looks
+// like, and on where the per-exercise unit override control lives once the
+// old block-level header is gone. Both tests below still use the pre-
+// Spotlight testids (`set-0-duration`, `block-${EX}-unit`) unverified,
+// rather than inventing a shape the contract doesn't name.
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");

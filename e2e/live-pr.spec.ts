@@ -17,10 +17,13 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function logFirstSet(page: Page, weight: string, reps: string) {
-  await page.getByTestId("set-0-weight").fill(weight);
-  await page.getByTestId("set-0-reps").fill(reps);
-  await page.getByTestId("set-0-add").click();
-  await expect(page.getByTestId("committed-0")).toBeVisible();
+  await page.getByTestId("weight-field").fill(weight);
+  await page.getByTestId("reps-field").fill(reps);
+  await page.getByTestId("log-set").click();
+  await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
+    "data-state",
+    "done",
+  );
 }
 
 async function setLogCount(page: Page): Promise<number> {
@@ -51,7 +54,7 @@ test("beating a prior session raises the PR banner + medal; first log never PRs"
   // session 2 fetches from the DB).
   await expect.poll(() => setLogCount(page)).toBeGreaterThan(0);
 
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).toHaveURL(/\/history\//);
 
@@ -65,7 +68,9 @@ test("beating a prior session raises the PR banner + medal; first log never PRs"
   await expect(page.getByTestId("pr-banner-types")).toContainText(
     "Heaviest weight",
   );
-  await expect(page.getByTestId("committed-0-medal")).toBeVisible();
+  // The old committed-row medal badge has no contract equivalent under the
+  // Spotlight redesign (testid-contract.md doesn't name one) — the banner
+  // assertion above is this test's remaining PR-on-a-set coverage.
 
   // Regression: the banner used to sit on a ~5% alpha wash (bg-accent-soft),
   // reading as nearly see-through over whatever scrolled underneath it.

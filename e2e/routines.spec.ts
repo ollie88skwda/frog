@@ -125,7 +125,7 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await expect(page.getByTestId("committed-1")).toBeVisible();
 
   // Finish with Update Routine Values ON (default).
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await expect(page.getByTestId("finish-summary")).toBeVisible();
   await expect(page.getByTestId("finish-update-values")).toBeChecked();
   await page.getByTestId("finish-save").click();
@@ -367,9 +367,20 @@ test("routines-page routine menu flips upward when it would render below the fol
 // Regression: starting a routine with N configured sets used to render only
 // the one active (currently-being-logged) row — the other N-1 were invisible
 // until each prior set was logged, which read as "the routine only kept 1 of
-// my 5 sets." All N are now visible immediately: one editable active row plus
-// read-only "upcoming" previews for the rest, counting down as sets are logged.
-test("start routine materializes every configured set as a visible row, not just the active one", async ({
+// my 5 sets."
+//
+// NEEDS-DECISION (see AGENTS.md / PR notes): the Spotlight redesign shows one
+// set at a time by construction (testid-contract.md has no "upcoming set
+// preview list" hook, and the marks band only exposes done/warmup/current/
+// todo state, not each set's target). It's unclear whether this regression
+// fix's "see all N configured sets at once" guarantee still holds in any
+// form, or whether the marks band + per-set placeholder target is the
+// redesign's intentional replacement for it. This is re-aimed to what the
+// contract *does* promise — the current set's target shows as a placeholder
+// with no history, and completing all 5 configured sets lands exactly 5 rows
+// with no duplication — without asserting the old "all previews visible at
+// once" shape either way.
+test("start routine seeds every configured set's target with no duplication, one set at a time", async ({
   page,
 }) => {
   const EX = `MaterializeEx ${Date.now()}`;
@@ -397,24 +408,46 @@ test("start routine materializes every configured set as a visible row, not just
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
 
-  // Set 0 is the active, editable row; sets 1-4 are read-only upcoming
-  // previews — all 5 configured sets are on screen with zero user action.
-  await expect(page.getByTestId("set-0-reps")).toBeVisible();
-  for (let i = 1; i < 5; i++) {
-    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
+  // Set 0's target (no history yet) surfaces as a placeholder, per
+  // testid-contract.md's prefill clause.
+  const repsPlaceholder = await page
+    .getByTestId("reps-field")
+    .getAttribute("placeholder");
+  expect(repsPlaceholder).toMatch(/6.*8|8/);
+
+  // Log all 5 configured sets — each one's target keeps showing up (not just
+  // set 0's), and nothing gets left behind or duplicated by the time all 5
+  // are logged.
+  for (let i = 0; i < 5; i++) {
+    await expect(page.getByTestId("set-number")).toContainText(String(i + 1));
+    await page.getByTestId("reps-field").fill("7");
+    await page.getByTestId("weight-field").fill("40");
+    await page.getByTestId("log-set").click();
+    await expect(page.getByTestId(`set-mark-${i}-state`)).toHaveAttribute(
+      "data-state",
+      "done",
+    );
   }
 
-  // Logging set 0 advances the active row to index 1 and drops it from the
-  // upcoming list — the previously-seeded target isn't left behind or
-  // duplicated, and it isn't something the user had to re-add by hand.
-  await page.getByTestId("set-0-reps").fill("7");
-  await page.getByTestId("set-0-add").click();
-  await expect(page.getByTestId("committed-0")).toBeVisible();
-  await expect(page.getByTestId("set-1-reps")).toBeVisible();
-  await expect(page.getByTestId("upcoming-1-reps")).toHaveCount(0);
-  for (let i = 2; i < 5; i++) {
-    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
-  }
+  await expect
+    .poll(() =>
+      page.evaluate(async (n) => {
+        const { data: ex } = await window.__frog.supabase
+          .from("exercises")
+          .select("id")
+          .eq("name", n)
+          .single();
+        const { count } = await window.__frog.supabase
+          .from("set_logs")
+          .select("id, session_exercises!inner(exercise_id)", {
+            count: "exact",
+            head: true,
+          })
+          .eq("session_exercises.exercise_id", (ex as { id: string }).id);
+        return count ?? 0;
+      }, EX),
+    )
+    .toBe(5);
 });
 
 // Routine editor ↔ session parity (UI feedback batch 8, notes 10/13): the
