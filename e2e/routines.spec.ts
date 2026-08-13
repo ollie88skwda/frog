@@ -636,22 +636,21 @@ test("exercise ⋯ menu edits the exercise's default machine and laterality", as
   page,
 }) => {
   const EX = `DefaultsEx ${Date.now()}`;
+  const MACHINE = `Defaults Row ${Date.now()}`;
   await page.goto("/library");
   await createExercise(page, EX);
   await waitForExercise(page, EX);
 
-  // Add a machine to "my gym" first (a Matrix press no other spec creates,
-  // so the shared e2e user stays clean — same convention as
-  // machine-catalog.spec.ts).
-  await page
-    .getByTestId("machine-catalog-search")
-    .fill("matrix ultra diverging");
-  await page
-    .getByTestId("catalog-result-matrix-ultra-diverging-seated-row")
-    .click();
-  await expect(
-    page.getByTestId("machine-row-Ultra Diverging Seated Row"),
-  ).toBeVisible();
+  // Add a machine to "my gym" first. Custom name+timestamp rather than a
+  // catalog pick: AddMachine's catalog path (machines.tsx) doesn't dedupe
+  // by brand+model the way the exercise-menu's MachineAttachDialog does, so
+  // reusing a catalog entry another spec also adds (machines.spec.ts and
+  // machine-catalog.spec.ts both already claim Matrix Ultra rows) leaves
+  // two same-named rows in "my gym" and a strict-mode locator violation —
+  // same collision-avoidance convention as machines.spec.ts's "Photo Row".
+  await page.getByTestId("machine-name-input").fill(MACHINE);
+  await page.getByTestId("add-machine-btn").click();
+  await expect(page.getByTestId(`machine-row-${MACHINE}`)).toBeVisible();
 
   await page.goto("/routines/new");
   await page.getByTestId("routine-add-exercise-btn").click();
@@ -666,10 +665,8 @@ test("exercise ⋯ menu edits the exercise's default machine and laterality", as
 
   await page.getByTestId("routine-ex-0-menu").click();
   await page.getByTestId("routine-ex-0-machine-attach").click();
-  await page.getByTestId("attach-existing-Ultra Diverging Seated Row").click();
-  await expect(page.getByTestId("routine-ex-0")).toContainText(
-    "Ultra Diverging Seated Row",
-  );
+  await page.getByTestId(`attach-existing-${MACHINE}`).click();
+  await expect(page.getByTestId("routine-ex-0")).toContainText(MACHINE);
 
   // Server-side: the exercise's default machine + laterality both wrote.
   // `createExercise` publishes a shared row by default (COMMUNITY_SHARING,
