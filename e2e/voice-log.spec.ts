@@ -165,7 +165,15 @@ test("spoken set fills the active spotlight fields and never commits it", async 
 test("an unmatched name opens the in-session picker, and a blocked mic says so", async ({
   page,
 }) => {
+  // The voice picker's fallback search is scoped to this session ("Search
+  // this session…"), not the whole library — OTHER needs to already be in
+  // the session for voice-pick-${OTHER} to exist.
   await startSession(page, EX);
+  await page.getByTestId("open-exercise-picker").click();
+  await page.getByTestId(`pick-exercise-${OTHER}`).click();
+  await expect(page.getByTestId("exercise-name")).toHaveText(OTHER);
+  await page.getByTestId("exercise-header").click();
+  await page.getByTestId("exercise-sheet-row-0").click(); // back to EX
 
   await page.getByTestId("voice-log-mic").click();
   await page.evaluate(() =>

@@ -34,17 +34,32 @@ test("a per-side set shares one weight field but splits reps per side", async ({
   await page.getByTestId("reps-field-right").fill("6");
   await page.getByTestId("log-set").click();
 
-  // Two set_logs rows sharing set_no=0, one per side.
-  const rows = await page.evaluate(async () => {
+  // Two set_logs rows sharing set_no=0, one per side — scoped to this
+  // exercise's own session_exercise (a bare set_no=0 filter would catch
+  // every other exercise's set 0 on this shared e2e account too).
+  const rows = await page.evaluate(async (exerciseName) => {
     const sb = window.__frog.supabase;
+    const { data: ex, error: exErr } = await sb
+      .from("exercises")
+      .select("id")
+      .eq("name", exerciseName)
+      .single();
+    if (exErr) throw new Error(exErr.message);
+    const { data: se, error: seErr } = await sb
+      .from("session_exercises")
+      .select("id")
+      .eq("exercise_id", (ex as { id: string }).id)
+      .single();
+    if (seErr) throw new Error(seErr.message);
     const { data, error } = await sb
       .from("set_logs")
       .select("set_no, side, weight_kg, reps")
+      .eq("session_exercise_id", (se as { id: string }).id)
       .eq("set_no", 0)
       .order("side");
     if (error) throw new Error(error.message);
     return data;
-  });
+  }, EX);
   expect(rows).toHaveLength(2);
   const left = rows?.find((r) => r.side === "left");
   const right = rows?.find((r) => r.side === "right");
@@ -66,15 +81,28 @@ test("per-side RIR is independent per side", async ({ page }) => {
   await page.getByTestId("rir-option-3-right").click();
   await page.getByTestId("log-set").click();
 
-  const rows = await page.evaluate(async () => {
+  const rows = await page.evaluate(async (exerciseName) => {
     const sb = window.__frog.supabase;
+    const { data: ex, error: exErr } = await sb
+      .from("exercises")
+      .select("id")
+      .eq("name", exerciseName)
+      .single();
+    if (exErr) throw new Error(exErr.message);
+    const { data: se, error: seErr } = await sb
+      .from("session_exercises")
+      .select("id")
+      .eq("exercise_id", (ex as { id: string }).id)
+      .single();
+    if (seErr) throw new Error(seErr.message);
     const { data, error } = await sb
       .from("set_logs")
       .select("side, rir, rir_min, rir_max")
+      .eq("session_exercise_id", (se as { id: string }).id)
       .eq("set_no", 0);
     if (error) throw new Error(error.message);
     return data;
-  });
+  }, EX);
   const left = rows?.find((r) => r.side === "left");
   const right = rows?.find((r) => r.side === "right");
   // Whichever RIR column the implementation uses, left and right must
@@ -121,7 +149,12 @@ test("a per-side set and a bilateral set can sit back to back in one exercise", 
   await page.getByTestId("log-set").click();
   await expect(page.getByTestId("set-mark-0-side-tag")).toBeVisible();
 
-  // Set 1: plain bilateral — no leftover per-side UI.
+  // Laterality is sticky (session.tsx's "Default laterality" menu item
+  // implies per-set state carries forward) — set 1 opens per-side too until
+  // explicitly toggled off via the same set-type-perside item.
+  await expect(page.getByTestId("reps-field-left")).toBeVisible();
+  await openSetTypeMenu(page);
+  await page.getByTestId("set-type-perside").click();
   await expect(page.getByTestId("reps-field")).toBeVisible();
   await expect(page.getByTestId("reps-field-left")).toHaveCount(0);
   await logBilateralSet(page, "45", "10");

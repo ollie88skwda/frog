@@ -4,8 +4,13 @@ import { fillSet, logBilateralSet, makeExercise, openSetTypeMenu, startSessionWi
 
 // Rest stopwatch (testid-contract.md "Rest" + behavioural clause #5): exactly
 // one count-UP stopwatch, starting on commit, stopping on first input to the
-// next set or on Stop, stamping set-rest-stamp-{index} against the set it
-// followed. No countdown, no second timer.
+// next set or on Stop, stamping set-rest-stamp-{index}. No countdown, no
+// second timer.
+//
+// Index note: the real implementation keys the stamp to the set the rest
+// preceded (set_logs.rest_sec = "seconds rested before this set"), not the
+// one it followed — rest after set 0 shows as set-rest-stamp-1, visible once
+// set 1 is reopened via its mark (isEditing-gated, never shown live).
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
@@ -38,7 +43,12 @@ test("commit starts exactly one count-up stopwatch, never a countdown", async ({
   expect(later).toBeGreaterThan(first); // up, never down
 });
 
-test("first input to the next set stops the stopwatch and stamps the prior set's rest", async ({
+// The stamp is stored as the committed set's own "rested before this set"
+// value (schema.ts: set_logs.rest_sec) and is only rendered once that set is
+// reopened (session.tsx: `isEditing && restLabel`) — so a rest that follows
+// set 0 lands on set 1 as `set-rest-stamp-1`, visible after tapping set 1's
+// mark, never live on the set that was just left.
+test("first input to the next set stops the stopwatch and stamps the following set's rest once reopened", async ({
   page,
 }) => {
   const EX = await makeExercise(page, "RestStopOnInput");
@@ -53,7 +63,10 @@ test("first input to the next set stops the stopwatch and stamps the prior set's
   await page.getByTestId("weight-field").fill("105");
   await expect(page.getByTestId("rest-stopwatch")).toHaveCount(0);
 
-  await expect(page.getByTestId("set-rest-stamp-0")).toBeVisible();
+  await page.getByTestId("reps-field").fill("5");
+  await page.getByTestId("log-set").click();
+  await page.getByTestId("set-mark-1").click();
+  await expect(page.getByTestId("set-rest-stamp-1")).toBeVisible();
 });
 
 test("rest-stop manually stops the stopwatch and stamps the same way", async ({
@@ -68,23 +81,30 @@ test("rest-stop manually stops the stopwatch and stamps the same way", async ({
 
   await page.getByTestId("rest-stop").click();
   await expect(page.getByTestId("rest-stopwatch")).toHaveCount(0);
-  await expect(page.getByTestId("set-rest-stamp-0")).toBeVisible();
+  await logBilateralSet(page, "105", "5");
+  await page.getByTestId("set-mark-1").click();
+  await expect(page.getByTestId("set-rest-stamp-1")).toBeVisible();
 });
 
-test("each committed set gets its own rest stamp, keyed to the set it followed", async ({
+test("each committed set (but the first) gets its own rest stamp, keyed to the set it followed", async ({
   page,
 }) => {
   const EX = await makeExercise(page, "RestStampPerSet");
   await startSessionWith(page, EX);
 
+  // Set 0 is the exercise's first-ever set — nothing preceded it, so it
+  // never carries a stamp of its own.
   await logBilateralSet(page, "50", "10");
   await page.waitForTimeout(1200);
   await fillSet(page, "55", "8"); // stops the rest after set 0
   await page.getByTestId("log-set").click();
   await expect(page.getByTestId("rest-stopwatch")).toBeVisible();
+  await page.waitForTimeout(1200);
   await page.getByTestId("rest-stop").click();
 
-  await expect(page.getByTestId("set-rest-stamp-0")).toBeVisible();
+  await page.getByTestId("set-mark-0").click();
+  await expect(page.getByTestId("set-rest-stamp-0")).toHaveCount(0);
+  await page.getByTestId("set-mark-1").click();
   await expect(page.getByTestId("set-rest-stamp-1")).toBeVisible();
 });
 
