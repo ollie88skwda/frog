@@ -145,6 +145,7 @@ import {
   type Unit,
   useUnit,
 } from "@/lib/settings";
+import { compareToLast, rirSegmentOf, segmentToFields } from "@/lib/spotlight";
 import { cn } from "@/lib/utils";
 import { useVoice, voice } from "@/lib/voice";
 import { getWarmupMethod } from "@/lib/warmup-method";
@@ -334,21 +335,6 @@ function fieldText(
 
 const RIR_SEGMENTS = [0, 1, 2, 3, 4] as const;
 const RPE_VALUES = Array.from({ length: 21 }, (_, i) => i * 0.5); // 0..10
-
-function rirSegmentOf(min: string, max: string): number | null {
-  const lo = min.trim() === "" ? null : Number.parseInt(min, 10);
-  const hi = max.trim() === "" ? null : Number.parseInt(max, 10);
-  if (lo == null && hi == null) return null;
-  if (lo != null && lo >= 4) return 4;
-  if (lo != null && hi != null && lo === hi && lo < 4) return lo;
-  if (lo != null && hi == null && lo < 4) return lo;
-  return null;
-}
-
-function segmentToFields(v: number): { min: string; max: string } {
-  if (v >= 4) return { min: "4", max: "" };
-  return { min: String(v), max: String(v) };
-}
 
 // Contract testid for one RIR segment: value ∈ 0,1,2,3,4plus ("rir-option-{value}",
 // with a -left/-right suffix in per-side mode) — testid-contract.md.
@@ -3729,42 +3715,30 @@ function Spotlight({
   }
 
   // Comparison header + "beat" tint per row, against last time (ghost).
-  function comparison(
-    kind: FieldKey,
-    currentText: string,
-  ): { text: string; state: "same" | "up" | "down" | "none" } {
+  function comparison(kind: FieldKey, currentText: string) {
     const ghostVal =
       kind === "weight"
         ? ghost.weightKg != null
           ? toDisplayWeight(ghost.weightKg, unit)
           : null
         : kind === "reps"
-          ? ghost.reps
+          ? (ghost.reps ?? null)
           : kind === "duration"
-            ? ghost.durationSec
+            ? (ghost.durationSec ?? null)
             : ghost.distanceM != null
               ? toDisplayDistance(ghost.distanceM, distUnit)
               : null;
-    if (ghostVal == null) return { text: "no last data", state: "none" };
     const cur =
       kind === "duration"
         ? parseDuration(currentText)
         : Number.parseFloat(currentText);
-    if (cur == null || Number.isNaN(cur))
-      return { text: "same as last", state: "none" };
-    if (cur === ghostVal) return { text: "same as last", state: "same" };
-    const delta = Math.round((cur - ghostVal) * 10) / 10;
     const unitTxt =
       kind === "weight" ? unitLabel(unit) : kind === "distance" ? distUnit : "";
-    if (delta > 0)
-      return {
-        text: `▲ +${Math.abs(delta)}${unitTxt ? ` ${unitTxt}` : ""} on last`,
-        state: "up",
-      };
-    return {
-      text: `▼ −${Math.abs(delta)}${unitTxt ? ` ${unitTxt}` : ""} on last`,
-      state: "down",
-    };
+    return compareToLast(
+      cur == null || Number.isNaN(cur) ? null : cur,
+      ghostVal,
+      unitTxt,
+    );
   }
 
   const weightBeat = comparison("weight", weight).state === "up";
