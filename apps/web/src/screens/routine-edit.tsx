@@ -20,6 +20,7 @@ import {
   TYPE_FIELDS,
   toDisplayWeight,
   unitLabel,
+  weightLabel,
 } from "@frog/core";
 import { Select } from "@radix-ui/themes";
 import {
@@ -404,22 +405,60 @@ export default function RoutineEditScreen() {
   // library's "Duplicate as custom" gate (docs/DECISIONS.md 2026-08-08): an
   // owned custom row patches in place, anything else forks a private copy
   // (`share: false`) and repoints this draft row at it.
+  //
+  // The create settles asynchronously, and a second exercise-level write
+  // before it lands would target the not-yet-inserted fork id — a plain
+  // .update().eq('id', …) against a missing row resolves with error:null and
+  // zero rows affected, silently dropping the patch (the same silent-loss
+  // family this gate exists to prevent). Writes for an in-flight fork queue
+  // up and flush onto the fork id once the create resolves; the draft keeps
+  // its optimistic repoint so the UI never visibly waits.
+  const forkingRef = useRef<
+    Map<number, { originalId: string; forkId: string }>
+  >(new Map());
+  const forkQueueRef = useRef<Map<number, ExercisePatch[]>>(new Map());
   function patchExerciseField(
     i: number,
     exercise: Exercise,
     patch: ExercisePatch,
   ) {
+    for (const [idx, f] of forkingRef.current) {
+      if (f.forkId === exercise.id || f.originalId === exercise.id) {
+        forkQueueRef.current.get(idx)?.push(patch);
+        return;
+      }
+    }
     if (exercise.isCustom && exercise.ownerId !== null) {
       updateExercise.mutate({ exerciseId: exercise.id, patch });
       return;
     }
     const id = newId();
     const name = `${exercise.name} (copy)`;
-    createExercise.mutate({
-      name,
-      opts: { id, ...copyExerciseOpts(exercise), ...patch, share: false },
-    });
+    forkingRef.current.set(i, { originalId: exercise.id, forkId: id });
+    forkQueueRef.current.set(i, []);
     patchExercise(i, { exerciseId: id, name });
+    void (async () => {
+      try {
+        const res = await createExercise.mutateAsync({
+          name,
+          opts: { id, ...copyExerciseOpts(exercise), ...patch, share: false },
+        });
+        if (res.id !== id) {
+          patchExercise(i, { exerciseId: res.id, name: res.name });
+        }
+        for (const p of forkQueueRef.current.get(i) ?? []) {
+          updateExercise.mutate({ exerciseId: res.id, patch: p });
+        }
+      } catch {
+        // The fork never landed — the draft must not keep pointing at a row
+        // that doesn't exist. Revert to the original; queued patches were
+        // never applied anywhere and drop with the queue.
+        patchExercise(i, { exerciseId: exercise.id, name: exercise.name });
+      } finally {
+        forkingRef.current.delete(i);
+        forkQueueRef.current.delete(i);
+      }
+    })();
   }
 
   function patchSet(i: number, si: number, patch: Partial<DraftSet>) {
@@ -920,7 +959,7 @@ export default function RoutineEditScreen() {
                               unilateral ? "Weight · both sides" : "Weight"
                             }
                             hint={weightHint}
-                            unit={unitLabel(unit)}
+                            unit={weightLabel(d.exerciseType, unitLabel(unit))}
                             value={s.weight}
                             onValueChange={(v) =>
                               patchSet(i, si, { weight: v })
@@ -968,6 +1007,22 @@ export default function RoutineEditScreen() {
                                   independent value to unlink to. Real
                                   per-side authoring needs a schema column; see
                                   the PR body. */}
+                              <div className="flex items-center gap-1">
+                                <span className="text-2xs text-faint">to</span>
+                                <Field
+                                  inputMode="numeric"
+                                  placeholder="max"
+                                  title="Optional rep-range max"
+                                  value={s.repsMax}
+                                  onChange={(e) =>
+                                    patchSet(i, si, {
+                                      repsMax: e.target.value,
+                                    })
+                                  }
+                                  className="w-14 text-center"
+                                  data-testid={`${testBase}-repsmax`}
+                                />
+                              </div>
                               <p className="flex items-center gap-1 text-2xs text-faint">
                                 <Link2 className="size-3 shrink-0" />
                                 Same target both sides — log a different result
