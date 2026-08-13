@@ -310,8 +310,10 @@ function fieldText(
 ): string {
   switch (key) {
     case "weight":
+      // The mockup's LAST TIME row spells out the unit ("85 kg × 4") since
+      // it's the one number here that isn't self-evidently a weight.
       return v.weightKg != null
-        ? String(toDisplayWeight(v.weightKg, unit))
+        ? `${toDisplayWeight(v.weightKg, unit)} ${unitLabel(unit)}`
         : "—";
     case "reps":
       return v.reps != null ? String(v.reps) : "—";
@@ -4361,6 +4363,11 @@ function Spotlight({
                 ? `Log set ${index + 1} · ᴸ + ᴿ`
                 : `Log set ${index + 1}`}
           </Button>
+        )}
+        {!isEditing && restStartedAt == null && (
+          <p className="mt-1.5 text-center text-2xs text-faint">
+            the numbers are fields — tap one to type
+          </p>
         )}
       </div>
     </div>
