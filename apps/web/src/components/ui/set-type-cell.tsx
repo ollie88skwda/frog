@@ -27,9 +27,12 @@ export function markerColorClass(setType: SetType): string {
 // The set-number cell: shows the number, or a W/F/D marker once a type is
 // assigned, and opens a small menu to set the type. Boxless (text marker +
 // StatusRing, no border/fill) so a set row reads as a row, not a grid of
-// boxes. Shared by the session screen's committed/draft rows and the routine
-// editor's set rows — `ringState` is omitted where there's no completion
-// state to show (e.g. a planned routine set).
+// boxes. Session-only now — the routine editor renders a routine-scoped
+// `RoutineSetTypeCell` (`components/routine/routine-set-type-cell.tsx`, a
+// deliberate copy with its picker capped to normal/warmup) rather than
+// importing this shared file, to keep it untouched while session.tsx is
+// mid-rewrite on another branch; `ringState` stays optional for callers
+// with no completion state to show.
 export function SetTypeCell({
   index,
   setType,
