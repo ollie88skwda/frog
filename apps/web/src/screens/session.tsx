@@ -3164,7 +3164,7 @@ function ExerciseSpotlight({
                   unit: null,
                 })
               }
-              className="num shrink-0 text-2xs text-faint underline decoration-dotted"
+              className="num shrink-0 border border-border bg-surface-2 px-1.5 py-0.5 text-2xs text-faint"
               title="Using a per-exercise weight unit override — tap to clear"
               data-testid={`block-${block.name}-unit-clear`}
             >
@@ -4100,7 +4100,7 @@ function Spotlight({
             <button
               type="button"
               onClick={() => setWeightLinked((v) => !v)}
-              className="self-start text-2xs font-semibold text-faint underline decoration-dotted"
+              className="self-start border border-border bg-surface-2 px-1.5 py-0.5 text-2xs font-semibold text-faint"
               data-testid="weight-link-toggle"
             >
               {weightLinked
@@ -4242,7 +4242,7 @@ function Spotlight({
                   return !v;
                 });
               }}
-              className="text-2xs font-extrabold tracking-widest text-accent uppercase"
+              className="border border-accent/45 bg-accent-soft px-2 py-1 text-2xs font-extrabold tracking-widest text-accent uppercase"
               data-testid="stats-growth-toggle"
             >
               Growth {growthOpen ? "▴" : "▾"}
