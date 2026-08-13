@@ -413,20 +413,29 @@ export default function RoutineEditScreen() {
   // family this gate exists to prevent). Writes for an in-flight fork queue
   // up and flush onto the fork id once the create resolves; the draft keeps
   // its optimistic repoint so the UI never visibly waits.
-  const forkingRef = useRef<
-    Map<number, { originalId: string; forkId: string }>
-  >(new Map());
-  const forkQueueRef = useRef<Map<number, ExercisePatch[]>>(new Map());
+  //
+  // The registry is keyed by the fork id itself, never by draft index or
+  // original id: removing, reordering or replacing a draft row mid-flight,
+  // or re-adding the same shared exercise elsewhere, must not alias one
+  // fork's queue onto another's or misroute a later edit onto a stale queue.
+  const forkingRef = useRef<Map<string, ExercisePatch[]>>(new Map());
+
+  function repointRow(key: string | undefined, patch: Partial<DraftExercise>) {
+    if (!key) return;
+    setDrafts((prev) =>
+      (prev ?? []).map((d) => (d.key === key ? { ...d, ...patch } : d)),
+    );
+  }
+
   function patchExerciseField(
     i: number,
     exercise: Exercise,
     patch: ExercisePatch,
   ) {
-    for (const [idx, f] of forkingRef.current) {
-      if (f.forkId === exercise.id || f.originalId === exercise.id) {
-        forkQueueRef.current.get(idx)?.push(patch);
-        return;
-      }
+    const queue = forkingRef.current.get(exercise.id);
+    if (queue) {
+      queue.push(patch);
+      return;
     }
     if (exercise.isCustom && exercise.ownerId !== null) {
       updateExercise.mutate({ exerciseId: exercise.id, patch });
@@ -434,29 +443,35 @@ export default function RoutineEditScreen() {
     }
     const id = newId();
     const name = `${exercise.name} (copy)`;
-    forkingRef.current.set(i, { originalId: exercise.id, forkId: id });
-    forkQueueRef.current.set(i, []);
+    const rowKey = list[i]?.key;
+    forkingRef.current.set(id, []);
     patchExercise(i, { exerciseId: id, name });
     void (async () => {
+      let settledId = id;
       try {
         const res = await createExercise.mutateAsync({
           name,
           opts: { id, ...copyExerciseOpts(exercise), ...patch, share: false },
         });
-        if (res.id !== id) {
-          patchExercise(i, { exerciseId: res.id, name: res.name });
+        settledId = res.id;
+        if (settledId !== id) {
+          repointRow(rowKey, { exerciseId: settledId, name: res.name });
+          const q = forkingRef.current.get(id);
+          if (q) {
+            forkingRef.current.delete(id);
+            forkingRef.current.set(settledId, q);
+          }
         }
-        for (const p of forkQueueRef.current.get(i) ?? []) {
-          updateExercise.mutate({ exerciseId: res.id, patch: p });
+        for (const p of forkingRef.current.get(settledId) ?? []) {
+          updateExercise.mutate({ exerciseId: settledId, patch: p });
         }
       } catch {
         // The fork never landed — the draft must not keep pointing at a row
         // that doesn't exist. Revert to the original; queued patches were
         // never applied anywhere and drop with the queue.
-        patchExercise(i, { exerciseId: exercise.id, name: exercise.name });
+        repointRow(rowKey, { exerciseId: exercise.id, name: exercise.name });
       } finally {
-        forkingRef.current.delete(i);
-        forkQueueRef.current.delete(i);
+        forkingRef.current.delete(settledId);
       }
     })();
   }
