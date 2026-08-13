@@ -36,7 +36,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { MachineAttachDialog } from "@/components/attach-machine";
 import { ExerciseEditor } from "@/components/exercise-editor";
@@ -66,6 +66,7 @@ import { usePendingExercises } from "@/lib/pending-exercises";
 import {
   copyExerciseOpts,
   useCreateExercise,
+  useDeleteExercise,
   useExercises,
   useMachines,
   useUpdateExercise,
@@ -285,6 +286,7 @@ export default function RoutineEditScreen() {
   const { data: machines = [] } = useMachines();
   const updateExercise = useUpdateExercise();
   const createExercise = useCreateExercise();
+  const deleteExercise = useDeleteExercise();
 
   const [name, setName] = useState<string | null>(null);
   const [folderId, setFolderId] = useState<string | null | undefined>(
@@ -419,6 +421,12 @@ export default function RoutineEditScreen() {
   // or re-adding the same shared exercise elsewhere, must not alias one
   // fork's queue onto another's or misroute a later edit onto a stale queue.
   const forkingRef = useRef<Map<string, ExercisePatch[]>>(new Map());
+  const draftRowsRef = useRef<Map<string, string>>(new Map());
+  useLayoutEffect(() => {
+    draftRowsRef.current = new Map(
+      (drafts ?? []).map((d) => [d.key, d.exerciseId]),
+    );
+  }, [drafts]);
 
   function repointRow(key: string | undefined, patch: Partial<DraftExercise>) {
     if (!key) return;
@@ -454,6 +462,14 @@ export default function RoutineEditScreen() {
           opts: { id, ...copyExerciseOpts(exercise), ...patch, share: false },
         });
         settledId = res.id;
+        if (
+          rowKey === undefined ||
+          (draftRowsRef.current.get(rowKey) !== id &&
+            draftRowsRef.current.get(rowKey) !== settledId)
+        ) {
+          deleteExercise.mutate(settledId);
+          return;
+        }
         if (settledId !== id) {
           repointRow(rowKey, { exerciseId: settledId, name: res.name });
           const q = forkingRef.current.get(id);
@@ -471,6 +487,7 @@ export default function RoutineEditScreen() {
         // never applied anywhere and drop with the queue.
         repointRow(rowKey, { exerciseId: exercise.id, name: exercise.name });
       } finally {
+        forkingRef.current.delete(id);
         forkingRef.current.delete(settledId);
       }
     })();
@@ -899,9 +916,11 @@ export default function RoutineEditScreen() {
                       : undefined
                   }
                   onMove={(dir) => move(i, dir)}
-                  onRemove={() =>
-                    setDrafts((prev) => (prev ?? []).filter((_, j) => j !== i))
-                  }
+                  onRemove={() => {
+                    const key = list[i]?.key;
+                    if (key) draftRowsRef.current.delete(key);
+                    setDrafts((prev) => (prev ?? []).filter((_, j) => j !== i));
+                  }}
                 />
               </div>
 
