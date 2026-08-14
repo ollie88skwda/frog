@@ -41,6 +41,7 @@ import {
   lbToKg,
   type Machine,
   type MatchCandidate,
+  type Metric,
   matchExerciseName,
   miToM,
   type NewRoutineInput,
@@ -100,6 +101,7 @@ import {
   ExerciseFilterBar,
   filterExercises,
 } from "@/components/exercise-filter";
+import { InfoTip } from "@/components/lesson";
 import { MachineChip } from "@/components/session/machine-chip";
 import { PlateSheet } from "@/components/session/plate-sheet";
 import { PrBanner, type PrBannerData } from "@/components/session/pr-banner";
@@ -125,6 +127,7 @@ import {
   useLastNote,
   useLastSets,
   useMachines,
+  useMetrics,
   useSession,
   useSessionExercises,
   useSetExerciseWeightUnit,
@@ -2859,6 +2862,18 @@ function ExerciseSpotlight({
   useLastNote(block.ghostExerciseId ?? block.exerciseId, block.seId);
   const { data: exercises = [] } = useExercises();
   const { data: prefs = [] } = useExercisePrefs();
+  // Set-scope custom metrics enabled for this exercise (Library owns
+  // enabling them; the set details sheet is the only place their per-set
+  // values are entered). Lives on the metric, not the exercise, so a seed
+  // exercise can carry them too.
+  const { data: metrics = [] } = useMetrics();
+  const enabledMetrics = useMemo(
+    () =>
+      metrics.filter(
+        (m) => m.scope === "set" && m.exerciseIds?.includes(block.exerciseId),
+      ),
+    [metrics, block.exerciseId],
+  );
   const setWeightUnit = useSetExerciseWeightUnit();
   const createExercise = useCreateExercise();
   const updateExercise = useUpdateExercise();
@@ -3250,6 +3265,7 @@ function ExerciseSpotlight({
           nextSeedType={seedSets[focusedIndex + 1]?.setType ?? null}
           ghost={ghostFor(ghost, focusedIndex)}
           hasGhost={ghost.length > 0}
+          enabledMetrics={enabledMetrics}
           committedGroup={committedGroups[focusedIndex] ?? null}
           barLoaded={barLoaded}
           exerciseLaterality={exercise?.laterality ?? null}
@@ -3359,6 +3375,7 @@ function Spotlight({
   prSnapshot,
   voiceFill,
   onVoiceFillConsumed,
+  enabledMetrics,
 }: {
   seId: string;
   index: number;
@@ -3394,6 +3411,10 @@ function Spotlight({
   prSnapshot: Map<string, ExerciseRecords> | null;
   voiceFill: { weightKg: number | null; reps: number | null } | null;
   onVoiceFillConsumed: () => void;
+  /** Set-scope custom metrics enabled for this exercise; entered from the
+   * per-set details sheet (`set-{index}-more`), opt-in each time via an
+   * "add field" chip. */
+  enabledMetrics: Metric[];
 }) {
   const isEditing = committedGroup != null;
   const left = committedGroup?.[0] ?? null;
@@ -3528,6 +3549,51 @@ function Spotlight({
   const [, forceTick] = useState(0);
   const done = useRef(false);
 
+  // Set details sheet (`set-{index}-more`): per-set note, opt-in custom
+  // metrics, the RIR InfoTip, and the plate calculator — the four things the
+  // hero row has no room for. `extras` is which enabled metrics are
+  // currently revealed as an input (opt-in each time the sheet opens, unless
+  // this set already carries a value for one); `metricDraft` is their raw
+  // text, parsed by type at commit.
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [note, setNote] = useState(
+    () => draft?.note ?? (isEditing ? (left?.note ?? "") : ""),
+  );
+  // Committed rows don't carry metricValues back into `LoggedSet` (a
+  // write-mostly field, entered once at live commit) — editing an
+  // already-logged set's note is supported, its metrics aren't; both start
+  // blank there, same as a fresh live set.
+  const [metricDraft, setMetricDraft] = useState<Record<string, string>>(
+    () => draft?.metricDraft ?? {},
+  );
+  const [extras, setExtras] = useState<Set<string>>(
+    () => new Set(draft?.extras ?? []),
+  );
+  const [lastAdded, setLastAdded] = useState<string | null>(null);
+  function toggleExtra(key: string) {
+    setExtras((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+    setLastAdded(key);
+  }
+  function computeMetricValues(): Record<string, unknown> | null {
+    const out: Record<string, unknown> = {};
+    for (const m of enabledMetrics) {
+      const raw = (metricDraft[m.id] ?? "").trim();
+      if (raw === "") continue;
+      out[m.id] =
+        m.type === "number" || m.type === "scale"
+          ? Number.parseFloat(raw)
+          : m.type === "checkbox"
+            ? raw === "true"
+            : raw;
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
   useEffect(() => {
     if (isEditing) return;
     saveDraft(seId, {
@@ -3538,10 +3604,10 @@ function Spotlight({
       rirMin,
       rirMax,
       rpe,
-      note: "",
+      note,
       setType,
-      extras: [],
-      metricDraft: {},
+      extras: [...extras],
+      metricDraft,
       rReps: reps2,
       rDuration,
       rDistance,
@@ -3557,7 +3623,10 @@ function Spotlight({
     rirMin,
     rirMax,
     rpe,
+    note,
     setType,
+    extras,
+    metricDraft,
     reps2,
     rDuration,
     rDistance,
@@ -3671,8 +3740,8 @@ function Spotlight({
         rirMin: effort ? parsedRir.rirMin : null,
         rirMax: effort ? parsedRir.rirMax : null,
         rpe: effort && rpe.trim() !== "" ? Number.parseFloat(rpe) : null,
-        note: null,
-        metricValues: null,
+        note: note.trim() === "" ? null : note.trim(),
+        metricValues: computeMetricValues(),
         side: isUnilateral ? "left" : null,
         otherSide: isUnilateral
           ? {
@@ -3703,6 +3772,7 @@ function Spotlight({
           ? null
           : Number.parseFloat(rpe)
         : undefined,
+      note: note.trim() === "" ? null : note.trim(),
     };
     onSaveCommitted(left.id, patch);
     if (setType !== left.setType) onSaveType({ setType });
@@ -4075,7 +4145,17 @@ function Spotlight({
             rested {restLabel}
           </span>
         )}
-        <span className="ml-auto">
+        <span className="ml-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setDetailsOpen(true)}
+            title="Set details"
+            className="flex size-9 shrink-0 items-center justify-center border border-border-strong bg-surface-2 text-soft"
+            data-testid={`set-${index}-more`}
+          >
+            <NotebookPen className="size-4" />
+          </button>
           <SetActionsMenu
             isWarmup={setType === "warmup"}
             onToggleWarmup={() => {
@@ -4370,6 +4450,109 @@ function Spotlight({
           </p>
         )}
       </div>
+
+      {/* Set details sheet (`set-{index}-more`): the four things the hero row
+          has no room for — the RIR InfoTip (always shown, per tips.spec.ts),
+          a per-set note, opt-in custom metrics, and the plate calculator.
+          Nothing here is required to log a set — it's all optional detail
+          reachable without leaving the row. */}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent title={`Set ${index + 1} details`}>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="text-2xs font-extrabold tracking-widest text-faint uppercase">
+                RIR
+              </span>
+              <InfoTip lessonId="rir" />
+            </div>
+            <label className="flex flex-col gap-1">
+              <span className="text-2xs font-extrabold tracking-widest text-faint uppercase">
+                Note
+              </span>
+              <textarea
+                rows={3}
+                placeholder="// note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                data-testid={`set-${index}-note`}
+                className="w-full resize-y border border-border-strong bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+              />
+            </label>
+            {enabledMetrics
+              .filter((m) => extras.has(m.id))
+              .map((m) => (
+                <div key={m.id} className="flex flex-col gap-1">
+                  <span className="text-2xs font-extrabold tracking-widest text-faint uppercase">
+                    {m.name}
+                  </span>
+                  {m.type === "checkbox" ? (
+                    <input
+                      type="checkbox"
+                      checked={metricDraft[m.id] === "true"}
+                      onChange={(e) =>
+                        setMetricDraft((d) => ({
+                          ...d,
+                          [m.id]: e.target.checked ? "true" : "",
+                        }))
+                      }
+                      className="size-4 justify-self-start accent-(--accent)"
+                      data-testid={`set-${index}-metric-${m.id}`}
+                    />
+                  ) : (
+                    <Input
+                      inputMode={m.type === "text" ? undefined : "decimal"}
+                      placeholder={m.type === "text" ? m.name : "0"}
+                      value={metricDraft[m.id] ?? ""}
+                      onChange={(e) =>
+                        setMetricDraft((d) => ({
+                          ...d,
+                          [m.id]: e.target.value,
+                        }))
+                      }
+                      autoFocus={lastAdded === m.id}
+                      className="num"
+                      data-testid={`set-${index}-metric-${m.id}`}
+                    />
+                  )}
+                </div>
+              ))}
+            {enabledMetrics.some((m) => !extras.has(m.id)) && (
+              <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
+                {enabledMetrics
+                  .filter((m) => !extras.has(m.id))
+                  .map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => toggleExtra(m.id)}
+                      data-testid={`set-${index}-add-${m.id}`}
+                      className="flex items-center gap-1 border border-border bg-surface-2 px-2.5 py-1 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+                    >
+                      <Plus className="size-3" />
+                      {m.name}
+                    </button>
+                  ))}
+              </div>
+            )}
+            {barLoaded && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDetailsOpen(false);
+                  onOpenPlates(
+                    weight.trim() === "" ? null : Number.parseFloat(weight),
+                  );
+                }}
+                data-testid={`set-${index}-plates`}
+                className="flex items-center gap-2 border-t border-border pt-3 text-left text-xs text-soft transition-colors duration-150 hover:text-ink"
+              >
+                <Calculator className="size-3.5" />
+                Plate calculator
+              </button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
