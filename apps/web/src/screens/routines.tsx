@@ -13,6 +13,7 @@ import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Toolbar } from "@/components/ui/toolbar";
 import { useRepo } from "@/lib/repo";
 import {
   useCreateRoutineFolder,
@@ -84,7 +85,7 @@ export default function RoutinesScreen() {
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold tracking-tight">Routines</h1>
-        <div className="flex gap-2">
+        <Toolbar>
           <Button
             variant="ghost"
             size="icon"
@@ -102,7 +103,7 @@ export default function RoutinesScreen() {
           >
             <Plus className="size-4" /> New routine
           </Button>
-        </div>
+        </Toolbar>
       </div>
 
       {/* Folders */}

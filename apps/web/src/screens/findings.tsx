@@ -31,6 +31,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { rowClass } from "@/components/ui/row";
 import { computeFindings } from "@/lib/findings";
 import { formatDate } from "@/lib/format";
 import { useFindingsData, useMetrics } from "@/lib/queries";
@@ -219,7 +220,7 @@ function TrendRow({
     <button
       type="button"
       onClick={onOpen}
-      className="flex h-11 w-full items-center justify-between gap-3 px-4 text-left transition-colors md:h-8 duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+      className={rowClass({ className: "w-full gap-3 text-left" })}
       data-testid={`trend-${trend.exerciseName}`}
     >
       <span className="truncate text-sm">{trend.exerciseName}</span>

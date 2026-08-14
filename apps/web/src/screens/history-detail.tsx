@@ -10,15 +10,17 @@ import {
   unitLabel,
 } from "@frog/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Copy, ListPlus, Share2, Trash2 } from "lucide-react";
+import { Copy, ListPlus, Share2, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { PostSaveSummary } from "@/components/post-save-summary";
 import { SessionPhotoCarousel } from "@/components/session-photos";
 import { ShareSheet } from "@/components/share-sheet";
+import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Toolbar } from "@/components/ui/toolbar";
 import { formatDate } from "@/lib/format";
 import { useAllSessions, useUserPrefs } from "@/lib/profile-queries";
 import {
@@ -325,14 +327,8 @@ export default function HistoryDetailScreen() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Link
-          to="/history"
-          className="flex items-center gap-1 text-xs text-soft transition-colors duration-100 hover:text-ink"
-        >
-          <ArrowLeft className="size-4" />
-          History
-        </Link>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <BackButton to="/history" label="Back to history" />
+        <Toolbar className="shrink flex-wrap justify-end gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -375,7 +371,7 @@ export default function HistoryDetailScreen() {
             <Trash2 className="size-4" />
             Delete
           </Button>
-        </div>
+        </Toolbar>
       </div>
       <Dialog open={savingRoutine} onOpenChange={setSavingRoutine}>
         <DialogContent title="Save as routine">

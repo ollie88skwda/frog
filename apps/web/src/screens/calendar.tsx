@@ -6,6 +6,8 @@ import { Link, useNavigate } from "react-router";
 import { StreakCard } from "@/components/streak-card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { IconButton } from "@/components/ui/icon-button";
+import { rowClass } from "@/components/ui/row";
 import { StatusRing } from "@/components/ui/status-ring";
 import { formatDate, formatTime } from "@/lib/format";
 import { useAllSessions } from "@/lib/profile-queries";
@@ -182,19 +184,17 @@ export default function CalendarScreen() {
 
       {/* Pager + zoom. */}
       <div className="mt-4 flex items-center justify-between">
-        <button
-          type="button"
+        <IconButton
           onClick={() =>
             view === "year"
               ? setViewYear((y) => y - 1)
               : setCursor((c) => c - 1)
           }
-          className="flex size-9 items-center justify-center bg-translucent text-soft shadow-(--inset-control) transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
           data-testid="cal-prev"
           title="Previous"
         >
           <ChevronLeft className="size-4" />
-        </button>
+        </IconButton>
 
         <button
           type="button"
@@ -218,19 +218,17 @@ export default function CalendarScreen() {
           </span>
         </button>
 
-        <button
-          type="button"
+        <IconButton
           onClick={() =>
             view === "year"
               ? setViewYear((y) => y + 1)
               : setCursor((c) => c + 1)
           }
-          className="flex size-9 items-center justify-center bg-translucent text-soft shadow-(--inset-control) transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
           data-testid="cal-next"
           title="Next"
         >
           <ChevronRight className="size-4" />
-        </button>
+        </IconButton>
       </div>
 
       {view === "month" ? (
@@ -499,7 +497,7 @@ function DaySheet({
                 <Link
                   to={`/history/${s.id}`}
                   onClick={onClose}
-                  className="flex h-11 items-center justify-between px-3 transition-colors duration-150 hover:bg-surface-hover"
+                  className={rowClass()}
                   data-testid={`cal-session-${s.id}`}
                 >
                   <span className="flex min-w-0 items-center gap-2">

@@ -25,7 +25,6 @@ import {
 } from "@frog/core";
 import { Select } from "@radix-ui/themes";
 import {
-  ArrowLeft,
   Check,
   MoreHorizontal,
   Play,
@@ -33,7 +32,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import {
   CartesianGrid,
   Line as RechartsLine,
@@ -41,6 +40,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 import {
   type ChartConfig,
@@ -91,13 +91,7 @@ export default function TrainerScreen() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
       <div className="flex items-center gap-3">
-        <Link
-          to="/train"
-          aria-label="Back to training"
-          className="flex size-8 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
-        >
-          <ArrowLeft className="size-5" />
-        </Link>
+        <BackButton to="/train" label="Back to training" />
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Trainer</h1>
           <p className="text-2xs text-faint">

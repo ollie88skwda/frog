@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
+import { rowClass } from "@/components/ui/row";
 import { StatusRing } from "@/components/ui/status-ring";
 import { formatDate, formatTime } from "@/lib/format";
 import { useSessionHistory } from "@/lib/queries";
@@ -40,7 +41,7 @@ export default function HistoryScreen() {
                 <Link
                   to={`/history/${s.id}`}
                   data-testid={`history-row-${s.id}`}
-                  className="flex h-11 items-center justify-between px-4 transition-colors md:h-8 duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+                  className={rowClass()}
                 >
                   <span className="flex min-w-0 items-center gap-2">
                     <StatusRing

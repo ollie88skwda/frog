@@ -25,10 +25,10 @@ import {
   unitLabel,
 } from "@frog/core";
 import {
-  ArrowLeft,
   ChevronDown,
   ChevronRight,
   Copy,
+  MoreVertical,
   Pencil,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -43,12 +43,15 @@ import {
 import { ExerciseThumb, TierBadge } from "@/components/anatomy-ui";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import { ShareButton } from "@/components/share-sheet";
+import { BackButton } from "@/components/ui/back-button";
 import {
   type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { IconButton } from "@/components/ui/icon-button";
+import { rowClass } from "@/components/ui/row";
 import { formatDate, formatDateTime, formatMMSS } from "@/lib/format";
 import { useUserPrefs } from "@/lib/profile-queries";
 import {
@@ -122,15 +125,11 @@ export default function ExerciseDetailScreen() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
       <div className="flex items-start gap-3">
-        <button
-          type="button"
+        <BackButton
           onClick={() => navigate(-1)}
-          title="Back"
-          className="flex size-8 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
+          label="Back"
           data-testid="exercise-detail-back"
-        >
-          <ArrowLeft className="size-5" />
-        </button>
+        />
         <ExerciseThumb
           imageUrl={exercise.imageUrl}
           name={exercise.name}
@@ -481,7 +480,7 @@ function RecordsPanel({
             <li key={pr}>
               <Link
                 to={`/history/${entry.sessionId}`}
-                className="flex h-11 items-center justify-between px-4 transition-colors duration-150 hover:bg-surface-hover"
+                className={rowClass()}
                 data-testid={`record-${pr}`}
               >
                 <span className="text-xs text-soft">{PR_TYPE_LABELS[pr]}</span>
@@ -547,10 +546,7 @@ function SetRecordsTable({
           <ul className="mt-2 divide-y divide-border border border-border bg-surface">
             {rows.map((r) => (
               <li key={r.reps} data-testid={`set-record-${r.reps}`}>
-                <Link
-                  to={`/history/${r.sessionId}`}
-                  className="flex h-10 items-center justify-between px-4 transition-colors duration-150 hover:bg-surface-hover"
-                >
+                <Link to={`/history/${r.sessionId}`} className={rowClass()}>
                   <span className="num text-xs text-soft">{r.reps} reps</span>
                   <span className="num text-sm">
                     {formatWeight(r.weightKg, unit)}
@@ -778,15 +774,13 @@ function MoreMenu({
 
   return (
     <div className="relative">
-      <button
-        type="button"
+      <IconButton
         onClick={() => setOpen((o) => !o)}
         title="More"
-        className="flex size-8 shrink-0 items-center justify-center text-lg leading-none text-faint transition-colors duration-150 hover:text-ink"
         data-testid="exercise-more"
       >
-        ⋯
-      </button>
+        <MoreVertical className="size-4" />
+      </IconButton>
       {open && (
         <>
           <button
