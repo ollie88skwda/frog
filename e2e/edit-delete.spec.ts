@@ -8,6 +8,7 @@ import {
   signIn,
   waitForExercise,
 } from "./helpers";
+import { openSetTypeMenu } from "./spotlight-helpers";
 
 // G2 + G3: edit/delete logged data + exercise tags.
 
@@ -33,34 +34,38 @@ test("edit a committed set; delete a set; both survive reload", async ({
   const before = await rowCount(page, "set_logs");
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
-  // Log two sets — with no auto-advance, the block-level "Add set" button
-  // opens the next draft between commits.
-  await page.getByTestId("set-0-weight").fill("100");
-  await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-reps").press("Enter");
-  await expect(page.getByTestId("committed-0-type")).toBeVisible();
-  await page.getByTestId("set-1-add").click();
-  await page.getByTestId("set-1-weight").fill("110");
-  await page.getByTestId("set-1-reps").fill("3");
-  await page.getByTestId("set-1-reps").press("Enter");
-  await expect(page.getByTestId("committed-1-type")).toBeVisible();
+  // Log two sets through the spotlight (Spotlight redesign — no separate
+  // per-index "Add set" button; committing one advances to the next).
+  await page.getByTestId("weight-field").fill("100");
+  await page.getByTestId("reps-field").fill("5");
+  await page.getByTestId("log-set").click();
+  await page.getByTestId("weight-field").fill("110");
+  await page.getByTestId("reps-field").fill("3");
+  await page.getByTestId("log-set").click();
   // Both rows persisted → the optimistic temp ids have been swapped for real
   // ones, so edit/delete below target actual rows.
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 2);
 
-  // Edit set 1: click the weight, change it, save.
-  await page.getByTestId("committed-0-weight").click();
-  await page.getByTestId("edit-0-weight").fill("105");
-  await page.getByTestId("edit-0-save").click();
-  await expect(page.getByTestId("committed-0-weight")).toHaveText("105");
+  // Edit set 0: tap its mark to reopen it, change the weight, Log to save.
+  await page.getByTestId("set-mark-0").click();
+  await page.getByTestId("weight-field").fill("105");
+  await page.getByTestId("log-set").click();
 
-  // Delete set 2 via the set-options (⋯) menu → Delete Set → confirm.
+  // Delete set 1 via the set-type menu's Delete item.
   const liveBefore = await liveRowCount(page, "set_logs");
-  await page.getByTestId("committed-1").hover();
-  await page.getByTestId("set-menu-1").click();
-  await page.getByTestId("set-menu-1-delete").click();
-  await page.getByTestId("set-menu-1-delete-confirm").click();
-  await expect(page.getByTestId("committed-1")).not.toBeVisible();
+  await page.getByTestId("set-mark-1").click();
+  await openSetTypeMenu(page);
+  // First tap arms the confirm step; the second (same testid, label flips to
+  // "Confirm delete") actually deletes.
+  await page.getByTestId("set-type-delete").click();
+  await page.getByTestId("set-type-delete").click();
+  // Ad-hoc session (no routine), so there's no pre-rendered "todo" slot past
+  // the last committed set — deleting set 1 leaves set 0 as the only
+  // committed set, so slot 1 becomes the next set to log ("current").
+  await expect(page.getByTestId("set-mark-1-state")).toHaveAttribute(
+    "data-state",
+    "current",
+  );
   // The removal above is optimistic — wait for the soft delete to land
   // server-side, otherwise the reload can abort the in-flight request and the
   // set comes back.
@@ -68,8 +73,12 @@ test("edit a committed set; delete a set; both survive reload", async ({
 
   // Reload: edit persisted, deleted set stays gone.
   await page.reload();
-  await expect(page.getByTestId("committed-0-weight")).toHaveText("105");
-  await expect(page.getByTestId("committed-1")).not.toBeVisible();
+  await page.getByTestId("set-mark-0").click();
+  await expect(page.getByTestId("weight-field")).toHaveValue("105");
+  await expect(page.getByTestId("set-mark-1-state")).toHaveAttribute(
+    "data-state",
+    "current",
+  );
 });
 
 test("delete a custom exercise removes it from the picker; tags round-trip", async ({
@@ -129,6 +138,6 @@ test("delete a custom exercise removes it from the picker; tags round-trip", asy
   await page.keyboard.press("Escape");
   await page.getByRole("dialog").waitFor({ state: "hidden" });
   // End the session through the finish overlay.
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
 });

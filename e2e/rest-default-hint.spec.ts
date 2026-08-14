@@ -106,13 +106,13 @@ test("a 600s Rest default does not target the in-workout stopwatch", async ({
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
-  await page.getByTestId("set-0-weight").fill("100");
-  await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-add").click();
+  await page.getByTestId("weight-field").fill("100");
+  await page.getByTestId("reps-field").fill("5");
+  await page.getByTestId("log-set").click();
 
   // Starts at zero and counts UP — never seeded from (or counting down to)
   // the 10:00 default.
-  const value = page.getByTestId(`rest-${EX}-value`);
+  const value = page.getByTestId("rest-elapsed");
   await expect(value).toBeVisible();
   await expect(value).toHaveText(/^0:0\d$/);
   const first = (await value.innerText()).trim();

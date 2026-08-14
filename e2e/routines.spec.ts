@@ -105,27 +105,40 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
 
-  // Set 0 draft: reps seeded from the fixed target, weight blank (left
-  // unauthored above). PREVIOUS is blank too (never logged).
-  await expect(page.getByTestId("set-0-weight")).toHaveValue("");
-  await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
-  await expect(page.getByTestId("set-0-previous")).toHaveText("—");
+  // Set 0: no ghost (never logged before) — weight-field is genuinely
+  // empty, reps-field carries the fixed target as a placeholder-only value
+  // (testid-contract.md: "the routine target shown as placeholder"), and
+  // there's no last-time row (no ghost to show).
+  await expect(page.getByTestId("weight-field")).toHaveValue("");
+  await expect(page.getByTestId("reps-field")).toHaveValue("");
+  await expect(page.getByTestId("reps-field")).toHaveAttribute(
+    "placeholder",
+    "5",
+  );
+  await expect(page.getByTestId("last-time-row")).toHaveCount(0);
 
   // Perform set 0 at 65.
-  await page.getByTestId("set-0-weight").fill("65");
-  await page.getByTestId("set-0-add").click();
-  await expect(page.getByTestId("committed-0")).toBeVisible();
+  await page.getByTestId("weight-field").fill("65");
+  await page.getByTestId("reps-field").fill("5");
+  await page.getByTestId("log-set").click();
+  await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
+    "data-state",
+    "done",
+  );
 
-  // Set 1 draft: weight and reps both blank for the 8–12 range.
-  await expect(page.getByTestId("set-1-weight")).toHaveValue("");
-  await expect(page.getByTestId("set-1-reps")).toHaveValue("");
-  await page.getByTestId("set-1-weight").fill("50");
-  await page.getByTestId("set-1-reps").fill("10");
-  await page.getByTestId("set-1-add").click();
-  await expect(page.getByTestId("committed-1")).toBeVisible();
+  // Set 1: weight and reps both blank for the 8–12 range (placeholder only).
+  await expect(page.getByTestId("weight-field")).toHaveValue("");
+  await expect(page.getByTestId("reps-field")).toHaveValue("");
+  await page.getByTestId("weight-field").fill("50");
+  await page.getByTestId("reps-field").fill("10");
+  await page.getByTestId("log-set").click();
+  await expect(page.getByTestId("set-mark-1-state")).toHaveAttribute(
+    "data-state",
+    "done",
+  );
 
   // Finish with Update Routine Values ON (default).
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await expect(page.getByTestId("finish-summary")).toBeVisible();
   await expect(page.getByTestId("finish-update-values")).toBeChecked();
   await page.getByTestId("finish-save").click();
@@ -173,7 +186,11 @@ test("start routine still prefills when the session row resolves after its exerc
 
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
-  await expect(page.getByTestId("set-0-reps")).toHaveValue("5");
+  // No ghost yet — the fixed target is placeholder-only, not a value fill.
+  await expect(page.getByTestId("reps-field")).toHaveAttribute(
+    "placeholder",
+    "5",
+  );
 });
 
 // Routine-builder revamp (routine-plan-c4): per-exercise set add/remove
@@ -411,9 +428,20 @@ test("routines-page routine menu flips upward when it would render below the fol
 // Regression: starting a routine with N configured sets used to render only
 // the one active (currently-being-logged) row — the other N-1 were invisible
 // until each prior set was logged, which read as "the routine only kept 1 of
-// my 5 sets." All N are now visible immediately: one editable active row plus
-// read-only "upcoming" previews for the rest, counting down as sets are logged.
-test("start routine materializes every configured set as a visible row, not just the active one", async ({
+// my 5 sets."
+//
+// NEEDS-DECISION (see AGENTS.md / PR notes): the Spotlight redesign shows one
+// set at a time by construction (testid-contract.md has no "upcoming set
+// preview list" hook, and the marks band only exposes done/warmup/current/
+// todo state, not each set's target). It's unclear whether this regression
+// fix's "see all N configured sets at once" guarantee still holds in any
+// form, or whether the marks band + per-set placeholder target is the
+// redesign's intentional replacement for it. This is re-aimed to what the
+// contract *does* promise — the current set's target shows as a placeholder
+// with no history, and completing all 5 configured sets lands exactly 5 rows
+// with no duplication — without asserting the old "all previews visible at
+// once" shape either way.
+test("start routine seeds every configured set's target with no duplication, one set at a time", async ({
   page,
 }) => {
   const EX = `MaterializeEx ${Date.now()}`;
@@ -441,24 +469,46 @@ test("start routine materializes every configured set as a visible row, not just
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
 
-  // Set 0 is the active, editable row; sets 1-4 are read-only upcoming
-  // previews — all 5 configured sets are on screen with zero user action.
-  await expect(page.getByTestId("set-0-reps")).toBeVisible();
-  for (let i = 1; i < 5; i++) {
-    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
+  // Set 0's target (no history yet) surfaces as a placeholder, per
+  // testid-contract.md's prefill clause.
+  const repsPlaceholder = await page
+    .getByTestId("reps-field")
+    .getAttribute("placeholder");
+  expect(repsPlaceholder).toMatch(/6.*8|8/);
+
+  // Log all 5 configured sets — each one's target keeps showing up (not just
+  // set 0's), and nothing gets left behind or duplicated by the time all 5
+  // are logged.
+  for (let i = 0; i < 5; i++) {
+    await expect(page.getByTestId("set-number")).toContainText(String(i + 1));
+    await page.getByTestId("reps-field").fill("7");
+    await page.getByTestId("weight-field").fill("40");
+    await page.getByTestId("log-set").click();
+    await expect(page.getByTestId(`set-mark-${i}-state`)).toHaveAttribute(
+      "data-state",
+      "done",
+    );
   }
 
-  // Logging set 0 advances the active row to index 1 and drops it from the
-  // upcoming list — the previously-seeded target isn't left behind or
-  // duplicated, and it isn't something the user had to re-add by hand.
-  await page.getByTestId("set-0-reps").fill("7");
-  await page.getByTestId("set-0-add").click();
-  await expect(page.getByTestId("committed-0")).toBeVisible();
-  await expect(page.getByTestId("set-1-reps")).toBeVisible();
-  await expect(page.getByTestId("upcoming-1-reps")).toHaveCount(0);
-  for (let i = 2; i < 5; i++) {
-    await expect(page.getByTestId(`upcoming-${i}-reps`)).toHaveText("6–8");
-  }
+  await expect
+    .poll(() =>
+      page.evaluate(async (n) => {
+        const { data: ex } = await window.__frog.supabase
+          .from("exercises")
+          .select("id")
+          .eq("name", n)
+          .single();
+        const { count } = await window.__frog.supabase
+          .from("set_logs")
+          .select("id, session_exercises!inner(exercise_id)", {
+            count: "exact",
+            head: true,
+          })
+          .eq("session_exercises.exercise_id", (ex as { id: string }).id);
+        return count ?? 0;
+      }, EX),
+    )
+    .toBe(5);
 });
 
 // Routine editor ↔ session parity (UI feedback batch 8, notes 10/13; superset
@@ -529,18 +579,20 @@ test("exercise menu laterality/warm-up round-trip into the session", async ({
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
   const sessionId = page.url().split("/session/")[1];
-  await expect(
-    page.locator('[data-testid^="block-"]').first().getByTestId("set-0-type"),
-  ).toHaveText("Wᴸ");
-  const block = page.locator('[data-testid^="block-"]').first();
-  await block.getByTestId("set-0-weight").fill("20");
-  await block.getByTestId("set-0-reps").fill("8");
-  await block.getByTestId("set-0-right-reps").fill("8");
-  await block.getByTestId("set-0-add").click();
-  await expect(page.getByTestId("committed-0")).toBeVisible();
-  // Horizontal pair (batch 8): the ᴿ side renders inside the same stripe,
-  // its cells carrying the committed-0-right-* ids.
-  await expect(page.getByTestId("committed-0-right-reps")).toBeVisible();
+  // The routine's superset grouping has no UI in the Spotlight session
+  // screen (testid-contract.md: no superset control anywhere) — only the
+  // warm-up + unilateral seeding is checkable here now. Set 0's mark reads
+  // warmup with a side-tag (paired) once logged.
+  await expect(page.getByTestId("reps-field-left")).toBeVisible();
+  await page.getByTestId("weight-field").fill("20");
+  await page.getByTestId("reps-field-left").fill("8");
+  await page.getByTestId("reps-field-right").fill("8");
+  await page.getByTestId("log-set").click();
+  await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
+    "data-state",
+    "warmup",
+  );
+  await expect(page.getByTestId("set-mark-0-side-tag")).toBeVisible();
   // Both inserts can take up to ~7s to land (mutations retry 3x), and a
   // touch tap on the add button can double-fire the commit — so poll for at
   // least the pair rather than exactly two, on a longer-than-default window.

@@ -71,22 +71,28 @@ async function createTypedExercise(page: Page, name: string, label: string) {
 }
 
 /** Logs one session of this exercise, one set per value, into the field
- * `field` ("reps" / "duration"), and saves it. */
+ * `field` ("reps" / "duration"), and saves it. Both fields follow the same
+ * generic Spotlight field shape (`${key}-field` + the single `log-set`
+ * commit button) — duration just takes MM:SS text instead of a number. */
 async function logSession(
   page: Page,
   name: string,
-  field: string,
+  field: "reps" | "duration",
   values: string[],
 ) {
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${name}`).click();
+  const fieldTestId = field === "reps" ? "reps-field" : "duration-field";
   for (const [i, value] of values.entries()) {
-    await page.getByTestId(`set-${i}-${field}`).fill(value);
-    await page.getByTestId(`set-${i}-add`).click();
-    await expect(page.getByTestId(`committed-${i}-type`)).toBeVisible();
+    await page.getByTestId(fieldTestId).fill(value);
+    await page.getByTestId("log-set").click();
+    await expect(page.getByTestId(`set-mark-${i}-state`)).toHaveAttribute(
+      "data-state",
+      "done",
+    );
   }
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page.getByTestId("post-save-summary")).toBeVisible();
   await page.getByTestId("summary-dismiss").click();
@@ -214,10 +220,13 @@ test("one layout engine paints every frame × ground of a session card", async (
     ["100", "8"],
     ["120", "3"],
   ].entries()) {
-    await page.getByTestId(`set-${i}-weight`).fill(w);
-    await page.getByTestId(`set-${i}-reps`).fill(r);
-    await page.getByTestId(`set-${i}-add`).click();
-    await expect(page.getByTestId(`committed-${i}-type`)).toBeVisible();
+    await page.getByTestId("weight-field").fill(w);
+    await page.getByTestId("reps-field").fill(r);
+    await page.getByTestId("log-set").click();
+    await expect(page.getByTestId(`set-mark-${i}-state`)).toHaveAttribute(
+      "data-state",
+      "done",
+    );
   }
   // Record a condition so the card's lab-report strip has data to paint
   // (the strip only renders when the session recorded something). Stress is
@@ -228,7 +237,7 @@ test("one layout engine paints every frame × ground of a session card", async (
   await stress.click();
   await expect(page.getByTestId("conditions-chip")).toContainText("stress 4");
   await page.keyboard.press("Escape"); // close the conditions sheet
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page.getByTestId("post-save-summary")).toBeVisible();
   await page.getByTestId("summary-dismiss").click();

@@ -96,24 +96,31 @@ test("machine from catalog: settings remembered into the session setup strip", a
     )
     .not.toBeNull();
 
-  // In a session, the setup strip shows the remembered settings.
+  // In a session, the machine chip identifies the machine (brand + model) —
+  // per-machine settings (seat height etc.) are no longer editable or shown
+  // from the session screen (session.tsx's own scope note: "the header chip
+  // only attaches/swaps the machine now, Library still owns per-machine
+  // setup"), so that stays a Library-only round-trip, checked separately
+  // below rather than through the chip.
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${copy}`).click();
-  const strip = page.getByTestId(`setup-strip-${copy}`);
-  await expect(strip).toBeVisible();
-  await expect(strip).toContainText("Seat height 4");
+  const chip = page.getByTestId("exercise-machine-chip");
+  await expect(chip).toBeVisible();
+  await expect(chip).toContainText(MACHINE);
 
-  // Edit in the dialog → persists (machine row is the memory).
-  await strip.click();
+  // The setting itself still round-trips through Library, unrelated to the
+  // in-session chip.
+  await page.goto("/library");
+  await page.getByTestId(`machine-row-${MACHINE}`).click();
   await page.getByTestId(`setting-value-${MACHINE}-Seat height`).fill("5");
   await page.keyboard.press("Escape");
-  await expect(strip).toContainText("Seat height 5");
   await page.reload();
-  await expect(page.getByTestId(`setup-strip-${copy}`)).toContainText(
-    "Seat height 5",
-  );
+  await page.getByTestId(`machine-row-${MACHINE}`).click();
+  await expect(
+    page.getByTestId(`setting-value-${MACHINE}-Seat height`),
+  ).toHaveValue("5");
 });
 
 test("RIR InfoTip opens the lesson", async ({ page }) => {

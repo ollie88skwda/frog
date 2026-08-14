@@ -65,7 +65,7 @@ test("with no routines the hero offers to build one, and can still start empty",
   await expect(picker).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(picker).toBeHidden();
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-discard").click();
   await page.getByTestId("finish-discard-confirm").click();
   await expect(page).toHaveURL(/\/$/);
@@ -124,11 +124,14 @@ test("the hero names today's routine, previews it, and starts it in one tap", as
   await page.getByTestId("hero-resume-btn").click();
   await expect(page).toHaveURL(/\/session\//);
 
-  await page.getByTestId("set-0-weight").fill("60");
-  await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-add").click();
-  await expect(page.getByTestId("committed-0")).toBeVisible();
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("weight-field").fill("60");
+  await page.getByTestId("reps-field").fill("5");
+  await page.getByTestId("log-set").click();
+  await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
+    "data-state",
+    "done",
+  );
+  await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).toHaveURL(/\/history\//);
 

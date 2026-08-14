@@ -3,6 +3,7 @@
 // `supabase status`, which never exists for the hosted project in this repo.
 import { execSync } from "node:child_process";
 import { createClient } from "@supabase/supabase-js";
+import { purgeStaleE2eUsers } from "./e2e-cleanup";
 
 const raw = execSync("supabase status -o json", { encoding: "utf8" });
 // The CLI may print warnings (e.g. "Stopped services: ...") before the JSON.
@@ -19,14 +20,30 @@ if (!url || !anonKey || !serviceKey) {
 const admin = createClient(url, serviceKey, {
   auth: { persistSession: false },
 });
+
+// Sweep stale e2e accounts from past runs before adding another — see
+// e2e-cleanup.ts. Best-effort: a sweep failure must never block seeding this
+// run's own user, so it's logged to stderr (stdout is reserved for the JSON
+// creds run-e2e.ts parses) and swallowed.
+try {
+  const { checked, purged } = await purgeStaleE2eUsers(admin);
+  if (purged.length > 0) {
+    console.error(`Swept ${purged.length}/${checked} stale e2e account(s).`);
+  }
+} catch (e) {
+  console.error(`Stale e2e sweep failed (continuing): ${(e as Error).message}`);
+}
+
 const email = `e2e-${Date.now()}@frog.test`;
 const password = "e2e-password-123";
 
-const { error } = await admin.auth.admin.createUser({
+const { data, error } = await admin.auth.admin.createUser({
   email,
   password,
   email_confirm: true,
 });
 if (error) throw new Error(error.message);
 
-console.log(JSON.stringify({ email, password, url, anonKey }));
+console.log(
+  JSON.stringify({ id: data.user.id, email, password, url, anonKey }),
+);

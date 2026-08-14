@@ -19,11 +19,16 @@ test.beforeEach(async ({ page }) => {
   await page.evaluate(() => localStorage.setItem("unit", "kg"));
 });
 
+// Re-aimed for the Spotlight session screen (fm/frog-session-spotlight):
+// sets are logged one at a time through the always-current spotlight fields.
 async function logSet(page: Page, index: number, weight: string, reps: string) {
-  await page.getByTestId(`set-${index}-weight`).fill(weight);
-  await page.getByTestId(`set-${index}-reps`).fill(reps);
-  await page.getByTestId(`set-${index}-add`).click();
-  await expect(page.getByTestId(`committed-${index}-type`)).toBeVisible();
+  await page.getByTestId("weight-field").fill(weight);
+  await page.getByTestId("reps-field").fill(reps);
+  await page.getByTestId("log-set").click();
+  await expect(page.getByTestId(`set-mark-${index}-state`)).toHaveAttribute(
+    "data-state",
+    "done",
+  );
 }
 
 async function logSessionWith(
@@ -39,7 +44,7 @@ async function logSessionWith(
     await logSet(page, i, sets[i][0], sets[i][1]);
   }
   // Finish → save the workout (opens the finish overlay, then confirms).
-  await page.getByTestId("end-session-btn").click();
+  await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).not.toHaveURL(/\/session\//);
 }

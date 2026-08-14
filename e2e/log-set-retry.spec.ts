@@ -53,9 +53,9 @@ test("a retried log-set write after a lost response does not duplicate the set",
     }
   });
 
-  await page.getByTestId("set-0-weight").fill("100");
-  await page.getByTestId("set-0-reps").fill("5");
-  await page.getByTestId("set-0-done").click();
+  await page.getByTestId("weight-field").fill("100");
+  await page.getByTestId("reps-field").fill("5");
+  await page.getByTestId("log-set").click();
 
   // The retry lands asynchronously (exponential backoff) — poll for it.
   await expect.poll(() => posts, { timeout: 15_000 }).toBeGreaterThanOrEqual(2);
@@ -64,8 +64,13 @@ test("a retried log-set write after a lost response does not duplicate the set",
   await page.unroute("**/rest/v1/set_logs*");
 
   // Reload: local optimistic state only ever added one row, so a real
-  // duplicate would only surface once the page re-fetches from the server.
+  // duplicate would only surface once the page re-fetches from the server —
+  // asserted server-side (row count, not UI) since a duplicate would still
+  // only ever render as a single set-mark-0 regardless.
   await page.reload();
-  await expect(page.getByTestId("committed-0")).toBeVisible();
-  await expect(page.getByTestId("committed-1")).not.toBeVisible();
+  await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
+    "data-state",
+    "done",
+  );
+  expect(await rowCount(page, "set_logs")).toBe(before + 1);
 });
