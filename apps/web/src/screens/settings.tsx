@@ -15,6 +15,7 @@ import { ImportCard } from "@/components/import-card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Row as ListRow } from "@/components/ui/row";
 import { useSignOut } from "@/lib/auth";
 import { useChangelogHasUnseen } from "@/lib/changelog-prefs";
 import { formatDate } from "@/lib/format";
@@ -882,29 +883,31 @@ function TokenRow({
 }) {
   const revoked = token.revokedAt != null;
   return (
-    <li className="flex items-center justify-between px-3 py-2 text-sm">
-      <span className={cn(revoked && "text-faint line-through")}>
-        {token.name}
-      </span>
-      <span className="flex items-center gap-2">
-        <span className="num text-2xs text-faint">
-          created {formatDate(token.createdAt)}
-          {token.lastUsedAt != null &&
-            ` · used ${formatDate(token.lastUsedAt)}`}
+    <li>
+      <ListRow interactive={false} className="text-sm">
+        <span className={cn(revoked && "text-faint line-through")}>
+          {token.name}
         </span>
-        {revoked ? (
-          <span className="text-2xs text-faint uppercase">revoked</span>
-        ) : (
-          <Button
-            size="sm"
-            variant="danger"
-            onClick={onRevoke}
-            data-testid={`revoke-${token.name}`}
-          >
-            Revoke
-          </Button>
-        )}
-      </span>
+        <span className="flex items-center gap-2">
+          <span className="num text-2xs text-faint">
+            created {formatDate(token.createdAt)}
+            {token.lastUsedAt != null &&
+              ` · used ${formatDate(token.lastUsedAt)}`}
+          </span>
+          {revoked ? (
+            <span className="text-2xs text-faint uppercase">revoked</span>
+          ) : (
+            <Button
+              size="sm"
+              variant="danger"
+              onClick={onRevoke}
+              data-testid={`revoke-${token.name}`}
+            >
+              Revoke
+            </Button>
+          )}
+        </span>
+      </ListRow>
     </li>
   );
 }

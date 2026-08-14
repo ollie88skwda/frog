@@ -24,6 +24,7 @@ import {
   History,
   Info,
   Plus,
+  X,
 } from "lucide-react";
 import {
   type CSSProperties,
@@ -55,8 +56,9 @@ import {
 import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { IconLink } from "@/components/ui/icon-button";
+import { IconButton, IconLink } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
+import { Row } from "@/components/ui/row";
 import {
   dismissBulkAddFailures,
   finishBulkAddRun,
@@ -1251,26 +1253,24 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
       {custom.length > 0 && (
         <ul className="mt-3 divide-y divide-border overflow-hidden border border-border bg-surface">
           {custom.map((m) => (
-            <li
-              key={m.id}
-              data-testid={`metric-row-${m.name}`}
-              className="flex items-center justify-between px-4 py-2 text-sm"
-            >
-              <span>{m.name}</span>
-              <span className="flex items-center gap-2">
-                <span className="num text-2xs text-faint">
-                  {m.type} · {m.scope} · {m.exerciseIds?.length ?? 0} exercises
+            <li key={m.id} data-testid={`metric-row-${m.name}`}>
+              <Row interactive={false} className="text-sm">
+                <span>{m.name}</span>
+                <span className="flex items-center gap-2">
+                  <span className="num text-2xs text-faint">
+                    {m.type} · {m.scope} · {m.exerciseIds?.length ?? 0}{" "}
+                    exercises
+                  </span>
+                  <IconButton
+                    danger
+                    title="Delete metric"
+                    onClick={() => deleteMetric.mutate(m.id)}
+                    data-testid={`delete-metric-${m.name}`}
+                  >
+                    <X className="size-4" />
+                  </IconButton>
                 </span>
-                <button
-                  type="button"
-                  title="Delete metric"
-                  onClick={() => deleteMetric.mutate(m.id)}
-                  className="p-0.5 text-faint transition-colors duration-100 hover:text-neg"
-                  data-testid={`delete-metric-${m.name}`}
-                >
-                  ×
-                </button>
-              </span>
+              </Row>
             </li>
           ))}
         </ul>
