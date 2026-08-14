@@ -328,7 +328,7 @@ export default function HistoryDetailScreen() {
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <BackButton to="/history" label="Back to history" />
-        <Toolbar className="flex-wrap justify-end gap-2">
+        <Toolbar className="shrink flex-wrap justify-end gap-2">
           <Button
             variant="outline"
             size="sm"
