@@ -33,9 +33,13 @@ test("creating from the session picker's empty state adds the block with 0 sets"
   await expect(page.getByTestId("exercise-name-input")).toHaveValue(NAME);
   await page.getByTestId("add-exercise-btn").click();
 
-  // Auto-selected: the picker closes and the block appears with 0 sets.
+  // Auto-selected: the picker closes and the spotlight opens on it with no
+  // sets committed yet.
   await expect(page.getByRole("dialog")).toBeHidden();
-  const block = page.getByTestId(`block-${NAME}`);
-  await expect(block).toBeVisible();
-  await expect(block.getByTestId(/^committed-/)).toHaveCount(0);
+  await expect(page.getByTestId("exercise-name")).toHaveText(NAME);
+  await expect(page.getByTestId("weight-field")).toHaveValue("");
+  await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
+    "data-state",
+    "current",
+  );
 });

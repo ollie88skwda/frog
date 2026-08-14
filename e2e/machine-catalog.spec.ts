@@ -3,11 +3,12 @@ import { EMAIL, PASSWORD, signIn } from "./helpers";
 
 // Machine-catalog lookup UX (machine-DB plan phase 3): server-side search +
 // category browse in the library picker, and the in-session attach affordance
-// on block headers that have no machine yet.
+// via the exercise-machine-chip (testid-contract.md, Spotlight redesign).
 
-// Creates a custom exercise via the session picker's create flow and returns
-// to the block (used because machine attachment writes exercises.machine_id,
-// and seed rows are read-only under RLS — custom rows are the writable ones).
+// Creates a custom exercise via the session picker's create flow and lands
+// on its spotlight (used because machine attachment writes
+// exercises.machine_id, and seed rows are read-only under RLS — custom rows
+// are the writable ones).
 async function createExerciseInSession(
   page: import("@playwright/test").Page,
   name: string,
@@ -18,7 +19,7 @@ async function createExerciseInSession(
   await page.getByTestId("picker-create-exercise-btn").click();
   await page.getByTestId("add-exercise-btn").click();
   await expect(page.getByRole("dialog")).toBeHidden();
-  await expect(page.getByTestId(`block-${name}`)).toBeVisible();
+  await expect(page.getByTestId("exercise-name")).toHaveText(name);
 }
 
 test.beforeEach(async ({ page }) => {
@@ -69,24 +70,23 @@ test("in-session attach: catalog search attaches a machine to the block", async 
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);
 
-  // No machine set → the attach action lives in the block's ⋯ menu (no
-  // full-width strip under the header).
-  await page.getByTestId(`block-${NAME}-menu`).click();
-  const strip = page.getByTestId(`setup-attach-${NAME}`);
-  await expect(strip).toBeVisible();
-  await strip.click();
+  // No machine set → the chip reads "+ add machine" and opens the picker.
+  const chip = page.getByTestId("exercise-machine-chip");
+  await expect(chip).toContainText("add machine");
+  await chip.click();
 
   // Search the catalog inside the dialog and pick a Life Fitness press (a
   // machine no other spec creates, so the shared e2e user stays clean).
-  await page
-    .getByTestId("machine-catalog-search")
-    .fill("life fitness insignia");
+  // This in-session dialog (MachineChip's cmdk command) is a different
+  // component from the library's standalone MachineCatalogPicker — its
+  // search input testid is `machine-search`, not `machine-catalog-search`.
+  await page.getByTestId("machine-search").fill("life fitness insignia");
   await page
     .getByTestId("catalog-result-life-fitness-insignia-series-chest-press")
     .click();
 
-  // Dialog closes; the block now shows the remembered-setup strip.
-  await expect(page.getByTestId(`setup-strip-${NAME}`)).toContainText(
+  // Dialog closes; the chip now reads the attached machine.
+  await expect(page.getByTestId("exercise-machine-chip")).toContainText(
     "Life Fitness · Insignia Series Chest Press",
   );
 
@@ -142,14 +142,13 @@ test("in-session attach: picks an existing machine from my gym", async ({
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);
-  await page.getByTestId(`block-${NAME}-menu`).click();
-  await page.getByTestId(`setup-attach-${NAME}`).click();
+  await page.getByTestId("exercise-machine-chip").click();
 
   // The dialog lists the user's own machines first — no duplicate created.
   await page
     .getByTestId("attach-existing-Ultra Converging Chest Press")
     .click();
-  await expect(page.getByTestId(`setup-strip-${NAME}`)).toContainText(
+  await expect(page.getByTestId("exercise-machine-chip")).toContainText(
     "Matrix · Ultra Converging Chest Press",
   );
 });
