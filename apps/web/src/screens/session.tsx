@@ -2903,6 +2903,18 @@ function ExerciseSpotlight({
         seedSets[activeIndex]?.laterality ??
         null,
     );
+  // Re-derive for the live (next-to-log) set whenever it advances — the
+  // override otherwise stays stuck on whatever set 0 seeded it with, e.g. a
+  // routine/copy-workout prescription that goes bilateral on set 0 and
+  // unilateral on set 2 would silently keep opening set 2 as bilateral.
+  // Only the live target re-syncs; a manually-focused past committed set
+  // reads its own laterality from `right != null`, not this override.
+  useEffect(() => {
+    if (manualFocus != null) return;
+    setLateralityOverride(
+      loadDraft(block.seId)?.laterality ?? seedSets[activeIndex]?.laterality ?? null,
+    );
+  }, [activeIndex, manualFocus, seedSets, block.seId]);
   const touchRef = useRef<{ x: number; y: number } | null>(null);
 
   const [copying, setCopying] = useState(false);
