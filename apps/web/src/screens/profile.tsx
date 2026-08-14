@@ -28,7 +28,9 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
+import { rowClass } from "@/components/ui/row";
 import { StatusRing } from "@/components/ui/status-ring";
 import { useUserInfo } from "@/lib/auth";
 import { formatDate, formatTime } from "@/lib/format";
@@ -222,7 +224,7 @@ export default function ProfileScreen() {
               <li key={s.id}>
                 <Link
                   to={`/history/${s.id}`}
-                  className="flex h-11 items-center justify-between px-4 transition-colors duration-150 hover:bg-surface-hover md:h-9"
+                  className={rowClass()}
                   data-testid={`profile-recent-${s.id}`}
                 >
                   <span className="flex min-w-0 items-center gap-2">
@@ -340,19 +342,18 @@ function ProfileHeader({
               >
                 {displayName}
               </p>
-              <button
-                type="button"
+              <IconButton
                 title="Edit profile"
                 onClick={() => {
                   setDraft(displayName);
                   setDraftBio(bio ?? "");
                   setEditing(true);
                 }}
-                className="ml-auto flex size-8 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
+                className="ml-auto"
                 data-testid="profile-name-edit"
               >
                 <Pencil className="size-4" />
-              </button>
+              </IconButton>
             </div>
             <p className="mt-0.5 truncate text-2xs text-faint">{email}</p>
             {bio && (

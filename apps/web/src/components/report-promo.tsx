@@ -1,6 +1,7 @@
 import { CalendarDays, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
+import { IconButton } from "@/components/ui/icon-button";
 import { useAllSessions } from "@/lib/profile-queries";
 import { useVoice } from "@/lib/voice";
 
@@ -135,15 +136,13 @@ function PromoCard({
           <span className="block truncate text-2xs text-soft">{sub}</span>
         </span>
       </Link>
-      <button
-        type="button"
+      <IconButton
         onClick={onDismiss}
         title="Dismiss"
-        className="flex size-8 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
         data-testid={`${testId}-dismiss`}
       >
         <X className="size-4" />
-      </button>
+      </IconButton>
     </div>
   );
 }

@@ -19,7 +19,9 @@ import { type ChangeEvent, useMemo, useState } from "react";
 import { ShareSheet } from "@/components/share-sheet";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
+import { rowClass } from "@/components/ui/row";
 import { formatDate } from "@/lib/format";
 import {
   useClearProgressPhoto,
@@ -433,7 +435,7 @@ function Trends({
               <button
                 type="button"
                 onClick={() => onEdit(m.measuredOn)}
-                className="flex h-12 min-w-0 flex-1 items-center justify-between px-4 text-left transition-colors duration-150 hover:bg-surface-hover"
+                className={rowClass({ className: "min-w-0 flex-1 text-left" })}
               >
                 <span className="truncate text-sm">
                   {formatDay(m.measuredOn)}
@@ -464,15 +466,14 @@ function Trends({
                   </Button>
                 </span>
               ) : (
-                <button
-                  type="button"
+                <IconButton
+                  danger
                   title="Delete entry"
                   onClick={() => setConfirmId(m.id)}
-                  className="flex size-11 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-neg"
                   data-testid={`measure-delete-${m.measuredOn}`}
                 >
                   <Trash2 className="size-4" />
-                </button>
+                </IconButton>
               )}
             </li>
           ))}

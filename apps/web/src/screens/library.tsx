@@ -55,6 +55,7 @@ import {
 import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { IconLink } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import {
   dismissBulkAddFailures,
@@ -910,14 +911,14 @@ const ExerciseRow = memo(function ExerciseRow({
                 name={exercise.name}
                 disabled={pending}
               />
-              <Link
+              <IconLink
+                as={Link}
                 to={`/exercises/${exercise.id}`}
                 title={`Open ${exercise.name}`}
-                className="flex size-8 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
                 data-testid={`open-exercise-${exercise.name}`}
               >
                 <ArrowRight className="size-4" />
-              </Link>
+              </IconLink>
             </span>
           </div>
 

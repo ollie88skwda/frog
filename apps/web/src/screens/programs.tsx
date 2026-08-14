@@ -1,7 +1,8 @@
 import { type GeneratedProgram, generateProgram } from "@frog/core";
-import { ArrowLeft, Dumbbell } from "lucide-react";
+import { Dumbbell } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 import {
   catalogEntry,
@@ -81,13 +82,7 @@ function ProgramCatalog() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
       <div className="flex items-center gap-3">
-        <Link
-          to="/train"
-          aria-label="Back to training"
-          className="flex size-8 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
-        >
-          <ArrowLeft className="size-5" />
-        </Link>
+        <BackButton to="/train" label="Back to training" />
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Programs</h1>
           <p className="text-2xs text-faint">
@@ -253,13 +248,7 @@ function ProgramDetail({ programKey }: { programKey: string }) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
       <div className="flex items-start gap-3">
-        <Link
-          to="/programs"
-          aria-label="Back to programs"
-          className="flex size-8 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
-        >
-          <ArrowLeft className="size-5" />
-        </Link>
+        <BackButton to="/programs" label="Back to programs" />
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold tracking-tight">{entry.name}</h1>
           <p className="mt-0.5 flex flex-wrap gap-x-2 text-2xs text-faint">

@@ -4,7 +4,7 @@ import {
   PR_TYPE_LABELS,
   yearReview,
 } from "@frog/core";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
@@ -17,12 +17,14 @@ import {
 } from "recharts";
 import { MonthDots } from "@/components/report-calendar";
 import { ShareButton } from "@/components/share-sheet";
+import { BackButton } from "@/components/ui/back-button";
 import {
   type ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { Row, rowClass } from "@/components/ui/row";
 import { formatDuration } from "@/lib/format";
 import { useUserPrefs } from "@/lib/profile-queries";
 import { formatVolume, prValue } from "@/lib/report-format";
@@ -67,15 +69,11 @@ export default function YearReviewScreen() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
       <div className="flex items-center gap-3">
-        <button
-          type="button"
+        <BackButton
           onClick={() => navigate(-1)}
-          title="Back"
-          className="flex size-8 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
+          label="Back"
           data-testid="year-back"
-        >
-          <ArrowLeft className="size-5" />
-        </button>
+        />
         <h1 className="text-lg font-semibold tracking-tight">Year in Review</h1>
       </div>
 
@@ -260,16 +258,15 @@ function YearBody({
         ) : (
           <ul className="divide-y divide-border border border-border">
             {review.topExercises.map((ex) => (
-              <li
-                key={ex.exerciseId}
-                className="flex h-10 items-center justify-between px-3"
-              >
-                <span className="truncate text-xs text-soft">
-                  {data.nameOf(ex.exerciseId)}
-                </span>
-                <span className="num shrink-0 text-2xs text-faint">
-                  {ex.sessions}×
-                </span>
+              <li key={ex.exerciseId}>
+                <Row interactive={false}>
+                  <span className="truncate text-xs text-soft">
+                    {data.nameOf(ex.exerciseId)}
+                  </span>
+                  <span className="num shrink-0 text-2xs text-faint">
+                    {ex.sessions}×
+                  </span>
+                </Row>
               </li>
             ))}
           </ul>
@@ -288,7 +285,7 @@ function YearBody({
               <li key={`${e.exerciseId}-${e.prType}-${e.at}`}>
                 <Link
                   to={`/history/${e.sessionId}`}
-                  className="flex h-11 items-center justify-between px-3 transition-colors duration-150 hover:bg-surface-hover"
+                  className={rowClass()}
                   data-testid={`year-pr-${e.prType}`}
                 >
                   <span className="min-w-0">

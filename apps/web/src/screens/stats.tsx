@@ -19,7 +19,7 @@ import {
   weeklyConsistency,
   weekStart,
 } from "@frog/core";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
@@ -30,6 +30,7 @@ import {
   YAxis,
 } from "recharts";
 import { HumanBodyHeatmap } from "@/components/charts/human-body-heatmap";
+import { BackButton } from "@/components/ui/back-button";
 import { Card } from "@/components/ui/card";
 import {
   type ChartConfig,
@@ -39,6 +40,8 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { IconButton } from "@/components/ui/icon-button";
+import { Row, rowClass } from "@/components/ui/row";
 import { formatDuration } from "@/lib/format";
 import { useExercises } from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
@@ -114,15 +117,11 @@ export default function StatsScreen() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
       <div className="flex items-center gap-3">
-        <button
-          type="button"
+        <BackButton
           onClick={() => navigate(-1)}
-          title="Back"
-          className="flex size-8 shrink-0 items-center justify-center text-faint transition-colors duration-150 hover:text-ink"
+          label="Back"
           data-testid="stats-back"
-        >
-          <ArrowLeft className="size-5" />
-        </button>
+        />
         <h1 className="text-lg font-semibold tracking-tight">Statistics</h1>
       </div>
 
@@ -637,25 +636,21 @@ function WeekBodySection({ history, muscleMap, opts }: SectionProps) {
       testId="stats-week-body"
       right={
         <span className="flex items-center gap-1">
-          <button
-            type="button"
+          <IconButton
             onClick={() => setOffset((o) => o + 1)}
             title="Previous week"
-            className="flex size-7 items-center justify-center bg-translucent text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
             data-testid="week-prev"
           >
             <ChevronLeft className="size-4" />
-          </button>
-          <button
-            type="button"
+          </IconButton>
+          <IconButton
             onClick={() => setOffset((o) => Math.max(0, o - 1))}
             disabled={offset === 0}
             title="Next week"
-            className="flex size-7 items-center justify-center bg-translucent text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:opacity-40"
             data-testid="week-next"
           >
             <ChevronRight className="size-4" />
-          </button>
+          </IconButton>
         </span>
       }
     >
@@ -671,12 +666,11 @@ function WeekBodySection({ history, muscleMap, opts }: SectionProps) {
       ) : (
         <ul className="mt-2 divide-y divide-border border border-border">
           {rows.map(([m, n]) => (
-            <li
-              key={m}
-              className="flex items-center justify-between px-3 py-1.5"
-            >
-              <span className="text-xs text-soft">{muscleLabel(m)}</span>
-              <span className="num text-sm">{formatCount(n)}</span>
+            <li key={m}>
+              <Row interactive={false}>
+                <span className="text-xs text-soft">{muscleLabel(m)}</span>
+                <span className="num text-sm">{formatCount(n)}</span>
+              </Row>
             </li>
           ))}
         </ul>
@@ -722,7 +716,7 @@ function MainExercisesSection({
             <li key={ex.exerciseId}>
               <Link
                 to={`/exercises/${ex.exerciseId}`}
-                className="flex h-11 items-center justify-between px-3 transition-colors duration-150 hover:bg-surface-hover"
+                className={rowClass()}
                 data-testid={`main-exercise-${ex.exerciseId}`}
               >
                 <span className="flex min-w-0 items-center gap-2">
