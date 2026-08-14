@@ -2903,18 +2903,34 @@ function ExerciseSpotlight({
         seedSets[activeIndex]?.laterality ??
         null,
     );
-  // Re-derive for the live (next-to-log) set whenever it advances — the
-  // override otherwise stays stuck on whatever set 0 seeded it with, e.g. a
-  // routine/copy-workout prescription that goes bilateral on set 0 and
-  // unilateral on set 2 would silently keep opening set 2 as bilateral.
-  // Only the live target re-syncs; a manually-focused past committed set
-  // reads its own laterality from `right != null`, not this override.
-  useEffect(() => {
-    if (manualFocus != null) return;
+  // Re-derive for the live (next-to-log) set whenever it advances, but only
+  // when the new set has its own draft or seed (routine/copy-workout) value
+  // — e.g. a prescription that goes bilateral on set 0 and unilateral on
+  // set 2 would otherwise silently keep opening set 2 as bilateral. Absent
+  // either, the override carries forward from the just-committed set: a
+  // manual toggle (the set-type menu's "Default laterality") is sticky
+  // across sets with no prescription of their own, not a one-shot. Only the
+  // live target re-syncs; a manually-focused past committed set reads its
+  // own laterality from `right != null`, not this override.
+  //
+  // This adjusts state *during render* rather than in a `useEffect`: the
+  // child `Spotlight` below remounts (its `key` includes `focusedIndex`)
+  // the instant `activeIndex` advances — often in the very same commit that
+  // logs a set — and seeds its own `isUnilateral` state once from this
+  // value at mount. An effect only runs a render after paint, by which
+  // point the child has already mounted with the stale override. Deriving
+  // it here keeps the value correct in the same render the child (re)mounts
+  // in. See https://react.dev/learn/you-might-not-need-an-effect
+  // ("Adjusting some state when a prop changes").
+  const [syncedIndex, setSyncedIndex] = useState(activeIndex);
+  if (manualFocus == null && syncedIndex !== activeIndex) {
+    setSyncedIndex(activeIndex);
     setLateralityOverride(
-      loadDraft(block.seId)?.laterality ?? seedSets[activeIndex]?.laterality ?? null,
+      loadDraft(block.seId)?.laterality ??
+        seedSets[activeIndex]?.laterality ??
+        lateralityOverride,
     );
-  }, [activeIndex, manualFocus, seedSets, block.seId]);
+  }
   const touchRef = useRef<{ x: number; y: number } | null>(null);
 
   const [copying, setCopying] = useState(false);

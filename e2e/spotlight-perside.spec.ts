@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { EMAIL, PASSWORD, signIn } from "./helpers";
+import { createExercise, EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 import {
   logBilateralSet,
   makeExercise,
@@ -167,4 +167,58 @@ test("a per-side set and a bilateral set can sit back to back in one exercise", 
   await expect(page.getByTestId("reps-field-left")).toHaveCount(0);
   await logBilateralSet(page, "45", "10");
   await expect(page.getByTestId("set-mark-1-side-tag")).toHaveCount(0);
+});
+
+// Regression: the live spotlight's laterality override used to be seeded
+// once on mount from set 0's prescription and never re-derived as the live
+// (next-to-log) set advanced — a routine mixing bilateral and unilateral
+// sets across its indices (e.g. set 0/1 bilateral, set 2 unilateral) would
+// silently keep opening every later set bilateral. Fixed by re-syncing the
+// override off `activeIndex` whenever it's not a manually-focused past set.
+test("a routine's per-set laterality prescription re-syncs as the live set advances", async ({
+  page,
+}) => {
+  const EX = `PerSideResync ${Date.now()}`;
+  const ROUTINE = `PerSideResync routine ${Date.now()}`;
+
+  await page.goto("/library");
+  await createExercise(page, EX);
+  await waitForExercise(page, EX);
+
+  // Build a 3-set routine: set 0 and set 1 stay bilateral (the default),
+  // set 2 is flipped to unilateral via the per-set ⋯ menu.
+  await page.goto("/routines/new");
+  await page.getByTestId("routine-name-input").fill(ROUTINE);
+  await page.getByTestId("routine-add-exercise-btn").click();
+  await page.getByTestId(`routine-pick-${EX}`).click();
+
+  await page.getByTestId("routine-ex-0-set-0-weight").fill("40");
+  await page.getByTestId("routine-ex-0-set-0-reps").fill("8");
+  await page.getByTestId("routine-ex-0-set-1-weight").fill("40");
+  await page.getByTestId("routine-ex-0-set-1-reps").fill("8");
+
+  await page.getByTestId("routine-ex-0-set-2-menu").click({ force: true });
+  await page.getByTestId("routine-ex-0-set-2-laterality-unilateral").click();
+  await page.getByTestId("routine-ex-0-set-2-weight").fill("40");
+  await page.getByTestId("routine-ex-0-set-2-reps-l").fill("8");
+
+  await page.getByTestId("routine-save-btn").click();
+  await expect(page).toHaveURL(/\/routines$/);
+
+  await page.getByTestId(`routine-start-${ROUTINE}`).click();
+  await expect(page).toHaveURL(/\/session\//);
+
+  // Log set 0 and set 1 bilaterally, as prescribed.
+  await expect(page.getByTestId("set-number")).toContainText("1");
+  await logBilateralSet(page, "40", "8");
+  await expect(page.getByTestId("set-number")).toContainText("2");
+  await logBilateralSet(page, "40", "8");
+
+  // Set 2 is now live (activeIndex advanced past two bilateral commits) —
+  // it must open per-side automatically, matching its own prescription,
+  // with no manual set-type-menu toggle from this test.
+  await expect(page.getByTestId("set-number")).toContainText("3");
+  await expect(page.getByTestId("reps-field-left")).toBeVisible();
+  await expect(page.getByTestId("reps-field-right")).toBeVisible();
+  await expect(page.getByTestId("reps-field")).toHaveCount(0);
 });
