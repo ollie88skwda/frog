@@ -17,12 +17,6 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: `${dir}/${name}.png` });
 }
 
-// NEEDS-DECISION (implementation bug, reported separately — same root cause
-// as machines.spec.ts's "RIR InfoTip" test): the in-session InfoTip surface
-// (`set-0-more` → `infotip-rir`) doesn't exist under the Spotlight redesign.
-// Left red, unresolved — the /tips-screen-only coverage (heading, entries,
-// localStorage seen-tracking, the Settings link) is unaffected and still
-// passes; only the session round-trip half of this test is blocked on it.
 test("/tips lists lessons and browsing clears the InfoTip dot", async ({
   page,
 }) => {

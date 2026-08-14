@@ -200,27 +200,23 @@ test("custom set metric: create, enable on an exercise, log a value", async ({
   await expect(enable).toBeChecked();
 
   // Log a set carrying the metric value.
-  //
-  // NEEDS-DECISION (see AGENTS.md / PR notes): testid-contract.md's
-  // set-type-menu only lists warm-up/per-side/delete — it's silent on where
-  // a custom per-set metric field (this exercise's enabled custom metric)
-  // lives under the Spotlight redesign. Left on the pre-Spotlight testids
-  // (`set-0-more`, `set-0-metric-*`) unverified rather than inventing a shape.
   await page.goto("/train");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
-  // Reveal the custom-metric field via the ⋯ "add field" menu (named by
-  // metric) — enabling it opens the big details sheet where it lives.
+  // Reveal the custom-metric field via the set details sheet's "add field"
+  // chip (named by metric) — enabling it adds the input to that same sheet.
   await page.getByTestId("set-0-more").click();
   await page.getByRole("button", { name: METRIC, exact: true }).click();
 
   const metricInput = page.locator(`[data-testid^="set-0-metric-"]`);
   await expect(metricInput).toBeVisible();
   await metricInput.fill("4");
+  // note/metric draft state lives on the Spotlight itself, not the dialog —
+  // closing it and filling the hero-row fields keeps the value.
   await page.keyboard.press("Escape");
-  await page.getByTestId("set-0-weight").fill("100");
-  await page.getByTestId("set-0-reps").fill("10");
-  await page.getByTestId("set-0-reps").press("Enter");
+  await page.getByTestId("weight-field").fill("100");
+  await page.getByTestId("reps-field").fill("10");
+  await page.getByTestId("log-set").click();
 
   // The metric value landed in set_logs.metric_values.
   await expect

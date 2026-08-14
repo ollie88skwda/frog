@@ -123,12 +123,6 @@ test("machine from catalog: settings remembered into the session setup strip", a
   ).toHaveValue("5");
 });
 
-// NEEDS-DECISION (implementation bug, reported separately): session.tsx's
-// own header comment claims per-set notes/metrics/RIR-info "moved into the
-// edit sheet a mark opens", but no such sheet exists — tapping a mark just
-// re-shows the same weight/reps/RIR/RPE fields. `set-0-more` and
-// `infotip-rir` have no surface anywhere in the new session screen. Left
-// red, unresolved, pending that decision — not a testid this agent invented.
 test("RIR InfoTip opens the lesson", async ({ page }) => {
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
