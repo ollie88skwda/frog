@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 import {
+  finishSession,
   logBilateralSet,
   makeExercise,
   startSessionWith,
@@ -65,4 +66,22 @@ test("the expanded state survives switching to another exercise in the same sess
   await page.getByTestId(`pick-exercise-${B}`).click();
   await expect(page.getByTestId("exercise-name")).toHaveText(B);
   await expect(page.getByTestId("stats-growth-chart")).toBeVisible();
+});
+
+test("the expanded state resets for a new session in the same tab (docs/DECISIONS.md 2026-08-14)", async ({
+  page,
+}) => {
+  const EX = await makeExercise(page, "StatsResetAcrossSessions");
+  await startSessionWith(page, EX);
+
+  await page.getByTestId("stats-growth-toggle").click();
+  await expect(page.getByTestId("stats-growth-chart")).toBeVisible();
+
+  await logBilateralSet(page, "60", "10");
+  await finishSession(page);
+
+  // A brand-new session in the same tab (no reload) must not inherit the
+  // prior session's open toggle — the persisted key is scoped per session id.
+  await startSessionWith(page, EX);
+  await expect(page.getByTestId("stats-growth-chart")).toHaveCount(0);
 });

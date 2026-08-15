@@ -1493,6 +1493,7 @@ export default function SessionScreen() {
         {activeBlock ? (
           <ExerciseSpotlight
             key={activeBlock.seId}
+            sessionId={sessionId}
             block={activeBlock}
             position={activeIdx + 1}
             total={blocks.length}
@@ -2787,6 +2788,7 @@ function SetActionsMenu({
 
 function ExerciseSpotlight({
   block,
+  sessionId,
   position,
   total,
   unit,
@@ -2816,6 +2818,10 @@ function ExerciseSpotlight({
   onSwapExercise,
 }: {
   block: BlockState;
+  /** The training session, not the exercise — scopes the GROWTH-toggle
+   * open state so it persists across exercises within one session but
+   * resets when a new session starts (spotlight-stats.spec.ts). */
+  sessionId: string;
   position: number;
   total: number;
   unit: Unit;
@@ -3285,6 +3291,7 @@ function ExerciseSpotlight({
             committedGroups[focusedIndex]?.map((r) => r.id).join(",") ?? "live"
           }`}
           seId={block.seId}
+          sessionId={sessionId}
           index={focusedIndex}
           unit={blockUnit}
           distUnit={distUnit}
@@ -3372,6 +3379,7 @@ function jumpsFor(key: FieldKey): { neg: number[]; pos: number[] } {
 
 function Spotlight({
   seId,
+  sessionId,
   index,
   unit,
   distUnit,
@@ -3406,6 +3414,8 @@ function Spotlight({
   enabledMetrics,
 }: {
   seId: string;
+  /** Scopes the GROWTH-toggle's persisted open state — see ExerciseSpotlight. */
+  sessionId: string;
   index: number;
   unit: Unit;
   distUnit: DistanceUnit;
@@ -3571,8 +3581,13 @@ function Spotlight({
     () => !isEditing || !right || left?.weightKg === right.weightKg,
   );
   const [weight2, setWeight2] = useState(() => seedRightWeight());
+  // Scoped by training session (not exercise) so it survives switching
+  // exercises within one session but starts fresh for a new session opened
+  // in the same tab — an unscoped key would otherwise carry a stale
+  // open/closed state across unrelated sessions (docs/DECISIONS.md).
+  const growthOpenKey = `frog.growth-open.${sessionId}`;
   const [growthOpen, setGrowthOpen] = useState(
-    () => sessionStorage.getItem("frog.growth-open") === "1",
+    () => sessionStorage.getItem(growthOpenKey) === "1",
   );
   const [, forceTick] = useState(0);
   const done = useRef(false);
@@ -4382,7 +4397,7 @@ function Spotlight({
               type="button"
               onClick={() => {
                 setGrowthOpen((v) => {
-                  sessionStorage.setItem("frog.growth-open", v ? "0" : "1");
+                  sessionStorage.setItem(growthOpenKey, v ? "0" : "1");
                   return !v;
                 });
               }}
