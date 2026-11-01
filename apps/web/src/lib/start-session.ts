@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { useRepo } from "@/lib/repo";
+import { userFacingRepoError } from "@/lib/repo-error";
 
 /** Start-a-session flow shared by Home (quick start) and Training (hub). */
 export function useStartSession() {
@@ -19,7 +20,11 @@ export function useStartSession() {
       void qc.invalidateQueries({ queryKey: ["active-session"] });
       navigate(`/session/${session.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      // Train's start card prints this string verbatim (screens/train.tsx),
+      // which makes it the one place in the app where a raw exception message
+      // reaches a user — an unreachable database used to surface here as the
+      // literal "TypeError: Failed to fetch". docs/DECISIONS.md 2026-08-25.
+      setError(userFacingRepoError(e));
       setStarting(false);
     }
   }

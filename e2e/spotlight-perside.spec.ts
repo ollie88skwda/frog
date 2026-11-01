@@ -50,31 +50,37 @@ test("a per-side set shares one weight field but splits reps per side", async ({
 
   // Two set_logs rows sharing set_no=0, one per side — scoped to this
   // exercise's own session_exercise (a bare set_no=0 filter would catch
-  // every other exercise's set 0 on this shared e2e account too).
-  const rows = await page.evaluate(async (exerciseName) => {
-    const sb = window.__frog.supabase;
-    const { data: ex, error: exErr } = await sb
-      .from("exercises")
-      .select("id")
-      .eq("name", exerciseName)
-      .single();
-    if (exErr) throw new Error(exErr.message);
-    const { data: se, error: seErr } = await sb
-      .from("session_exercises")
-      .select("id")
-      .eq("exercise_id", (ex as { id: string }).id)
-      .single();
-    if (seErr) throw new Error(seErr.message);
-    const { data, error } = await sb
-      .from("set_logs")
-      .select("set_no, side, weight_kg, reps")
-      .eq("session_exercise_id", (se as { id: string }).id)
-      .eq("set_no", 0)
-      .order("side");
-    if (error) throw new Error(error.message);
-    return data;
-  }, EX);
-  expect(rows).toHaveLength(2);
+  // every other exercise's set 0 on this shared e2e account too). Logging
+  // is a fire-and-forget optimistic write (AGENTS.md), so poll rather than
+  // read the moment after the click — every other spec asserting a
+  // set_logs row (core-loop, edit-delete, exercise-types, lifecycle,
+  // rebrand-compat) does the same via expect.poll.
+  const readRows = () =>
+    page.evaluate(async (exerciseName) => {
+      const sb = window.__frog.supabase;
+      const { data: ex, error: exErr } = await sb
+        .from("exercises")
+        .select("id")
+        .eq("name", exerciseName)
+        .single();
+      if (exErr) throw new Error(exErr.message);
+      const { data: se, error: seErr } = await sb
+        .from("session_exercises")
+        .select("id")
+        .eq("exercise_id", (ex as { id: string }).id)
+        .single();
+      if (seErr) throw new Error(seErr.message);
+      const { data, error } = await sb
+        .from("set_logs")
+        .select("set_no, side, weight_kg, reps")
+        .eq("session_exercise_id", (se as { id: string }).id)
+        .eq("set_no", 0)
+        .order("side");
+      if (error) throw new Error(error.message);
+      return data;
+    }, EX);
+  await expect.poll(readRows).toHaveLength(2);
+  const rows = await readRows();
   const left = rows?.find((r) => r.side === "left");
   const right = rows?.find((r) => r.side === "right");
   expect(left?.reps).toBe(8);
