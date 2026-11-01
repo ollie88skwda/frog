@@ -1,17 +1,20 @@
 # Frog schema reference
 
 Stable, documented data model — the contract behind the export, the read
-API, and the MCP server. DDL source of truth: `packages/core/src/db/schema.ts`
-(Drizzle pg-core → `supabase/migrations/`).
+API, and the MCP server. Stored in Convex (`convex/schema.ts`, camelCase
+fields); this document, the export and the API use the snake_case column
+names from `packages/core/src/db/schema.ts`, which are stable across the
+2026-11-01 Supabase → Convex move.
 
 ## Conventions
 
 - **ids**: uuid v4, generated client-side (`newId()`), never reused or renumbered.
 - **timestamps**: `created_at` / `updated_at` / `deleted_at` are **millisecond epoch bigints**, app-managed.
 - **soft delete**: rows get `deleted_at`; nothing is hard-deleted. Consumers must filter `deleted_at is null` (the API does this for you).
-- **ownership**: every table has `owner_id` (auth user id) under row-level security. `owner_id null` on `exercises`/`metrics` marks global seed rows readable by everyone.
+- **ownership**: every table has `owner_id` (the Clerk user id), enforced by the Convex functions — every read and write is scoped to the caller. `owner_id null` on `exercises`/`metrics`/`machine_catalog` marks global rows readable by everyone.
 - **weight**: canonical **kg** in `weight_kg`; kg/lb is a display preference only.
 - **custom values**: jsonb objects keyed by metric id — `sessions.condition_values` and `set_logs.metric_values`.
+- **files**: every `*_path` column (and `machines.settings[].photoPath`) holds a Convex file-storage id, private to the uploader (only they can resolve a URL for it). Before 2026-11-01 these were object paths in the private Supabase Storage buckets named below; the import rewrote them. Bucket names in the column notes and the changelog are historical.
 
 ## Tables
 

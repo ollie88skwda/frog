@@ -7,7 +7,8 @@ A **training lab notebook**: log the work *and* the conditions around it (sleep,
 - `apps/web` — Vite + React SPA (the app)
 - `packages/core` — framework-free domain logic, findings engine, schema, data-access interface
 - `packages/mcp` — MCP server over the personal-token API
-- `supabase/` — Postgres migrations, RLS, Edge Functions
+- `convex/` — backend: schema, owner-scoped functions, file storage, token API (HTTP actions)
+- `supabase/migrations/` — frozen pre-Convex Postgres history (kept until the prod data import has run)
 - `docs/` — PRD and specs
 
 The original Expo/React Native app is archived on branch `legacy/expo` (tag `expo-final`).
@@ -16,10 +17,12 @@ The original Expo/React Native app is archived on branch `legacy/expo` (tag `exp
 
 ```sh
 bun install
-supabase start        # local Postgres/Auth (Docker)
-bun run dev           # app at localhost:5173
-bun run test          # unit + integration
-bun run e2e           # Playwright
+CONVEX_AGENT_MODE=anonymous bunx convex dev   # local backend on :3210 (own terminal; long-lived)
+bun run convex:seed   # global exercise library / conditions / machine catalog (admin env, see AGENTS.md)
+bun run dev           # app at localhost:5173 (apps/web/.env.local: VITE_CONVEX_URL, VITE_CLERK_PUBLISHABLE_KEY)
+bun run test          # unit
+bun run test:integration
+bun run e2e           # Playwright against the local backend
 ```
 
 See `AGENTS.md` for architecture and conventions.

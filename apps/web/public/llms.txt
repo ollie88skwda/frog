@@ -15,7 +15,7 @@ exercise library (see the exercises endpoint).
 
 ## REST API (read-only)
 
-Base: `<SUPABASE_PROJECT_URL>/functions/v1/api`
+Base: `<CONVEX_SITE_URL>/api` (the deployment's `https://<name>.convex.site/api`)
 
 - `GET /v1/exercises?limit&offset` — exercises (global seeds + community-shared + user's custom; `created_by` names the publisher of shared rows)
 - `GET /v1/sessions?limit&offset` — sessions, newest first, incl. `condition_values` ({metric_id: value})

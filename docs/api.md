@@ -6,7 +6,7 @@ authenticated with a personal access token (PAT). Create tokens in the app:
 **Settings → API tokens**. The plaintext is shown once; only its sha256 hash
 is stored, and a token can be revoked at any time.
 
-- Base URL: `<SUPABASE_PROJECT_URL>/functions/v1/api` (local dev: `http://127.0.0.1:54321/functions/v1/api`)
+- Base URL: `<CONVEX_SITE_URL>/api` — the Convex deployment's HTTP-actions URL (`https://<deployment>.convex.site/api`; local dev: `http://127.0.0.1:3211/api`)
 - Auth header: `Authorization: Bearer frog_...`
 - All endpoints are `GET`; anything else returns `405`.
 - Pagination: `?limit=` (default 100, max 1000) and `?offset=`, on the list endpoints.
