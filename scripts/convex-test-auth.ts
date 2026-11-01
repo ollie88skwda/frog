@@ -6,7 +6,12 @@
 // expects, and signs RS256 JWTs for any `sub`. The private key stays in
 // this process (and, for the e2e runner, in a 0600 temp file); it is
 // throwaway and only ever trusted by local/CI test backends.
+
+import type { webcrypto } from "node:crypto";
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+
+type JsonWebKey = webcrypto.JsonWebKey;
+type CryptoKeyPair = webcrypto.CryptoKeyPair;
 
 export const TEST_ISSUER = "https://frog-test.invalid";
 const KID = "frog-test";
@@ -37,7 +42,9 @@ async function fromPrivateJwk(priv: JsonWebKey): Promise<TestAuth> {
   ).toString("base64")}`;
   const mint = async (sub: string, claims: Record<string, unknown> = {}) => {
     const now = Math.floor(Date.now() / 1000);
-    const header = b64url(JSON.stringify({ alg: "RS256", kid: KID, typ: "JWT" }));
+    const header = b64url(
+      JSON.stringify({ alg: "RS256", kid: KID, typ: "JWT" }),
+    );
     const payload = b64url(
       JSON.stringify({
         iss: TEST_ISSUER,

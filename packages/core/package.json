@@ -15,7 +15,8 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "convex": "1.49.0"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.2",

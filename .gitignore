@@ -37,3 +37,7 @@ scripts/machine-catalog/staging/
 
 # local tooling config
 treehouse.toml
+
+# convex local test signing key + local backend state
+.convex-test/
+.convex/

@@ -9,17 +9,20 @@
   "scripts": {
     "dev": "bun run --cwd apps/web dev",
     "test": "bun run --filter '*' test",
-    "test:integration": "bun run --cwd packages/core test:integration",
+    "test:integration": "bun scripts/convex-test-env.ts && bun run --cwd packages/core test:integration",
     "e2e": "bun scripts/run-e2e.ts",
-    "typecheck": "bun run --filter '*' typecheck",
+    "typecheck": "bun run --filter '*' typecheck && tsc -p convex",
     "lint": "biome check .",
     "format": "biome format --write .",
     "db:generate": "drizzle-kit generate",
-    "db:reset": "supabase db reset"
+    "db:reset": "supabase db reset",
+    "convex:seed": "bun scripts/seed-convex.ts",
+    "convex:seed:generate": "bun scripts/seed-convex.ts --generate"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.13",
     "@edge-runtime/vm": "^5.0.0",
+    "@electric-sql/pglite": "0.5.14",
     "@playwright/test": "^1.61.1",
     "@supabase/supabase-js": "^2.110.2",
     "@types/node": "^26.1.1",
