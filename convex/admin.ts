@@ -6,7 +6,7 @@
 // Both are idempotent on the row's uuid `id`: re-running replaces the row
 // with the incoming copy, so an interrupted import can simply be re-run.
 import { v } from "convex/values";
-import { internalMutation } from "./_generated/server";
+import { internalMutation, internalQuery } from "./_generated/server";
 import { tableValidator } from "./data";
 import { byUid, fail, GLOBAL_READABLE, type UidTable } from "./lib";
 import { withDefaults } from "./tables";
@@ -80,8 +80,12 @@ export const generateUploadUrl = internalMutation({
 
 /** Records an imported blob's owner (what files:claim does for clients). */
 export const claimFile = internalMutation({
-  args: { storageId: v.string(), ownerId: v.string() },
-  handler: async (ctx, { storageId, ownerId }) => {
+  args: {
+    storageId: v.string(),
+    ownerId: v.string(),
+    importKey: v.optional(v.string()),
+  },
+  handler: async (ctx, { storageId, ownerId, importKey }) => {
     const id = ctx.db.system.normalizeId("_storage", storageId);
     if (!id) fail("bad storage id");
     const existing = await ctx.db
@@ -93,9 +97,22 @@ export const claimFile = internalMutation({
         storageId: id,
         ownerId,
         createdAt: Date.now(),
+        ...(importKey ? { importKey } : {}),
       });
     }
     return storageId;
+  },
+});
+
+/** The storage id an earlier import run copied `importKey` to, if any. */
+export const fileByImportKey = internalMutation({
+  args: { importKey: v.string() },
+  handler: async (ctx, { importKey }) => {
+    const row = await ctx.db
+      .query("files")
+      .withIndex("by_import_key", (q) => q.eq("importKey", importKey))
+      .first();
+    return row ? (row.storageId as string) : null;
   },
 });
 
@@ -201,3 +218,14 @@ const PURGE_ORDER = [
   "push_subscriptions",
   "api_tokens",
 ] as const satisfies readonly UidTable[];
+
+/** Any row by uuid, owner-agnostic (import verification). */
+export const getRow = internalQuery({
+  args: { table: tableValidator, id: v.string() },
+  handler: async (ctx, { table, id }) => {
+    const row = await byUid(ctx, table as UidTable, id);
+    if (!row) return null;
+    const { _id, _creationTime, nameLower, ...rest } = row as Row;
+    return rest;
+  },
+});

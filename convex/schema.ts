@@ -368,5 +368,11 @@ export default defineSchema({
     storageId: v.id("_storage"),
     ownerId: v.string(),
     createdAt: v.number(),
-  }).index("by_storage", ["storageId"]),
+    // "<bucket>/<path>" of the Supabase Storage object this blob was copied
+    // from (scripts/import-from-supabase.ts) — makes re-running the import
+    // reuse the blob instead of uploading a duplicate. Absent for app uploads.
+    importKey: v.optional(v.string()),
+  })
+    .index("by_storage", ["storageId"])
+    .index("by_import_key", ["importKey"]),
 });
