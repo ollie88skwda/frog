@@ -19,7 +19,6 @@
     "convex": "1.49.0"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.2",
     "drizzle-orm": "^0.45.2"
   }
 }

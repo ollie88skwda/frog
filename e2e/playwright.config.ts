@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // Run via `bun run e2e` (scripts/run-e2e.ts) — it seeds a fresh user against
-// local Supabase, builds apps/web with VITE_E2E=1, then invokes Playwright.
+// a local Convex backend, builds apps/web with VITE_E2E=1, then invokes
+// Playwright.
 
 // Never reuse a server this run didn't start: a preview left behind by another
 // checkout serves a stale build and fails specs against the wrong code. A busy

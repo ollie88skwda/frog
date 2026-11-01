@@ -1,13 +1,16 @@
 // Seeds a developer test account with fabricated training history.
 //
-// Dev tooling only — never imported by the app. It writes with the Supabase
-// SERVICE ROLE key (bypasses RLS) and sets `owner_id` explicitly, because the
-// account's identity is a Clerk user id and there is no way to mint a Clerk
-// JWT from a script.
+// Dev tooling only — never imported by the app. It writes through internal
+// Convex functions with the deployment's ADMIN/DEPLOY key (convex/admin.ts,
+// bypassing the per-user functions) and sets `ownerId` explicitly, because
+// the account's identity is a Clerk user id and there is no way to mint a
+// Clerk JWT from a script.
 //
-//   bun scripts/seed-dev-account.ts --owner user_xxx                 # local
-//   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… bun scripts/seed-dev-account.ts \
-//     --owner user_xxx --confirm-reset user_xxx                      # hosted
+//   bun --env-file=<local env> scripts/seed-dev-account.ts --owner user_xxx   # local
+//   CONVEX_URL=… CONVEX_DEPLOY_KEY=… bun scripts/seed-dev-account.ts \
+//     --owner user_xxx --confirm-reset user_xxx                            # hosted
+//
+// Target resolution: scripts/convex/admin-client.ts.
 //
 // Without --confirm-reset the script refuses to run against an owner that owns
 // ANY row in the tables it writes, so it can never silently double-seed (or
@@ -15,13 +18,13 @@
 // deliberate: this is a disposable account, and soft-deleted rows would keep
 // skewing counts.
 
-import { execSync } from "node:child_process";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { SEED_CONDITIONS as C } from "../packages/core/src/db/seed-ids";
 import {
   type ExerciseType,
   TYPE_FIELDS,
 } from "../packages/core/src/domain/exercise-types";
+import { adminClient } from "./convex/admin-client";
+import { toConvex } from "./convex-rows-lib";
 
 // ── args ────────────────────────────────────────────────────────────────────
 function arg(name: string): string | undefined {
@@ -39,30 +42,9 @@ if (!OWNER) {
 }
 
 // ── connection ──────────────────────────────────────────────────────────────
-function local(): { url: string; key: string } {
-  const raw = execSync("supabase status -o json", { encoding: "utf8" });
-  // The CLI may print warnings (e.g. "Stopped services: ...") before the JSON.
-  const s = JSON.parse(raw.slice(raw.indexOf("{")));
-  const url: string = s.API_URL ?? s.api_url;
-  const key: string = s.SERVICE_ROLE_KEY ?? s.service_role_key;
-  if (!url || !key) {
-    throw new Error(
-      `unexpected supabase status output: ${Object.keys(s).join(", ")}`,
-    );
-  }
-  return { url, key };
-}
-const conn =
-  process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
-    ? {
-        url: process.env.SUPABASE_URL,
-        key: process.env.SUPABASE_SERVICE_ROLE_KEY,
-      }
-    : local();
-const db: SupabaseClient = createClient(conn.url, conn.key, {
-  auth: { persistSession: false },
-});
-const hosted = !conn.url.includes("127.0.0.1");
+const db = adminClient();
+const host = new URL(db.client.url).hostname;
+const hosted = host !== "127.0.0.1" && host !== "localhost";
 
 // ── deterministic RNG (mulberry32) — reruns produce the same numbers ────────
 let _s = 0x9e3779b9;
@@ -331,15 +313,13 @@ const OWNED_TABLES = [
   "user_prefs",
 ];
 
-const existing: string[] = [];
-for (const table of OWNED_TABLES) {
-  const { count, error } = await db
-    .from(table)
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", OWNER);
-  if (error) throw new Error(`${table}: ${error.message}`);
-  if ((count ?? 0) > 0) existing.push(`${table} ${count}`);
-}
+const counts = await db.query<Record<string, number>>("admin:ownerCounts", {
+  ownerId: OWNER,
+  tables: OWNED_TABLES,
+});
+const existing = OWNED_TABLES.filter((t) => (counts[t] ?? 0) > 0).map(
+  (t) => `${t} ${counts[t]}`,
+);
 
 if (existing.length) {
   if (CONFIRM_RESET !== OWNER) {
@@ -351,8 +331,12 @@ if (existing.length) {
   }
   console.log(`Resetting existing rows for ${OWNER}: ${existing.join(", ")}…`);
   for (const table of OWNED_TABLES) {
-    const { error } = await db.from(table).delete().eq("owner_id", OWNER);
-    if (error) throw new Error(`${table}: ${error.message}`);
+    while (
+      (await db.mutation<number>("admin:resetOwnerTable", {
+        ownerId: OWNER,
+        table,
+      })) > 0
+    ) {}
   }
 }
 
@@ -360,15 +344,13 @@ if (existing.length) {
 const wanted = [
   ...new Set(ROUTINES.flatMap((r) => r.slots.map((s) => s.name))),
 ];
-const { data: exRows, error: lookupErr } = await db
-  .from("exercises")
-  .select("id,name,exercise_type")
-  .is("owner_id", null)
-  .in("name", wanted);
-if (lookupErr) throw new Error(lookupErr.message);
-const exId = new Map(
-  (exRows ?? []).map((r) => [r.name as string, r.id as string]),
-);
+const exRows = (
+  await db.query<{ id: string; name: string; exerciseType: string }[]>(
+    "admin:globalExercisesByName",
+    { names: wanted },
+  )
+).map((r) => ({ id: r.id, name: r.name, exercise_type: r.exerciseType }));
+const exId = new Map(exRows.map((r) => [r.name, r.id]));
 const missing = wanted.filter((n) => !exId.has(n));
 if (missing.length)
   throw new Error(`library exercises not found: ${missing.join(", ")}`);
@@ -758,13 +740,19 @@ const ORDER: (keyof typeof rows)[] = [
 ];
 for (const table of ORDER) {
   const batch = rows[table];
-  for (let i = 0; i < batch.length; i += 500) {
-    const { error } = await db.from(table).insert(batch.slice(i, i + 500));
-    if (error) throw new Error(`${table}: ${error.message}`);
+  // Rows are built in the Postgres column shape (snake_case); map them the
+  // same way the Supabase import does, then upsert idempotently on id.
+  for (let i = 0; i < batch.length; i += 200) {
+    await db.mutation("admin:importRows", {
+      table,
+      rows: batch
+        .slice(i, i + 200)
+        .map((r) => toConvex(table, r as Record<string, unknown>)),
+    });
   }
   console.log(`  ${table.padEnd(20)} ${batch.length}`);
 }
 console.log(
   `\nSeeded ${sessionCount} sessions / ${rows.set_logs.length} sets over ${WEEKS} weeks ` +
-    `for ${OWNER} on ${hosted ? "HOSTED" : "local"} ${conn.url}`,
+    `for ${OWNER} on ${hosted ? "HOSTED" : "local"} ${db.client.url}`,
 );

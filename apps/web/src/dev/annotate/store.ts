@@ -1,5 +1,5 @@
 // Notes survive a reload (a refresh mid-review must not lose written feedback)
-// but nothing here ever touches Supabase — annotations are local scratch, not
+// but nothing here ever touches the backend — annotations are local scratch, not
 // user data, so they are deliberately outside the Repo seam and outside
 // registerUserScopedReset (they describe the UI, not an account).
 

@@ -14,8 +14,6 @@
     "typecheck": "bun run --filter '*' typecheck && tsc -p convex",
     "lint": "biome check .",
     "format": "biome format --write .",
-    "db:generate": "drizzle-kit generate",
-    "db:reset": "supabase db reset",
     "convex:seed": "bun scripts/seed-convex.ts",
     "convex:seed:generate": "bun scripts/seed-convex.ts --generate",
     "import:supabase": "bun scripts/import-from-supabase.ts",
@@ -26,11 +24,9 @@
     "@edge-runtime/vm": "^5.0.0",
     "@electric-sql/pglite": "0.5.14",
     "@playwright/test": "^1.61.1",
-    "@supabase/supabase-js": "^2.110.2",
     "@types/node": "^26.1.1",
     "convex": "1.49.0",
     "convex-test": "0.0.66",
-    "drizzle-kit": "^0.31.10",
     "typescript": "~5.9.2",
     "vite": "^7.1.11"
   }

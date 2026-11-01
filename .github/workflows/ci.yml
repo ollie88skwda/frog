@@ -4,17 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
-  schedule:
-    # Migration drift can happen with zero new commits — a migration merges,
-    # nobody runs `supabase db push`, and nothing else re-triggers CI to
-    # notice. This is the only thing here that runs without a push, so it
-    # catches that even if nothing else lands for days (exactly what let the
-    # 2026-08-06 outage run for days unnoticed — see docs/DECISIONS.md).
-    - cron: "17 6 * * *"
 
 jobs:
   checks:
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,38 +19,29 @@ jobs:
       - run: bun scripts/check-mark-drift.ts
       - run: bun scripts/gen-og-image.ts --check
 
+  # Integration + e2e run against a throwaway local Convex backend (the
+  # CLI's anonymous local deployment — no cloud project, no secrets). The
+  # test signing key is generated per run (scripts/convex-test-env.ts) and
+  # only ever installed on that local backend.
   integration-e2e:
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
-      # Pin the CLI version instead of `latest`: resolving `latest` hits the
-      # unauthenticated GitHub API (api.github.com/repos/supabase/cli/releases/latest),
-      # which rate-limits shared runner IPs ("rate limit exceeded" flake). A
-      # pinned version downloads the release asset directly. Bump deliberately.
-      - uses: supabase/setup-cli@v1
+      - uses: actions/setup-node@v4
         with:
-          # Pin, not `latest` (see the comment above on rate-limits) — and
-          # v2.112.0 bumped the bundled edge-runtime image to v1.74.3,
-          # which flakily dies with SIGBUS ("Bus error (core dumped)") at
-          # `supabase start` on x86_64 runners — hit 2026-08-08 (same image
-          # passed main's run 20 minutes earlier; the container startup code
-          # is identical between the two CLI releases, only the image moved).
-          # v2.111.0 ships edge-runtime v1.74.2, the last version with a
-          # clean CI record. Bump deliberately after a newer image has proven
-          # itself (docs/DECISIONS.md 2026-08-08).
-          version: 2.111.0
+          node-version: 22
       - run: bun install --frozen-lockfile
-      - run: supabase start
+      - run: scripts/ci/start-convex-backend.sh
       - run: bun run test:integration
+      - run: bun run test:import
       - run: bun x playwright install --with-deps chromium
       - run: bun run e2e
-      - if: always()
-        run: supabase stop
+        env:
+          # test:integration already pushed functions + seeded.
+          E2E_SKIP_SEED: "1"
 
   build:
-    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,34 +49,5 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run --cwd apps/web build
         env:
-          VITE_SUPABASE_URL: https://placeholder.supabase.co
-          VITE_SUPABASE_ANON_KEY: placeholder
+          VITE_CONVEX_URL: https://placeholder.convex.cloud
       - run: bun scripts/check-bundle.ts
-
-  # Detects (never auto-fixes) the hosted database falling behind the
-  # committed migrations — see scripts/check-migration-drift.ts for the
-  # mechanism and the exact read-only role SUPABASE_DRIFT_DB_URL needs, and
-  # docs/DECISIONS.md for the outage this guards against and why this is a
-  # detector, not an auto-push (deliberately no SUPABASE_ACCESS_TOKEN —
-  # Supabase has no narrower-scoped token, so that one could also `db
-  # push`). Passes with a loud ::warning:: (not a failure) until
-  # SUPABASE_DRIFT_DB_URL is added as a repo secret.
-  #
-  # Not run on pull_request: a PR that adds a migration legitimately can't
-  # have it on hosted yet (that only happens on merge + `supabase db push`),
-  # so it would fail by construction on exactly the PRs that touch
-  # migrations. Drift is only real once the migration is on main.
-  migration-drift:
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - uses: supabase/setup-cli@v1
-        with:
-          # Same pin as integration-e2e — one known-good CLI everywhere, and
-          # `latest` resolution itself has flaked (rate-limit, 2026-08-08).
-          version: 2.111.0
-      - run: bun scripts/check-migration-drift.ts
-        env:
-          SUPABASE_DRIFT_DB_URL: ${{ secrets.SUPABASE_DRIFT_DB_URL }}

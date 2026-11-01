@@ -843,18 +843,21 @@ describe("ConvexRepo (integration, local convex)", () => {
     expect(await c.repo.latestBodyweightKg()).toBe(80);
     expect(await c.repo.latestBodyweightKg("2025-12-31")).toBeNull();
 
-    await c.repo.savePushSubscription("https://push.example/1", {
+    // Endpoints are globally unique (one browser = one endpoint), so a
+    // fixed URL would collide with an earlier run's identity.
+    const endpoint = `https://push.example/${newId()}`;
+    await c.repo.savePushSubscription(endpoint, {
       p256dh: "a",
       auth: "b",
     });
-    await c.repo.savePushSubscription("https://push.example/1", {
+    await c.repo.savePushSubscription(endpoint, {
       p256dh: "c",
       auth: "d",
     });
     const subs = await c.repo.listPushSubscriptions();
     expect(subs).toHaveLength(1);
     expect(subs[0].keys).toEqual({ p256dh: "c", auth: "d" });
-    await c.repo.deletePushSubscription("https://push.example/1");
+    await c.repo.deletePushSubscription(endpoint);
     expect(await c.repo.listPushSubscriptions()).toEqual([]);
   });
 

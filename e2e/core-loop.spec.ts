@@ -10,9 +10,9 @@ import {
 
 // Parity port of the legacy Expo E2E (archived at tag expo-final,
 // e2e/web.spec.ts): add exercise → session → log sets → persistence.
-// Storage is Supabase-direct, so "relaunch" persistence is a reload against
-// the server, and row counts are asserted through the app's own signed-in
-// client (window.__frog, VITE_E2E builds only) under RLS.
+// Storage is server-side (Convex), so "relaunch" persistence is a reload
+// against the server, and row counts are asserted as the signed-in user
+// through the E2E bridge (window.__frog, VITE_E2E builds only).
 //
 // Re-aimed for the Spotlight session screen (fm/frog-session-spotlight):
 // the old draft/upcoming/committed row structure and its ghost-placeholder

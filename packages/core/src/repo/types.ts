@@ -106,7 +106,7 @@ export type MachinePatch = Partial<NewMachineInput>;
 // One row of the global reference catalog (`machine_catalog`) as returned by
 // the lookup-UX search — the narrow columns the picker renders. Not the full
 // `MachineCatalogRow` schema type: search never ships the spec/mechanism
-// fields. Read-only from the app's side (seed rows, RLS readable by all).
+// fields. Read-only from the app's side (global seed rows, readable by all).
 export type MachineCatalogEntry = {
   id: string;
   brand: string;
@@ -121,7 +121,7 @@ export type NewExerciseOpts = {
    * Publish to the shared library instead of creating a private row
    * (community phase, docs/DECISIONS.md 2026-08-08). Defaults to
    * COMMUNITY_SHARING (true in dev). A shared row is owner_id null +
-   * created_by = the caller and is RLS-immutable afterward — editing it
+   * created_by = the caller and is immutable afterward (server-enforced) — editing it
    * forks a private copy (share: false) via the duplicate flow; the fork
    * paths in the app pass false explicitly so a duplicate or mid-session
    * copy-on-write is never published.
@@ -250,7 +250,7 @@ export type RoutineDetail = {
 
 /**
  * All data access goes through this interface — screens never touch a client
- * directly. SupabaseRepo is the v1 (online-first) implementation; a future
+ * directly. ConvexRepo is the v1 (online-first) implementation; a future
  * mobile/offline SqliteRepo slots in behind the same seam.
  */
 export interface Repo {
@@ -261,8 +261,8 @@ export interface Repo {
   getExercise(id: string): Promise<Exercise | null>;
   /**
    * Partial update — only provided fields are written. Custom exercises
-   * only (seed rows are read-only under RLS; the client-side `isCustom`
-   * gate is the UX affordance, RLS is the actual boundary). Includes rename
+   * only (seed rows are read-only server-side; the client-side `isCustom`
+   * gate is the UX affordance, the Convex functions are the actual boundary). Includes rename
    * — there was previously no rename path for any exercise.
    */
   updateExercise(id: string, patch: ExercisePatch): Promise<void>;
@@ -393,7 +393,7 @@ export interface Repo {
   /** Track (true) or hide (false) a condition going forward. Upserts one row. */
   setConditionTracked(metricId: string, tracked: boolean): Promise<void>;
 
-  /** Full user data graph (RLS-scoped), for JSON/CSV export. */
+  /** Full user data graph (owner-scoped), for JSON/CSV export. */
   exportAll(): Promise<ExportBundle>;
 
   listApiTokens(): Promise<ApiToken[]>;
@@ -431,7 +431,7 @@ export interface Repo {
    * (dormant — nothing writes it since rest became an untargeted stopwatch),
    * and the per-exercise session note. Only provided fields are written.
    * `exerciseId` repoints the block at a different exercise row (the
-   * session-side copy-on-write: a seed exercise is RLS-read-only, so an
+   * session-side copy-on-write: a seed exercise is read-only, so an
    * in-session laterality/machine edit clones it into a private custom
    * exercise and the session_exercise follows the copy).
    */

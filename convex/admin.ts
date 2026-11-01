@@ -229,3 +229,65 @@ export const getRow = internalQuery({
     return rest;
   },
 });
+
+// --- Dev-account seeding (scripts/seed-dev-account.ts) ----------------------
+
+/** Rows `ownerId` owns per table (including soft-deleted ones). */
+export const ownerCounts = internalQuery({
+  args: { ownerId: v.string(), tables: v.array(tableValidator) },
+  handler: async (ctx, { ownerId, tables }) => {
+    const out: Record<string, number> = {};
+    for (const t of tables) {
+      out[t] = (
+        await ctx.db
+          .query(t as UidTable)
+          // biome-ignore lint/suspicious/noExplicitAny: every UidTable has by_owner
+          .withIndex("by_owner" as any, (q: any) => q.eq("ownerId", ownerId))
+          .collect()
+      ).length;
+    }
+    return out;
+  },
+});
+
+/** HARD-deletes up to `budget` of one owner's rows in one table (the dev
+ * seeder's explicit --confirm-reset path). Returns how many it deleted. */
+export const resetOwnerTable = internalMutation({
+  args: {
+    ownerId: v.string(),
+    table: tableValidator,
+    budget: v.optional(v.number()),
+  },
+  handler: async (ctx, { ownerId, table, budget = 2000 }) => {
+    if (!ownerId) fail("ownerId is required");
+    const rows = await ctx.db
+      .query(table as UidTable)
+      // biome-ignore lint/suspicious/noExplicitAny: every UidTable has by_owner
+      .withIndex("by_owner" as any, (q: any) => q.eq("ownerId", ownerId))
+      .take(budget);
+    for (const r of rows) await ctx.db.delete(r._id);
+    return rows.length;
+  },
+});
+
+/** Global (seed/shared) exercises with one of `names`. */
+export const globalExercisesByName = internalQuery({
+  args: { names: v.array(v.string()) },
+  handler: async (ctx, { names }) => {
+    const out: { id: string; name: string; exerciseType: string }[] = [];
+    for (const name of names) {
+      const hits = await ctx.db
+        .query("exercises")
+        .withIndex("by_owner_name", (q) =>
+          q.eq("ownerId", null).eq("nameLower", name.trim().toLowerCase()),
+        )
+        .collect();
+      for (const h of hits) {
+        if (h.name === name) {
+          out.push({ id: h.id, name: h.name, exerciseType: h.exerciseType });
+        }
+      }
+    }
+    return out;
+  },
+});
