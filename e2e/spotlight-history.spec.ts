@@ -33,7 +33,7 @@ test("a session carrying legacy superset + drop-set data still renders on reload
   // way to create.
   await page.evaluate(
     async ({ exA }) => {
-      const sb = window.__frog.supabase;
+      const sb = window.__frog.db;
       const { data: ex, error: exErr } = await sb
         .from("exercises")
         .select("id")

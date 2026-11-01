@@ -28,7 +28,7 @@ async function logFirstSet(page: Page, weight: string, reps: string) {
 
 async function setLogCount(page: Page): Promise<number> {
   return page.evaluate(async () => {
-    const { count } = await window.__frog.supabase
+    const { count } = await window.__frog.db
       .from("set_logs")
       .select("id", { count: "exact", head: true });
     return count ?? 0;

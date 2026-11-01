@@ -2,10 +2,9 @@ import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 
 // Regression for the reported "starting a workout throws a type error".
-// A Supabase project that is paused, restoring or otherwise unreachable makes
-// the sessions insert reject at the transport layer; postgrest-js re-emits that
-// as "TypeError: Failed to fetch" (Chromium) / "TypeError: Load failed"
-// (WebKit), Repo.startSession rethrows the message verbatim, and Train's start
+// An unreachable backend makes the sessions:start call reject at the
+// transport layer; the Convex transport re-emits that as "TypeError: Failed to
+// fetch" (Chromium) / "TypeError: Load failed" (WebKit), and Train's start
 // card used to print it straight to the user. docs/DECISIONS.md 2026-08-25.
 
 test.beforeEach(async ({ page }) => {
@@ -16,7 +15,7 @@ test.beforeEach(async ({ page }) => {
 test("an unreachable server shows plain language, never a raw TypeError", async ({
   page,
 }) => {
-  await page.route("**/rest/v1/sessions**", (route) =>
+  await page.route("**/api/mutation?fn=sessions:start*", (route) =>
     route.request().method() === "POST"
       ? route.abort("failed")
       : route.continue(),
@@ -36,17 +35,20 @@ test("an unreachable server shows plain language, never a raw TypeError", async 
   await expect(page).toHaveURL(/\/train$/);
 });
 
-test("a real PostgREST error still reaches the user verbatim", async ({
+test("a real server error still reaches the user verbatim", async ({
   page,
 }) => {
-  await page.route("**/rest/v1/sessions**", (route) =>
+  await page.route("**/api/mutation?fn=sessions:start*", (route) =>
     route.request().method() === "POST"
       ? route.fulfill({
-          status: 403,
+          // Convex reports a function-level failure as HTTP 200 + an error
+          // envelope; a ConvexError's string `errorData` is the message.
+          status: 200,
           contentType: "application/json",
           body: JSON.stringify({
-            code: "42501",
-            message: "permission denied for table sessions",
+            status: "error",
+            errorMessage: "Server Error\nUncaught ConvexError: Not signed in",
+            errorData: "permission denied for table sessions",
           }),
         })
       : route.continue(),

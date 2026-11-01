@@ -53,7 +53,7 @@ test("delete removes the current set", async ({ page }) => {
   // filter would silently match zero rows even before deleting anything).
   const liveRowCount = async () =>
     page.evaluate(async (exerciseName) => {
-      const sb = window.__frog.supabase;
+      const sb = window.__frog.db;
       const { data: ex, error: exErr } = await sb
         .from("exercises")
         .select("id")

@@ -57,7 +57,7 @@ test("a per-side set shares one weight field but splits reps per side", async ({
   // rebrand-compat) does the same via expect.poll.
   const readRows = () =>
     page.evaluate(async (exerciseName) => {
-      const sb = window.__frog.supabase;
+      const sb = window.__frog.db;
       const { data: ex, error: exErr } = await sb
         .from("exercises")
         .select("id")
@@ -102,7 +102,7 @@ test("per-side RIR is independent per side", async ({ page }) => {
   await page.getByTestId("log-set").click();
 
   const rows = await page.evaluate(async (exerciseName) => {
-    const sb = window.__frog.supabase;
+    const sb = window.__frog.db;
     const { data: ex, error: exErr } = await sb
       .from("exercises")
       .select("id")

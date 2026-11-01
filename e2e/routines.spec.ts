@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 
 async function routineIdByName(page: Page, name: string): Promise<string> {
   return page.evaluate(async (n) => {
-    const { data, error } = await window.__frog.supabase
+    const { data, error } = await window.__frog.db
       .from("routines")
       .select("id")
       .eq("name", n)
@@ -46,7 +46,7 @@ async function routineSetTargets(
   }>
 > {
   return page.evaluate(async (rid) => {
-    const { data: exRows, error: exError } = await window.__frog.supabase
+    const { data: exRows, error: exError } = await window.__frog.db
       .from("routine_exercises")
       .select("id")
       .eq("routine_id", rid)
@@ -54,7 +54,7 @@ async function routineSetTargets(
       .limit(1);
     if (exError) throw new Error(exError.message);
     const routineExerciseId = exRows?.[0]?.id as string;
-    const { data, error } = await window.__frog.supabase
+    const { data, error } = await window.__frog.db
       .from("routine_sets")
       .select("set_no, target_weight_kg, target_reps")
       .eq("routine_exercise_id", routineExerciseId)
@@ -358,7 +358,7 @@ test("routines-page routine menu flips upward when it would render below the fol
 
   await page.goto("/routines");
   await page.evaluate(async (routineNames) => {
-    const sb = window.__frog.supabase;
+    const sb = window.__frog.db;
     const { data: userData } = await sb.auth.getUser();
     const ownerId = userData.user.id;
     // Clean slate: this test asserts an exact pixel geometry (the last card
@@ -493,18 +493,22 @@ test("start routine seeds every configured set's target with no duplication, one
   await expect
     .poll(() =>
       page.evaluate(async (n) => {
-        const { data: ex } = await window.__frog.supabase
+        const { data: ex } = await window.__frog.db
           .from("exercises")
           .select("id")
           .eq("name", n)
           .single();
-        const { count } = await window.__frog.supabase
+        const { data: ses } = await window.__frog.db
+          .from("session_exercises")
+          .select("id")
+          .eq("exercise_id", (ex as { id: string }).id);
+        const { count } = await window.__frog.db
           .from("set_logs")
-          .select("id, session_exercises!inner(exercise_id)", {
-            count: "exact",
-            head: true,
-          })
-          .eq("session_exercises.exercise_id", (ex as { id: string }).id);
+          .select("id", { count: "exact", head: true })
+          .in(
+            "session_exercise_id",
+            (ses as { id: string }[]).map((s) => s.id),
+          );
         return count ?? 0;
       }, EX),
     )
@@ -549,7 +553,7 @@ test("exercise menu laterality/warm-up round-trip into the session", async ({
   expect(routineId).not.toBe("");
   // The set graph persisted: warmup + 2 normal sets, all unilateral.
   const state = await page.evaluate(async (rid) => {
-    const { data: ex } = await window.__frog.supabase
+    const { data: ex } = await window.__frog.db
       .from("routine_exercises")
       .select("id")
       .eq("routine_id", rid)
@@ -557,7 +561,7 @@ test("exercise menu laterality/warm-up round-trip into the session", async ({
       .order("order_index");
     const sets = await Promise.all(
       (ex ?? []).map(async (e) => {
-        const { data } = await window.__frog.supabase
+        const { data } = await window.__frog.db
           .from("routine_sets")
           .select("set_type, laterality")
           .eq("routine_exercise_id", e.id)
@@ -600,14 +604,14 @@ test("exercise menu laterality/warm-up round-trip into the session", async ({
     .poll(
       async () =>
         page.evaluate(async (sid) => {
-          const { data: se } = await window.__frog.supabase
+          const { data: se } = await window.__frog.db
             .from("session_exercises")
             .select("id")
             .eq("session_id", sid)
             .is("deleted_at", null);
           const ids = (se ?? []).map((s) => s.id);
           if (!ids.length) return 0;
-          const { count, error } = await window.__frog.supabase
+          const { count, error } = await window.__frog.db
             .from("set_logs")
             .select("id", { count: "exact", head: true })
             .in("session_exercise_id", ids)
@@ -619,12 +623,12 @@ test("exercise menu laterality/warm-up round-trip into the session", async ({
     )
     .toBeGreaterThanOrEqual(2);
   const pair = await page.evaluate(async (sid) => {
-    const { data: se } = await window.__frog.supabase
+    const { data: se } = await window.__frog.db
       .from("session_exercises")
       .select("id")
       .eq("session_id", sid)
       .is("deleted_at", null);
-    const { data, error } = await window.__frog.supabase
+    const { data, error } = await window.__frog.db
       .from("set_logs")
       .select("set_no, side, set_type, reps")
       .in(
@@ -732,7 +736,7 @@ test("exercise ⋯ menu edits the exercise's default machine and laterality", as
     .poll(
       async () =>
         page.evaluate(async (name) => {
-          const { data } = await window.__frog.supabase
+          const { data } = await window.__frog.db
             .from("exercises")
             .select("machine_id, laterality")
             .ilike("name", `${name}%`)
@@ -745,7 +749,7 @@ test("exercise ⋯ menu edits the exercise's default machine and laterality", as
     )
     .toMatchObject({ laterality: "unilateral" });
   const row = await page.evaluate(async (name) => {
-    const { data } = await window.__frog.supabase
+    const { data } = await window.__frog.db
       .from("exercises")
       .select("machine_id")
       .ilike("name", `${name}%`)

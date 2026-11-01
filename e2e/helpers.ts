@@ -1,27 +1,34 @@
 import { expect, type Page } from "@playwright/test";
 
+// Seeded by scripts/run-e2e.ts: a throwaway test identity and a token for it
+// minted with the local test signing key (scripts/convex-test-auth.ts).
+// `PASSWORD` keeps its historical name — it is the credential specs sign in
+// with — and `!EMAIL || !PASSWORD` is how a spec detects a seeded run.
 export const EMAIL = process.env.E2E_EMAIL ?? "";
-export const PASSWORD = process.env.E2E_PASSWORD ?? "";
+export const PASSWORD = process.env.E2E_TOKEN ?? "";
 
 declare global {
   interface Window {
-    __frog: { supabase: import("@supabase/supabase-js").SupabaseClient };
+    __frog: {
+      signIn: (token: string, email: string) => void;
+      signOut: () => void;
+      db: import("../apps/web/src/lib/e2e-bridge").E2eDb;
+    };
   }
 }
 
-export async function signIn(page: Page) {
+/** Signs the app into `token`'s identity through the E2E bridge. */
+export async function signInAs(page: Page, token: string, email: string) {
   await page.goto("/auth");
   await page.waitForFunction(() => window.__frog !== undefined);
   await page.evaluate(
-    async ({ email, password }) => {
-      const { error } = await window.__frog.supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) throw new Error(error.message);
-    },
-    { email: EMAIL, password: PASSWORD },
+    ({ token, email }) => window.__frog.signIn(token, email),
+    { token, email },
   );
+}
+
+export async function signIn(page: Page) {
+  await signInAs(page, PASSWORD, EMAIL);
   await page.goto("/train");
   await expect(page.getByTestId("start-session-btn")).toBeVisible();
 }
@@ -40,7 +47,7 @@ export async function waitForExercise(page: Page, name: string) {
   await expect
     .poll(() =>
       page.evaluate(async (n) => {
-        const { count, error } = await window.__frog.supabase
+        const { count, error } = await window.__frog.db
           .from("exercises")
           .select("id", { count: "exact", head: true })
           .eq("name", n);
@@ -62,19 +69,19 @@ export async function waitForSetLogs(
   await expect
     .poll(() =>
       page.evaluate(async (n) => {
-        const { data: ex, error: exError } = await window.__frog.supabase
+        const { data: ex, error: exError } = await window.__frog.db
           .from("exercises")
           .select("id")
           .eq("name", n)
           .single();
         if (exError) throw new Error(exError.message);
-        const { data: ses, error: sesError } = await window.__frog.supabase
+        const { data: ses, error: sesError } = await window.__frog.db
           .from("session_exercises")
           .select("id")
           .eq("exercise_id", ex.id);
         if (sesError) throw new Error(sesError.message);
         if (!ses.length) return 0;
-        const { count, error } = await window.__frog.supabase
+        const { count, error } = await window.__frog.db
           .from("set_logs")
           .select("id", { count: "exact", head: true })
           .in(
@@ -94,7 +101,7 @@ export async function waitForSessionNotes(page: Page, notes: string) {
   await expect
     .poll(() =>
       page.evaluate(async (n) => {
-        const { count, error } = await window.__frog.supabase
+        const { count, error } = await window.__frog.db
           .from("sessions")
           .select("id", { count: "exact", head: true })
           .eq("notes", n);
@@ -111,7 +118,7 @@ export async function waitForConditionUntracked(page: Page, metricId: string) {
   await expect
     .poll(() =>
       page.evaluate(async (id) => {
-        const { count, error } = await window.__frog.supabase
+        const { count, error } = await window.__frog.db
           .from("tracked_conditions")
           .select("id", { count: "exact", head: true })
           .eq("metric_id", id)
@@ -127,7 +134,7 @@ export async function waitForConditionUntracked(page: Page, metricId: string) {
  * plain `rowCount` never drops after one. */
 export async function liveRowCount(page: Page, table: string): Promise<number> {
   return page.evaluate(async (t) => {
-    const { count, error } = await window.__frog.supabase
+    const { count, error } = await window.__frog.db
       .from(t)
       .select("id", { count: "exact", head: true })
       .is("deleted_at", null);
@@ -138,7 +145,7 @@ export async function liveRowCount(page: Page, table: string): Promise<number> {
 
 export async function rowCount(page: Page, table: string): Promise<number> {
   return page.evaluate(async (t) => {
-    const { count, error } = await window.__frog.supabase
+    const { count, error } = await window.__frog.db
       .from(t)
       .select("id", { count: "exact", head: true });
     if (error) throw new Error(error.message);

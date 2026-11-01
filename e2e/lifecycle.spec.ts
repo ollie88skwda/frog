@@ -20,7 +20,7 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
 
   // Close any sessions left open by other specs so "resume gone" is decisive.
   await page.evaluate(async () => {
-    const { error } = await window.__frog.supabase
+    const { error } = await window.__frog.db
       .from("sessions")
       .update({ ended_at: Date.now(), updated_at: Date.now() })
       .is("ended_at", null);
@@ -67,7 +67,7 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   await page.goto("/train");
   await expect(page.getByTestId("resume-session-btn")).not.toBeVisible();
   const endedCount = await page.evaluate(async () => {
-    const { count, error } = await window.__frog.supabase
+    const { count, error } = await window.__frog.db
       .from("sessions")
       .select("id", { count: "exact", head: true })
       .not("ended_at", "is", null);

@@ -40,7 +40,7 @@ async function createExerciseWithRest(page: Page, name: string) {
 
 async function defaultRestOf(page: Page, name: string): Promise<number | null> {
   return page.evaluate(async (n) => {
-    const { data, error } = await window.__frog.supabase
+    const { data, error } = await window.__frog.db
       .from("exercises")
       .select("default_rest_sec")
       .eq("name", n)
@@ -158,7 +158,7 @@ test("the Rest default still moves the Trainer's duration estimate", async ({
   // suite do it, so routine names repeat across folders. Scope the lookup to the
   // active program's folder — the exact set the Trainer card reads (lib/trainer.ts).
   const routineId = await page.evaluate(async (n) => {
-    const s = window.__frog.supabase;
+    const s = window.__frog.db;
     const p = await s
       .from("programs")
       .select("folder_id")
@@ -191,7 +191,7 @@ test("the Rest default still moves the Trainer's duration estimate", async ({
   await expect
     .poll(() =>
       page.evaluate(async (rid) => {
-        const { data, error } = await window.__frog.supabase
+        const { data, error } = await window.__frog.db
           .from("routine_exercises")
           .select("rest_sec")
           .eq("routine_id", rid)

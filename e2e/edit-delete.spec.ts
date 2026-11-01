@@ -108,7 +108,7 @@ test("delete a custom exercise removes it from the picker; tags round-trip", asy
   await expect
     .poll(() =>
       page.evaluate(async (name) => {
-        const { data, error } = await window.__frog.supabase
+        const { data, error } = await window.__frog.db
           .from("exercises")
           .select("tags")
           .eq("name", name)

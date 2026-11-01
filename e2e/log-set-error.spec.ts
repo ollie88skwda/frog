@@ -33,7 +33,7 @@ test("a set write that exhausts its retries shows an error with a retry", async 
 
   // Fail every attempt (initial + all 3 retries) so the mutation's onError
   // actually fires.
-  await page.route("**/rest/v1/set_logs*", async (route) => {
+  await page.route("**/api/mutation?fn=sessions:logSet*", async (route) => {
     if (route.request().method() !== "POST") {
       await route.continue();
       return;
@@ -59,7 +59,7 @@ test("a set write that exhausts its retries shows an error with a retry", async 
   ).toBeVisible();
 
   // Retry from the banner, now that the network is healthy again.
-  await page.unroute("**/rest/v1/set_logs*");
+  await page.unroute("**/api/mutation?fn=sessions:logSet*");
   await page.getByTestId("set-sync-retry").click();
   await expect(page.getByTestId("set-sync-error")).not.toBeVisible();
 });

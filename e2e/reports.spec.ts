@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }) => {
 
 async function seedExercise(page: Page, name: string): Promise<string> {
   return page.evaluate(async (n) => {
-    const sb = window.__frog.supabase;
+    const sb = window.__frog.db;
     const id = crypto.randomUUID();
     const t = Date.now();
     const { error } = await sb.from("exercises").insert({
@@ -41,7 +41,7 @@ async function seedSession(
 ) {
   await page.evaluate(
     async ({ exId, t, rows }) => {
-      const sb = window.__frog.supabase;
+      const sb = window.__frog.db;
       const sessionId = crypto.randomUUID();
       const seId = crypto.randomUUID();
       const fail = (m: string | undefined) => {

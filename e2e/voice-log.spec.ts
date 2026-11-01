@@ -107,7 +107,7 @@ async function startSession(page: Page, name: string) {
 
 async function ensureExercise(page: Page, name: string) {
   const existing = await page.evaluate(async (n) => {
-    const { count, error } = await window.__frog.supabase
+    const { count, error } = await window.__frog.db
       .from("exercises")
       .select("id", { count: "exact", head: true })
       .eq("name", n);

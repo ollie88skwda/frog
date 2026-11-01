@@ -1,20 +1,16 @@
 import type { Repo } from "@frog/core";
-import { SupabaseRepo } from "@frog/core/repo/supabase";
+import { ConvexRepo } from "@frog/core/repo/convex";
 import { createContext, type ReactNode, useContext, useMemo } from "react";
-import { getClerkUserId } from "./auth-token";
-import { e2eBridge } from "./e2e-bridge";
-import { supabase } from "./supabase";
+import { convex } from "./convex";
 
-// Screens depend on the Repo interface only — never on supabase-js directly.
-// This is the seam where a local/offline store slots in later.
+// Screens depend on the Repo interface only — never on the backend client
+// directly. This is the seam where a local/offline store slots in later.
 const RepoContext = createContext<Repo | null>(null);
 
-// The app client's `accessToken` option disables supabase.auth, so the repo
-// can't derive the owner id itself — inject it from the identity provider.
-const getOwnerId = e2eBridge ? e2eBridge.getUserId : getClerkUserId;
-
 export function RepoProvider({ children }: { children: ReactNode }) {
-  const repo = useMemo(() => new SupabaseRepo(supabase, { getOwnerId }), []);
+  // The owner is the token's `sub`, enforced server-side in /convex — the
+  // repo never sends an owner id.
+  const repo = useMemo(() => new ConvexRepo(convex), []);
   return <RepoContext.Provider value={repo}>{children}</RepoContext.Provider>;
 }
 

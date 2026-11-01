@@ -110,3 +110,94 @@ export const counts = internalMutation({
     return out;
   },
 });
+
+// --- Test-account teardown (scripts/e2e-cleanup.ts) ---------------------------
+//
+// Hard-deletes everything a throwaway test identity owns or published. Only
+// identities following the test naming scheme are accepted (`e2e-…` subs
+// minted by scripts/convex-test-auth.ts), so this can never be pointed at a
+// real Clerk user (`user_…`). Test-infra teardown, not the app's soft-delete
+// convention — see AGENTS.md "E2E hygiene".
+const TEST_SUB = /^e2e-[a-z0-9-]+$/;
+
+/** Deletes up to `budget` rows for one test identity; returns how many were
+ * deleted (call again until 0 — one call stays inside mutation limits). */
+export const purgeTestUser = internalMutation({
+  args: { sub: v.string(), budget: v.optional(v.number()) },
+  handler: async (ctx, { sub, budget = 2000 }) => {
+    if (!TEST_SUB.test(sub)) fail(`refusing to purge non-test identity ${sub}`);
+    let deleted = 0;
+    for (const t of PURGE_ORDER) {
+      for (const field of ["ownerId", "createdBy"] as const) {
+        if (field === "createdBy" && t !== "exercises") continue;
+        const idx = field === "ownerId" ? "by_owner" : "by_created_by";
+        const rows = await ctx.db
+          .query(t)
+          // biome-ignore lint/suspicious/noExplicitAny: index chosen per table
+          .withIndex(idx as any, (q: any) => q.eq(field, sub))
+          .take(budget - deleted);
+        for (const r of rows) {
+          await ctx.db.delete(r._id);
+          deleted++;
+        }
+        if (deleted >= budget) return deleted;
+      }
+    }
+    const files = await ctx.db.query("files").collect();
+    for (const f of files) {
+      if (f.ownerId !== sub) continue;
+      await ctx.storage.delete(f.storageId);
+      await ctx.db.delete(f._id);
+      if (++deleted >= budget) return deleted;
+    }
+    return deleted;
+  },
+});
+
+/** Distinct test identities that still own rows, with their newest
+ * createdAt (the stale-sweep's input). */
+export const testOwners = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const newest: Record<string, number> = {};
+    for (const t of [
+      "sessions",
+      "exercises",
+      "routines",
+      "metrics",
+      "machines",
+      "measurements",
+      "user_prefs",
+    ] as const) {
+      for (const r of await ctx.db.query(t).collect()) {
+        const sub = (r.ownerId ??
+          (r as { createdBy?: string | null }).createdBy) as string | null;
+        if (!sub || !TEST_SUB.test(sub)) continue;
+        newest[sub] = Math.max(newest[sub] ?? 0, r.createdAt);
+      }
+    }
+    return newest;
+  },
+});
+
+const PURGE_ORDER = [
+  "set_logs",
+  "session_media",
+  "session_exercises",
+  "routine_sets",
+  "routine_exercises",
+  "sessions",
+  "programs",
+  "routines",
+  "routine_folders",
+  "exercise_favorites",
+  "exercise_prefs",
+  "tracked_conditions",
+  "metrics",
+  "exercises",
+  "machines",
+  "measurements",
+  "user_prefs",
+  "push_subscriptions",
+  "api_tokens",
+] as const satisfies readonly UidTable[];
