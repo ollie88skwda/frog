@@ -38,12 +38,6 @@ export const IMPORT_ORDER = [
   "api_tokens",
 ] as const;
 
-export const GLOBAL_TABLES = new Set([
-  "exercises",
-  "metrics",
-  "machine_catalog",
-]);
-
 /** Converts one pg row (snake_case keys) to a Convex document (camelCase). */
 export function toConvex(table: string, row: Row): Row {
   const cols = TABLES[table];

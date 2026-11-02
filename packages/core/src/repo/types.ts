@@ -289,20 +289,15 @@ export interface Repo {
   deleteMachine(id: string): Promise<void>;
   /** Uploads the user's own photo (already resized) and stores its path. */
   uploadMachinePhoto(machineId: string, file: Blob): Promise<void>;
-  /** Short-lived signed URL for the machine's photo, or null if none. */
+  /** Owner-only local link to the machine's photo, or null if none. */
   machinePhotoUrl(machine: Machine): Promise<string | null>;
   /**
    * Uploads a photo for ONE machine setting (the setup strip's per-value
    * photos). Returns the stored path for the caller to save into that
-   * setting's `photoPath`. Re-uploading with an existing path replaces that
-   * same object (no orphans on replace); a fresh path is minted otherwise.
+   * setting's `photoPath`.
    */
-  uploadMachineSettingPhoto(
-    machineId: string,
-    file: Blob,
-    existingPath: string | null,
-  ): Promise<string>;
-  /** Short-lived signed URL for a machine-setting photo path, or null. */
+  uploadMachineSettingPhoto(machineId: string, file: Blob): Promise<string>;
+  /** Owner-only local link to a machine-setting photo, or null. */
   machineSettingPhotoUrl(path: string): Promise<string | null>;
 
   /**
@@ -314,7 +309,7 @@ export interface Repo {
     file: Blob,
     kind: "image" | "video",
   ): Promise<void>;
-  /** Short-lived signed URL for the exercise's demo media, or null if none. */
+  /** Owner-only local link to the exercise's demo media, or null if none. */
   exerciseMediaUrl(exercise: Exercise): Promise<string | null>;
   /** Removes the stored object and clears the exercise's media fields. */
   clearExerciseMedia(exerciseId: string): Promise<void>;
@@ -475,7 +470,7 @@ export interface Repo {
   ): Promise<SessionMediaRow>;
   /** Soft-deletes the row and removes the storage object. */
   deleteSessionMedia(id: string): Promise<void>;
-  /** Short-lived signed URL for a media row. */
+  /** Owner-only local link to a media row's file, or null. */
   sessionMediaUrl(media: SessionMediaRow): Promise<string | null>;
   /** All of the user's media rows, newest first (profile strip). */
   listAllSessionMedia(limit?: number): Promise<SessionMediaRow[]>;
@@ -585,7 +580,7 @@ export interface Repo {
   uploadProgressPhoto(measurementId: string, file: Blob): Promise<void>;
   /** Clears the entry's photo (removes the object too); measurements stay. */
   clearProgressPhoto(measurementId: string): Promise<void>;
-  /** Short-lived signed URL for a measurement's progress photo. */
+  /** Owner-only local link to a measurement's progress photo. */
   progressPhotoUrl(m: Measurement): Promise<string | null>;
   /** Latest entry with a bodyweight on/before the given local date. */
   latestBodyweightKg(onOrBefore?: string): Promise<number | null>;

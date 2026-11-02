@@ -47,25 +47,27 @@ export function cleanConvexMessage(raw: string): string {
   );
 }
 
+/** A deployment's HTTP-actions origin: `.convex.site` in the cloud, the next
+ * port on a local backend. */
+export function convexSiteUrl(url: string): string {
+  return url
+    .replace(/\/+$/, "")
+    .replace(/\.convex\.cloud$/, ".convex.site")
+    .replace(/:(\d+)$/, (_, port) => `:${Number(port) + 1}`);
+}
+
 export function convexHttpTransport(opts: ConvexHttpOpts): ConvexTransport {
   const base = opts.url.replace(/\/+$/, "");
-  const call = async <T>(
-    kind: "query" | "mutation",
-    fn: string,
-    args: Record<string, unknown>,
-  ): Promise<T> => {
+  const send = async (url: string, init: RequestInit): Promise<Response> => {
     const token = await opts.getToken();
     const f = opts.fetch ?? fetch;
-    let res: Response;
     try {
-      const t = typeof args.table === "string" ? `&t=${args.table}` : "";
-      res = await f(`${base}/api/${kind}?fn=${fn}${t}`, {
-        method: "POST",
+      return await f(url, {
+        ...init,
         headers: {
-          "Content-Type": "application/json",
+          ...init.headers,
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ path: fn, format: "json", args }),
       });
     } catch (e) {
       // Keep the "<ConstructorName>: msg" shape apps/web/src/lib/repo-error.ts
@@ -75,6 +77,18 @@ export function convexHttpTransport(opts: ConvexHttpOpts): ConvexTransport {
         cause: e,
       });
     }
+  };
+  const call = async <T>(
+    kind: "query" | "mutation",
+    fn: string,
+    args: Record<string, unknown>,
+  ): Promise<T> => {
+    const t = typeof args.table === "string" ? `&t=${args.table}` : "";
+    const res = await send(`${base}/api/${kind}?fn=${fn}${t}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: fn, format: "json", args }),
+    });
     const text = await res.text();
     let body: {
       status?: string;
@@ -104,5 +118,19 @@ export function convexHttpTransport(opts: ConvexHttpOpts): ConvexTransport {
   return {
     query: (fn, args) => call("query", fn, args),
     mutation: (fn, args) => call("mutation", fn, args),
+    file: async (storageId) => {
+      const res = await send(
+        `${convexSiteUrl(base)}/files/${encodeURIComponent(storageId)}`,
+        { method: "GET" },
+      );
+      if (res.status === 404) return null;
+      if (!res.ok) {
+        throw new ConvexCallError(
+          `file read failed (${res.status})`,
+          "files/read",
+        );
+      }
+      return res.blob();
+    },
   };
 }

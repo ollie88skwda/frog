@@ -33,8 +33,39 @@ export function adminClient(target = adminTarget()) {
   (client as unknown as { setAdminAuth(key: string): void }).setAdminAuth(
     target.adminKey,
   );
+  const query = <T>(name: string, args: Record<string, unknown>): Promise<T> =>
+    client.query(
+      name as unknown as FunctionReference<"query">,
+      args,
+    ) as Promise<T>;
   return {
     client,
+    /** Rows per table (one owner's, when given), including soft-deleted ones. */
+    async counts(
+      tables: readonly string[],
+      ownerId?: string,
+    ): Promise<Record<string, number>> {
+      const totals: Record<string, number> = {};
+      for (const table of tables) {
+        totals[table] = 0;
+        let cursor: string | null = null;
+        for (;;) {
+          const page: {
+            count: number;
+            isDone: boolean;
+            continueCursor: string;
+          } = await query("admin:countPage", {
+            table,
+            ...(ownerId ? { ownerId } : {}),
+            paginationOpts: { numItems: 1000, cursor },
+          });
+          totals[table] += page.count;
+          if (page.isDone) break;
+          cursor = page.continueCursor;
+        }
+      }
+      return totals;
+    },
     /** Calls an internal or public mutation by "module:name". */
     mutation<T>(name: string, args: Record<string, unknown>): Promise<T> {
       return client.mutation(
@@ -42,11 +73,6 @@ export function adminClient(target = adminTarget()) {
         args,
       ) as Promise<T>;
     },
-    query<T>(name: string, args: Record<string, unknown>): Promise<T> {
-      return client.query(
-        name as unknown as FunctionReference<"query">,
-        args,
-      ) as Promise<T>;
-    },
+    query,
   };
 }

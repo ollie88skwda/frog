@@ -374,5 +374,6 @@ export default defineSchema({
     importKey: v.optional(v.string()),
   })
     .index("by_storage", ["storageId"])
+    .index("by_owner", ["ownerId"])
     .index("by_import_key", ["importKey"]),
 });

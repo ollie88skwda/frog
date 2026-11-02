@@ -1,11 +1,13 @@
 -- Sample user data for the import round-trip check
 -- (scripts/convex/import-roundtrip.ts). Applied on top of the replayed
 -- migrations, so the seed rows exist too. Two owners, every user table,
--- soft-deleted rows, a unilateral pair, json columns and a file path.
+-- soft-deleted rows, a unilateral pair, json columns and file paths: a progress
+-- photo and a per-setting machine photo whose objects exist, and a workout photo
+-- whose object is gone (the old app removed the object on delete).
 -- Owner ids use the e2e- prefix so the local test sweep can tidy them.
 insert into machines (id, owner_id, created_at, updated_at, name, brand, settings, photo_path)
 values ('11111111-0000-4000-8000-000000000001', 'e2e-import-a', 1783900000000, 1783900000000,
-        'Leg Press', 'Hammer', '[{"label":"Seat","value":4},{"label":"Pad","value":null}]', null);
+        'Leg Press', 'Hammer', '[{"label":"Seat","value":4,"photoPath":"e2e-import-a/seat.jpg"},{"label":"Pad","value":null}]', null);
 
 insert into exercises (id, owner_id, created_by, created_at, updated_at, name, is_custom, machine_id, muscle_targets, aliases)
 values
@@ -62,6 +64,10 @@ values
    '11111111-0000-4000-8000-00000000000d', 0, 'left', 70, 10, 2, true),
   ('11111111-0000-4000-8000-00000000000f', 'e2e-import-a', 1783900000014, 1783900000014,
    '11111111-0000-4000-8000-00000000000d', 0, 'right', 67.5, 9, null, true);
+
+insert into session_media (id, owner_id, created_at, updated_at, deleted_at, session_id, path, position, media_type)
+values ('11111111-0000-4000-8000-000000000016', 'e2e-import-a', 1783900000015, 1783900000998, 1783900000998,
+        '11111111-0000-4000-8000-00000000000b', 'e2e-import-a/deleted-photo.jpg', 2, 'photo');
 
 insert into measurements (id, owner_id, created_at, updated_at, measured_on, bodyweight_kg, waist_cm, photo_path)
 values ('11111111-0000-4000-8000-000000000010', 'e2e-import-a', 1783900000015, 1783900000015,

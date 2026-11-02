@@ -14,7 +14,7 @@
 // an RLS-blocked UPDATE resolved with zero rows). Inserts that reference a
 // parent the caller doesn't own throw instead — stricter than RLS was.
 import { ConvexError } from "convex/values";
-import type { DataModel, Doc, TableNames } from "./_generated/dataModel";
+import type { Doc, TableNames } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -91,19 +91,6 @@ export async function readable<T extends UidTable>(
   return null;
 }
 
-/** All of an owner's rows in a table, oldest first (by createdAt). */
-export async function ownerRows<T extends UidTable>(
-  ctx: Ctx,
-  table: T,
-  owner: string | null,
-): Promise<Doc<T>[]> {
-  return (await ctx.db
-    .query(table)
-    // biome-ignore lint/suspicious/noExplicitAny: every UidTable has by_owner
-    .withIndex("by_owner" as any, (q: any) => q.eq("ownerId", owner))
-    .collect()) as Doc<T>[];
-}
-
 export const live = <T extends { deletedAt: number | null }>(rows: T[]) =>
   rows.filter((r) => r.deletedAt == null);
 
@@ -117,22 +104,3 @@ export function out<T extends Record<string, unknown>>(
   >;
   return rest as Omit<T, "_id" | "_creationTime" | "nameLower">;
 }
-
-export function outAll<T extends Record<string, unknown>>(docs: T[]) {
-  return docs.map(out);
-}
-
-/** Copies only the keys present in `patch` (undefined → skipped). */
-export function pick<T extends Record<string, unknown>>(patch: T): Partial<T> {
-  const r: Record<string, unknown> = {};
-  for (const [k, val] of Object.entries(patch)) {
-    if (val !== undefined) r[k] = val;
-  }
-  return r as Partial<T>;
-}
-
-/** `[]` → null, like the old repo's `x?.length ? x : null`. */
-export const arr = <T>(x: T[] | null | undefined): T[] | null =>
-  x?.length ? x : null;
-
-export type { DataModel };

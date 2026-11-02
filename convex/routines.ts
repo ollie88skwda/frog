@@ -4,7 +4,7 @@ import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
-import { fail, live, out, owned, readable, requireUser } from "./lib";
+import { live, out, owned, readable, requireUser } from "./lib";
 import { insertRow, softDelete, updateRows } from "./rows";
 
 type Ctx = QueryCtx | MutationCtx;
@@ -163,8 +163,6 @@ export const create = mutation({
   args: { id: v.string(), ...routineInput },
   handler: async (ctx, args) => {
     const me = await requireUser(ctx);
-    const existing = await owned(ctx, "routines", args.id, me);
-    if (existing) return out(existing);
     const now = Date.now();
     const row = await insertRow(ctx, "routines", me, {
       id: args.id,
@@ -242,8 +240,6 @@ export const createFolder = mutation({
   args: { id: v.string(), name: v.string() },
   handler: async (ctx, { id, name }) => {
     const me = await requireUser(ctx);
-    const existing = await owned(ctx, "routine_folders", id, me);
-    if (existing) return out(existing);
     return out(
       await insertRow(ctx, "routine_folders", me, {
         id,
@@ -334,8 +330,6 @@ export const createProgram = mutation({
   },
   handler: async (ctx, args) => {
     const me = await requireUser(ctx);
-    const existing = await owned(ctx, "programs", args.id, me);
-    if (existing) return out(existing);
     const now = Date.now();
     await updateRows(
       ctx,
@@ -372,8 +366,3 @@ export const activeProgram = query({
     return row ? out(row) : null;
   },
 });
-
-export function assertString(x: unknown, what: string): string {
-  if (typeof x !== "string") fail(`${what} must be a string`);
-  return x;
-}

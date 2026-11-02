@@ -14,7 +14,7 @@ names from `packages/core/src/db/schema.ts`, which are stable across the
 - **ownership**: every table has `owner_id` (the Clerk user id), enforced by the Convex functions — every read and write is scoped to the caller. `owner_id null` on `exercises`/`metrics`/`machine_catalog` marks global rows readable by everyone.
 - **weight**: canonical **kg** in `weight_kg`; kg/lb is a display preference only.
 - **custom values**: jsonb objects keyed by metric id — `sessions.condition_values` and `set_logs.metric_values`.
-- **files**: every `*_path` column (and `machines.settings[].photoPath`) holds a Convex file-storage id, private to the uploader (only they can resolve a URL for it). Before 2026-11-01 these were object paths in the private Supabase Storage buckets named below; the import rewrote them. Bucket names in the column notes and the changelog are historical.
+- **files**: every `*_path` column (and `machines.settings[].photoPath`) holds a Convex file-storage id, private to the uploader (only they can read it, through the Clerk-authenticated `GET <site>/files/<id>` HTTP action). Before 2026-11-01 these were object paths in the private Supabase Storage buckets named below; the import rewrote them. Bucket names in the column notes and the changelog are historical.
 
 ## Tables
 

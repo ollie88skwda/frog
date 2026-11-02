@@ -18,6 +18,7 @@ The original Expo/React Native app is archived on branch `legacy/expo` (tag `exp
 ```sh
 bun install
 CONVEX_AGENT_MODE=anonymous bunx convex dev   # local backend on :3210 (own terminal; long-lived)
+bunx convex env set CLERK_JWT_ISSUER_DOMAIN https://top-parakeet-48.clerk.accounts.dev   # once per new backend; function pushes fail until it's set
 bun run convex:seed   # global exercise library / conditions / machine catalog (admin env, see AGENTS.md)
 bun run dev           # app at localhost:5173 (apps/web/.env.local: VITE_CONVEX_URL, VITE_CLERK_PUBLISHABLE_KEY)
 bun run test          # unit

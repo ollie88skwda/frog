@@ -126,7 +126,7 @@ export function useUploadProgressPhoto() {
     mutationFn: (input: { measurementId: string; file: Blob }) =>
       repo.uploadProgressPhoto(input.measurementId, input.file),
     // Off the logging hot path — no optimistic write; the thumbnail appears on
-    // settle once the signed URL resolves (see useUploadMachinePhoto).
+    // settle once the photo link resolves (see useUploadMachinePhoto).
     onSettled: (_d, _e, { measurementId }) => {
       void qc.invalidateQueries({ queryKey: KEY });
       void qc.invalidateQueries({
@@ -172,6 +172,6 @@ export function useProgressPhotoUrl(m: Measurement | null | undefined) {
     queryKey: ["progress-photo", m?.id, m?.photoPath],
     queryFn: () => (m ? repo.progressPhotoUrl(m) : null),
     enabled: !!m?.photoPath,
-    staleTime: 45 * 60_000, // signed URLs live an hour
+    staleTime: Number.POSITIVE_INFINITY, // a storage id's bytes never change
   });
 }

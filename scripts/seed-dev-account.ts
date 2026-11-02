@@ -313,10 +313,7 @@ const OWNED_TABLES = [
   "user_prefs",
 ];
 
-const counts = await db.query<Record<string, number>>("admin:ownerCounts", {
-  ownerId: OWNER,
-  tables: OWNED_TABLES,
-});
+const counts = await db.counts(OWNED_TABLES, OWNER);
 const existing = OWNED_TABLES.filter((t) => (counts[t] ?? 0) > 0).map(
   (t) => `${t} ${counts[t]}`,
 );

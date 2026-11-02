@@ -6,6 +6,9 @@
 // token's owner via internal functions; the response keeps the old
 // snake_case column names so packages/mcp and existing scripts keep working
 // (docs/api.md).
+//
+// Also serves the signed-in user's private files at GET <site>/files/<id>
+// (Clerk token, same ownership rule as every other file operation).
 
 import type { FunctionReturnType } from "convex/server";
 import { httpRouter } from "convex/server";
@@ -14,16 +17,10 @@ import { type ActionCtx, httpAction } from "./_generated/server";
 
 const ENDPOINTS = ["/v1/exercises", "/v1/sessions", "/v1/sets", "/v1/export"];
 
-const CORS = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-headers": "authorization, content-type",
-  "access-control-allow-methods": "GET, OPTIONS",
-};
-
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json", ...CORS },
+    headers: { "content-type": "application/json" },
   });
 }
 
@@ -90,7 +87,6 @@ const byCreated = (a: Record<string, unknown>, b: Record<string, unknown>) =>
   String(a.id).localeCompare(String(b.id));
 
 const handler = httpAction(async (ctx, req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "GET")
     return json({ error: "this API is read-only" }, 405);
 
@@ -209,15 +205,44 @@ const handler = httpAction(async (ctx, req) => {
   }
 });
 
+// The web app reads files from its own origin with an Authorization header.
+// No cookies are involved, so the header alone is the credential.
+const FILE_CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization",
+  "access-control-allow-methods": "GET",
+};
+
+const fileHandler = httpAction(async (ctx, req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: FILE_CORS });
+  }
+  const refuse = (status: number) =>
+    new Response(null, { status, headers: FILE_CORS });
+  const identity = await ctx.auth.getUserIdentity().catch(() => null);
+  if (!identity) return refuse(401);
+  const id = await ctx.runQuery(internal.files.ownedBlobId, {
+    storageId: decodeURIComponent(
+      new URL(req.url).pathname.slice("/files/".length),
+    ),
+    ownerId: identity.subject,
+  });
+  const blob = id ? await ctx.storage.get(id) : null;
+  if (!blob) return refuse(404);
+  return new Response(blob, {
+    headers: {
+      ...FILE_CORS,
+      "content-type": blob.type || "application/octet-stream",
+      "cache-control": "private, no-store",
+    },
+  });
+});
+
 const http = httpRouter();
-for (const method of [
-  "GET",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-  "OPTIONS",
-] as const) {
+for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE"] as const) {
   http.route({ pathPrefix: "/api/", method, handler });
+}
+for (const method of ["GET", "OPTIONS"] as const) {
+  http.route({ pathPrefix: "/files/", method, handler: fileHandler });
 }
 export default http;

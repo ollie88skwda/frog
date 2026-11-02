@@ -63,11 +63,13 @@ export async function findOwned(
   where?: Where,
 ): Promise<Row[]> {
   const id = where?.id;
-  if (typeof id === "string") {
-    const row = await byUid(ctx, table, id);
-    return row && (row as Row).ownerId === owner && matches(row as Row, where)
-      ? [row as Row]
-      : [];
+  if (typeof id === "string" || Array.isArray(id)) {
+    const rows: Row[] = [];
+    for (const one of typeof id === "string" ? [id] : new Set<string>(id)) {
+      const row = (await byUid(ctx, table, one)) as Row | null;
+      if (row?.ownerId === owner && matches(row, where)) rows.push(row);
+    }
+    return rows;
   }
   const parent = PARENT_INDEX[table];
   if (parent && where) {

@@ -7,30 +7,37 @@
 //
 //   bun scripts/convex-test-env.ts
 //
-// Target: CONVEX_SELF_HOSTED_URL + CONVEX_SELF_HOSTED_ADMIN_KEY (or an
-// --env-file passed through CONVEX_ENV_FILE). Refuses anything that isn't
-// a 127.0.0.1/localhost URL — TEST_JWKS must never reach a shared
-// deployment, since anyone holding the key could mint identities there.
+// Target: adminTarget() (scripts/convex/admin-client.ts). Refuses anything
+// that isn't a 127.0.0.1/localhost URL — TEST_JWKS must never reach a shared
+// deployment, since anyone holding the key could mint identities there. The
+// CLI is pinned to that validated target: blanking the other selectors also
+// stops it loading them from .env.local (dotenv keeps variables already set).
 import { spawnSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { adminTarget } from "./convex/admin-client";
+import { type AdminTarget, adminTarget } from "./convex/admin-client";
 import { loadOrCreateTestAuth } from "./convex-test-auth";
 
 const ROOT = join(import.meta.dir, "..");
 export const TEST_KEY_PATH =
   process.env.FROG_TEST_KEY ?? join(ROOT, ".convex-test/key.json");
 
-function convex(args: string[]) {
-  const envFile = process.env.CONVEX_ENV_FILE;
+function convex(target: AdminTarget, args: string[]) {
   const res = spawnSync(
     "node",
-    [
-      join(ROOT, "node_modules/convex/bin/main.js"),
-      ...args,
-      ...(envFile ? ["--env-file", envFile] : []),
-    ],
-    { cwd: ROOT, stdio: ["ignore", "inherit", "inherit"], env: process.env },
+    [join(ROOT, "node_modules/convex/bin/main.js"), ...args],
+    {
+      cwd: ROOT,
+      stdio: ["ignore", "inherit", "inherit"],
+      env: {
+        ...process.env,
+        CONVEX_SELF_HOSTED_URL: target.url,
+        CONVEX_SELF_HOSTED_ADMIN_KEY: target.adminKey,
+        CONVEX_DEPLOY_KEY: "",
+        CONVEX_DEPLOYMENT_TOKEN: "",
+        CONVEX_DEPLOYMENT: "",
+      },
+    },
   );
   if (res.status !== 0) {
     throw new Error(
@@ -42,8 +49,8 @@ function convex(args: string[]) {
 }
 
 export async function prepareTestBackend(opts: { seed?: boolean } = {}) {
-  const { url } = adminTarget();
-  const host = new URL(url).hostname;
+  const target = adminTarget();
+  const host = new URL(target.url).hostname;
   if (host !== "127.0.0.1" && host !== "localhost") {
     throw new Error(
       `TEST_BACKEND_NOT_LOCAL: refusing to set TEST_JWKS on ${host}. Test ` +
@@ -52,17 +59,15 @@ export async function prepareTestBackend(opts: { seed?: boolean } = {}) {
   }
   mkdirSync(dirname(TEST_KEY_PATH), { recursive: true });
   const auth = await loadOrCreateTestAuth(TEST_KEY_PATH);
-  convex(["env", "set", "TEST_JWKS", auth.jwks]);
-  if (!process.env.SKIP_CONVEX_ENV_CLERK) {
-    convex([
-      "env",
-      "set",
-      "CLERK_JWT_ISSUER_DOMAIN",
-      process.env.CLERK_JWT_ISSUER_DOMAIN ??
-        "https://top-parakeet-48.clerk.accounts.dev",
-    ]);
-  }
-  convex(["dev", "--once", "--tail-logs", "disable"]);
+  convex(target, ["env", "set", "TEST_JWKS", auth.jwks]);
+  convex(target, [
+    "env",
+    "set",
+    "CLERK_JWT_ISSUER_DOMAIN",
+    process.env.CLERK_JWT_ISSUER_DOMAIN ??
+      "https://top-parakeet-48.clerk.accounts.dev",
+  ]);
+  convex(target, ["dev", "--once", "--tail-logs", "disable"]);
   if (opts.seed !== false) {
     const res = spawnSync("bun", [join(ROOT, "scripts/seed-convex.ts")], {
       cwd: ROOT,

@@ -15,6 +15,40 @@ import { adminClient } from "./convex/admin-client";
 
 type Admin = ReturnType<typeof adminClient>;
 
+const OWNER_TABLES = [
+  "sessions",
+  "exercises",
+  "routines",
+  "metrics",
+  "machines",
+  "measurements",
+  "user_prefs",
+];
+
+/** Every test identity that still owns rows, with its newest createdAt. */
+async function testOwners(admin: Admin): Promise<Record<string, number>> {
+  const owners: Record<string, number> = {};
+  for (const table of OWNER_TABLES) {
+    let cursor: string | null = null;
+    for (;;) {
+      const page: {
+        newest: Record<string, number>;
+        isDone: boolean;
+        continueCursor: string;
+      } = await admin.query("admin:testOwnersPage", {
+        table,
+        paginationOpts: { numItems: 1000, cursor },
+      });
+      for (const [sub, at] of Object.entries(page.newest)) {
+        owners[sub] = Math.max(owners[sub] ?? 0, at);
+      }
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+    }
+  }
+  return owners;
+}
+
 /** Deletes every row (and stored file) one test identity owns or published. */
 export async function purgeE2eUser(admin: Admin, sub: string) {
   for (;;) {
@@ -32,10 +66,7 @@ export async function purgeStaleE2eUsers(
   olderThanMs = 2 * 60 * 60 * 1000,
 ): Promise<{ checked: number; purged: string[] }> {
   const cutoff = Date.now() - olderThanMs;
-  const owners = await admin.mutation<Record<string, number>>(
-    "admin:testOwners",
-    {},
-  );
+  const owners = await testOwners(admin);
   const purged: string[] = [];
   for (const [sub, newest] of Object.entries(owners)) {
     if (newest >= cutoff) continue;

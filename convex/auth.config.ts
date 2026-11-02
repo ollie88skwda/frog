@@ -7,9 +7,9 @@
 // mint identities without Clerk. See scripts/convex-test-auth.ts.
 import type { AuthConfig } from "convex/server";
 
-// The Clerk dev instance; prod overrides it via the deployment env var
-// CLERK_JWT_ISSUER_DOMAIN (set on every deployment — Convex rejects a push
-// that reads an unset env var in this file).
+// The Clerk issuer comes from the deployment env var CLERK_JWT_ISSUER_DOMAIN:
+// required on every deployment (Convex rejects a push that reads an unset env
+// var in this file), the dev instance's issuer locally, prod's on prod.
 const CLERK_ISSUER = process.env.CLERK_JWT_ISSUER_DOMAIN;
 
 export const TEST_ISSUER = "https://frog-test.invalid";

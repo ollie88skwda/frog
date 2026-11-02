@@ -3,9 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRepo } from "./repo";
 
 // Workout photos (Hevy-parity M9): ≤3 per session, uploaded at finish and shown
-// in the history-detail carousel. Rows are fetched then resolved to short-lived
-// signed URLs (private `session-media` bucket) in one query so the carousel has
-// everything it needs to render.
+// in the history-detail carousel. Rows are fetched then resolved to owner-only
+// local links (private files) in one query so the carousel has everything it
+// needs to render.
 
 export type SessionPhoto = { row: SessionMediaRow; url: string | null };
 
@@ -22,8 +22,6 @@ export function useSessionMedia(sessionId: string) {
         })),
       );
     },
-    // Signed URLs expire in an hour; refetch on remount rather than serving a
-    // dead link, but don't hammer storage while the screen stays open.
     staleTime: 5 * 60_000,
     enabled: sessionId !== "",
   });

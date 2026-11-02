@@ -10,7 +10,7 @@ import { useVoice } from "@/lib/voice";
 // Workout photos (Hevy-parity M9). Two surfaces share this file: the finish
 // overlay's add-strip (≤3, reorder/remove BEFORE save — uploads are deferred to
 // the workout save so a discarded workout never orphans storage objects), and
-// the history-detail carousel (signed URLs, delete via the ⋯ menu).
+// the history-detail carousel (owner-only links, delete via the ⋯ menu).
 
 const MAX_PHOTOS = 3;
 const MAX_DIM = 1280;

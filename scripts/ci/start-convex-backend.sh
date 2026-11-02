@@ -13,7 +13,7 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SCRATCH="${RUNNER_TEMP:-/tmp}/convex-backend"
 mkdir -p "$SCRATCH/convex"
 cd "$SCRATCH"
-[ -f package.json ] || echo '{"name":"convex-backend-scratch","private":true}' > package.json
+[ -f package.json ] || echo '{"name":"convex-backend-scratch","private":true,"dependencies":{"convex":"*"}}' > package.json
 ln -sfn "$ROOT/node_modules" node_modules
 
 CONVEX_AGENT_MODE=anonymous node node_modules/convex/bin/main.js dev \

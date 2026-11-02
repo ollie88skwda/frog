@@ -314,8 +314,6 @@ export const addExercise = mutation({
   args: { id: v.string(), sessionId: v.string(), exerciseId: v.string() },
   handler: async (ctx, { id, sessionId, exerciseId }) => {
     const me = await requireUser(ctx);
-    const existing = await owned(ctx, "session_exercises", id, me);
-    if (existing) return id;
     const count = (await blocksOf(ctx, sessionId, me)).length;
     await insertRow(ctx, "session_exercises", me, {
       id,
@@ -385,17 +383,11 @@ export const remove = mutation({
 
 /** Live session from a routine template (blocks copy the prescription). */
 export const startFromRoutine = mutation({
-  args: {
-    id: v.string(),
-    routineId: v.string(),
-    blockIds: v.array(v.string()),
-  },
-  handler: async (ctx, { id, routineId, blockIds }) => {
+  args: { id: v.string(), routineId: v.string() },
+  handler: async (ctx, { id, routineId }) => {
     const me = await requireUser(ctx);
     const routine = await ownedOrThrow(ctx, "routines", routineId, me);
     if (routine.deletedAt != null) fail("Routine not found");
-    const existing = await owned(ctx, "sessions", id, me);
-    if (existing) return out(existing);
     const now = Date.now();
     const session = await insertRow(ctx, "sessions", me, {
       id,
@@ -411,9 +403,9 @@ export const startFromRoutine = mutation({
           .collect()
       ).filter((r) => r.ownerId === me),
     ).sort((a, b) => a.orderIndex - b.orderIndex);
-    for (const [i, e] of templates.entries()) {
+    for (const e of templates) {
       await insertRow(ctx, "session_exercises", me, {
-        id: blockIds[i] ?? crypto.randomUUID(),
+        id: crypto.randomUUID(),
         sessionId: id,
         exerciseId: e.exerciseId,
         orderIndex: e.orderIndex,
@@ -442,29 +434,28 @@ export const importBatch = mutation({
         ),
       }),
     ),
-    exerciseIds: v.any(), // { lowerName: id } resolved by the client
+    // [lowerName, id] pairs resolved by the client. Pairs, not an object:
+    // Convex rejects non-ASCII field names, and exercise names can be anything.
+    exerciseIds: v.array(v.array(v.string())),
   },
   handler: async (ctx, { sessions, exerciseIds }) => {
     const me = await requireUser(ctx);
-    const ids = exerciseIds as Record<string, string>;
-    const existing = new Set(
-      (
-        await ctx.db
-          .query("sessions")
-          .withIndex("by_owner_started", (q) => q.eq("ownerId", me))
-          .collect()
-      ).map((s) => s.startedAt),
-    );
+    const ids = new Map(exerciseIds as [string, string][]);
     let imported = 0;
     let skipped = 0;
     let sets = 0;
     let exercisesCreated = 0;
     for (const s of sessions) {
-      if (existing.has(s.startedAt)) {
+      const known = await ctx.db
+        .query("sessions")
+        .withIndex("by_owner_started", (q) =>
+          q.eq("ownerId", me).eq("startedAt", s.startedAt),
+        )
+        .first();
+      if (known) {
         skipped++;
         continue;
       }
-      existing.add(s.startedAt);
       const t = s.startedAt;
       const sessionId = crypto.randomUUID();
       await insertRow(ctx, "sessions", me, {
@@ -477,10 +468,10 @@ export const importBatch = mutation({
       });
       for (const [orderIndex, ex] of s.exercises.entries()) {
         const key = ex.name.toLowerCase();
-        let exId = ids[key];
+        let exId = ids.get(key);
         if (!(await readable(ctx, "exercises", exId ?? "", me))) {
           exId = exId ?? crypto.randomUUID();
-          ids[key] = exId;
+          ids.set(key, exId);
           await insertRow(ctx, "exercises", me, {
             id: exId,
             name: ex.name,
@@ -520,6 +511,12 @@ export const importBatch = mutation({
       }
       imported++;
     }
-    return { imported, skipped, sets, exercisesCreated, exerciseIds: ids };
+    return {
+      imported,
+      skipped,
+      sets,
+      exercisesCreated,
+      exerciseIds: [...ids],
+    };
   },
 });

@@ -10,8 +10,10 @@
 // Storage (optional): SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY copy the four
 // private buckets' objects (machine-photos, exercise-media, session-media,
 // progress-photos) into Convex storage and rewrite the *_path columns to the
-// new storage ids. Without them, path columns are imported as null and the
-// run reports how many file references were dropped.
+// new storage ids. A file that can't be copied (storage copy off, or an object
+// that is gone, e.g. a photo deleted in the app) is dropped and counted: its
+// nullable path column is imported as null, while the required
+// session_media.path keeps the source path, which resolves to no file.
 // Target (Convex): see scripts/convex/admin-client.ts (CONVEX_URL +
 // CONVEX_ADMIN_KEY, CONVEX_SELF_HOSTED_*, or CONVEX_DEPLOY_KEY).
 //
@@ -188,7 +190,8 @@ export async function main(
     for (const [field, bucket] of FILE_COLUMNS[table] ?? []) {
       const path = row[field];
       if (typeof path === "string" && path) {
-        row[field] = await copyFile(bucket, path, owner);
+        const copied = await copyFile(bucket, path, owner);
+        row[field] = copied ?? (table === "session_media" ? path : null);
       }
     }
     if (table === "machines" && Array.isArray(row.settings)) {
@@ -250,12 +253,7 @@ export async function main(
   );
 
   if (verify && admin) {
-    const target = await admin.mutation<Record<string, number>>(
-      "admin:counts",
-      {
-        tables: [...IMPORT_ORDER],
-      },
-    );
+    const target = await admin.counts(IMPORT_ORDER);
     const short = IMPORT_ORDER.filter(
       (t) => (target[t] ?? 0) < sourceCounts[t],
     );

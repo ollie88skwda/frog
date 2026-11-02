@@ -13,15 +13,13 @@ import { SEED_CONDITIONS } from "../db/seed-ids";
 import { newId } from "../domain/ids";
 import type { ImportedSession } from "../import/types";
 import { ConvexRepo, type ConvexTransport } from "./convex";
+import { convexHttpTransport, convexSiteUrl } from "./convex-http";
 
 const URL_ =
   process.env.CONVEX_URL ??
   process.env.CONVEX_SELF_HOSTED_URL ??
   "http://127.0.0.1:3210";
-// HTTP actions are served on the next port for local backends.
-const SITE_URL =
-  process.env.CONVEX_SITE_URL ??
-  URL_.replace(/:(\d+)$/, (_, p) => `:${Number(p) + 1}`);
+const SITE_URL = process.env.CONVEX_SITE_URL ?? convexSiteUrl(URL_);
 const KEY =
   process.env.FROG_TEST_KEY ??
   join(__dirname, "../../../../.convex-test/key.json");
@@ -37,10 +35,12 @@ async function makeUser(fetchImpl?: typeof fetch) {
   const client = new ConvexHttpClient(URL_, {
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
   } as never);
-  client.setAuth(await auth.mint(sub));
+  const token = await auth.mint(sub);
+  client.setAuth(token);
   const raw: Raw & ConvexTransport = {
     query: (n, a) => client.query(n as never, a as never) as never,
     mutation: (n, a) => client.mutation(n as never, a as never) as never,
+    file: convexHttpTransport({ url: URL_, getToken: async () => token }).file,
   };
   return { sub, raw, repo: new ConvexRepo(raw) };
 }
@@ -474,13 +474,27 @@ describe("ConvexRepo (integration, local convex)", () => {
     );
     expect(updated?.photoPath).toBeTruthy();
     const url = await repoA.machinePhotoUrl(updated ?? machine);
-    expect(url).toMatch(/^https?:\/\//);
-    expect((await fetch(url as string)).ok).toBe(true);
+    expect(url).toMatch(/^blob:/);
+    const path = updated?.photoPath as string;
+    const beforeReset = await fetch(url as string);
+    expect(beforeReset.ok).toBe(true);
+    repoA.clearFileUrls();
+    await expect(fetch(url as string)).rejects.toThrow();
+    const bytes = await (await a.raw.file(path))?.arrayBuffer();
+    expect(new Uint8Array(bytes ?? new ArrayBuffer(0)).length).toBeGreaterThan(
+      0,
+    );
 
-    // B can't resolve a URL for A's file, nor attach it to its own row.
-    expect(
-      await b.raw.query("files:url", { storageId: updated?.photoPath }),
-    ).toBeNull();
+    // No token, a junk token or a raw storage id gets nothing.
+    const direct = await fetch(`${SITE_URL}/files/${path}`);
+    expect(direct.status).toBe(401);
+    const junk = await fetch(`${SITE_URL}/files/${path}`, {
+      headers: { authorization: "Bearer not-a-jwt" },
+    });
+    expect(junk.status).toBe(401);
+
+    // B can't read A's file, nor attach it to its own row.
+    expect(await b.raw.file(path)).toBeNull();
     const bMachine = await repoB.createMachine({ name: "B's machine" });
     await expect(
       b.raw.mutation("user:setPhoto", {
@@ -585,19 +599,81 @@ describe("ConvexRepo (integration, local convex)", () => {
     const updated = await repoA.getExercise(ex.id);
     expect(updated?.mediaPath).toBeTruthy();
     expect(updated?.mediaType).toBe("image");
-    expect(await repoA.exerciseMediaUrl(updated!)).toMatch(/^https?:\/\//);
-    expect(
-      await b.raw.query("files:url", { storageId: updated?.mediaPath }),
-    ).toBeNull();
+    expect(await repoA.exerciseMediaUrl(updated!)).toMatch(/^blob:/);
+    expect(await b.raw.file(updated?.mediaPath as string)).toBeNull();
 
     await repoA.clearExerciseMedia(ex.id);
     const cleared = await repoA.getExercise(ex.id);
     expect(cleared?.mediaPath).toBeNull();
     expect(cleared?.mediaType).toBeNull();
     // The object itself is gone too.
+    expect(await a.raw.file(updated?.mediaPath as string)).toBeNull();
+  });
+
+  it("files: a blob over the 50 MB limit is refused and deleted at claim", async () => {
+    const uploadUrl = await a.raw.mutation<string>(
+      "files:generateUploadUrl",
+      {},
+    );
+    const res = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": "video/mp4" },
+      body: new Blob([new Uint8Array(50 * 1024 * 1024 + 1)]),
+    });
+    const { storageId } = (await res.json()) as { storageId: string };
+    expect(await a.raw.mutation("files:claim", { storageId })).toBeNull();
+    await expect(a.raw.mutation("files:claim", { storageId })).rejects.toThrow(
+      /upload not found/,
+    );
+    expect(await a.raw.file(storageId)).toBeNull();
+  }, 120_000);
+
+  it("machine setting photo: replacing keeps the old file until the row moves on", async () => {
+    const machine = await repoA.createMachine({ name: "Setting photos" });
+    const photo = new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xd9])], {
+      type: "image/jpeg",
+    });
+    const first = await repoA.uploadMachineSettingPhoto(machine.id, photo);
+    const second = await repoA.uploadMachineSettingPhoto(machine.id, photo);
+    expect(second).not.toBe(first);
+    expect(await a.raw.file(first)).not.toBeNull();
+    expect(await repoA.machineSettingPhotoUrl(second)).toMatch(/^blob:/);
+  });
+
+  it("csv import: exercise names may be any text", async () => {
+    const tag = newId().slice(0, 8);
+    const existing = `Développé couché ${tag}`;
+    const created = await repoA.createExercise(existing, { share: false });
+    const fresh = `Écarté – large ${tag}`;
+    const startedAt =
+      Date.parse("2019-03-04T10:00:00Z") + Math.floor(Math.random() * 1e9);
+    const session = (at: number): ImportedSession => ({
+      startedAt: at,
+      endedAt: at + 1000,
+      title: "Séance",
+      exercises: [
+        {
+          name: existing,
+          sets: [{ weightKg: 40, reps: 8, rir: null, note: null }],
+        },
+        {
+          name: fresh,
+          sets: [{ weightKg: 10, reps: 12, rir: null, note: null }],
+        },
+      ],
+    });
+    const res = await repoA.importSessions([
+      session(startedAt),
+      session(startedAt + 60_000),
+      session(startedAt),
+    ]);
+    expect(res).toMatchObject({ imported: 2, skipped: 1, sets: 4 });
+    expect(res.exercisesCreated).toBe(1);
+    const exercises = await repoA.listExercises();
     expect(
-      await a.raw.query("files:url", { storageId: updated?.mediaPath }),
-    ).toBeNull();
+      exercises.filter((e) => e.name === existing).map((e) => e.id),
+    ).toEqual([created.id]);
+    expect(exercises.filter((e) => e.name === fresh)).toHaveLength(1);
   });
 
   it("isolation: users cannot see or write each other's data", async () => {
@@ -870,7 +946,7 @@ describe("ConvexRepo (integration, local convex)", () => {
     expect((await repoA.listSessionMedia(s.id)).map((m) => m.id)).toEqual([
       row.id,
     ]);
-    expect(await repoA.sessionMediaUrl(row)).toMatch(/^https?:\/\//);
+    expect(await repoA.sessionMediaUrl(row)).toMatch(/^blob:/);
     expect((await repoA.listAllSessionMedia(5))[0]?.id).toBe(row.id);
     await repoA.deleteSessionMedia(row.id);
     expect(await repoA.listSessionMedia(s.id)).toEqual([]);

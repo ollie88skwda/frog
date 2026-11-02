@@ -5,6 +5,7 @@
 //
 // Both are idempotent on the row's uuid `id`: re-running replaces the row
 // with the incoming copy, so an interrupted import can simply be re-run.
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { tableValidator } from "./data";
@@ -116,15 +117,26 @@ export const fileByImportKey = internalMutation({
   },
 });
 
-/** Row counts per table (import verification). */
-export const counts = internalMutation({
-  args: { tables: v.array(tableValidator) },
-  handler: async (ctx, { tables }) => {
-    const out: Record<string, number> = {};
-    for (const t of tables) {
-      out[t] = (await ctx.db.query(t as UidTable).collect()).length;
-    }
-    return out;
+/** One page's row count for a table, optionally one owner's rows (import
+ * verification, dev seeder). Paged: whole-table reads exceed function limits. */
+export const countPage = internalQuery({
+  args: {
+    table: tableValidator,
+    ownerId: v.optional(v.string()),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, { table, ownerId, paginationOpts }) => {
+    const rows = ctx.db.query(table as UidTable);
+    const res = await (ownerId
+      ? // biome-ignore lint/suspicious/noExplicitAny: every UidTable has by_owner
+        rows.withIndex("by_owner" as any, (q: any) => q.eq("ownerId", ownerId))
+      : rows
+    ).paginate(paginationOpts);
+    return {
+      count: res.page.length,
+      isDone: res.isDone,
+      continueCursor: res.continueCursor,
+    };
   },
 });
 
@@ -160,40 +172,32 @@ export const purgeTestUser = internalMutation({
         if (deleted >= budget) return deleted;
       }
     }
-    const files = await ctx.db.query("files").collect();
+    const files = await ctx.db
+      .query("files")
+      .withIndex("by_owner", (q) => q.eq("ownerId", sub))
+      .take(budget - deleted);
     for (const f of files) {
-      if (f.ownerId !== sub) continue;
       await ctx.storage.delete(f.storageId);
       await ctx.db.delete(f._id);
-      if (++deleted >= budget) return deleted;
+      deleted++;
     }
     return deleted;
   },
 });
 
-/** Distinct test identities that still own rows, with their newest
- * createdAt (the stale-sweep's input). */
-export const testOwners = internalMutation({
-  args: {},
-  handler: async (ctx) => {
+/** One page of a table's test identities, with their newest createdAt (the
+ * stale-sweep's input, stitched together by scripts/e2e-cleanup.ts). */
+export const testOwnersPage = internalQuery({
+  args: { table: tableValidator, paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { table, paginationOpts }) => {
+    const res = await ctx.db.query(table as UidTable).paginate(paginationOpts);
     const newest: Record<string, number> = {};
-    for (const t of [
-      "sessions",
-      "exercises",
-      "routines",
-      "metrics",
-      "machines",
-      "measurements",
-      "user_prefs",
-    ] as const) {
-      for (const r of await ctx.db.query(t).collect()) {
-        const sub = (r.ownerId ??
-          (r as { createdBy?: string | null }).createdBy) as string | null;
-        if (!sub || !TEST_SUB.test(sub)) continue;
-        newest[sub] = Math.max(newest[sub] ?? 0, r.createdAt);
-      }
+    for (const r of res.page as Row[]) {
+      const sub = (r.ownerId ?? r.createdBy) as string | null | undefined;
+      if (!sub || !TEST_SUB.test(sub)) continue;
+      newest[sub] = Math.max(newest[sub] ?? 0, r.createdAt as number);
     }
-    return newest;
+    return { newest, isDone: res.isDone, continueCursor: res.continueCursor };
   },
 });
 
@@ -231,24 +235,6 @@ export const getRow = internalQuery({
 });
 
 // --- Dev-account seeding (scripts/seed-dev-account.ts) ----------------------
-
-/** Rows `ownerId` owns per table (including soft-deleted ones). */
-export const ownerCounts = internalQuery({
-  args: { ownerId: v.string(), tables: v.array(tableValidator) },
-  handler: async (ctx, { ownerId, tables }) => {
-    const out: Record<string, number> = {};
-    for (const t of tables) {
-      out[t] = (
-        await ctx.db
-          .query(t as UidTable)
-          // biome-ignore lint/suspicious/noExplicitAny: every UidTable has by_owner
-          .withIndex("by_owner" as any, (q: any) => q.eq("ownerId", ownerId))
-          .collect()
-      ).length;
-    }
-    return out;
-  },
-});
 
 /** HARD-deletes up to `budget` of one owner's rows in one table (the dev
  * seeder's explicit --confirm-reset path). Returns how many it deleted. */

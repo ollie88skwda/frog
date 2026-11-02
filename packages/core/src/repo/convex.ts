@@ -6,8 +6,8 @@
 // It talks to Convex through the tiny `ConvexTransport` seam (function
 // names as strings, e.g. "sessions:start") instead of importing the
 // `convex` package or the generated API: @frog/core stays framework-free,
-// and the web app (ConvexReactClient) and tests (ConvexHttpClient) each
-// provide a three-line adapter.
+// and the web app (convexHttpTransport, repo/convex-http.ts) and tests
+// (ConvexHttpClient) each provide a small adapter.
 import type {
   ApiToken,
   Exercise,
@@ -53,7 +53,6 @@ import type {
   Repo,
   RoutineDetail,
   SessionExerciseDetail,
-  SetSide,
   UserPrefsPatch,
 } from "./types";
 
@@ -64,6 +63,8 @@ type Args = Record<string, unknown>;
 export interface ConvexTransport {
   query<T>(name: string, args: Args): Promise<T>;
   mutation<T>(name: string, args: Args): Promise<T>;
+  /** A file's bytes, read as the signed-in user; null when it isn't theirs. */
+  file(storageId: string): Promise<Blob | null>;
 }
 
 type Page<T> = { page: T[]; isDone: boolean; continueCursor: string };
@@ -133,6 +134,20 @@ export class ConvexRepo implements Repo {
     private c: ConvexTransport,
     private opts: { fetch?: typeof fetch } = {},
   ) {}
+
+  // A storage id's bytes never change, so one local object URL per file
+  // serves every render for the life of the page. Cleared on auth changes:
+  // this map contains private bytes and must not survive an account switch.
+  private fileUrls = new Map<string, Promise<string | null>>();
+  private fileUrlValues = new Set<string>();
+  private fileUrlGeneration = 0;
+
+  clearFileUrls() {
+    this.fileUrlGeneration++;
+    for (const url of this.fileUrlValues) URL.revokeObjectURL(url);
+    this.fileUrlValues.clear();
+    this.fileUrls.clear();
+  }
 
   // ── plumbing ───────────────────────────────────────────────────────────
 
@@ -205,13 +220,37 @@ export class ConvexRepo implements Repo {
       throw new Error(`Upload failed (${res.status}): ${await res.text()}`);
     }
     const { storageId } = (await res.json()) as { storageId: string };
-    await this.m("files:claim", { storageId });
+    const claimed = await this.m<string | null>("files:claim", { storageId });
+    if (!claimed) throw new Error("That file is over the 50 MB limit");
     return storageId;
   }
 
-  private fileUrl(storageId: string | null | undefined) {
+  private fileUrl(
+    storageId: string | null | undefined,
+  ): Promise<string | null> {
     if (!storageId) return Promise.resolve(null);
-    return this.q<string | null>("files:url", { storageId });
+    const cached = this.fileUrls.get(storageId);
+    if (cached) return cached;
+    const generation = this.fileUrlGeneration;
+    const url = this.c.file(storageId).then((blob) => {
+      if (!blob || generation !== this.fileUrlGeneration) return null;
+      const localUrl = URL.createObjectURL(blob);
+      this.fileUrlValues.add(localUrl);
+      return localUrl;
+    });
+    this.fileUrls.set(storageId, url);
+    url.then(
+      (resolved) => {
+        if (resolved === null && this.fileUrls.get(storageId) === url) {
+          this.fileUrls.delete(storageId);
+        }
+      },
+      () => {
+        if (this.fileUrls.get(storageId) === url)
+          this.fileUrls.delete(storageId);
+      },
+    );
+    return url;
   }
 
   // ── exercises ──────────────────────────────────────────────────────────
@@ -405,18 +444,10 @@ export class ConvexRepo implements Repo {
     return this.fileUrl(machine.photoPath);
   }
 
-  async uploadMachineSettingPhoto(
-    _machineId: string,
-    file: Blob,
-    existingPath: string | null,
-  ): Promise<string> {
-    // Storage ids are content-addressed per upload, so "replace" = upload a
-    // new blob, then drop the old one (no orphan either way).
-    const storageId = await this.upload(file, "image/jpeg");
-    if (existingPath && existingPath !== storageId) {
-      await this.m("files:remove", { storageId: existingPath }).catch(() => {});
-    }
-    return storageId;
+  uploadMachineSettingPhoto(_machineId: string, file: Blob): Promise<string> {
+    // Each upload gets a new storage id. A replaced photo's blob stays stored:
+    // the machine row still points at it until the caller saves the new id.
+    return this.upload(file, "image/jpeg");
   }
 
   machineSettingPhotoUrl(path: string) {
@@ -503,9 +534,7 @@ export class ConvexRepo implements Repo {
 
   async importSessions(sessions: ImportedSession[]): Promise<ImportResult> {
     const known = await this.listExercises();
-    let exerciseIds: Record<string, string> = Object.fromEntries(
-      known.map((e) => [e.name.toLowerCase(), e.id]),
-    );
+    let exerciseIds = known.map((e) => [e.name.toLowerCase(), e.id]);
     const total: ImportResult = {
       imported: 0,
       skipped: 0,
@@ -519,9 +548,10 @@ export class ConvexRepo implements Repo {
         endedAt: s.endedAt ?? null,
         exercises: s.exercises.map((e) => ({ name: e.name, sets: e.sets })),
       }));
-      const res = await this.m<
-        ImportResult & { exerciseIds: Record<string, string> }
-      >("sessions:importBatch", { sessions: batch, exerciseIds });
+      const res = await this.m<ImportResult & { exerciseIds: string[][] }>(
+        "sessions:importBatch",
+        { sessions: batch, exerciseIds },
+      );
       exerciseIds = res.exerciseIds;
       total.imported += res.imported;
       total.skipped += res.skipped;
@@ -1031,7 +1061,6 @@ export class ConvexRepo implements Repo {
     return this.m("sessions:startFromRoutine", {
       id: newId(),
       routineId,
-      blockIds: [],
     });
   }
 
@@ -1167,6 +1196,3 @@ export class ConvexRepo implements Repo {
     return this.q("user:latestBodyweight", onOrBefore ? { onOrBefore } : {});
   }
 }
-
-/** Re-exported for adapters/tests that only need the side type. */
-export type { SetSide };
