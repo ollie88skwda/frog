@@ -148,7 +148,7 @@ function ChipRow<T extends string>({
             type="button"
             onClick={() => onChange(o)}
             className={cn(
-              "h-10 shrink-0 whitespace-nowrap px-4 text-xs transition-colors duration-150",
+              "rounded-sm h-10 shrink-0 whitespace-nowrap px-4 text-xs transition-colors duration-150",
               o === value
                 ? "bg-accent-soft text-accent-ink"
                 : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -241,7 +241,7 @@ function PhotoPicker({
             </button>
           ))}
         <label
-          className="flex h-16 w-16 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 bg-translucent text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+          className="rounded-sm flex h-16 w-16 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 bg-translucent text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
           data-testid="share-photo-camera"
         >
           <Camera className="size-5" />

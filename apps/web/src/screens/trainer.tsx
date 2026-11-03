@@ -313,7 +313,7 @@ function GeneratedPreview({
   return (
     <div className="flex flex-col gap-3" data-testid="generated-preview">
       {program.routines.map((r) => (
-        <div key={r.name} className="bg-surface p-4">
+        <div key={r.name} className="rounded-md bg-surface p-4">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">{r.name}</span>
             <span className="num text-2xs text-faint">
@@ -387,7 +387,7 @@ function TrainerOnboarding() {
 
   return (
     <div className="mt-4 flex flex-col gap-5">
-      <div className="bg-surface p-4">
+      <div className="rounded-md bg-surface p-4">
         <p className="text-sm text-soft">
           {t(
             `Answer a few questions and the Trainer builds a full program from ${APP_NAME}'s exercise tiers. Each week it prescribes a small weight increase on lifts where you hit the top of the rep range — no guesswork, no AI.`,
@@ -622,7 +622,7 @@ function NextWorkoutCard({
   const est = estMinutes(detail);
 
   return (
-    <div className="bg-surface p-4" data-testid="next-workout-card">
+    <div className="rounded-md bg-surface p-4" data-testid="next-workout-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-2xs font-medium tracking-widest text-accent-ink uppercase">
@@ -759,7 +759,7 @@ function ExerciseRow({
           <DotsThree className="size-4" />
         </Button>
         {menuOpen && (
-          <div className="absolute right-0 z-10 mt-1 flex w-44 flex-col bg-surface p-1 shadow-md">
+          <div className="rounded-md absolute right-0 z-10 mt-1 flex w-44 flex-col bg-surface p-1 shadow-md">
             <MenuItem
               label="Replace exercise"
               onClick={() => {
@@ -1249,7 +1249,7 @@ function ProgressReport({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-surface p-3">
+    <div className="rounded-md bg-surface p-3">
       <p className="text-2xs tracking-widest text-faint uppercase">{label}</p>
       <p className="num mt-0.5 text-sm font-semibold text-ink">{value}</p>
     </div>

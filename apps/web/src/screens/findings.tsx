@@ -484,7 +484,7 @@ function TrendSheet({
 
           <Link
             to={`/exercises/${trend.exerciseId}`}
-            className="mt-1 inline-flex h-9 w-full items-center justify-center bg-translucent text-xs transition-colors duration-150 hover:bg-surface-hover"
+            className="rounded-sm mt-1 inline-flex h-9 w-full items-center justify-center bg-translucent text-xs transition-colors duration-150 hover:bg-surface-hover"
           >
             {t("Full history", "Full history — the frog's ledger")}
           </Link>
@@ -507,7 +507,7 @@ function RecommendationBlock({
   if (rec.kind === "keep-going") {
     const sign = trend.pctChange > 0 ? "+" : "";
     return (
-      <div className="bg-surface px-3 py-2">
+      <div className="rounded-md bg-surface px-3 py-2">
         <p className="text-sm font-medium">{t("Keep going", "Keep going")}</p>
         <p className="mt-0.5 text-xs text-soft">
           {t(
@@ -524,7 +524,7 @@ function RecommendationBlock({
     const pct = stats.volumePct ?? 0;
     const falling = pct < 0;
     return (
-      <div className="bg-surface px-3 py-2">
+      <div className="rounded-md bg-surface px-3 py-2">
         <p className="text-sm font-medium">
           {t("Consider more volume", "Consider more volume")}
         </p>
@@ -547,7 +547,7 @@ function RecommendationBlock({
   // rir-gap
   const coveragePct = Math.round((stats.rirCoverage ?? 0) * 100);
   return (
-    <div className="bg-surface px-3 py-2">
+    <div className="rounded-md bg-surface px-3 py-2">
       <p className="text-sm font-medium">
         {t(
           "Log RIR for intensity advice",
@@ -621,7 +621,7 @@ function ConditionSheet({
           </p>
 
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between bg-surface px-3 py-2">
+            <div className="rounded-sm flex items-center justify-between bg-surface px-3 py-2">
               <span className="text-xs text-soft">
                 High {finding.conditionName} days
               </span>
@@ -629,7 +629,7 @@ function ConditionSheet({
                 {formatMean(finding.highMean)}
               </span>
             </div>
-            <div className="flex items-center justify-between bg-surface px-3 py-2">
+            <div className="rounded-sm flex items-center justify-between bg-surface px-3 py-2">
               <span className="text-xs text-soft">
                 Low {finding.conditionName} days
               </span>

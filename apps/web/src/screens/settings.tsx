@@ -942,7 +942,7 @@ function LearnSection() {
         >
           <Link
             to="/tips"
-            className="flex h-8 items-center bg-surface px-3 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+            className="flex h-8 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active"
             data-testid="tips-link"
           >
             Browse
@@ -973,7 +973,7 @@ function ChangelogSection() {
             )}
             <Link
               to="/changelog"
-              className="flex h-8 items-center bg-surface px-3 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+              className="flex h-8 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active"
               data-testid="changelog-link"
             >
               Browse

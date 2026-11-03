@@ -31,7 +31,7 @@ export function MachinesSection({ machines }: { machines: Machine[] }) {
       <AddMachine />
 
       {machines.length > 0 && (
-        <ul className="mt-3 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
+        <ul className="rounded-md mt-3 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
           {machines.map((m) => (
             <MachineRow
               key={m.id}
@@ -163,7 +163,7 @@ export function MachineEditor({ machine }: { machine: Machine }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 bg-surface-2 px-4 py-2">
+    <div className="rounded-md flex flex-col gap-2 bg-surface-2 px-4 py-2">
       {settings.map((s, i) => (
         <SettingRow
           key={s.label}
@@ -214,7 +214,7 @@ export function MachineEditor({ machine }: { machine: Machine }) {
             className="h-16 w-16 object-cover"
           />
         )}
-        <label className="flex h-8 cursor-pointer items-center gap-2 bg-translucent px-2 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
+        <label className="rounded-sm flex h-8 cursor-pointer items-center gap-2 bg-translucent px-2 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
           <Camera className="size-4" />
           {machine.photoPath
             ? "Replace photo"
@@ -304,7 +304,7 @@ function SettingRow({
         data-testid={`setting-value-${machine.name}-${s.label}`}
       />
       <label
-        className="flex h-6 cursor-pointer items-center gap-1 bg-surface px-1.5 text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+        className="rounded-sm flex h-6 cursor-pointer items-center gap-1 bg-surface px-1.5 text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
         title={s.photoPath ? "Replace setting photo" : "Add setting photo"}
         data-testid={`setting-photo-${machine.name}-${s.label}`}
       >

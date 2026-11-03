@@ -338,7 +338,7 @@ export default function LibraryScreen() {
         />
       </div>
 
-      <div className="mt-4 overflow-hidden bg-surface">
+      <div className="rounded-md mt-4 overflow-hidden bg-surface">
         {isLoading ? (
           <p className="px-4 py-6 text-center text-xs text-faint">
             {t("Loading…", "The frog is thinking…")}
@@ -897,13 +897,13 @@ const ExerciseRow = memo(function ExerciseRow({
                   // Community-shared row (owner_id null): quiet "shared" mark,
                   // the why behind the missing Edit/Archive below.
                   <span
-                    className="bg-surface px-2 py-0.5 text-2xs text-faint"
+                    className="rounded-sm bg-surface px-2 py-0.5 text-2xs text-faint"
                     data-testid={`shared-badge-${exercise.name}`}
                   >
                     shared
                   </span>
                 ) : (
-                  <span className="bg-accent-soft px-2 py-0.5 text-2xs text-accent-ink">
+                  <span className="rounded-xs bg-accent-soft px-2 py-0.5 text-2xs text-accent-ink">
                     yours
                   </span>
                 ))}
@@ -961,7 +961,7 @@ const ExerciseRow = memo(function ExerciseRow({
         </div>
       </div>
       {expanded && (
-        <div className="bg-surface-2 px-4 py-2 pl-10">
+        <div className="rounded-sm bg-surface-2 px-4 py-2 pl-10">
           {setMetrics.length === 0 ? (
             <p className="text-2xs text-faint">
               {t(
@@ -1144,7 +1144,7 @@ function TagEditor({
       {(exercise.tags ?? []).map((t) => (
         <span
           key={t}
-          className="flex items-center gap-1 bg-surface px-2 py-0.5 text-2xs text-soft"
+          className="rounded-sm flex items-center gap-1 bg-surface px-2 py-0.5 text-2xs text-soft"
         >
           {t}
           <button
@@ -1250,7 +1250,7 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
       </form>
 
       {custom.length > 0 && (
-        <ul className="mt-3 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
+        <ul className="rounded-md mt-3 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
           {custom.map((m) => (
             <li key={m.id} data-testid={`metric-row-${m.name}`}>
               <Row interactive={false} className="text-sm">

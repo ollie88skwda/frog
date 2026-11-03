@@ -102,7 +102,7 @@ export default function ProfileScreen() {
         <Link
           to="/settings"
           title="Settings"
-          className="flex size-9 items-center justify-center bg-translucent text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+          className="rounded-sm flex size-9 items-center justify-center bg-translucent text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
           data-testid="profile-settings"
         >
           <GearSix className="size-4" />
@@ -118,7 +118,7 @@ export default function ProfileScreen() {
 
       {/* Workout count + streak. */}
       <div className="mt-4 grid grid-cols-2 gap-4">
-        <div className="flex flex-col justify-center bg-surface p-4">
+        <div className="rounded-md flex flex-col justify-center bg-surface p-4">
           <div className="text-2xs font-medium tracking-widest text-faint uppercase">
             Workouts
           </div>
@@ -133,7 +133,7 @@ export default function ProfileScreen() {
       </div>
 
       {/* 3-month weekly activity. */}
-      <div className="mt-4 bg-surface p-4">
+      <div className="rounded-md mt-4 bg-surface p-4">
         <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
           Activity — last 3 months
         </h2>
@@ -197,7 +197,7 @@ export default function ProfileScreen() {
       </div>
 
       {/* Recent workouts. */}
-      <div className="mt-4 overflow-hidden bg-surface">
+      <div className="rounded-md mt-4 overflow-hidden bg-surface">
         <div className="flex items-center justify-between px-4 py-2">
           <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
             Recent workouts
@@ -281,9 +281,9 @@ function ProfileHeader({
   }
 
   return (
-    <div className="mt-6 bg-surface p-4">
+    <div className="rounded-md mt-6 bg-surface p-4">
       <div className="flex items-center gap-3">
-        <span className="flex size-12 shrink-0 items-center justify-center bg-accent text-lg font-semibold text-accent-fg">
+        <span className="rounded-sm flex size-12 shrink-0 items-center justify-center bg-accent text-lg font-semibold text-accent-fg">
           {initial}
         </span>
         {editing ? (
@@ -391,7 +391,7 @@ function DashButton({
       )}
     </>
   );
-  const base = "flex h-14 items-center gap-3 bg-surface px-4";
+  const base = "flex h-14 items-center gap-3 rounded-md bg-surface px-4";
   if (soon || !to) {
     return (
       <div

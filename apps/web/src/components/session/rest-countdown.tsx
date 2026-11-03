@@ -65,7 +65,7 @@ export function RestDock({
             type="button"
             onClick={onStop}
             title="Stop"
-            className="flex size-10 shrink-0 items-center justify-center bg-surface-2 text-faint transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+            className="rounded-sm flex size-10 shrink-0 items-center justify-center bg-surface-2 text-faint transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
             data-testid={testId ? `${testId}-stop` : undefined}
           >
             <X className="size-4" />

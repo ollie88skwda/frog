@@ -169,7 +169,7 @@ function ProgramCard({ entry }: { entry: ProgramCatalogEntry }) {
   return (
     <Link
       to={`/programs/${entry.key}`}
-      className="block bg-surface p-4 transition-colors duration-150 hover:bg-surface-hover"
+      className="rounded-md block bg-surface p-4 transition-colors duration-150 hover:bg-surface-hover"
       data-testid={`program-card-${entry.key}`}
     >
       <div className="flex items-baseline justify-between gap-2">
@@ -287,7 +287,7 @@ function ProgramDetail({ programKey }: { programKey: string }) {
       {/* Per-routine preview */}
       <div className="mt-6 flex flex-col gap-3">
         {generated?.routines.map((r) => (
-          <div key={r.name} className="bg-surface p-4">
+          <div key={r.name} className="rounded-md bg-surface p-4">
             <div className="flex items-center gap-2">
               <Barbell className="size-4 text-faint" />
               <span className="text-sm font-medium">{r.name}</span>

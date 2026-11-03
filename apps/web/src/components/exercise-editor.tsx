@@ -993,7 +993,7 @@ function Chip({
   onRemove: () => void;
 }) {
   return (
-    <span className="flex h-8 items-center gap-1.5 bg-surface px-2 text-xs text-soft">
+    <span className="rounded-sm flex h-8 items-center gap-1.5 bg-surface px-2 text-xs text-soft">
       {children}
       <button
         type="button"
@@ -1049,7 +1049,7 @@ function MediaField({
           />
         ))}
       <div className="flex items-center gap-2">
-        <label className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 bg-translucent px-2 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
+        <label className="rounded-sm flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 bg-translucent px-2 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
           <Camera className="size-4" />
           <VideoCamera className="size-4" />
           {mediaUrl || hasPending ? "Replace" : "Add image or video"}

@@ -56,7 +56,10 @@ function Shell({
   testId?: string;
 }) {
   return (
-    <section className="mt-4 bg-surface" data-testid={testId}>
+    <section
+      className="overflow-hidden rounded-md mt-4 bg-surface"
+      data-testid={testId}
+    >
       <div className="flex items-baseline justify-between gap-3 bg-accent-soft px-4 py-2">
         <span className="truncate text-2xs font-medium tracking-widest text-accent-ink uppercase">
           {eyebrow}
@@ -302,7 +305,7 @@ export function HomeHero() {
                 aria-pressed={isSelected}
                 data-testid={`hero-pick-${r.name}`}
                 className={cn(
-                  "w-36 shrink-0 p-2 text-left transition-colors duration-150 ease-(--ease-out-quad)",
+                  "w-36 shrink-0 rounded-sm p-2 text-left transition-colors duration-150 ease-(--ease-out-quad)",
                   isSelected
                     ? "bg-accent-soft"
                     : "bg-surface-2 hover:bg-surface-hover",
@@ -319,7 +322,7 @@ export function HomeHero() {
           })}
           <Link
             to="/routines/new"
-            className="flex w-36 shrink-0 items-center gap-1 bg-surface-2 p-2 text-xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+            className="rounded-sm flex w-36 shrink-0 items-center gap-1 bg-surface-2 p-2 text-xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
             data-testid="hero-new-routine"
           >
             <Plus className="size-4" /> New routine

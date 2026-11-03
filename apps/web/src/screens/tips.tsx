@@ -31,7 +31,7 @@ export default function TipsScreen() {
           )}
         </p>
       ) : (
-        <div className="mt-4 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
+        <div className="rounded-md mt-4 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
           {entries.map(([id, lesson]) => (
             <LessonCard key={id} id={id} lesson={lesson} />
           ))}

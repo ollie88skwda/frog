@@ -88,7 +88,7 @@ export default function HomeScreen() {
           </Link>
           <Link
             to="/library?new=1"
-            className="flex shrink-0 items-center gap-1 bg-accent-soft px-2 py-1 text-2xs text-accent-ink transition-colors duration-150 ease-(--ease-out-quad) hover:bg-accent-selected"
+            className="rounded-sm flex shrink-0 items-center gap-1 bg-accent-soft px-2 py-1 text-2xs text-accent-ink transition-colors duration-150 ease-(--ease-out-quad) hover:bg-accent-selected"
             data-testid="home-exercises-new"
           >
             <Plus className="size-3.5" />

@@ -127,7 +127,7 @@ export function MachineCatalogPicker({
       )}
 
       {results.length > 0 && (
-        <ul className="mt-1 [&>*+*]:mt-0.5 bg-surface">
+        <ul className="overflow-hidden rounded-md mt-1 [&>*+*]:mt-0.5 bg-surface">
           {results.map((r) => (
             <li key={r.id}>
               <button
@@ -141,7 +141,7 @@ export function MachineCatalogPicker({
                 className="flex h-10 w-full items-center gap-2 px-2 text-left text-xs transition-colors duration-100 hover:bg-surface-hover md:h-8"
                 data-testid={resultTestId(r)}
               >
-                <span className="bg-translucent px-1 text-2xs text-faint">
+                <span className="rounded-xs bg-translucent px-1 text-2xs text-faint">
                   {r.category.replace(/-/g, " ")}
                 </span>
                 <span className="truncate">

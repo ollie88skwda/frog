@@ -42,7 +42,7 @@ export function RestStopwatch({
   return (
     <div
       role="status"
-      className="flex h-13 w-full items-center gap-2.5 bg-accent-soft px-3"
+      className="rounded-md flex h-13 w-full items-center gap-2.5 bg-accent-soft px-3"
       data-testid="rest-stopwatch"
     >
       {/* Square, not a dot: circles are reserved for avatars and the frog

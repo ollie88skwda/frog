@@ -128,7 +128,7 @@ export function FinishPhotoStrip({
         ))}
         {photos.length < MAX_PHOTOS && (
           <label
-            className="flex size-16 cursor-pointer flex-col items-center justify-center gap-1 bg-translucent text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+            className="rounded-sm flex size-16 cursor-pointer flex-col items-center justify-center gap-1 bg-translucent text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
             data-testid="finish-photo-add"
           >
             <ImageSquare className="size-5" />
@@ -177,7 +177,7 @@ export function SessionPhotoCarousel({ sessionId }: { sessionId: string }) {
               className="h-40 w-auto max-w-full object-cover"
             />
           ) : (
-            <div className="flex h-40 w-40 items-center justify-center bg-surface-2 px-2 text-center text-2xs text-faint">
+            <div className="rounded-sm flex h-40 w-40 items-center justify-center bg-surface-2 px-2 text-center text-2xs text-faint">
               {t("Unavailable", "Unavailable. The frog is annoyed.")}
             </div>
           )}

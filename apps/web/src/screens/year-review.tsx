@@ -347,7 +347,7 @@ function Stat({
   testId?: string;
 }) {
   return (
-    <div className="bg-surface-2 p-3" data-testid={testId}>
+    <div className="rounded-md bg-surface-2 p-3" data-testid={testId}>
       <div className="text-2xs font-medium tracking-widest text-faint uppercase">
         {label}
       </div>
@@ -368,7 +368,10 @@ function Slide({
   testId?: string;
 }) {
   return (
-    <section className="bg-surface" data-testid={testId}>
+    <section
+      className="overflow-hidden rounded-md bg-surface"
+      data-testid={testId}
+    >
       <div className="flex items-center justify-between gap-2 px-4 py-2">
         <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
           {title}

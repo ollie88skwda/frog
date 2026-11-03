@@ -126,7 +126,7 @@ export default function StatsScreen() {
 
       {history.length === 0 && (
         <p
-          className="mt-6 bg-surface p-4 text-xs text-faint"
+          className="rounded-md mt-6 bg-surface p-4 text-xs text-faint"
           data-testid="stats-empty"
         >
           {t(
@@ -744,7 +744,7 @@ function ReportButton({ to, label }: { to: string; label: string }) {
   return (
     <Link
       to={to}
-      className="flex h-14 items-center justify-between bg-surface px-4 transition-colors duration-150"
+      className="rounded-md flex h-14 items-center justify-between bg-surface px-4 transition-colors duration-150"
       data-testid={`report-${label.split(" ")[0].toLowerCase()}`}
     >
       <span className="text-sm font-medium">{label}</span>

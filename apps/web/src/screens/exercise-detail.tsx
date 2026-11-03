@@ -298,7 +298,7 @@ function SummaryTab({
         ))}
       </div>
 
-      <div className="mt-3 bg-surface p-4">
+      <div className="rounded-md mt-3 bg-surface p-4">
         <div className="flex items-baseline justify-between">
           <span className="text-sm font-medium">{metric?.label}</span>
           <span className="num text-sm text-soft" data-testid="summary-latest">
@@ -476,7 +476,7 @@ function RecordsPanel({
           )}
         </p>
       ) : (
-        <ul className="mt-2 [&>*+*]:mt-0.5 bg-surface">
+        <ul className="overflow-hidden rounded-md mt-2 [&>*+*]:mt-0.5 bg-surface">
           {bests.map(({ pr, entry }) => (
             <li key={pr}>
               <Link
@@ -544,7 +544,7 @@ function SetRecordsTable({
             )}
           </p>
         ) : (
-          <ul className="mt-2 [&>*+*]:mt-0.5 bg-surface">
+          <ul className="overflow-hidden rounded-md mt-2 [&>*+*]:mt-0.5 bg-surface">
             {rows.map((r) => (
               <li key={r.reps} data-testid={`set-record-${r.reps}`}>
                 <Link to={`/history/${r.sessionId}`} className={rowClass()}>

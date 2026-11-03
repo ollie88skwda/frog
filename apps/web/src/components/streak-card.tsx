@@ -31,7 +31,7 @@ export function StreakCard({
 
   return (
     <div
-      className={`bg-surface p-4 ${className ?? ""}`}
+      className={`rounded-md bg-surface p-4 ${className ?? ""}`}
       data-testid="streak-card"
     >
       <div className="flex items-center gap-1.5 text-2xs font-medium tracking-widest text-faint uppercase">

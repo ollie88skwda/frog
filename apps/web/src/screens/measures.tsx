@@ -212,7 +212,7 @@ function Editor({
   }
 
   return (
-    <div className="mt-4 bg-surface p-4">
+    <div className="rounded-md mt-4 bg-surface p-4">
       <div className="flex items-center gap-2">
         <label
           htmlFor="measure-date"
@@ -254,7 +254,7 @@ function Editor({
             className="h-16 w-16 object-cover"
           />
         )}
-        <label className="flex h-11 min-h-11 cursor-pointer items-center gap-2 bg-translucent px-3 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
+        <label className="rounded-sm flex h-11 min-h-11 cursor-pointer items-center gap-2 bg-translucent px-3 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
           <Camera className="size-4" />
           {entry?.photoPath ? "Replace photo" : "Add progress photo"}
           <input
@@ -385,7 +385,7 @@ function Trends({
   }, [latest, def, suffix, series, prefs]);
 
   return (
-    <div className="mt-4 bg-surface">
+    <div className="overflow-hidden rounded-md mt-4 bg-surface">
       {/* Metric chips */}
       <div className="flex gap-1 overflow-x-auto p-2">
         {METRICS.map((m) => (
@@ -708,7 +708,7 @@ function PhotoThumb({
     <button
       type="button"
       onClick={onOpen}
-      className="relative size-20 shrink-0 bg-surface-2"
+      className="rounded-sm relative size-20 shrink-0 bg-surface-2"
       data-testid={`photo-thumb-${measurement.measuredOn}`}
     >
       {url && (
@@ -829,7 +829,7 @@ function PhotoViewer({
         )}
 
         <div className="flex items-center gap-2 pt-3">
-          <label className="flex h-11 cursor-pointer items-center gap-2 bg-translucent px-3 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
+          <label className="rounded-sm flex h-11 cursor-pointer items-center gap-2 bg-translucent px-3 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
             <Camera className="size-4" />
             Replace
             <input

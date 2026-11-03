@@ -368,7 +368,7 @@ export function PostSaveSummary({
           <p className="num mt-0.5 text-xs text-faint">{subtitle}</p>
           {showStreak && (
             <div
-              className="mt-6 flex items-center gap-2 bg-surface-2 px-4 py-3"
+              className="rounded-md mt-6 flex items-center gap-2 bg-surface-2 px-4 py-3"
               data-testid="summary-streak"
             >
               <Flame className="size-5 text-accent-ink" />
@@ -413,7 +413,7 @@ export function PostSaveSummary({
             {sessionPrEvents.map((e) => (
               <li
                 key={`${e.exerciseId}-${e.prType}`}
-                className="flex items-center gap-2 bg-surface-2 px-3 py-2 text-left text-sm"
+                className="rounded-sm flex items-center gap-2 bg-surface-2 px-3 py-2 text-left text-sm"
               >
                 <Medal className="size-4 shrink-0 text-accent-ink" />
                 <span className="truncate">

@@ -112,7 +112,7 @@ export function TierBadge({
   return (
     <span
       className={cn(
-        "num inline-flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold leading-none",
+        "num inline-flex size-4 shrink-0 rounded-xs items-center justify-center text-[10px] font-semibold leading-none",
         tier === "S" && "bg-accent text-accent-fg",
         tier === "A" && "bg-accent-soft text-ink",
         tier === "B" && "bg-translucent text-soft",
@@ -309,7 +309,7 @@ export function JointActionChips({
       {actions.map((a) => (
         <span
           key={a}
-          className="truncate bg-translucent px-1 text-2xs text-faint"
+          className="rounded-xs truncate bg-translucent px-1 text-2xs text-faint"
         >
           {jointActionLabel(a)}
         </span>

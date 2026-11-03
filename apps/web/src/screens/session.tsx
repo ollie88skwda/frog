@@ -372,7 +372,7 @@ function RirSegmented({
               }
               aria-pressed={on}
               className={cn(
-                "num h-10 flex-1 text-sm font-semibold transition-colors duration-100",
+                "rounded-sm num h-10 flex-1 text-sm font-semibold transition-colors duration-100",
                 on
                   ? "bg-ink text-on-action"
                   : "bg-surface text-soft hover:bg-surface-hover",
@@ -1384,7 +1384,7 @@ export default function SessionScreen() {
           role="status"
           data-testid="set-sync-error"
         >
-          <div className="pointer-events-auto flex max-w-md items-center gap-2 bg-raised px-3 py-2 shadow-lg">
+          <div className="rounded-md pointer-events-auto flex max-w-md items-center gap-2 bg-raised px-3 py-2 shadow-lg">
             <span className="min-w-0 text-xs text-neg">
               {t(
                 `${failedSetCount} set${failedSetCount === 1 ? "" : "s"} didn't save — couldn't reach the server.`,
@@ -1945,7 +1945,7 @@ function ExercisePicker({
               </Button>
             </div>
           ) : (
-            <div className="overflow-hidden bg-surface">
+            <div className="rounded-md overflow-hidden bg-surface">
               {groups.map((group) => (
                 <section key={group.key}>
                   <p className="bg-surface-2 px-4 py-1 text-2xs font-medium tracking-widest text-faint uppercase">
@@ -2038,7 +2038,7 @@ function VoiceMatchPicker({
               )}
             </p>
           ) : (
-            <ul className="[&>*+*]:mt-0.5 overflow-hidden bg-surface">
+            <ul className="rounded-md [&>*+*]:mt-0.5 overflow-hidden bg-surface">
               {rows.map((row) => (
                 <li key={row.id}>
                   <button
@@ -2135,7 +2135,7 @@ function PickerHistory({
     .join(", ");
   return (
     <div
-      className="bg-surface-2 px-4 py-2 text-2xs text-soft"
+      className="rounded-sm bg-surface-2 px-4 py-2 text-2xs text-soft"
       data-testid={`pick-history-${name}`}
     >
       {isLoading ? (
@@ -2707,7 +2707,7 @@ function SetActionsMenu({
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => setOpen((o) => !o)}
         title="Set options"
-        className="flex size-9 shrink-0 items-center justify-center bg-surface-2 text-lg font-bold text-soft"
+        className="rounded-sm flex size-9 shrink-0 items-center justify-center bg-surface-2 text-lg font-bold text-soft"
         data-testid="set-type-menu"
       >
         ⋯
@@ -3228,7 +3228,7 @@ function ExerciseSpotlight({
                   unit: null,
                 })
               }
-              className="num shrink-0 bg-surface-2 px-1.5 py-0.5 text-2xs text-faint"
+              className="rounded-sm num shrink-0 bg-surface-2 px-1.5 py-0.5 text-2xs text-faint"
               title="Using a per-exercise weight unit override — tap to clear"
               data-testid={`block-${block.name}-unit-clear`}
             >
@@ -4017,7 +4017,7 @@ function Spotlight({
     return (
       <div
         key={key}
-        className={cn("p-2.5", beat ? "bg-accent-soft" : "bg-bg")}
+        className={cn("rounded-md p-2.5", beat ? "bg-accent-soft" : "bg-bg")}
         data-beat={beat ? "true" : "false"}
       >
         <div className="flex items-baseline justify-between gap-2">
@@ -4038,7 +4038,7 @@ function Spotlight({
         </div>
         <div
           className={cn(
-            "mt-1.5 mb-2 flex items-center justify-center gap-2 bg-surface px-2.5 py-2",
+            "rounded-sm mt-1.5 mb-2 flex items-center justify-center gap-2 bg-surface px-2.5 py-2",
             beat && "bg-bg",
           )}
         >
@@ -4118,7 +4118,7 @@ function Spotlight({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => bump(key, d)}
-                className="num h-10 flex-1 bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
+                className="rounded-sm num h-10 flex-1 bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
                 data-testid={`${adjustPrefix}-${d}`}
               >
                 {d}
@@ -4131,7 +4131,7 @@ function Spotlight({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => bump(key, d)}
-                className="num h-10 flex-1 bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
+                className="rounded-sm num h-10 flex-1 bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
                 data-testid={`${adjustPrefix}-${d}`}
               >
                 +{d}
@@ -4164,12 +4164,12 @@ function Spotlight({
           Set {index + 1}
         </span>
         {setType === "warmup" && (
-          <span className="bg-secondary px-1.5 py-0.5 text-2xs font-extrabold tracking-widest text-warn uppercase">
+          <span className="rounded-xs bg-secondary px-1.5 py-0.5 text-2xs font-extrabold tracking-widest text-warn uppercase">
             Warm-up
           </span>
         )}
         {isUnilateral && (
-          <span className="bg-accent-soft px-1.5 py-0.5 text-2xs font-extrabold tracking-widest text-accent-ink uppercase">
+          <span className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-extrabold tracking-widest text-accent-ink uppercase">
             Per side
           </span>
         )}
@@ -4187,7 +4187,7 @@ function Spotlight({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setDetailsOpen(true)}
             title="Set details"
-            className="flex size-9 shrink-0 items-center justify-center bg-surface-2 text-soft"
+            className="rounded-sm flex size-9 shrink-0 items-center justify-center bg-surface-2 text-soft"
             data-testid={`set-${index}-more`}
           >
             <Notebook className="size-4" />
@@ -4216,7 +4216,7 @@ function Spotlight({
 
       {hasGhost && !isEditing && (
         <div
-          className="flex items-center gap-2.5 bg-surface px-2.5 py-2"
+          className="rounded-sm flex items-center gap-2.5 bg-surface px-2.5 py-2"
           data-testid="last-time-row"
         >
           <button
@@ -4252,7 +4252,7 @@ function Spotlight({
             <button
               type="button"
               onClick={() => setWeightLinked((v) => !v)}
-              className="self-start bg-surface-2 px-1.5 py-0.5 text-2xs font-semibold text-faint"
+              className="rounded-sm self-start bg-surface-2 px-1.5 py-0.5 text-2xs font-semibold text-faint"
               data-testid="weight-link-toggle"
             >
               {weightLinked
@@ -4260,8 +4260,8 @@ function Spotlight({
                 : "unlinked · tap to link"}
             </button>
             {!weightLinked && (
-              <div className="bg-bg p-2">
-                <div className="flex items-center justify-center bg-surface px-2 py-1">
+              <div className="rounded-md bg-bg p-2">
+                <div className="rounded-xs flex items-center justify-center bg-surface px-2 py-1">
                   <input
                     inputMode="decimal"
                     value={weight2}
@@ -4278,7 +4278,7 @@ function Spotlight({
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => bump("weight", d, "right")}
-                      className="num h-8 flex-1 bg-surface text-xs font-bold text-soft"
+                      className="rounded-sm num h-8 flex-1 bg-surface text-xs font-bold text-soft"
                       data-testid={`weight-adjust-${d}-right`}
                     >
                       {d}
@@ -4290,7 +4290,7 @@ function Spotlight({
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => bump("weight", d, "right")}
-                      className="num h-8 flex-1 bg-accent-soft text-xs font-bold text-accent-ink"
+                      className="rounded-sm num h-8 flex-1 bg-accent-soft text-xs font-bold text-accent-ink"
                       data-testid={`weight-adjust-${d}-right`}
                     >
                       +{d}
@@ -4317,8 +4317,8 @@ function Spotlight({
           </div>
           <div className="grid grid-cols-2 gap-2">
             {(["left", "right"] as const).map((side) => (
-              <div key={side} className="bg-bg p-1.5">
-                <div className="flex items-center justify-center bg-surface px-2 py-1">
+              <div key={side} className="rounded-md bg-bg p-1.5">
+                <div className="rounded-xs flex items-center justify-center bg-surface px-2 py-1">
                   <input
                     inputMode="numeric"
                     value={side === "left" ? reps : reps2}
@@ -4340,7 +4340,7 @@ function Spotlight({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => bump("reps", -1, side)}
-                    className="num h-8 flex-1 bg-surface text-xs font-bold text-soft"
+                    className="rounded-sm num h-8 flex-1 bg-surface text-xs font-bold text-soft"
                     data-testid={`reps-adjust--1-${side}`}
                   >
                     −1
@@ -4349,7 +4349,7 @@ function Spotlight({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => bump("reps", 1, side)}
-                    className="num h-8 flex-1 bg-accent-soft text-xs font-bold text-accent-ink"
+                    className="rounded-sm num h-8 flex-1 bg-accent-soft text-xs font-bold text-accent-ink"
                     data-testid={`reps-adjust-1-${side}`}
                   >
                     +1
@@ -4371,7 +4371,7 @@ function Spotlight({
       )}
 
       {f.weight && (
-        <div className="bg-surface px-2.5 py-1.5">
+        <div className="rounded-sm bg-surface px-2.5 py-1.5">
           <div className="flex items-center justify-between gap-2">
             <span className="num text-xs text-soft" data-testid="stats-line">
               {(() => {
@@ -4391,7 +4391,7 @@ function Spotlight({
                   return !v;
                 });
               }}
-              className="bg-accent-soft px-2 py-1 text-2xs font-extrabold tracking-widest text-accent-ink uppercase"
+              className="rounded-xs bg-accent-soft px-2 py-1 text-2xs font-extrabold tracking-widest text-accent-ink uppercase"
               data-testid="stats-growth-toggle"
             >
               Growth {growthOpen ? "▴" : "▾"}
@@ -4556,7 +4556,7 @@ function Spotlight({
                       type="button"
                       onClick={() => toggleExtra(m.id)}
                       data-testid={`set-${index}-add-${m.id}`}
-                      className="flex items-center gap-1 bg-surface-2 px-2.5 py-1 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+                      className="rounded-sm flex items-center gap-1 bg-surface-2 px-2.5 py-1 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
                     >
                       <Plus className="size-3" />
                       {m.name}

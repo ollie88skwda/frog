@@ -110,7 +110,7 @@ export function PlateSheet({
                       <span
                         // biome-ignore lint/suspicious/noArrayIndexKey: plates repeat (e.g. 25,25) so position is the identity
                         key={`${p}-${i}`}
-                        className="num flex h-8 min-w-8 items-center justify-center bg-surface-2 px-2 text-xs text-ink"
+                        className="rounded-sm num flex h-8 min-w-8 items-center justify-center bg-surface-2 px-2 text-xs text-ink"
                       >
                         {p}
                       </span>

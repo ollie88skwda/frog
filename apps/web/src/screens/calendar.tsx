@@ -342,7 +342,7 @@ function MonthGrid({
               </span>
               {list.length > 1 && (
                 <span
-                  className="num absolute right-0.5 bottom-0.5 flex min-w-3 items-center justify-center bg-surface px-0.5 text-[9px] leading-none text-accent-ink"
+                  className="rounded-xs num absolute right-0.5 bottom-0.5 flex min-w-3 items-center justify-center bg-surface px-0.5 text-[9px] leading-none text-accent-ink"
                   data-testid={`cal-count-${key}`}
                 >
                   {list.length}
