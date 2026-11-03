@@ -41,7 +41,7 @@ test("save a catalog program creates a named folder + routines + program row", a
 
   // Server-side: an active library program tied to a folder of routines.
   const programs = await count(page, async () => {
-    const { count } = await window.__frog.supabase
+    const { count } = await window.__frog.db
       .from("programs")
       .select("id", { count: "exact", head: true })
       .eq("source", "library")
@@ -52,7 +52,7 @@ test("save a catalog program creates a named folder + routines + program row", a
   expect(programs).toBeGreaterThan(0);
 
   const routines = await page.evaluate(async () => {
-    const s = window.__frog.supabase;
+    const s = window.__frog.db;
     const f = await s
       .from("routine_folders")
       .select("id")
@@ -78,7 +78,7 @@ test("save a catalog program creates a named folder + routines + program row", a
   // outranks any plan there, so bin one left by an earlier spec first.
   await page.evaluate(async () => {
     const now = Date.now();
-    await window.__frog.supabase
+    await window.__frog.db
       .from("sessions")
       .update({ deleted_at: now, updated_at: now })
       .is("deleted_at", null)

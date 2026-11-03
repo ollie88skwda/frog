@@ -96,7 +96,7 @@ test("discard abandons the session (soft-deleted, home)", async ({ page }) => {
   await expect
     .poll(() =>
       page.evaluate(async (sid) => {
-        const { data, error } = await window.__frog.supabase
+        const { data, error } = await window.__frog.db
           .from("sessions")
           .select("deleted_at")
           .eq("id", sid)

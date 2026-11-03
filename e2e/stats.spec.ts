@@ -135,7 +135,7 @@ async function seedTimedSession(
 ) {
   await page.evaluate(
     async ({ startedAt, durationMs }) => {
-      const sb = window.__frog.supabase;
+      const sb = window.__frog.db;
       const t = Date.now();
       const { error } = await sb.from("sessions").insert({
         id: crypto.randomUUID(),

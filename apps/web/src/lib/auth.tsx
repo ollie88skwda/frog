@@ -30,7 +30,7 @@ export type UserInfo = { name: string; email: string };
 
 /** Clears per-user residue on sign-out so the next user on a shared device
  * can't see the previous user's data. Legacy `sb-*-auth-token` entries are
- * refresh tokens from the pre-Clerk placeholder auth.
+ * refresh tokens from the pre-Clerk placeholder auth (Supabase era).
  *
  * `sbl.pastUsers` keeps its pre-rebrand name on purpose: nothing writes it any
  * more, so this is the only code that will ever see it. Renaming it to `frog.`
@@ -65,17 +65,15 @@ function useClearCacheOnUserChange(userId: string | null) {
   }, [userId, queryClient]);
 }
 
-/** Binds the live Clerk session to non-React modules (supabase accessToken,
- * repo owner-id) as soon as Clerk mounts. */
+/** Binds the live Clerk session to non-React modules (the Convex transport's
+ * token) as soon as Clerk mounts. The `convex` JWT template (Clerk dashboard →
+ * JWT templates) mints the aud=convex token convex/auth.config.ts accepts. */
 function ClerkSessionBinder({ children }: { children: ReactNode }) {
   const { getToken, userId } = useClerkAuth();
   useClearCacheOnUserChange(userId ?? null);
   useEffect(() => {
-    bindClerkSession(
-      async () => await getToken(),
-      () => userId ?? null,
-    );
-  }, [getToken, userId]);
+    bindClerkSession(async () => await getToken({ template: "convex" }));
+  }, [getToken]);
   return children;
 }
 
@@ -135,7 +133,7 @@ function useClerkSignOut(): () => Promise<void> {
   return useCallback(async () => {
     // Sign out FIRST: clearing the cache while the token is still valid lets
     // mounted screens refetch and repopulate it mid-sign-out. Once the
-    // session is gone, stray refetches fail closed (null token → anon).
+    // session is gone, stray refetches fail closed (null token → rejected).
     await clerk.signOut();
     clearLocalAuthArtifacts();
     queryClient.clear();
@@ -155,16 +153,16 @@ function useE2eSession() {
   useEffect(() => {
     if (!e2eBridge) return;
     let active = true;
-    const apply = (s: { user: { email?: string; id: string } } | null) => {
+    const apply = (s: { email: string; userId: string } | null) => {
       if (active)
         setState({
           loading: false,
           signedIn: s !== null,
-          email: s?.user.email ?? "",
-          userId: s?.user.id ?? null,
+          email: s?.email ?? "",
+          userId: s?.userId ?? null,
         });
     };
-    void e2eBridge.getSession().then(apply);
+    apply(e2eBridge.getSession());
     const unsubscribe = e2eBridge.onAuthChange(apply);
     return () => {
       active = false;
@@ -202,7 +200,7 @@ function useE2eUserInfo(): UserInfo {
 function useE2eSignOut(): () => Promise<void> {
   const queryClient = useQueryClient();
   return useCallback(async () => {
-    await e2eBridge?.signOut();
+    e2eBridge?.signOut();
     queryClient.clear();
     resetUserScopedState();
   }, [queryClient]);

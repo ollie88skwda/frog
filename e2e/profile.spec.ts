@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 /** Current bio from the signed-in user's user_prefs row (null when unset). */
 async function storedBio(page: Page): Promise<string | null> {
   return page.evaluate(async () => {
-    const sb = window.__frog.supabase;
+    const sb = window.__frog.db;
     const { data, error } = await sb
       .from("user_prefs")
       .select("bio")

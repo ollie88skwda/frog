@@ -270,7 +270,6 @@ function SettingRow({
       const path = await upload.mutateAsync({
         machineId: machine.id,
         file: resized,
-        existingPath: s.photoPath ?? null,
       });
       // The array captured at click time is stale by the time the upload
       // lands — writing it back whole would clobber a concurrent add/edit.

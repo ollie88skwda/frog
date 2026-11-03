@@ -15,17 +15,13 @@ test.beforeEach(async ({ page }) => {
 test("a failed exercise list load shows an error, not an empty library", async ({
   page,
 }) => {
-  await page.route("**/rest/v1/exercises*", async (route) => {
-    if (route.request().method() !== "GET") {
-      await route.continue();
-      return;
-    }
+  await page.route("**/api/query?fn=data:page&t=exercises*", async (route) => {
     await route.fulfill({
       status: 400,
       contentType: "application/json",
       body: JSON.stringify({
-        code: "42703",
-        message: "column exercises.mechanic does not exist",
+        status: "error",
+        errorMessage: "Server Error\nUncaught Error: simulated outage",
       }),
     });
   });
@@ -44,7 +40,7 @@ test("a failed exercise list load shows an error, not an empty library", async (
   await expect(page.getByText("No specimens yet")).not.toBeVisible();
   await expect(page.getByText("No exercises yet")).not.toBeVisible();
 
-  await page.unroute("**/rest/v1/exercises*");
+  await page.unroute("**/api/query?fn=data:page&t=exercises*");
   await page.getByTestId("library-retry").click();
   await expect(page.getByTestId("library-error")).not.toBeVisible();
 });

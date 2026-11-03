@@ -12,14 +12,14 @@ Frog is a **training lab notebook** (web app first; mobile later): log the work 
 - **Lazy-load** non-critical routes; **virtualize** long lists only when profiling demands; memoize hot paths.
 - Measure, don't guess: if a change risks bundle size or interaction latency, profile it.
 
-Note: v1 web is **online-first** (Supabase-direct; account required). The PRD's offline mandate is deferred to the mobile phase — the `Repo` interface in `packages/core` is the seam where a local store slots in later. Don't promise offline in UI copy.
+Note: v1 web is **online-first** (Convex backend; account required). The PRD's offline mandate is deferred to the mobile phase — the `Repo` interface in `packages/core` is the seam where a local store slots in later. Don't promise offline in UI copy.
 
 ## Stack
 
-- Monorepo (Bun workspaces): `apps/web` + `packages/core` + `packages/mcp` + `supabase/`.
+- Monorepo (Bun workspaces): `apps/web` + `packages/core` + `packages/mcp` + `convex/` (`supabase/migrations/` is frozen history).
 - App: **Vite + React SPA**, react-router v7, TanStack Query, Tailwind v4 (CSS-first `@theme`), vendored shadcn/ui.
-- Data: **Supabase** (Postgres + RLS + PostgREST) via supabase-js; auth is **Clerk** (Google + email, prebuilt UI) via Supabase third-party auth; Drizzle pg-core schema → drizzle-kit → `supabase/migrations/`.
-- Domain logic: framework-free TS in `packages/core` (units, e1rm, progression, session-reducer, findings) — keep it free of React/DOM/supabase imports (except `repo/`).
+- Data: **Convex** (owner-scoped queries/mutations in `convex/`, called over HTTP by `ConvexRepo`); auth is **Clerk** (Google + email, prebuilt UI) via the Clerk `convex` JWT template → `convex/auth.config.ts`. Live schema `convex/schema.ts`; the Drizzle file `packages/core/src/db/schema.ts` remains for row types/column names.
+- Domain logic: framework-free TS in `packages/core` (units, e1rm, progression, session-reducer, findings) — keep it free of React/DOM/backend-client imports (except `repo/`).
 - Dev/integration layer (a major focus): export + personal-token API + **MCP server** + AI-buildable docs — all **TypeScript**. **No Rust.**
 - Design: **Frog** — Radix Themes 3 re-skin (`docs/brand/frog-brand-identity.html`): sage lab-ink neutrals, single grass-green accent (= semantic success), 0px radius, 1px borders, dense keyboard-first UI, ⌘K palette, tabular numerals. Frog voice only at the edges (empty states, errors, celebrations) via the Human/Frog/Ultrafrog registers in `apps/web/src/lib/voice.ts`; data zones stay deadpan-serious. (Legacy app archived on branch `legacy/expo`.)
 

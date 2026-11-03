@@ -16,17 +16,13 @@ test.beforeEach(async ({ page }) => {
 test("a failed session-exercises load shows an error, never a blank screen", async ({
   page,
 }) => {
-  await page.route("**/rest/v1/session_exercises*", async (route) => {
-    if (route.request().method() !== "GET") {
-      await route.continue();
-      return;
-    }
+  await page.route("**/api/query?fn=sessions:detail*", async (route) => {
     await route.fulfill({
       status: 400,
       contentType: "application/json",
       body: JSON.stringify({
-        code: "42703",
-        message: "column set_logs_1.rir_min does not exist",
+        status: "error",
+        errorMessage: "Server Error\nUncaught Error: simulated outage",
       }),
     });
   });
@@ -48,7 +44,7 @@ test("a failed session-exercises load shows an error, never a blank screen", asy
 
   // Retry, now that the drift is "fixed": the same screen recovers without
   // a full reload.
-  await page.unroute("**/rest/v1/session_exercises*");
+  await page.unroute("**/api/query?fn=sessions:detail*");
   await page.getByTestId("session-retry").click();
   await expect(page.getByTestId("session-error")).not.toBeVisible();
   await expect(page.getByTestId("session-finish")).toBeVisible();
@@ -57,17 +53,13 @@ test("a failed session-exercises load shows an error, never a blank screen", asy
 test("a failed exercise load in the in-session picker shows an error, not an empty library", async ({
   page,
 }) => {
-  await page.route("**/rest/v1/exercises*", async (route) => {
-    if (route.request().method() !== "GET") {
-      await route.continue();
-      return;
-    }
+  await page.route("**/api/query?fn=data:page&t=exercises*", async (route) => {
     await route.fulfill({
       status: 400,
       contentType: "application/json",
       body: JSON.stringify({
-        code: "42703",
-        message: "column exercises.mechanic does not exist",
+        status: "error",
+        errorMessage: "Server Error\nUncaught Error: simulated outage",
       }),
     });
   });
@@ -89,7 +81,7 @@ test("a failed exercise load in the in-session picker shows an error, not an emp
     page.getByText(/couldn't reach the (server|pond)/i),
   ).toBeVisible();
 
-  await page.unroute("**/rest/v1/exercises*");
+  await page.unroute("**/api/query?fn=data:page&t=exercises*");
   await page.getByTestId("picker-retry").click();
   await expect(page.getByTestId("picker-error")).not.toBeVisible();
 });

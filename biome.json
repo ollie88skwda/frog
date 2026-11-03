@@ -7,6 +7,9 @@
       "packages/**",
       "scripts/**",
       "e2e/**",
+      "convex/**",
+      "!convex/_generated",
+      "!scripts/convex/global-seed.json",
       "*.json",
       "!**/*.css"
     ]

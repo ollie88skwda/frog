@@ -39,7 +39,7 @@ test("a retried log-set write after a lost response does not duplicate the set",
   // response anyway — simulating a dropped response, not a dropped request.
   // The retry must be let through untouched.
   let posts = 0;
-  await page.route("**/rest/v1/set_logs*", async (route) => {
+  await page.route("**/api/mutation?fn=sessions:logSet*", async (route) => {
     if (route.request().method() !== "POST") {
       await route.continue();
       return;
@@ -61,7 +61,7 @@ test("a retried log-set write after a lost response does not duplicate the set",
   await expect.poll(() => posts, { timeout: 15_000 }).toBeGreaterThanOrEqual(2);
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
 
-  await page.unroute("**/rest/v1/set_logs*");
+  await page.unroute("**/api/mutation?fn=sessions:logSet*");
 
   // Reload: local optimistic state only ever added one row, so a real
   // duplicate would only surface once the page re-fetches from the server —

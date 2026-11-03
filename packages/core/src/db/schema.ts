@@ -13,9 +13,15 @@ import {
 } from "drizzle-orm/pg-core";
 import type { MuscleTarget } from "../domain/anatomy";
 
-// Conventions (see AGENTS.md): ids are client-generated uuid v4 (newId());
-// timestamps are bigint millisecond epochs managed by the app (Date.now());
-// rows are soft-deleted via deleted_at; owner_id + RLS on every table.
+// Row shapes + column metadata. Since the 2026-11-01 Convex switch this file
+// no longer emits DDL: the live schema is convex/schema.ts (camelCase field
+// = this file's property name), and this one stays the source of the app's
+// row types and of the snake_case column names used by the token API, the
+// export format and scripts/import-from-supabase.ts (via db/columns.ts).
+// Keep the two in step when adding a field. Conventions (see AGENTS.md): ids
+// are client-generated uuid v4 (newId()); timestamps are bigint millisecond
+// epochs managed by the app (Date.now()); rows are soft-deleted via
+// deleted_at; owner_id on every table, enforced in the Convex functions.
 const base = {
   id: uuid("id").primaryKey(),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),

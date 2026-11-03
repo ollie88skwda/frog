@@ -1,6 +1,6 @@
 // Client-side image downscale + JPEG re-encode, dependency-free. Keeps workout
 // and machine photo uploads small (the finish-flow strip resizes to 1280px
-// before hitting Supabase storage). Mirrors the pattern in components/machines.
+// before hitting Convex file storage). Mirrors the pattern in components/machines.
 export async function resizePhoto(file: Blob, maxDim: number): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));

@@ -98,7 +98,7 @@ test("in-session attach: catalog search attaches a machine to the block", async 
   await expect
     .poll(async () =>
       page.evaluate(async (exerciseName) => {
-        const { data } = await window.__frog.supabase
+        const { data } = await window.__frog.db
           .from("exercises")
           .select("machine_id")
           .eq("name", exerciseName)
@@ -129,7 +129,7 @@ test("in-session attach: picks an existing machine from my gym", async ({
   await expect
     .poll(async () =>
       page.evaluate(async (machineName) => {
-        const { count } = await window.__frog.supabase
+        const { count } = await window.__frog.db
           .from("machines")
           .select("id", { count: "exact", head: true })
           .eq("name", machineName);

@@ -2,8 +2,9 @@ import type { FindingsSessionInput } from "@frog/core";
 
 // Thin client over the personal-access-token REST API — the MCP server
 // deliberately dogfoods the public API instead of talking to the database.
-const API_URL =
-  process.env.FROG_API_URL ?? "http://127.0.0.1:54321/functions/v1/api";
+// The API is served by the Convex deployment's HTTP actions under /api
+// (convex/http.ts); the default is a local backend's site port.
+const API_URL = process.env.FROG_API_URL ?? "http://127.0.0.1:3211/api";
 const TOKEN = process.env.FROG_TOKEN ?? "";
 
 export async function api<T>(path: string): Promise<T> {

@@ -20,7 +20,7 @@ function localKey(d: Date): string {
 // known calendar state without walking the logging UI.
 async function seedSession(page: Page, atMs: number) {
   await page.evaluate(async (t) => {
-    const sb = window.__frog.supabase;
+    const sb = window.__frog.db;
     const { error } = await sb.from("sessions").insert({
       id: crypto.randomUUID(),
       created_at: t,
@@ -35,7 +35,7 @@ async function seedSession(page: Page, atMs: number) {
 function sessionsOnDay(page: Page, startMs: number, endMs: number) {
   return page.evaluate(
     async ({ s, e }) => {
-      const { count, error } = await window.__frog.supabase
+      const { count, error } = await window.__frog.db
         .from("sessions")
         .select("id", { count: "exact", head: true })
         .gte("started_at", s)

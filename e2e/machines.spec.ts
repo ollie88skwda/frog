@@ -86,7 +86,7 @@ test("machine from catalog: settings remembered into the session setup strip", a
   await expect
     .poll(async () =>
       page.evaluate(async (name) => {
-        const { data } = await window.__frog.supabase
+        const { data } = await window.__frog.db
           .from("exercises")
           .select("machine_id")
           .eq("name", name)
@@ -180,7 +180,7 @@ test("setup values each carry an optional photo (note 16)", async ({
   await expect
     .poll(() =>
       page.evaluate(async (name) => {
-        const { data } = await window.__frog.supabase
+        const { data } = await window.__frog.db
           .from("machines")
           .select("settings")
           .eq("name", name)
@@ -198,7 +198,7 @@ test("setup values each carry an optional photo (note 16)", async ({
     .toBe(true);
   // The untouched setting keeps no photo path.
   const hasPadPhoto = await page.evaluate(async (name) => {
-    const { data } = await window.__frog.supabase
+    const { data } = await window.__frog.db
       .from("machines")
       .select("settings")
       .eq("name", name)

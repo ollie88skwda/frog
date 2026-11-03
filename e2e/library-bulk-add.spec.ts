@@ -97,9 +97,9 @@ test("bulk add warns on duplicates against the library without blocking", async 
 // trickle. 12 names at 4 in flight still finish in ~9 s.
 const INSERT_DELAY_MS = 3_000;
 
-// The names carried by one publish body (the publish_exercise RPC takes a
-// single object with p_name; a direct insert takes an object or an array of
-// them). Unparseable bodies contribute nothing rather than failing the test.
+// The names carried by one create body: an exercises:publish call carries
+// `args.name`; a private create (rows:insert) carries `args.rows[].name`.
+// Unparseable bodies contribute nothing rather than failing the test.
 function insertedNames(body: string | null): string[] {
   if (!body) return [];
   let parsed: unknown;
@@ -108,12 +108,11 @@ function insertedNames(body: string | null): string[] {
   } catch {
     return [];
   }
-  const rows = Array.isArray(parsed) ? parsed : [parsed];
+  const args = (parsed as { args?: { name?: unknown; rows?: unknown[] } })
+    ?.args;
+  const rows = args?.rows ?? [args];
   return rows
-    .map((row) => {
-      const r = row as { name?: unknown; p_name?: unknown };
-      return (r.name ?? r.p_name) as unknown;
-    })
+    .map((row) => (row as { name?: unknown } | undefined)?.name)
     .filter((name): name is string => typeof name === "string");
 }
 
@@ -155,12 +154,11 @@ test("bulk add bounds the insert fan-out and refetches the library once", async 
   let peakInFlight = 0;
   let listFetches = 0;
   const inserted = new Set<string>();
-  // With community sharing on, a create is a publish_exercise RPC POST (the
-  // follow-up read-back GET carries the id, so only the POST is an insert).
+  // With community sharing on, a create is an exercises:publish mutation
+  // (the follow-up exercises:get read-back is a query, not an insert).
   const isInsert = (r: { method(): string; url(): string }) =>
-    r.method() === "POST" &&
-    (r.url().includes("/rest/v1/rpc/publish_exercise") ||
-      r.url().includes("/rest/v1/exercises"));
+    r.url().includes("/api/mutation?fn=exercises:publish") ||
+    r.url().includes("/api/mutation?fn=rows:insert&t=exercises");
   page.on("request", (r) => {
     if (isInsert(r)) {
       for (const name of insertedNames(r.postData())) inserted.add(name);
@@ -168,9 +166,14 @@ test("bulk add bounds the insert fan-out and refetches the library once", async 
       peakInFlight = Math.max(peakInFlight, inFlight);
       return;
     }
-    // The library list query only — `order=name` excludes the per-name
-    // existence probes `waitForExercise` runs.
-    if (r.method() === "GET" && r.url().includes("order=name")) {
+    // The library list query only (paged own + global reads) — the per-name
+    // existence probes `waitForExercise` runs go through rows:find instead.
+    // Each list fetch reads own rows then global rows; count the own-rows
+    // page so one count is one refetch.
+    if (
+      r.url().includes("/api/query?fn=data:page&t=exercises") &&
+      !r.postData()?.includes('"global":true')
+    ) {
       listFetches += 1;
     }
   });
@@ -184,7 +187,7 @@ test("bulk add bounds the insert fan-out and refetches the library once", async 
   // network, so they all paint anyway; a regression to one optimistic write
   // per dispatched create would need three worker waves (≥9 s) to finish
   // painting.
-  await page.route("**/rest/v1/rpc/publish_exercise*", async (route) => {
+  await page.route("**/api/mutation?fn=exercises:publish*", async (route) => {
     await new Promise((r) => setTimeout(r, INSERT_DELAY_MS));
     await route.continue();
   });
@@ -227,12 +230,15 @@ test("bulk add surfaces failed names and prefills them on reopen", async ({
 
   await page.goto("/library");
   await expect(page.getByTestId("bulk-add-exercises-trigger")).toBeVisible();
-  // Community phase: creates publish through the publish_exercise RPC.
-  await page.route("**/rest/v1/rpc/publish_exercise*", (route) =>
+  // Community phase: creates publish through the exercises:publish mutation.
+  await page.route("**/api/mutation?fn=exercises:publish*", (route) =>
     route.fulfill({
-      status: 500,
+      status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ message: "e2e forced insert failure" }),
+      body: JSON.stringify({
+        status: "error",
+        errorMessage: "Server Error\nUncaught Error: e2e forced insert failure",
+      }),
     }),
   );
 

@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
   // hero, not about what ran before it.
   await page.evaluate(async () => {
     const now = Date.now();
-    const { error } = await window.__frog.supabase
+    const { error } = await window.__frog.db
       .from("sessions")
       .update({ deleted_at: now, updated_at: now })
       .is("deleted_at", null)
@@ -30,7 +30,7 @@ test.beforeEach(async ({ page }) => {
     if (error) throw new Error(error.message);
     // Likewise an active program left by an earlier spec would confine the
     // hero's suggestion to that program's folder.
-    await window.__frog.supabase
+    await window.__frog.db
       .from("programs")
       .update({ active: false })
       .eq("active", true);
@@ -44,7 +44,7 @@ test("with no routines the hero offers to build one, and can still start empty",
   // so clear the shelf to get the genuinely-empty hero. Specs that need
   // routines build their own.
   await page.evaluate(async () => {
-    const { error } = await window.__frog.supabase
+    const { error } = await window.__frog.db
       .from("routines")
       .update({ deleted_at: Date.now(), updated_at: Date.now() })
       .is("deleted_at", null);

@@ -192,7 +192,7 @@ function PhotoPicker({
     try {
       onSelect(await loadImageFromUrl(url), mediaId);
     } catch {
-      // A signed storage URL can expire between the media query and this tap.
+      // The photo's bytes can fail to decode after the media query resolved.
       setFailed(true);
     } finally {
       setBusy(false);

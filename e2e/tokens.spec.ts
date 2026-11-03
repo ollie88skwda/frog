@@ -7,11 +7,10 @@ import {
   waitForExercise,
 } from "./helpers";
 
-// P6: PAT lifecycle — create in Settings, read through the Edge Function
-// under the token, revoke, get rejected. The function runs inside local
-// Supabase (supabase start serves supabase/functions/).
+// P6: PAT lifecycle — create in Settings, read through the token API (Convex
+// HTTP actions, convex/http.ts) under the token, revoke, get rejected.
 
-const API_BASE = `${process.env.E2E_SUPABASE_URL ?? "http://127.0.0.1:54321"}/functions/v1/api`;
+const API_BASE = `${process.env.E2E_CONVEX_SITE_URL ?? "http://127.0.0.1:3211"}/api`;
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");

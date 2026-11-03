@@ -56,7 +56,7 @@ if (kb > BUDGET_KB) {
 }
 
 // Security gates: dev/test-only code must never ship. The Playwright auth
-// bridge (window.__frog, VITE_E2E=1 builds) would expose a Supabase-native
+// bridge (window.__frog, VITE_E2E=1 builds) would expose a test-token
 // sign-in path that bypasses Clerk in production; the click-to-comment overlay
 // would ship a document-level event interceptor. A stray VITE_E2E=1 in an env
 // file (or a dead branch that stopped folding) is enough to leak either, so
