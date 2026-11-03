@@ -152,7 +152,7 @@ function MachineCommandDialog({
             onValueChange={setQuery}
             autoFocus
             placeholder="Search your gym or the catalog…"
-            className="h-11 w-full bg-surface-2 px-3 text-sm text-ink placeholder:text-faint focus:outline-none"
+            className="h-11 w-full border border-field bg-surface-2 px-3 text-sm text-ink placeholder:text-faint focus:border-focus focus:outline-none"
             data-testid="machine-search"
           />
           <Command.List className="mt-2 max-h-72 overflow-y-auto">

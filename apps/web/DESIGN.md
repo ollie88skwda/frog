@@ -1,7 +1,7 @@
 # Frog design language (Radix Themes 3)
 
 Read before touching UI. The brand is **Frog**
-(`docs/brand/frog-brand-identity.html` — the spec); the design system is
+(`docs/brand/archive/frog-brand-identity.html` — the spec); the design system is
 **Radix Themes** (`@radix-ui/themes`) — one `<Theme>` in `src/app.tsx` is the
 single source of look-and-feel (`docs/DECISIONS.md`, 2026-07-16). Use Themes
 components wherever one exists instead of hand-rolling; unstyled Radix

@@ -78,7 +78,7 @@ export function MachineCatalogPicker({
             if (e.target.value.trim()) setCategory(null);
           }}
           autoFocus={autoFocus}
-          placeholder="MagnifyingGlass the machine catalog (brand, model, type)"
+          placeholder="Search the machine catalog (brand, model, type)"
           className="pl-8"
           data-testid="machine-catalog-search"
         />

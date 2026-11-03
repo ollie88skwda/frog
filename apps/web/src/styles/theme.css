@@ -97,13 +97,6 @@
   --dur-sidebar:220ms;
   --ease:cubic-bezier(0.2, 0, 0, 1);
   --focus-width:2px;--focus-offset:2px;
-  --focus-ring: var(--color-border-focus);
-  --focus-ring: var(--ink);
-  --focus-ring: var(--ink);
-  --focus-ring: var(--color-text-primary);
-  --focus-ring: var(--color-accent-solid);
-  --focus-ring: var(--color-border-focus);
-  --focus-ring: var(--color-accent-solid);
 }
 
 [data-theme="green"][data-mode="day"] {

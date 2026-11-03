@@ -374,7 +374,7 @@ function RirSegmented({
               className={cn(
                 "num h-10 flex-1 text-sm font-semibold transition-colors duration-100",
                 on
-                  ? "bg-ink text-(--accent-fg)"
+                  ? "bg-ink text-on-action"
                   : "bg-surface text-soft hover:bg-surface-hover",
               )}
               data-testid={rirOptionId(v, side)}
@@ -405,7 +405,7 @@ function RpePicker({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="num h-10 w-full border border-field bg-surface px-2 text-sm font-semibold text-ink transition-colors duration-150 focus:outline-none"
+        className="num h-10 w-full border border-field bg-surface px-2 text-sm font-semibold text-ink transition-colors duration-150 focus:border-focus focus:outline-none"
         data-testid={side ? `rpe-picker-${side}` : "rpe-picker"}
       >
         <option value="">—</option>
@@ -1741,7 +1741,7 @@ function FinishOverlay({
               onChange={(e) => setNotesDraft(e.target.value)}
               placeholder="How did it go? PRs, aches, focus…"
               data-testid="finish-notes"
-              className="w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:outline-none"
+              className="w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus focus:outline-none"
             />
           </label>
 
@@ -1753,7 +1753,7 @@ function FinishOverlay({
                 type="checkbox"
                 checked={updateValues}
                 onChange={(e) => setUpdateValues(e.target.checked)}
-                className="mt-0.5 size-4 accent-(--accent)"
+                className="mt-0.5 size-4 accent-(--color-accent-mark)"
                 data-testid="finish-update-values"
               />
               <span className="text-xs text-soft">
@@ -2022,7 +2022,7 @@ function VoiceMatchPicker({
           <div className="relative">
             <MagnifyingGlass className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-faint" />
             <Input
-              placeholder="MagnifyingGlass this session…"
+              placeholder="Search this session…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-8"
@@ -2477,8 +2477,8 @@ function MarksBand({ marks }: { marks: Mark[] }) {
             "relative min-w-0 flex-1 py-2.5 text-center text-base leading-none",
             m.kind === "done" && "text-accent-ink",
             m.kind === "warmup" && "text-warn",
-            m.kind === "todo" && "text-border-strong",
-            m.kind === "current" && "bg-ink text-(--accent-fg)",
+            m.kind === "todo" && "text-disabled",
+            m.kind === "current" && "bg-ink text-on-action",
           )}
           data-testid={`set-mark-${i}`}
         >
@@ -2527,7 +2527,7 @@ function EdgeDots({ total, position }: { total: number; position: number }) {
             "size-1 shrink-0",
             i < position - 1 && "bg-accent",
             i === position - 1 && "size-2 bg-ink",
-            i > position - 1 && "bg-border-strong",
+            i > position - 1 && "bg-active",
           )}
         />
       ))}
@@ -4094,7 +4094,7 @@ function Spotlight({
             </IconButton>
           ) : (
             <span
-              className="shrink-0 text-base text-border-strong"
+              className="shrink-0 text-base text-disabled"
               aria-hidden="true"
             >
               ⌨
@@ -4510,7 +4510,7 @@ function Spotlight({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 data-testid={`set-${index}-note`}
-                className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:outline-none"
+                className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus focus:outline-none"
               />
             </label>
             {enabledMetrics
@@ -4530,7 +4530,7 @@ function Spotlight({
                           [m.id]: e.target.checked ? "true" : "",
                         }))
                       }
-                      className="size-4 justify-self-start accent-(--accent)"
+                      className="size-4 justify-self-start accent-(--color-accent-mark)"
                       data-testid={`set-${index}-metric-${m.id}`}
                     />
                   ) : (

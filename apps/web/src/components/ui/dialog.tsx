@@ -51,10 +51,8 @@ export function DialogContent({
   }, []);
 
   return (
-    // Portal into the Radix Themes root, not <body>, so the overlay inherits
-    // Radix's scoped tokens (radius, --color-panel-solid). See theme-portal.ts.
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-(--overlay)" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-scrim" />
       <DialogPrimitive.Content
         ref={contentRef}
         className={cn(

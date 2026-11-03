@@ -92,7 +92,7 @@ export function filterExercises<
   });
 }
 
-// MagnifyingGlass box + region/muscle/equipment filters, shared by the Library and the
+// Search box + region/muscle/equipment filters, shared by the Library and the
 // session exercise picker so both stay in sync. The region and equipment
 // selects are optional — the picker passes only the muscle filter.
 export function ExerciseFilterBar({
@@ -129,7 +129,7 @@ export function ExerciseFilterBar({
       <div className="relative min-w-40 flex-1">
         <MagnifyingGlass className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-faint" />
         <Input
-          placeholder="MagnifyingGlass exercises…"
+          placeholder="Search exercises…"
           value={query}
           onChange={(e) => onQuery(e.target.value)}
           autoFocus={autoFocus}

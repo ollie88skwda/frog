@@ -650,7 +650,7 @@ function BulkAddDialog({
                 type="checkbox"
                 checked={skipDuplicates}
                 onChange={(e) => setSkipDuplicates(e.target.checked)}
-                className="size-4 accent-(--accent)"
+                className="size-4 accent-(--color-accent-mark)"
                 data-testid="bulk-add-skip-duplicates"
               />
               Skip duplicates
@@ -988,7 +988,7 @@ const ExerciseRow = memo(function ExerciseRow({
                             : [...(m.exerciseIds ?? []), exercise.id],
                         })
                       }
-                      className="size-4 accent-(--accent)"
+                      className="size-4 accent-(--color-accent-mark)"
                       data-testid={`enable-metric-${m.name}-${exercise.name}`}
                     />
                     <span className={cn(enabled ? "text-ink" : "text-soft")}>

@@ -325,9 +325,11 @@ function MonthGrid({
               onClick={() => onDay(key)}
               className={`relative flex aspect-square items-center justify-center text-xs transition-colors duration-150 ${
                 has
-                  ? "bg-accent font-semibold text-accent-fg"
-                  : "bg-surface-2 text-soft hover:bg-surface-hover"
-              } ${isToday ? "shadow-[inset_0_0_0_1px_var(--color-border-focus)]" : ""}`}
+                  ? `${isToday ? "bg-accent-hover" : "bg-accent"} font-semibold text-accent-fg`
+                  : isToday
+                    ? "bg-active font-semibold text-ink"
+                    : "bg-surface-2 text-soft hover:bg-surface-hover"
+              }`}
               data-testid={`cal-day-${key}`}
               title={
                 has

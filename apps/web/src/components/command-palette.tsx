@@ -128,10 +128,7 @@ export function CommandPalette() {
       open={open}
       onOpenChange={setOpen}
       label="Command palette"
-      // Portal into the theme root so Radix's scoped radius token resolves
-      // (large radius token) — otherwise the palette renders square. Same
-      // fix as ui/dialog; see theme-portal.ts.
-      overlayClassName="fixed inset-0 z-50 bg-(--overlay)"
+      overlayClassName="fixed inset-0 z-50 bg-scrim"
       contentClassName="float-in fixed top-[18%] left-1/2 z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-md bg-raised shadow-lg"
     >
       <Command.Input

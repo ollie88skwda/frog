@@ -719,7 +719,7 @@ function PhotoThumb({
           className="size-full object-cover"
         />
       )}
-      <span className="num absolute inset-x-0 bottom-0 bg-(--overlay) px-1 py-0.5 text-center text-2xs text-ink">
+      <span className="num absolute inset-x-0 bottom-0 bg-scrim px-1 py-0.5 text-center text-2xs text-ink">
         {formatDay(measurement.measuredOn)}
       </span>
     </button>

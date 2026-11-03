@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
-// The frog brand mark as in-app chrome (docs/brand/frog-brand-identity.html).
+// The frog brand mark as in-app chrome (docs/brand/archive/frog-brand-identity.html).
 // Same geometry as apps/web/public/icon.svg's mark (docs/brand/assets/frog-mark.svg,
 // a color-separated potrace trace — see scripts/vectorize-frog-mark.ts), just
 // without the ground square and recolored for in-app chrome instead of the

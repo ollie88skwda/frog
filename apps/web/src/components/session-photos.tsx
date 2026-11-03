@@ -102,7 +102,7 @@ export function FinishPhotoStrip({
             >
               <X className="size-3" />
             </button>
-            <div className="absolute inset-x-0 bottom-0 flex justify-between bg-(--overlay) opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+            <div className="absolute inset-x-0 bottom-0 flex justify-between bg-scrim opacity-0 transition-opacity duration-150 group-hover:opacity-100">
               <button
                 type="button"
                 onClick={() => move(p.id, -1)}
@@ -182,7 +182,7 @@ export function SessionPhotoCarousel({ sessionId }: { sessionId: string }) {
             </div>
           )}
           {confirmId === row.id ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-(--overlay) p-2 text-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-scrim p-2 text-center">
               <span className="text-xs text-white">Delete photo?</span>
               <div className="flex gap-2">
                 <Button

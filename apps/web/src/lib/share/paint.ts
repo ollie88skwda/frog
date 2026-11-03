@@ -204,12 +204,6 @@ async function paintBrand(
   ctx.textBaseline = "alphabetic";
 
   const nextY = y + markSize + sp(frame, 0.037) * frame.w;
-  ctx.strokeStyle = p.hair;
-  ctx.lineWidth = Math.max(1.5, frame.w * 0.0019);
-  ctx.beginPath();
-  ctx.moveTo(pad, nextY);
-  ctx.lineTo(frame.w - pad, nextY);
-  // no-lines rule (Because brand): divider kept as spacing only
 
   // The frog-mascot moment, top-right of the brand row — the one place on
   // every frame with guaranteed empty space (content is left-anchored; the
@@ -406,17 +400,6 @@ function paintSupport(
 
   stats.forEach((s, i) => {
     const x = pad + i * colW;
-    if (i > 0) {
-      ctx.strokeStyle = p.hair;
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(x - sp(frame, 0.018) * frame.w, labelY - labelSize);
-      ctx.lineTo(
-        x - sp(frame, 0.018) * frame.w,
-        valueY + sp(frame, 0.006) * frame.w,
-      );
-      // no-lines rule (Because brand): divider kept as spacing only
-    }
     ctx.fillStyle = p.faint;
     ctx.font = `600 ${labelSize}px ${FONT_SANS}`;
     ctx.fillText(s.label.toUpperCase(), x, labelY);
@@ -510,12 +493,6 @@ function paintFooter(
     y += sp(frame, 0.045) * frame.w;
   }
 
-  ctx.strokeStyle = p.hair;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(pad, y);
-  ctx.lineTo(frame.w - pad, y);
-  // no-lines rule (Because brand): divider kept as spacing only
   y += sp(frame, 0.038) * frame.w;
 
   const { left, right } = identityLine(identity);
@@ -609,12 +586,6 @@ export async function paintBrandOg(canvas: HTMLCanvasElement) {
   ctx.fillText(clip(ctx, OG_TAGLINE, colW - pad), pad, y);
 
   y = frame.h - pad - frame.h * 0.08;
-  ctx.strokeStyle = p.hair;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(pad, y);
-  ctx.lineTo(pad + colW - pad, y);
-  // no-lines rule (Because brand): divider kept as spacing only
   y += frame.h * 0.06;
   ctx.fillStyle = p.faint;
   ctx.font = `500 ${Math.round(frame.h * 0.035)}px ${FONT_MONO}`;

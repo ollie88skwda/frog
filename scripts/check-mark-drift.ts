@@ -1,5 +1,5 @@
 // CI guard: the frog mark's geometry is hand-copied in four places beyond
-// its canonical sources — docs/brand/frog-brand-identity.html's app-tile
+// its canonical sources — docs/brand/archive/frog-brand-identity.html's app-tile
 // sample, its 16px sample, its standalone in-app-mark sample, and its
 // icon-row copy — and none of the four re-derive from the source at build
 // time. Assert all four still match the source they were copied from:
@@ -32,7 +32,10 @@
 import { readFileSync } from "node:fs";
 
 const icon = readFileSync("apps/web/public/icon.svg", "utf8");
-const brand = readFileSync("docs/brand/frog-brand-identity.html", "utf8");
+const brand = readFileSync(
+  "docs/brand/archive/frog-brand-identity.html",
+  "utf8",
+);
 const inAppSrc = readFileSync("apps/web/src/components/frog-mark.tsx", "utf8");
 
 const errors: string[] = [];

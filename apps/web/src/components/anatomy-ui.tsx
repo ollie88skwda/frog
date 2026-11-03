@@ -135,7 +135,7 @@ export function TierBadge({
 // Custom exercises never have a reference diagram, so a bare `null` here read
 // as broken/missing rather than "no photo yet" — swap in a neutral dumbbell
 // glyph instead. Deliberately monochrome (no per-muscle hue): the app has a
-// single accent color (docs/brand/frog-brand-identity.html), so this reuses
+// single accent color (docs/brand/archive/frog-brand-identity.html), so this reuses
 // the same faint/surface-2 treatment as an untiered exercise name rather than
 // inventing a color-coded palette.
 export function ExerciseThumb({

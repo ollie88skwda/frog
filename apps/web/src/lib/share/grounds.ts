@@ -35,18 +35,6 @@ const FERN = "#afcfab";
 const INK = "#211816";
 const PAPER = "#fcf9f4";
 
-/** Resolves a CSS custom property to a concrete color for the current mode. */
-export function sampleToken(cssVar: string, fallback: string): string {
-  if (typeof document === "undefined") return fallback;
-  const el = document.createElement("span");
-  el.style.display = "none";
-  el.style.color = `var(${cssVar})`;
-  document.body.appendChild(el);
-  const c = getComputedStyle(el).color;
-  el.remove();
-  return c || fallback;
-}
-
 export function paletteFor(ground: Ground, accent: string): Palette {
   switch (ground) {
     case "light":

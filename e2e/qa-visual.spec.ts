@@ -1,33 +1,76 @@
 // Brand QA sweep (not part of normal CI): QA_VISUAL=1 bun scripts/run-e2e.ts -- e2e/qa-visual.spec.ts
-import { test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
+import { auditBrand } from "./brand-audit";
 import { EMAIL, PASSWORD, signInAs } from "./helpers";
 
 test.skip(!process.env.QA_VISUAL, "QA only");
 test.setTimeout(600_000);
 
-const ROUTES = [
-  "/train",
-  "/routines",
-  "/routines/new",
-  "/programs",
-  "/trainer",
-  "/profile",
-  "/calendar",
-  "/library",
-  "/history",
-  "/findings",
-  "/measures",
-  "/stats",
-  "/stats/monthly",
-  "/stats/year",
-  "/settings",
-  "/tips",
-  "/changelog",
-  "/nope-404",
-  "/auth",
-  "SESSION",
+// [screenshot name, path]; `:session`, `:exercise`, `:routine` and
+// `:program` are filled from the signed-in user's data below.
+const ROUTES: [string, string][] = [
+  ["home", "/"],
+  ["train", "/train"],
+  ["session", "/session/:session"],
+  ["history-detail", "/history/:session"],
+  ["routines", "/routines"],
+  ["routines-new", "/routines/new"],
+  ["routine-edit", "/routines/:routine/edit"],
+  ["programs", "/programs"],
+  ["program-detail", "/programs/:program"],
+  ["trainer", "/trainer"],
+  ["profile", "/profile"],
+  ["calendar", "/calendar"],
+  ["library", "/library"],
+  ["exercise-detail", "/exercises/:exercise"],
+  ["history", "/history"],
+  ["findings", "/findings"],
+  ["measures", "/measures"],
+  ["stats", "/stats"],
+  ["stats-monthly", "/stats/monthly"],
+  ["stats-year", "/stats/year"],
+  ["settings", "/settings"],
+  ["tips", "/tips"],
+  ["changelog", "/changelog"],
+  ["not-found", "/nope-404"],
+  ["auth", "/auth"],
 ];
-const SCALE = new Set([0, 4, 8, 12, 16, 24]);
+
+async function seedIds(page: Page): Promise<Record<string, string>> {
+  await page.goto("/train");
+  await page.getByTestId("start-session-btn").click();
+  await page.waitForURL(/\/session\//);
+  const session = new URL(page.url()).pathname.split("/")[2];
+  await page.goto("/programs");
+  const program = (
+    await page
+      .locator('[data-testid^="program-card-"]')
+      .first()
+      .getAttribute("data-testid")
+  )?.replace("program-card-", "");
+  const { exercise, routine } = await page.evaluate(async () => {
+    const db = window.__frog.db;
+    const ex = await db.from("exercises").select("id").limit(1);
+    if (ex.error) throw new Error(ex.error.message);
+    const { data: u } = await db.auth.getUser();
+    const now = Date.now();
+    const id = crypto.randomUUID();
+    const r = await db.from("routines").insert({
+      id,
+      created_at: now,
+      updated_at: now,
+      owner_id: u.user.id,
+      name: "QA routine",
+      folder_id: null,
+      position: 0,
+      description: null,
+    });
+    if (r.error) throw new Error(r.error.message);
+    return { exercise: ex.data?.[0]?.id as string, routine: id };
+  });
+  if (!program || !exercise) throw new Error("QA sweep: missing seed ids");
+  return { session, exercise, routine, program };
+}
 
 for (const [vp, w, h] of [
   ["mobile", 390, 844],
@@ -42,109 +85,30 @@ for (const [vp, w, h] of [
       const page = await ctx.newPage();
       await page.addInitScript((m) => localStorage.setItem("mode", m), mode);
       await signInAs(page, PASSWORD, EMAIL);
-      await page.goto("/train");
-      await page
-        .getByTestId("start-session-btn")
-        .click()
-        .catch(() => {});
-      await page.waitForURL(/session\//, { timeout: 8000 }).catch(() => {});
-      const sessionUrl = page.url().includes("/session/")
-        ? new URL(page.url()).pathname
-        : null;
-      const report: string[] = [];
-      for (const r of ROUTES) {
-        const path = r === "SESSION" ? sessionUrl : r;
-        if (!path) continue;
-        if (path === "/auth")
-          await page.evaluate(() => window.__frog.signOut());
+      const ids = await seedIds(page);
+      for (const [name, route] of ROUTES) {
+        const path = route.replace(/:(\w+)/g, (_, k: string) => ids[k]);
+        if (name === "auth") await page.evaluate(() => window.__frog.signOut());
         await page.goto(path);
         await page.waitForTimeout(1200);
-        const res = await page.evaluate(
-          (scale) => {
-            const out: Record<string, unknown> = {};
-            const de = document.documentElement;
-            out.overflowX = de.scrollWidth > de.clientWidth + 1;
-            out.mode = de.dataset.mode;
-            out.bodyFont = getComputedStyle(document.body).fontFamily.slice(
-              0,
-              40,
-            );
-            const h = document.querySelector("h1,h2");
-            out.headFont = h
-              ? getComputedStyle(h).fontFamily.slice(0, 30)
-              : null;
-            const bad = new Set<string>();
-            const lines = new Set<string>();
-            const fonts = new Set<string>();
-            const clipped = new Set<string>();
-            for (const el of Array.from(document.body.querySelectorAll("*"))) {
-              const cs = getComputedStyle(el);
-              const tag = el.tagName.toLowerCase();
-              if (tag === "svg" || el.closest("svg")) continue;
-              const rect = el.getBoundingClientRect();
-              if (!rect.width) continue;
-              const id = `${tag}.${String(el.className).toString().slice(0, 50)}`;
-              for (const k of [
-                "borderTopLeftRadius",
-                "borderTopRightRadius",
-                "borderBottomLeftRadius",
-                "borderBottomRightRadius",
-              ] as const) {
-                const v = parseFloat(cs[k]);
-                const circle =
-                  Math.abs(rect.width - rect.height) < 2 &&
-                  v >= rect.width / 2 - 1;
-                if (v > 0 && !scale.includes(v) && !circle)
-                  bad.add(`${v}px ${id}`);
-              }
-              for (const s of ["Top", "Right", "Bottom", "Left"] as const) {
-                if (
-                  parseFloat(cs[`border${s}Width`]) > 0 &&
-                  cs[`border${s}Style`] !== "none" &&
-                  !["input", "textarea"].includes(tag) &&
-                  !(el as HTMLElement).dataset.testid?.includes("input")
-                )
-                  lines.add(id);
-              }
-              if (
-                el.childNodes.length &&
-                Array.from(el.childNodes).some(
-                  (n) => n.nodeType === 3 && n.textContent?.trim(),
-                )
-              ) {
-                const ff = cs.fontFamily.split(",")[0].replace(/"/g, "").trim();
-                fonts.add(ff);
-                if (
-                  el.scrollWidth > el.clientWidth + 2 &&
-                  cs.overflow !== "visible" &&
-                  cs.textOverflow !== "ellipsis" &&
-                  cs.overflowX === "hidden"
-                )
-                  clipped.add(id);
-              }
-              if (
-                rect.right > window.innerWidth + 1 &&
-                cs.position !== "fixed" &&
-                !el.closest("[class*=overflow]")
-              )
-                lines.add(`OVERFLOW:${id}`);
-            }
-            out.badRadii = [...bad].slice(0, 8);
-            out.lines = [...lines].slice(0, 8);
-            out.fonts = [...fonts];
-            out.clipped = [...clipped].slice(0, 5);
-            return out;
-          },
-          [...SCALE],
-        );
-        report.push(`${path} ${JSON.stringify(res)}`);
+        const a = await auditBrand(page);
+        expect.soft(a.mode, `${name} mode`).toBe(mode);
+        expect.soft(a.overflowX, `${name} horizontal overflow`).toBe(false);
+        expect.soft(a.lucideIcons, `${name} lucide icons`).toBe(0);
+        expect
+          .soft(
+            a.fonts.filter((f) => f !== "Geologica"),
+            `${name} fonts`,
+          )
+          .toEqual([]);
+        expect.soft(a.badRadii, `${name} off-scale radii`).toEqual([]);
+        expect.soft(a.lines, `${name} lines`).toEqual([]);
         await page.screenshot({
-          path: `docs/brand/qa/${vp}-${mode}-${path.replace(/\W+/g, "_")}.jpg`,
+          path: `docs/brand/qa/${vp}-${mode}-${name}.jpg`,
           type: "jpeg",
           quality: 40,
           fullPage: false,
         });
       }
-      console.log(`QAREPORT ${vp} ${mode}\n${report.join("\n")}`);
       await ctx.close();
     });

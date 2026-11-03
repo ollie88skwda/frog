@@ -54,6 +54,12 @@
       // localStorage "mode". Keep in sync with src/lib/theme.ts.
       (() => {
         var stored = localStorage.getItem("mode");
+        var legacy = localStorage.getItem("theme");
+        if (stored === null && (legacy === "light" || legacy === "dark")) {
+          stored = legacy === "light" ? "day" : "night";
+          localStorage.setItem("mode", stored);
+        }
+        localStorage.removeItem("theme");
         var night =
           stored === "night" ||
           (stored !== "day" &&

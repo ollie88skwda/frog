@@ -229,8 +229,10 @@ function PhotoPicker({
               onClick={() => void pickSessionPhoto(p.url as string, p.row.id)}
               aria-pressed={p.row.id === selectedId}
               className={cn(
-                "size-16 shrink-0 object-cover transition-colors duration-150",
-                p.row.id === selectedId ? "" : "",
+                "size-16 shrink-0 p-1 transition-[background-color,opacity] duration-150",
+                p.row.id === selectedId
+                  ? "bg-accent"
+                  : "opacity-60 hover:opacity-100",
               )}
               data-testid={`share-photo-${p.row.position}`}
             >
