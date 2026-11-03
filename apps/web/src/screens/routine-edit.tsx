@@ -965,7 +965,7 @@ export default function RoutineEditScreen() {
                           Set {si + 1}
                         </span>
                         {unilateral && (
-                          <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-2xs text-faint">
+                          <span className="rounded-sm bg-surface-3 px-1.5 py-0.5 text-2xs text-faint">
                             per side
                           </span>
                         )}
