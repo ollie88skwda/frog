@@ -41,9 +41,9 @@ function renderInline(text: string): ReactNode[] {
 }
 
 // Dev-facing changelog (docs/DECISIONS.md 2026-08-04): reads straight from
-// the project's own decision log rather than git/GitHub tooling.`entries`
+// the project's own decision log rather than git/GitHub tooling. `entries`
 // (the parsed, already-sorted-newest-first array) comes from the
-// `virtual:changelog-entries`module — see vite.config.ts's changelogPlugin.
+// `virtual:changelog-entries` module — see vite.config.ts's changelogPlugin.
 export default function ChangelogScreen() {
   // Snapshot the marker BEFORE marking seen below, so this visit still shows
   // what was new *when it started* instead of the section vanishing the
