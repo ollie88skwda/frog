@@ -4,11 +4,7 @@ import { cn } from "@/lib/utils";
 // The one line in the system: a 1px `border-field` on text inputs (Because
 // BRAND-FINAL-SPEC §3.3). Sizing/text classes from call sites apply to the
 // <input> itself.
-export function Input({
-  className,
-  size: _size,
-  ...props
-}: Omit<ComponentProps<"input">, "size"> & { size?: string }) {
+export function Input({ className, ...props }: ComponentProps<"input">) {
   return (
     <input
       className={cn(

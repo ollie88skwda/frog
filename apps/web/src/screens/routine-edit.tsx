@@ -771,7 +771,6 @@ export default function RoutineEditScreen() {
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <Input
-          size="3"
           placeholder="Routine name"
           value={routineName}
           onChange={(e) => setName(e.target.value)}
@@ -780,7 +779,7 @@ export default function RoutineEditScreen() {
           // to content size) — only grow to fill width once the row is
           // actually a row. Mobile already gets full width from the default
           // align-items:stretch cross-axis behavior.
-          className="sm:flex-1"
+          className="h-10 sm:flex-1"
           data-testid="routine-name-input"
         />
         <Select.Root
@@ -788,7 +787,7 @@ export default function RoutineEditScreen() {
           onValueChange={(v) => setFolderId(v === NO_FOLDER ? null : v)}
         >
           <Select.Trigger
-            className="w-full sm:w-40"
+            className="h-10 w-full sm:w-40"
             data-testid="routine-folder-select"
           />
           <Select.Content>
