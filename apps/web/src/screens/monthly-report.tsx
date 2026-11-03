@@ -309,7 +309,7 @@ function ReportBody({
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
             accessibilityLayer
           >
-            <CartesianGrid vertical={false} />
+            <CartesianGrid vertical={false} stroke="transparent" />
             <XAxis
               dataKey="label"
               tickLine={false}
@@ -424,7 +424,7 @@ function TrendSlide({
           margin={{ top: 16, right: 4, left: 0, bottom: 0 }}
           accessibilityLayer
         >
-          <CartesianGrid vertical={false} />
+          <CartesianGrid vertical={false} stroke="transparent" />
           <XAxis
             dataKey="label"
             tickLine={false}

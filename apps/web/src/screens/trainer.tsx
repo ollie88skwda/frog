@@ -1197,7 +1197,7 @@ function ProgressReport({
               margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
               accessibilityLayer
             >
-              <CartesianGrid vertical={false} />
+              <CartesianGrid vertical={false} stroke="transparent" />
               <XAxis
                 dataKey="x"
                 type="number"

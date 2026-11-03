@@ -272,7 +272,7 @@ function SevenDaySection({ history, muscleMap, opts }: SectionProps) {
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
             accessibilityLayer
           >
-            <CartesianGrid vertical={false} />
+            <CartesianGrid vertical={false} stroke="transparent" />
             <XAxis
               dataKey="weekStart"
               type="category"
@@ -394,7 +394,7 @@ function SetsPerMuscleSection({ history, muscleMap, opts }: SectionProps) {
               margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
               accessibilityLayer
             >
-              <CartesianGrid vertical={false} />
+              <CartesianGrid vertical={false} stroke="transparent" />
               <XAxis
                 dataKey="start"
                 type="category"
@@ -533,7 +533,7 @@ function DistributionSection({
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
             accessibilityLayer
           >
-            <CartesianGrid vertical={false} />
+            <CartesianGrid vertical={false} stroke="transparent" />
             <XAxis
               dataKey="region"
               tickLine={false}
