@@ -227,7 +227,7 @@ function Chips<T extends string>({
 
 // ── 1. Last 7 days: consistency mini-bars + rolling body heat map ─────────────
 const CONSISTENCY_CONFIG = {
-  sessions: { label: "Workouts", color: "var(--color-accent-solid)" },
+  sessions: { label: "Workouts", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 function SevenDaySection({ history, muscleMap, opts }: SectionProps) {
@@ -311,7 +311,7 @@ function SevenDaySection({ history, muscleMap, opts }: SectionProps) {
 
 // ── 2. Set count per muscle group over time ──────────────────────────────────
 const SETS_CONFIG = {
-  sets: { label: "Total sets", color: "var(--color-accent-solid)" },
+  sets: { label: "Total sets", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 // Note 6: per-muscle stack colors failed once many muscles carried one set
@@ -444,7 +444,7 @@ function SetsPerMuscleSection({ history, muscleMap, opts }: SectionProps) {
 
 // ── 3. Muscle distribution vs prior equal period ─────────────────────────────
 const DIST_CONFIG = {
-  current: { label: "This period", color: "var(--color-accent-solid)" },
+  current: { label: "This period", color: "var(--chart-1)" },
   previous: { label: "Previous", color: "var(--color-text-secondary)" },
 } satisfies ChartConfig;
 

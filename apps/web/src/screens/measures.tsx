@@ -620,7 +620,7 @@ function TrendChart({
         <polyline
           points={pts}
           fill="none"
-          stroke="var(--color-accent-solid)"
+          stroke="var(--chart-1)"
           strokeWidth="1.5"
           strokeLinejoin="round"
           strokeLinecap="round"
@@ -632,7 +632,7 @@ function TrendChart({
           cx={x(days[i])}
           cy={y(s.value)}
           r="2.5"
-          fill="var(--color-accent-solid)"
+          fill="var(--chart-1)"
         />
       ))}
       <text

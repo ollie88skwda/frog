@@ -1,5 +1,5 @@
 /**
- * App display name — "Frog" (docs/brand/frog-brand-identity.html, 2026-07-16).
+ * App display name — "Frog" (docs/brand/archive/frog-brand-identity.html, 2026-07-16).
  *
  * This is the SINGLE source of truth for the user-facing display name. Reference
  * APP_NAME from UI (headers, branding) instead of hardcoding the literal anywhere.

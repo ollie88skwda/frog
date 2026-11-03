@@ -37,7 +37,7 @@ const monthShortFmt = new Intl.DateTimeFormat(undefined, { month: "short" });
 
 // Top-muscle-region bars — one accent series, per-bar value labels.
 const REGIONS_CONFIG = {
-  value: { label: "Sets", color: "var(--color-accent-solid)" },
+  value: { label: "Sets", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 export default function YearReviewScreen() {

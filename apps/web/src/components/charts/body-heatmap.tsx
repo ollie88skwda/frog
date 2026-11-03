@@ -101,9 +101,9 @@ function Figure({
                 <path
                   key={part}
                   d={PART[part]}
-                  fill="var(--color-accent-solid)"
+                  fill="var(--chart-1)"
                   fillOpacity={opacityFor(regionSets[region], max)}
-                  stroke={isSel ? "var(--color-accent-solid)" : "none"}
+                  stroke={isSel ? "var(--chart-1)" : "none"}
                   strokeWidth={isSel ? 1.4 : 0}
                   strokeLinejoin="round"
                   style={{ transition: "fill-opacity 150ms" }}

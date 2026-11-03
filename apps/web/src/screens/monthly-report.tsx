@@ -51,7 +51,7 @@ const monthShortFmt = new Intl.DateTimeFormat(undefined, { month: "short" });
 
 // Muscle split vs prior month — two grouped series, legend below the plot.
 const DIST_CONFIG = {
-  current: { label: "This month", color: "var(--color-accent-solid)" },
+  current: { label: "This month", color: "var(--chart-1)" },
   previous: { label: "Prior", color: "var(--color-text-secondary)" },
 } satisfies ChartConfig;
 
@@ -383,7 +383,7 @@ function TrendSlide({
   // The tooltip/axis formatting follows the active metric; the label stays
   // the metric name so a tooltip reads "Volume: 12.5k".
   const trendConfig: ChartConfig = {
-    value: { label: METRIC_LABELS[metric], color: "var(--color-accent-solid)" },
+    value: { label: METRIC_LABELS[metric], color: "var(--chart-1)" },
   };
 
   return (

@@ -24,7 +24,7 @@ const INTENSITY_STEPS = 5;
 // the theme via theme.css, like every other Radix-token fill).
 const PALETTE = Array.from({ length: INTENSITY_STEPS }, (_, i) => {
   const pct = 18 + Math.round((82 * i) / (INTENSITY_STEPS - 1));
-  return `color-mix(in srgb, var(--color-accent-solid) ${pct}%, var(--color-bg-page))`;
+  return `color-mix(in srgb, var(--chart-1) ${pct}%, var(--color-bg-page))`;
 });
 
 const BODY_COLOR = "var(--color-bg-hover)";
