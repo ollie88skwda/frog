@@ -1,5 +1,5 @@
 // Brand QA sweep (not part of normal CI): QA_VISUAL=1 bun scripts/run-e2e.ts -- e2e/qa-visual.spec.ts
-import { expect, test } from "@playwright/test";
+import { test } from "@playwright/test";
 import { EMAIL, PASSWORD, signInAs } from "./helpers";
 
 test.skip(!process.env.QA_VISUAL, "QA only");
@@ -127,7 +127,7 @@ for (const [vp, w, h] of [
                 cs.position !== "fixed" &&
                 !el.closest("[class*=overflow]")
               )
-                lines.add("OVERFLOW:" + id);
+                lines.add(`OVERFLOW:${id}`);
             }
             out.badRadii = [...bad].slice(0, 8);
             out.lines = [...lines].slice(0, 8);
@@ -145,6 +145,6 @@ for (const [vp, w, h] of [
           fullPage: false,
         });
       }
-      console.log("QAREPORT " + vp + " " + mode + "\n" + report.join("\n"));
+      console.log(`QAREPORT ${vp} ${mode}\n${report.join("\n")}`);
       await ctx.close();
     });
