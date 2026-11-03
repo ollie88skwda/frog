@@ -152,7 +152,6 @@ function ChipRow<T extends string>({
               o === value
                 ? "bg-accent-soft text-accent-ink"
                 : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
-              "",
             )}
             data-testid={`${testIdPrefix}-${o}`}
           >

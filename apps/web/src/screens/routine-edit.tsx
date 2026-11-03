@@ -1556,7 +1556,6 @@ function ExerciseMenu({
               <Flame className="size-3.5 shrink-0 text-warn" />
               Add warm-up set
             </button>
-            <div className="" />
             <p className={labelCls}>Laterality</p>
             {(
               [
@@ -1585,7 +1584,6 @@ function ExerciseMenu({
                 )}
               </button>
             ))}
-            <div className="" />
             <p className={labelCls}>Machine</p>
             <button
               type="button"
@@ -1615,7 +1613,6 @@ function ExerciseMenu({
                 Remove machine
               </button>
             )}
-            <div className="" />
             <p className={labelCls}>Default laterality</p>
             <p className="px-3 pb-1 text-2xs text-faint">
               Applies everywhere this exercise is used — pre-loads the session
@@ -1644,7 +1641,6 @@ function ExerciseMenu({
                 )}
               </button>
             ))}
-            <div className="" />
             <button
               type="button"
               onClick={() => {
@@ -1671,7 +1667,6 @@ function ExerciseMenu({
               <ArrowDown className="size-3.5 shrink-0 text-faint" />
               Move down
             </button>
-            <div className="" />
             <button
               type="button"
               onClick={() => {
@@ -1762,7 +1757,6 @@ function SetMenu({
                 )}
               </button>
             ))}
-            <div className="" />
             <button
               type="button"
               onClick={() => {

@@ -2607,7 +2607,6 @@ function ExerciseSettingsMenu({
             )}
             {showUnitOverride && (
               <>
-                <div className="" />
                 <p className="px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
                   Weight unit
                 </p>
@@ -2634,7 +2633,6 @@ function ExerciseSettingsMenu({
                 ))}
               </>
             )}
-            <div className="" />
             <p className="px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
               Default laterality
             </p>
@@ -2656,7 +2654,6 @@ function ExerciseSettingsMenu({
                 )}
               </button>
             ))}
-            <div className="" />
             <button
               type="button"
               onClick={() => {
