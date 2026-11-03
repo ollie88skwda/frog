@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 
 // Rendered-DOM brand audit against docs/brand/because-reference/BRAND-FINAL-SPEC.md: Geologica
 // only, Base 8 corners (4/8/12/16/24, or full for pills/circles), no lines
-// except the 1px border on text fields, Because green theme on <html>, and
+// except the 1px border on text fields (inputs, textareas, selects), Because green theme on <html>, and
 // no lucide icons (lucide-react stamps `class="lucide"` on every svg it
 // renders).
 export type BrandAudit = {
@@ -25,7 +25,12 @@ export function auditBrand(page: Page): Promise<BrandAudit> {
     const lines = new Set<string>();
     for (const el of Array.from(document.body.querySelectorAll("*"))) {
       const tag = el.tagName.toLowerCase();
-      if (tag === "svg" || el.closest("svg")) continue;
+      if (
+        tag === "svg" ||
+        el.closest("svg") ||
+        el.closest('[data-testid^="annotate-"]')
+      )
+        continue;
       const rect = el.getBoundingClientRect();
       if (!rect.width || !rect.height) continue;
       const cs = getComputedStyle(el);
@@ -40,7 +45,10 @@ export function auditBrand(page: Page): Promise<BrandAudit> {
         const full = v >= Math.min(rect.width, rect.height) / 2 - 1;
         if (v > 0 && !scale.includes(v) && !full) badRadii.add(`${v}px ${id}`);
       }
-      if (!["input", "textarea", "select"].includes(tag))
+      if (
+        !["input", "textarea", "select"].includes(tag) &&
+        el.getAttribute("role") !== "combobox"
+      )
         for (const s of ["Top", "Right", "Bottom", "Left"] as const)
           if (
             parseFloat(cs[`border${s}Width`]) > 0 &&

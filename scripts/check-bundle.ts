@@ -106,3 +106,15 @@ for (const f of readdirSync(assetsDir).filter((n) => n.endsWith(".js"))) {
     process.exit(1);
   }
 }
+
+// Brand gate: Phosphor is the only icon set (docs/brand/because-reference/
+// BRAND-FINAL-SPEC.md). lucide-react's icon factory stamps every svg with the
+// class "lucide" plus `lucide-${name}`; those emitted shapes, not the bare
+// word (the /changelog chunk quotes DECISIONS.md prose), mark a lucide icon
+// reaching any chunk, whichever package pulled it in.
+const LUCIDE = /["'`]lucide["'`]|`lucide-\$\{|["']lucide-["']\s*\+/;
+for (const f of readdirSync(assetsDir).filter((n) => n.endsWith(".js"))) {
+  if (!LUCIDE.test(readFileSync(join(assetsDir, f), "utf8"))) continue;
+  console.error(`lucide icon code found in ${f} — use @phosphor-icons/react`);
+  process.exit(1);
+}
