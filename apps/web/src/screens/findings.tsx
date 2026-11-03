@@ -17,7 +17,6 @@ import { CaretRight } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import {
-  CartesianGrid,
   Line as RechartsLine,
   LineChart as RechartsLineChart,
   XAxis,
@@ -330,7 +329,6 @@ function TrendChart({
               margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
               accessibilityLayer
             >
-              <CartesianGrid vertical={false} stroke="transparent" />
               <XAxis
                 dataKey="x"
                 type="number"

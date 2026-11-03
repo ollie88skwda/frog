@@ -139,7 +139,7 @@ for (const [vp, w, h] of [
         );
         report.push(`${path} ${JSON.stringify(res)}`);
         await page.screenshot({
-          path: `../docs/brand/qa/${vp}-${mode}-${path.replace(/\W+/g, "_")}.jpg`,
+          path: `docs/brand/qa/${vp}-${mode}-${path.replace(/\W+/g, "_")}.jpg`,
           type: "jpeg",
           quality: 40,
           fullPage: false,

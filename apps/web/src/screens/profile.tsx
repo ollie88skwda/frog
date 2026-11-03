@@ -13,7 +13,6 @@ import {
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import {
-  CartesianGrid,
   LabelList,
   Bar as RechartsBar,
   BarChart as RechartsBarChart,
@@ -151,7 +150,6 @@ export default function ProfileScreen() {
               margin={{ top: 16, right: 4, left: 0, bottom: 0 }}
               accessibilityLayer
             >
-              <CartesianGrid vertical={false} stroke="transparent" />
               <XAxis
                 dataKey="week"
                 type="category"
