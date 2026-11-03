@@ -209,7 +209,7 @@ async function paintBrand(
   ctx.beginPath();
   ctx.moveTo(pad, nextY);
   ctx.lineTo(frame.w - pad, nextY);
-  ctx.stroke();
+  // no-lines rule (Because brand): divider kept as spacing only
 
   // The frog-mascot moment, top-right of the brand row — the one place on
   // every frame with guaranteed empty space (content is left-anchored; the
@@ -415,7 +415,7 @@ function paintSupport(
         x - sp(frame, 0.018) * frame.w,
         valueY + sp(frame, 0.006) * frame.w,
       );
-      ctx.stroke();
+      // no-lines rule (Because brand): divider kept as spacing only
     }
     ctx.fillStyle = p.faint;
     ctx.font = `600 ${labelSize}px ${FONT_SANS}`;
@@ -515,7 +515,7 @@ function paintFooter(
   ctx.beginPath();
   ctx.moveTo(pad, y);
   ctx.lineTo(frame.w - pad, y);
-  ctx.stroke();
+  // no-lines rule (Because brand): divider kept as spacing only
   y += sp(frame, 0.038) * frame.w;
 
   const { left, right } = identityLine(identity);
@@ -614,7 +614,7 @@ export async function paintBrandOg(canvas: HTMLCanvasElement) {
   ctx.beginPath();
   ctx.moveTo(pad, y);
   ctx.lineTo(pad + colW - pad, y);
-  ctx.stroke();
+  // no-lines rule (Because brand): divider kept as spacing only
   y += frame.h * 0.06;
   ctx.fillStyle = p.faint;
   ctx.font = `500 ${Math.round(frame.h * 0.035)}px ${FONT_MONO}`;
