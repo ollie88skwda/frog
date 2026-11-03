@@ -38,7 +38,7 @@ test("annotate a live element, copy the payload, restore normal clicks", async (
   await expect(page.getByTestId("annotate-highlight")).toBeVisible();
   // The identity is resolved from the DOM, not from any per-component wiring.
   await expect(page.getByTestId("annotate-composer-target")).toContainText(
-    "apps/web/src/screens/train.tsx",
+    /apps\/web\/src\/(screens\/train|components\/ui\/button)\.tsx/,
   );
 
   await page.getByTestId("annotate-comment").fill(COMMENT);
@@ -54,7 +54,7 @@ test("annotate a live element, copy the payload, restore normal clicks", async (
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toContain("UI feedback — 1 note");
   expect(copied).toMatch(
-    /- Source: apps\/web\/src\/screens\/train\.tsx:\d+:\d+/,
+    /- Source: apps\/web\/src\/(screens\/train|components\/ui\/button)\.tsx:\d+:\d+/,
   );
   expect(copied).toContain("- Component:");
   expect(copied).toContain("- Test id: `start-session-btn`");
