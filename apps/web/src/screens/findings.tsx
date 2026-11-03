@@ -44,7 +44,7 @@ const DAY_MS = 86_400_000;
 // Trend-sheet line charts — one accent series; value/date formatting comes
 // from the callers' formatY/formatDate.
 const TREND_CONFIG = {
-  y: { label: "Value", color: "var(--color-accent-solid)" },
+  y: { label: "Value", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 export default function FindingsScreen() {

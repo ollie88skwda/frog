@@ -51,7 +51,7 @@ const weekDayFmt = new Intl.DateTimeFormat(undefined, {
 
 // Weekly workout-count bars — one accent series, tooltip + per-bar label.
 const ACTIVITY_CONFIG = {
-  value: { label: "Workouts", color: "var(--color-accent-solid)" },
+  value: { label: "Workouts", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 export default function ProfileScreen() {

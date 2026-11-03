@@ -2421,11 +2421,9 @@ function GrowthBars({
                     fill={
                       bar?.isToday
                         ? "var(--color-accent-bg-subtle)"
-                        : "var(--color-accent-solid)"
+                        : "var(--chart-1)"
                     }
-                    stroke={
-                      bar?.isToday ? "var(--color-accent-solid)" : undefined
-                    }
+                    stroke={bar?.isToday ? "var(--chart-1)" : undefined}
                     strokeDasharray={bar?.isToday ? "3 2" : undefined}
                     data-testid={`stats-growth-bar-${index}`}
                   />

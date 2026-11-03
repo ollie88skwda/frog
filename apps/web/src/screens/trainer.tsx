@@ -999,7 +999,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Bodyweight trend — one accent line, display-unit values.
 const BW_CONFIG = {
-  y: { label: "Weight", color: "var(--color-accent-solid)" },
+  y: { label: "Weight", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 function ProgressReport({

@@ -254,7 +254,7 @@ function SummaryTab({
 
   // The trend tooltip's series label follows the active metric chip.
   const summaryConfig: ChartConfig = {
-    y: { label: metric?.label ?? "Value", color: "var(--color-accent-solid)" },
+    y: { label: metric?.label ?? "Value", color: "var(--chart-1)" },
   };
 
   // Records sparkline for the share card's graphic — independent of the
