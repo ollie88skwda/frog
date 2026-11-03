@@ -1,5 +1,5 @@
 import { SET_TYPE_LABELS, SET_TYPE_MARKERS, type SetType } from "@frog/core";
-import { Check } from "lucide-react";
+import { Check } from "@phosphor-icons/react";
 import { useState } from "react";
 import { markerColorClass } from "@/components/ui/set-type-cell";
 import { cn } from "@/lib/utils";
@@ -80,7 +80,9 @@ export function RoutineSetTypeCell({
                   </span>
                   {SET_TYPE_LABELS[t]}
                 </span>
-                {t === setType && <Check className="size-3.5 text-accent" />}
+                {t === setType && (
+                  <Check className="size-3.5 text-accent-ink" />
+                )}
               </button>
             ))}
           </div>

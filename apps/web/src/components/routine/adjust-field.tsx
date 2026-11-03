@@ -54,7 +54,7 @@ export function AdjustField({
   return (
     <div
       className={cn(
-        "rounded-md border border-border-strong bg-surface-2",
+        "rounded-sm bg-surface-2",
         compact ? "p-1.5" : "p-2",
         className,
       )}
@@ -74,7 +74,7 @@ export function AdjustField({
       </div>
       <div
         className={cn(
-          "mt-1 flex items-baseline gap-1 border-b-2 border-accent",
+          "mt-1 flex items-baseline gap-1",
           compact ? "pb-0.5" : "pb-1",
         )}
       >
@@ -84,7 +84,7 @@ export function AdjustField({
           onChange={(e) => onValueChange(e.target.value)}
           placeholder={placeholder}
           className={cn(
-            "num min-w-0 flex-1 bg-transparent font-semibold text-ink focus:text-accent focus:outline-none",
+            "num min-w-0 flex-1 bg-transparent font-semibold text-ink focus:text-accent-ink focus:outline-none",
             compact ? "text-lg" : "text-2xl",
           )}
           data-testid={testId}
@@ -102,10 +102,10 @@ export function AdjustField({
             type="button"
             onClick={() => onValueChange(applyDelta(value, d, integer))}
             className={cn(
-              "num rounded-md px-1.5 text-2xs font-medium transition-colors duration-150",
+              "num rounded-sm px-1.5 text-2xs font-medium transition-colors duration-150",
               compact ? "py-0.5" : "py-1",
               d > 0
-                ? "bg-accent-soft text-accent hover:bg-accent-soft/70"
+                ? "bg-accent-soft text-accent-ink hover:bg-accent-soft/70"
                 : "bg-surface-3 text-soft hover:bg-surface-hover",
             )}
             data-testid={testId ? `${testId}-delta-${d}` : undefined}

@@ -1,4 +1,4 @@
-import { Info } from "lucide-react";
+import { Info } from "@phosphor-icons/react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
   LESSONS,

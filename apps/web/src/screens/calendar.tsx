@@ -1,6 +1,6 @@
 import { FIRST_WEEKDAY, localDateKey, type Session } from "@frog/core";
+import { CaretLeft, CaretRight, GridFour, Plus } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Grid3x3, Plus } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { StreakCard } from "@/components/streak-card";
@@ -193,7 +193,7 @@ export default function CalendarScreen() {
           data-testid="cal-prev"
           title="Previous"
         >
-          <ChevronLeft className="size-4" />
+          <CaretLeft className="size-4" />
         </IconButton>
 
         <button
@@ -210,7 +210,7 @@ export default function CalendarScreen() {
           data-testid="cal-zoom"
           title={view === "month" ? "Zoom to year" : "Back to month"}
         >
-          <Grid3x3 className="size-4 text-faint" />
+          <GridFour className="size-4 text-faint" />
           <span className="num" data-testid="cal-title">
             {view === "month"
               ? monthYearFmt.format(new Date(year, month, 1))
@@ -227,7 +227,7 @@ export default function CalendarScreen() {
           data-testid="cal-next"
           title="Next"
         >
-          <ChevronRight className="size-4" />
+          <CaretRight className="size-4" />
         </IconButton>
       </div>
 
@@ -327,7 +327,7 @@ function MonthGrid({
                 has
                   ? "bg-accent font-semibold text-accent-fg"
                   : "bg-surface-2 text-soft hover:bg-surface-hover"
-              } ${isToday ? "shadow-[inset_0_0_0_1px_var(--ring)]" : ""}`}
+              } ${isToday ? "shadow-[inset_0_0_0_1px_var(--color-border-focus)]" : ""}`}
               data-testid={`cal-day-${key}`}
               title={
                 has
@@ -340,7 +340,7 @@ function MonthGrid({
               </span>
               {list.length > 1 && (
                 <span
-                  className="num absolute right-0.5 bottom-0.5 flex min-w-3 items-center justify-center bg-surface px-0.5 text-[9px] leading-none text-accent"
+                  className="num absolute right-0.5 bottom-0.5 flex min-w-3 items-center justify-center bg-surface px-0.5 text-[9px] leading-none text-accent-ink"
                   data-testid={`cal-count-${key}`}
                 >
                   {list.length}
@@ -491,7 +491,7 @@ function DaySheet({
             )}
           </p>
         ) : (
-          <ul className="divide-y divide-border border border-border">
+          <ul className="[&>*+*]:mt-0.5">
             {sessions.map((s) => (
               <li key={s.id}>
                 <Link

@@ -25,9 +25,9 @@ export function iconButtonClass({
   className,
 }: IconButtonVariants & { className?: string } = {}) {
   return cn(
-    "flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-surface-2 text-faint transition-colors duration-100 hover:bg-surface-hover hover:text-ink disabled:opacity-40 disabled:hover:bg-surface-2 disabled:hover:text-faint md:size-8",
+    "flex size-10 shrink-0 items-center justify-center rounded-sm bg-surface-2 text-faint transition-colors duration-100 hover:bg-surface-hover hover:text-ink disabled:opacity-40 disabled:hover:bg-surface-2 disabled:hover:text-faint md:size-8",
     active &&
-      "border-accent bg-accent-soft text-accent hover:bg-accent-soft hover:text-accent",
+      "bg-accent-soft text-accent-ink hover:bg-accent-soft hover:text-accent-ink",
     danger && "hover:text-neg",
     className,
   );

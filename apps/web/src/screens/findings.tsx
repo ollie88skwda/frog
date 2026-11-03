@@ -13,8 +13,7 @@ import {
   sessionVolumeByExercise,
   toDisplayWeight,
 } from "@frog/core";
-import { Badge } from "@radix-ui/themes";
-import { ChevronRight } from "lucide-react";
+import { CaretRight } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import {
@@ -24,6 +23,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { Badge } from "@/components/ui/badge";
 import {
   type ChartConfig,
   ChartContainer,
@@ -45,7 +45,7 @@ const DAY_MS = 86_400_000;
 // Trend-sheet line charts — one accent series; value/date formatting comes
 // from the callers' formatY/formatDate.
 const TREND_CONFIG = {
-  y: { label: "Value", color: "var(--accent)" },
+  y: { label: "Value", color: "var(--color-accent-solid)" },
 } satisfies ChartConfig;
 
 export default function FindingsScreen() {
@@ -85,7 +85,7 @@ export default function FindingsScreen() {
           {trends.length > 0 && (
             <section>
               <SectionLabel>Progression</SectionLabel>
-              <div className="mt-2 divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+              <div className="mt-2 [&>*+*]:mt-0.5 overflow-hidden rounded-md bg-surface">
                 {trends.map((trend) => (
                   <TrendRow
                     key={trend.exerciseId}
@@ -100,7 +100,7 @@ export default function FindingsScreen() {
           {conditions.length > 0 && (
             <section>
               <SectionLabel>Conditions</SectionLabel>
-              <div className="mt-2 divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+              <div className="mt-2 [&>*+*]:mt-0.5 overflow-hidden rounded-md bg-surface">
                 {conditions.map((c) => (
                   <ConditionRow
                     key={`${c.conditionId}-${JSON.stringify(c.outcome)}`}
@@ -115,7 +115,7 @@ export default function FindingsScreen() {
           {!nothingOnTheWay && (
             <section>
               <SectionLabel>On the way</SectionLabel>
-              <div className="mt-2 divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+              <div className="mt-2 [&>*+*]:mt-0.5 overflow-hidden rounded-md bg-surface">
                 {countdowns.map((c) => (
                   <div
                     key={c.exerciseId}
@@ -161,7 +161,7 @@ export default function FindingsScreen() {
           )}
 
           {empty && nothingOnTheWay && (
-            <div className="rounded-lg border border-border bg-surface px-4 py-8 text-center">
+            <div className="rounded-md bg-surface px-4 py-8 text-center">
               <p className="text-sm text-soft">
                 {t("No findings yet.", "The frog refuses to speculate.")}
               </p>
@@ -202,12 +202,14 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-const VERDICT_COLOR: Record<TrendFinding["verdict"], "grass" | "gray" | "red"> =
-  {
-    PROGRESSING: "grass",
-    PLATEAU: "gray",
-    REGRESSING: "red",
-  };
+const VERDICT_TONE: Record<
+  TrendFinding["verdict"],
+  "accent" | "neutral" | "danger"
+> = {
+  PROGRESSING: "accent",
+  PLATEAU: "neutral",
+  REGRESSING: "danger",
+};
 
 function TrendRow({
   trend,
@@ -230,17 +232,11 @@ function TrendRow({
           {trend.pctChange.toFixed(1)}% · {trend.n}{" "}
           {trend.n === 1 ? "session" : "sessions"}
         </span>
-        <Badge
-          color={trend.confidence === "low" ? "amber" : "gray"}
-          variant="soft"
-          size="1"
-        >
+        <Badge tone={trend.confidence === "low" ? "warn" : "neutral"}>
           {trend.confidence === "low" ? "Rough estimate" : "Medium confidence"}
         </Badge>
-        <Badge color={VERDICT_COLOR[trend.verdict]} variant="soft" size="1">
-          {trend.verdict}
-        </Badge>
-        <ChevronRight className="size-4 text-faint" />
+        <Badge tone={VERDICT_TONE[trend.verdict]}>{trend.verdict}</Badge>
+        <CaretRight className="size-4 text-faint" />
       </span>
     </button>
   );
@@ -285,7 +281,7 @@ function ConditionRow({
             on high {finding.conditionName} days
           </span>
         </span>
-        <ChevronRight className="size-4 shrink-0 text-faint" />
+        <CaretRight className="size-4 shrink-0 text-faint" />
       </p>
       <p className="num mt-0.5 text-2xs text-faint">
         n = {finding.n.high} high / {finding.n.low} low · {finding.confidence}{" "}
@@ -417,9 +413,7 @@ function TrendSheet({
       <DialogContent title={trend.exerciseName} data-testid="findings-sheet">
         <div className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge color={VERDICT_COLOR[trend.verdict]} variant="soft" size="1">
-              {trend.verdict}
-            </Badge>
+            <Badge tone={VERDICT_TONE[trend.verdict]}>{trend.verdict}</Badge>
             <span className="num text-xs text-soft">
               {sign}
               {trend.pctChange.toFixed(1)}% · n = {trend.n} sessions · ~{weeks}{" "}
@@ -492,7 +486,7 @@ function TrendSheet({
 
           <Link
             to={`/exercises/${trend.exerciseId}`}
-            className="mt-1 inline-flex h-9 w-full items-center justify-center border border-border bg-translucent text-xs transition-colors duration-150 hover:bg-surface-hover"
+            className="mt-1 inline-flex h-9 w-full items-center justify-center bg-translucent text-xs transition-colors duration-150 hover:bg-surface-hover"
           >
             {t("Full history", "Full history — the frog's ledger")}
           </Link>
@@ -515,7 +509,7 @@ function RecommendationBlock({
   if (rec.kind === "keep-going") {
     const sign = trend.pctChange > 0 ? "+" : "";
     return (
-      <div className="border border-border bg-surface px-3 py-2">
+      <div className="bg-surface px-3 py-2">
         <p className="text-sm font-medium">{t("Keep going", "Keep going")}</p>
         <p className="mt-0.5 text-xs text-soft">
           {t(
@@ -532,7 +526,7 @@ function RecommendationBlock({
     const pct = stats.volumePct ?? 0;
     const falling = pct < 0;
     return (
-      <div className="border border-border bg-surface px-3 py-2">
+      <div className="bg-surface px-3 py-2">
         <p className="text-sm font-medium">
           {t("Consider more volume", "Consider more volume")}
         </p>
@@ -555,7 +549,7 @@ function RecommendationBlock({
   // rir-gap
   const coveragePct = Math.round((stats.rirCoverage ?? 0) * 100);
   return (
-    <div className="border border-border bg-surface px-3 py-2">
+    <div className="bg-surface px-3 py-2">
       <p className="text-sm font-medium">
         {t(
           "Log RIR for intensity advice",
@@ -629,7 +623,7 @@ function ConditionSheet({
           </p>
 
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between border border-border bg-surface px-3 py-2">
+            <div className="flex items-center justify-between bg-surface px-3 py-2">
               <span className="text-xs text-soft">
                 High {finding.conditionName} days
               </span>
@@ -637,7 +631,7 @@ function ConditionSheet({
                 {formatMean(finding.highMean)}
               </span>
             </div>
-            <div className="flex items-center justify-between border border-border bg-surface px-3 py-2">
+            <div className="flex items-center justify-between bg-surface px-3 py-2">
               <span className="text-xs text-soft">
                 Low {finding.conditionName} days
               </span>

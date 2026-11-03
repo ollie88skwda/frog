@@ -1,4 +1,4 @@
-import { ChevronRight } from "lucide-react";
+import { CaretRight } from "@phosphor-icons/react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { rowClass } from "@/components/ui/row";
@@ -17,7 +17,7 @@ export default function HistoryScreen() {
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
       <h1 className="text-lg font-semibold tracking-tight">History</h1>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="mt-4 overflow-hidden rounded-md bg-surface">
         {isLoading ? (
           <p className="px-4 py-6 text-center text-xs text-faint">
             {t("Loading…", "The frog is thinking…")}
@@ -35,7 +35,7 @@ export default function HistoryScreen() {
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="[&>*+*]:mt-0.5">
             {sessions.map((s) => (
               <li key={s.id}>
                 <Link
@@ -56,7 +56,7 @@ export default function HistoryScreen() {
                     <span className="num text-xs text-faint">
                       {formatDate(s.startedAt)} · {formatTime(s.startedAt)}
                     </span>
-                    <ChevronRight className="size-4 text-faint" />
+                    <CaretRight className="size-4 text-faint" />
                   </span>
                 </Link>
               </li>

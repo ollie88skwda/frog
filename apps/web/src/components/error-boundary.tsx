@@ -60,7 +60,7 @@ export class AppErrorBoundary extends Component<Props, State> {
           type="button"
           data-testid="app-error-reload"
           onClick={() => window.location.reload()}
-          className="border border-border bg-surface-2 px-4 py-2 text-sm transition-colors duration-100 hover:bg-surface-hover"
+          className="bg-surface-2 px-4 py-2 text-sm transition-colors duration-100 hover:bg-surface-hover"
         >
           Reload
         </button>

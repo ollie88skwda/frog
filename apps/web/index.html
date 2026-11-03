@@ -10,7 +10,7 @@
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#101211" />
+    <meta name="theme-color" content="#191513" />
     <!-- apple-mobile-web-app-capable is deprecated (and warns in the console),
          but older iOS reads only that one — ship both. -->
     <meta name="mobile-web-app-capable" content="yes" />
@@ -49,20 +49,20 @@
     />
     <meta name="twitter:image" content="/og.png" />
     <script>
-      // Set theme before first paint to avoid a flash of the wrong theme.
-      // Sets BOTH seams: data-theme (app tokens) and the light/dark class that
-      // Radix Themes keys off. Keep in sync with src/lib/theme.ts.
+      // Set theme + mode before first paint (no flash). Frog ships the Because
+      // GREEN theme only; mode is Device (default) | Day | Night, persisted in
+      // localStorage "mode". Keep in sync with src/lib/theme.ts.
       (() => {
-        var stored = localStorage.getItem("theme");
-        var theme =
-          stored === "light" || stored === "dark"
-            ? stored
-            : window.matchMedia("(prefers-color-scheme: light)").matches
-              ? "light"
-              : "dark";
+        var stored = localStorage.getItem("mode");
+        var night =
+          stored === "night" ||
+          (stored !== "day" &&
+            !window.matchMedia("(prefers-color-scheme: light)").matches);
         var root = document.documentElement;
-        root.dataset.theme = theme;
-        root.classList.add(theme);
+        root.dataset.theme = "green";
+        root.dataset.mode = night ? "night" : "day";
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute("content", night ? "#191513" : "#fcf9f4");
       })();
     </script>
   </head>

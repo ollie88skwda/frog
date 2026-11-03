@@ -13,19 +13,18 @@ import {
   ratingsForMuscle,
   tierRank,
 } from "@frog/core";
-import { Select } from "@radix-ui/themes";
 import {
   Archive,
   ArrowRight,
-  ChevronDown,
-  ChevronRight,
+  Barbell,
+  CaretDown,
+  CaretRight,
+  ClockCounterClockwise,
   Copy,
-  Dumbbell,
-  History,
   Info,
   Plus,
   X,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import {
   type CSSProperties,
   type FormEvent,
@@ -59,6 +58,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { IconButton, IconLink } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
 import { Row } from "@/components/ui/row";
+import { Select } from "@/components/ui/select";
 import {
   dismissBulkAddFailures,
   finishBulkAddRun,
@@ -322,7 +322,7 @@ export default function LibraryScreen() {
               className={cn(
                 "h-8 shrink-0 px-2.5 text-2xs transition-colors duration-150",
                 yoursOnly
-                  ? "bg-accent-soft text-accent"
+                  ? "bg-accent-soft text-accent-ink"
                   : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
               )}
               data-testid="library-filter-yours"
@@ -338,7 +338,7 @@ export default function LibraryScreen() {
         />
       </div>
 
-      <div className="mt-4 overflow-hidden border border-border bg-surface">
+      <div className="mt-4 overflow-hidden bg-surface">
         {isLoading ? (
           <p className="px-4 py-6 text-center text-xs text-faint">
             {t("Loading…", "The frog is thinking…")}
@@ -379,7 +379,7 @@ export default function LibraryScreen() {
           // the region→muscle drill-down lands here, tier-sorted within.
           groups.map((group) => (
             <section key={group.key} data-testid={`muscle-group-${group.key}`}>
-              <header className="flex h-8 items-center gap-2 border-b border-border bg-surface-2 px-2">
+              <header className="flex h-8 items-center gap-2 bg-surface-2 px-2">
                 <button
                   type="button"
                   onClick={() => toggleGroup(group.key)}
@@ -387,9 +387,9 @@ export default function LibraryScreen() {
                   data-testid={`muscle-group-toggle-${group.key}`}
                 >
                   {collapsed.has(group.key) ? (
-                    <ChevronRight className="size-4 shrink-0 text-faint" />
+                    <CaretRight className="size-4 shrink-0 text-faint" />
                   ) : (
-                    <ChevronDown className="size-4 shrink-0 text-faint" />
+                    <CaretDown className="size-4 shrink-0 text-faint" />
                   )}
                   <span className="truncate text-2xs font-medium tracking-widest uppercase">
                     {group.label}
@@ -403,7 +403,7 @@ export default function LibraryScreen() {
                 )}
               </header>
               {!collapsed.has(group.key) && (
-                <ul className="divide-y divide-border">
+                <ul className="[&>*+*]:mt-0.5">
                   {group.items.map((ex) => (
                     <ExerciseRow
                       key={ex.id}
@@ -425,7 +425,7 @@ export default function LibraryScreen() {
           ))
         ) : query.trim() ? (
           // Search-first: a query shows a flat list of matches, no bands.
-          <ul className="divide-y divide-border">
+          <ul className="[&>*+*]:mt-0.5">
             {filtered.map((ex) => (
               <ExerciseRow
                 key={ex.id}
@@ -449,7 +449,7 @@ export default function LibraryScreen() {
           <>
             {bands.recent.length > 0 && (
               <section data-testid="library-band-recent">
-                <header className="flex h-8 items-center gap-2 border-b border-border bg-surface-2 px-2">
+                <header className="flex h-8 items-center gap-2 bg-surface-2 px-2">
                   <span className="truncate text-2xs font-medium tracking-widest uppercase">
                     {t("Recent", "Recently used")}
                   </span>
@@ -457,7 +457,7 @@ export default function LibraryScreen() {
                     {bands.recent.length}
                   </span>
                 </header>
-                <ul className="divide-y divide-border">
+                <ul className="[&>*+*]:mt-0.5">
                   {bands.recent.map((ex) => (
                     <ExerciseRow
                       key={ex.id}
@@ -479,7 +479,7 @@ export default function LibraryScreen() {
             )}
             {bands.favorites.length > 0 && (
               <section data-testid="library-band-favorites">
-                <header className="flex h-8 items-center gap-2 border-b border-border bg-surface-2 px-2">
+                <header className="flex h-8 items-center gap-2 bg-surface-2 px-2">
                   <span className="truncate text-2xs font-medium tracking-widest uppercase">
                     {t("Favorites", "Favorites")}
                   </span>
@@ -487,7 +487,7 @@ export default function LibraryScreen() {
                     {bands.favorites.length}
                   </span>
                 </header>
-                <ul className="divide-y divide-border">
+                <ul className="[&>*+*]:mt-0.5">
                   {bands.favorites.map((ex) => (
                     <ExerciseRow
                       key={ex.id}
@@ -507,7 +507,7 @@ export default function LibraryScreen() {
                 </ul>
               </section>
             )}
-            <ul className="divide-y divide-border">
+            <ul className="[&>*+*]:mt-0.5">
               {bands.rest.map((ex) => (
                 <ExerciseRow
                   key={ex.id}
@@ -633,7 +633,7 @@ function BulkAddDialog({
               onChange={(e) => setText(e.target.value)}
               placeholder="One exercise name per line"
               rows={8}
-              className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
+              className="w-full border border-field bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
               data-testid="bulk-add-textarea"
             />
             {duplicates.length > 0 && (
@@ -842,7 +842,7 @@ const ExerciseRow = memo(function ExerciseRow({
   // Gate the per-row last-set lookup on visibility — otherwise the seeded
   // library fires one query per row (~900) on open, saturating the network.
   const [rowRef, inView] = useInView<HTMLLIElement>();
-  const Chevron = expanded ? ChevronDown : ChevronRight;
+  const Chevron = expanded ? CaretDown : CaretRight;
   const groupTier = exercise.muscleTargets?.find(
     (t) => t.muscle === groupMuscle,
   )?.tier;
@@ -897,13 +897,13 @@ const ExerciseRow = memo(function ExerciseRow({
                   // Community-shared row (owner_id null): quiet "shared" mark,
                   // the why behind the missing Edit/Archive below.
                   <span
-                    className="border border-border bg-surface px-2 py-0.5 text-2xs text-faint"
+                    className="bg-surface px-2 py-0.5 text-2xs text-faint"
                     data-testid={`shared-badge-${exercise.name}`}
                   >
                     shared
                   </span>
                 ) : (
-                  <span className="bg-accent-soft px-2 py-0.5 text-2xs text-accent">
+                  <span className="bg-accent-soft px-2 py-0.5 text-2xs text-accent-ink">
                     yours
                   </span>
                 ))}
@@ -935,7 +935,7 @@ const ExerciseRow = memo(function ExerciseRow({
             )}
             {flat && exercise.equipment && (
               <span className="flex items-center gap-1 truncate">
-                <Dumbbell className="size-3 shrink-0" />
+                <Barbell className="size-3 shrink-0" />
                 {
                   EQUIPMENT_LABELS[
                     exercise.equipment as keyof typeof EQUIPMENT_LABELS
@@ -945,7 +945,7 @@ const ExerciseRow = memo(function ExerciseRow({
             )}
             {machine && (
               <span className="flex items-center gap-1 truncate">
-                <Dumbbell className="size-3 shrink-0" />
+                <Barbell className="size-3 shrink-0" />
                 {machine.brand ? `${machine.brand} · ` : ""}
                 {machine.name}
               </span>
@@ -961,7 +961,7 @@ const ExerciseRow = memo(function ExerciseRow({
         </div>
       </div>
       {expanded && (
-        <div className="border-t border-border bg-surface-2 px-4 py-2 pl-10">
+        <div className="bg-surface-2 px-4 py-2 pl-10">
           {setMetrics.length === 0 ? (
             <p className="text-2xs text-faint">
               {t(
@@ -1007,7 +1007,7 @@ const ExerciseRow = memo(function ExerciseRow({
               // Edit/Archive become fork-on-edit: a private copy the user can
               // change (docs/DECISIONS.md 2026-08-08). The fork is never
               // itself published (share: false).
-              <div className="mt-3 border-t border-border pt-2">
+              <div className="mt-3 pt-2">
                 <p className="text-2xs text-faint">
                   Shared with everyone, so it can't be edited here. Make a
                   private copy to change it.
@@ -1031,7 +1031,7 @@ const ExerciseRow = memo(function ExerciseRow({
                 </div>
               </div>
             ) : (
-              <div className="mt-3 border-t border-border pt-2">
+              <div className="mt-3 pt-2">
                 <TagEditor exercise={exercise} update={update} />
                 <div className="mt-2 flex gap-2">
                   <Button
@@ -1109,7 +1109,7 @@ function LastSetSummary({ exerciseId }: { exerciseId: string }) {
   if (!summary) return null;
   return (
     <span className="flex items-center gap-1 truncate">
-      <History className="size-3 shrink-0" />
+      <ClockCounterClockwise className="size-3 shrink-0" />
       Last: {summary}
     </span>
   );
@@ -1144,7 +1144,7 @@ function TagEditor({
       {(exercise.tags ?? []).map((t) => (
         <span
           key={t}
-          className="flex items-center gap-1 border border-border bg-surface px-2 py-0.5 text-2xs text-soft"
+          className="flex items-center gap-1 bg-surface px-2 py-0.5 text-2xs text-soft"
         >
           {t}
           <button
@@ -1229,9 +1229,8 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
         <Select.Root
           value={type}
           onValueChange={(v) => setType(v as NewMetricInput["type"])}
-          size="2"
         >
-          <Select.Trigger variant="surface" data-testid="metric-type-select" />
+          <Select.Trigger data-testid="metric-type-select" />
           <Select.Content>
             {METRIC_TYPES.map((t) => (
               <Select.Item key={t} value={t}>
@@ -1251,7 +1250,7 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
       </form>
 
       {custom.length > 0 && (
-        <ul className="mt-3 divide-y divide-border overflow-hidden border border-border bg-surface">
+        <ul className="mt-3 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
           {custom.map((m) => (
             <li key={m.id} data-testid={`metric-row-${m.name}`}>
               <Row interactive={false} className="text-sm">

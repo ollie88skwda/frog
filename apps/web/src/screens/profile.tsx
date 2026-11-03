@@ -1,15 +1,15 @@
 import { FIRST_WEEKDAY, weekStart } from "@frog/core";
 import {
-  BarChart3,
-  CalendarDays,
+  Barbell,
+  CalendarDots,
+  CaretRight,
+  ChartBar,
   Check,
-  ChevronRight,
-  Dumbbell,
-  Pencil,
+  GearSix,
+  PencilSimple,
   Ruler,
-  Settings2,
   X,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import {
@@ -52,7 +52,7 @@ const weekDayFmt = new Intl.DateTimeFormat(undefined, {
 
 // Weekly workout-count bars — one accent series, tooltip + per-bar label.
 const ACTIVITY_CONFIG = {
-  value: { label: "Workouts", color: "var(--accent)" },
+  value: { label: "Workouts", color: "var(--color-accent-solid)" },
 } satisfies ChartConfig;
 
 export default function ProfileScreen() {
@@ -103,10 +103,10 @@ export default function ProfileScreen() {
         <Link
           to="/settings"
           title="Settings"
-          className="flex size-9 items-center justify-center bg-translucent text-soft shadow-(--inset-control) transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+          className="flex size-9 items-center justify-center bg-translucent text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
           data-testid="profile-settings"
         >
-          <Settings2 className="size-4" />
+          <GearSix className="size-4" />
         </Link>
       </div>
 
@@ -119,7 +119,7 @@ export default function ProfileScreen() {
 
       {/* Workout count + streak. */}
       <div className="mt-4 grid grid-cols-2 gap-4">
-        <div className="flex flex-col justify-center border border-border bg-surface p-4">
+        <div className="flex flex-col justify-center bg-surface p-4">
           <div className="text-2xs font-medium tracking-widest text-faint uppercase">
             Workouts
           </div>
@@ -134,7 +134,7 @@ export default function ProfileScreen() {
       </div>
 
       {/* 3-month weekly activity. */}
-      <div className="mt-4 border border-border bg-surface p-4">
+      <div className="mt-4 bg-surface p-4">
         <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
           Activity — last 3 months
         </h2>
@@ -181,7 +181,7 @@ export default function ProfileScreen() {
                   position="top"
                   formatter={(v) => (Number(v) > 0 ? String(v) : "")}
                   className="num"
-                  fill="var(--soft)"
+                  fill="var(--color-text-secondary)"
                   fontSize={10}
                 />
               </RechartsBar>
@@ -192,14 +192,14 @@ export default function ProfileScreen() {
 
       {/* Dashboard. */}
       <div className="mt-4 grid grid-cols-2 gap-2">
-        <DashButton to="/library" icon={Dumbbell} label="Exercises" />
-        <DashButton to="/stats" icon={BarChart3} label="Statistics" />
+        <DashButton to="/library" icon={Barbell} label="Exercises" />
+        <DashButton to="/stats" icon={ChartBar} label="Statistics" />
         <DashButton to="/measures" icon={Ruler} label="Measures" />
-        <DashButton to="/calendar" icon={CalendarDays} label="Calendar" />
+        <DashButton to="/calendar" icon={CalendarDots} label="Calendar" />
       </div>
 
       {/* Recent workouts. */}
-      <div className="mt-4 overflow-hidden border border-border bg-surface">
+      <div className="mt-4 overflow-hidden bg-surface">
         <div className="flex items-center justify-between px-4 py-2">
           <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
             Recent workouts
@@ -212,14 +212,14 @@ export default function ProfileScreen() {
           </Link>
         </div>
         {recent.length === 0 ? (
-          <p className="border-t border-border px-4 py-6 text-center text-xs text-faint">
+          <p className="px-4 py-6 text-center text-xs text-faint">
             {t(
               "No sessions yet — start one from Training.",
               "No sessions yet. The frog refuses to speculate — start one from Training.",
             )}
           </p>
         ) : (
-          <ul className="divide-y divide-border border-t border-border">
+          <ul className="[&>*+*]:mt-0.5">
             {recent.map((s) => (
               <li key={s.id}>
                 <Link
@@ -240,7 +240,7 @@ export default function ProfileScreen() {
                     <span className="num text-xs text-faint">
                       {formatDate(s.startedAt)} · {formatTime(s.startedAt)}
                     </span>
-                    <ChevronRight className="size-4 text-faint" />
+                    <CaretRight className="size-4 text-faint" />
                   </span>
                 </Link>
               </li>
@@ -283,7 +283,7 @@ function ProfileHeader({
   }
 
   return (
-    <div className="mt-6 border border-border bg-surface p-4">
+    <div className="mt-6 bg-surface p-4">
       <div className="flex items-center gap-3">
         <span className="flex size-12 shrink-0 items-center justify-center bg-accent text-lg font-semibold text-accent-fg">
           {initial}
@@ -329,7 +329,7 @@ function ProfileHeader({
               placeholder="Short bio — lifts, goals, noise"
               rows={2}
               maxLength={MAX_BIO_LENGTH}
-              className="w-full border border-border bg-surface px-2 py-2 text-sm text-ink placeholder:text-faint"
+              className="w-full border border-field bg-surface px-2 py-2 text-sm text-ink placeholder:text-faint"
               data-testid="profile-bio-input"
             />
           </div>
@@ -352,7 +352,7 @@ function ProfileHeader({
                 className="ml-auto"
                 data-testid="profile-name-edit"
               >
-                <Pencil className="size-4" />
+                <PencilSimple className="size-4" />
               </IconButton>
             </div>
             <p className="mt-0.5 truncate text-2xs text-faint">{email}</p>
@@ -378,7 +378,7 @@ function DashButton({
   soon,
 }: {
   to?: string;
-  icon: typeof Dumbbell;
+  icon: typeof Barbell;
   label: string;
   soon?: boolean;
 }) {
@@ -393,8 +393,7 @@ function DashButton({
       )}
     </>
   );
-  const base =
-    "flex h-14 items-center gap-3 border border-border bg-surface px-4";
+  const base = "flex h-14 items-center gap-3 bg-surface px-4";
   if (soon || !to) {
     return (
       <div
@@ -409,7 +408,7 @@ function DashButton({
   return (
     <Link
       to={to}
-      className={`${base} transition-colors duration-150 hover:border-border-strong`}
+      className={`${base} transition-colors duration-150`}
       data-testid={`dash-${label.toLowerCase()}`}
     >
       {body}

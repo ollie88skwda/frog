@@ -37,16 +37,53 @@ function ClerkAuthScreen() {
           routing="hash"
           fallbackRedirectUrl="/"
           appearance={{
+            // Same tokens as the app: Clerk reads CSS vars at render, so the
+            // Because day/night roles follow data-mode automatically.
             variables: {
-              // grass-9 — Clerk derives its shade scale from a literal
-              // color, so the var(--accent) bridge token can't be used here.
-              colorPrimary: "#46a758",
-              borderRadius: "0px",
+              colorPrimary: "var(--color-action-primary-bg)",
+              colorPrimaryForeground: "var(--color-action-primary-text)",
+              colorBackground: "var(--color-bg-raised)",
+              colorForeground: "var(--color-text-primary)",
+              colorMutedForeground: "var(--color-text-secondary)",
+              colorInput: "var(--color-bg-sunken)",
+              colorInputForeground: "var(--color-text-primary)",
+              colorNeutral: "var(--color-text-primary)",
+              colorDanger: "var(--color-danger-text)",
+              colorSuccess: "var(--color-success-text)",
+              colorRing: "var(--color-border-focus)",
+              colorBorder: "var(--color-border-field)",
+              colorShadow: "transparent",
+              fontFamily: "var(--font-body)",
+              fontWeight: {
+                normal: 410,
+                medium: 600,
+                semibold: 600,
+                bold: 700,
+              },
+              borderRadius: "var(--r-sm)",
             },
             // Clerk's card renders its own "Sign in to <Clerk app name>"
             // heading, which duplicates ours and shows the Clerk-side app
             // name rather than APP_NAME. Ours is the source of truth.
-            elements: { header: { display: "none" } },
+            // No lines: the card and social buttons separate by tone + shadow.
+            elements: {
+              header: { display: "none" },
+              cardBox: {
+                boxShadow: "var(--shadow-2)",
+                borderRadius: "var(--r-md)",
+                border: "0",
+              },
+              card: { boxShadow: "none", border: "0" },
+              footer: { background: "transparent", border: "0" },
+              footerAction: { border: "0" },
+              dividerLine: { display: "none" },
+              socialButtonsBlockButton: {
+                border: "0",
+                background: "var(--color-action-secondary-bg)",
+                boxShadow: "none",
+              },
+              formButtonPrimary: { boxShadow: "none" },
+            },
           }}
         />
       </div>

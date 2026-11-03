@@ -1,5 +1,5 @@
 import { FIRST_WEEKDAY, sevenDayMuscleSets } from "@frog/core";
-import { BarChart3, Dumbbell, Plus, Users } from "lucide-react";
+import { Barbell, ChartBar, Plus, Users } from "@phosphor-icons/react";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { HumanBodyHeatmap } from "@/components/charts/human-body-heatmap";
@@ -53,11 +53,11 @@ export default function HomeScreen() {
           (docs/DECISIONS.md 2026-08-08, Routines-tab & Home-heatmap entry). */}
       <Link
         to="/stats"
-        className="mt-4 block rounded-lg border border-border bg-surface p-4 transition-colors duration-150 ease-(--ease-out-quad) hover:border-border-strong"
+        className="mt-4 block rounded-md bg-surface p-4 transition-colors duration-150 ease-(--ease-out-quad)"
         data-testid="home-heatmap"
       >
         <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
-          <BarChart3 className="size-4" />
+          <ChartBar className="size-4" />
           This week
         </div>
         <div className="mx-auto mt-2 max-w-56">
@@ -68,7 +68,7 @@ export default function HomeScreen() {
       {/* Exercises lives on Home — promoted above Findings and retitled so the
           "+ Custom" affordance (a straight deep-link into the create sheet,
           docs/DECISIONS.md) is reachable without a second navigation. */}
-      <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+      <div className="mt-4 rounded-md bg-surface p-4">
         <div className="flex items-start justify-between gap-2">
           <Link
             to="/library"
@@ -76,7 +76,7 @@ export default function HomeScreen() {
             data-testid="home-exercises"
           >
             <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
-              <Dumbbell className="size-4" />
+              <Barbell className="size-4" />
               Exercises
             </div>
             <p className="mt-2 text-sm text-soft">
@@ -88,7 +88,7 @@ export default function HomeScreen() {
           </Link>
           <Link
             to="/library?new=1"
-            className="flex shrink-0 items-center gap-1 bg-accent-soft px-2 py-1 text-2xs text-accent transition-colors duration-150 ease-(--ease-out-quad) hover:bg-accent/20"
+            className="flex shrink-0 items-center gap-1 bg-accent-soft px-2 py-1 text-2xs text-accent-ink transition-colors duration-150 ease-(--ease-out-quad) hover:bg-accent-selected"
             data-testid="home-exercises-new"
           >
             <Plus className="size-3.5" />
@@ -100,7 +100,7 @@ export default function HomeScreen() {
       <TrainFindingsCard />
 
       {/* Social + graphs are a future phase — labeled, not faked. */}
-      <div className="mt-4 rounded-lg border border-dashed border-border bg-surface p-4">
+      <div className="mt-4 rounded-md bg-surface p-4">
         <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
           <Users className="size-4" />
           Feed &amp; graphs

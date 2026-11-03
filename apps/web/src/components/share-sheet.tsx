@@ -5,7 +5,7 @@ import type {
   ShareCard,
 } from "@frog/core";
 import { formatHeroSet, HERO_DURATION_UNIT } from "@frog/core";
-import { Camera, Download, Share2, X } from "lucide-react";
+import { Camera, DownloadSimple, ShareNetwork, X } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { randomTagline, type Tone } from "@/lib/frog-tagline";
@@ -18,12 +18,7 @@ import {
   FRAMES,
   type FrameKind,
 } from "@/lib/share/frames";
-import {
-  GROUND_LABELS,
-  GROUNDS,
-  type Ground,
-  sampleToken,
-} from "@/lib/share/grounds";
+import { GROUND_LABELS, GROUNDS, type Ground } from "@/lib/share/grounds";
 import { paintShareCard } from "@/lib/share/paint";
 import {
   loadImageFromBlob,
@@ -88,7 +83,7 @@ function HeroSetPicker({
           className={cn(
             "h-10 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150",
             heroSet === null
-              ? "bg-accent-soft text-accent"
+              ? "bg-accent-soft text-accent-ink"
               : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
           )}
           data-testid="share-hero-auto"
@@ -109,7 +104,7 @@ function HeroSetPicker({
               className={cn(
                 "h-10 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150",
                 selected
-                  ? "bg-accent-soft text-accent"
+                  ? "bg-accent-soft text-accent-ink"
                   : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
               )}
               data-testid={`share-hero-set-${item.setId}`}
@@ -155,9 +150,9 @@ function ChipRow<T extends string>({
             className={cn(
               "h-10 shrink-0 whitespace-nowrap px-4 text-xs transition-colors duration-150",
               o === value
-                ? "border-accent bg-accent-soft text-accent"
-                : "border-border bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
-              "border",
+                ? "bg-accent-soft text-accent-ink"
+                : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
+              "",
             )}
             data-testid={`${testIdPrefix}-${o}`}
           >
@@ -234,8 +229,8 @@ function PhotoPicker({
               onClick={() => void pickSessionPhoto(p.url as string, p.row.id)}
               aria-pressed={p.row.id === selectedId}
               className={cn(
-                "size-16 shrink-0 border object-cover transition-colors duration-150",
-                p.row.id === selectedId ? "border-accent" : "border-border",
+                "size-16 shrink-0 object-cover transition-colors duration-150",
+                p.row.id === selectedId ? "" : "",
               )}
               data-testid={`share-photo-${p.row.position}`}
             >
@@ -247,7 +242,7 @@ function PhotoPicker({
             </button>
           ))}
         <label
-          className="flex h-16 w-16 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 border border-border border-dashed bg-translucent text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+          className="flex h-16 w-16 shrink-0 cursor-pointer flex-col items-center justify-center gap-1 bg-translucent text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
           data-testid="share-photo-camera"
         >
           <Camera className="size-5" />
@@ -349,7 +344,7 @@ export function ShareSheet({
   // Lazy initializers (not useRef(expr), which re-evaluates its argument on
   // every render even though it only keeps the first result) — sampled/built
   // once per sheet, not every render.
-  const [accent] = useState(() => sampleToken("--accent", "#46a758"));
+  const [accent] = useState("#99c195");
   // Session cards are never "pr"/"streak" kinds, so their tone is "normal"
   // without building the card — building one here just to read `kind` off it
   // would run a full volume + muscle-credit pass and throw the result away.
@@ -457,7 +452,7 @@ export function ShareSheet({
       className="fixed inset-0 z-50 flex flex-col bg-bg"
       data-testid="share-sheet"
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between px-4 py-3">
         <span className="text-sm font-semibold tracking-tight">Share</span>
         <button
           type="button"
@@ -472,12 +467,12 @@ export function ShareSheet({
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <div
-          className="mx-auto w-full max-w-sm bg-[repeating-conic-gradient(var(--surface-2)_0_25%,transparent_0_50%)] bg-[length:24px_24px] p-1"
+          className="mx-auto w-full max-w-sm bg-[repeating-conic-gradient(var(--color-bg-subtle)_0_25%,transparent_0_50%)] bg-[length:24px_24px] p-1"
           data-testid="share-preview"
         >
           <canvas
             ref={canvasRef}
-            className="h-auto w-full border border-border"
+            className="h-auto w-full"
             style={{ aspectRatio: aspect }}
             data-testid="share-canvas"
           />
@@ -519,7 +514,7 @@ export function ShareSheet({
         )}
       </div>
 
-      <div className="flex shrink-0 flex-col gap-2 border-t border-border p-4 max-md:pb-safe-footer">
+      <div className="flex shrink-0 flex-col gap-2 p-4 max-md:pb-safe-footer">
         {paintFailed && (
           <p className="text-2xs text-neg" data-testid="share-paint-error">
             This card wouldn't render. Try another frame or ground, or reopen
@@ -533,7 +528,7 @@ export function ShareSheet({
           onClick={() => void share()}
           data-testid="share-export"
         >
-          <Share2 className="size-4" />
+          <ShareNetwork className="size-4" />
           Share
         </Button>
         <Button
@@ -543,7 +538,7 @@ export function ShareSheet({
           onClick={save}
           data-testid="share-save"
         >
-          <Download className="size-4" />
+          <DownloadSimple className="size-4" />
           Save image
         </Button>
       </div>
@@ -593,7 +588,7 @@ export function ShareButton({
         data-testid={testId}
         className={className}
       >
-        <Share2 className="size-4" />
+        <ShareNetwork className="size-4" />
         {label}
       </Button>
       {open && !disabled && (

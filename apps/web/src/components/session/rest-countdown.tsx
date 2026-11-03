@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X } from "@phosphor-icons/react";
 import { useEffect, useReducer } from "react";
 import { RestTimerIcon } from "@/components/session/rest-timer-icon";
 
@@ -66,7 +66,7 @@ export function RestDock({
             type="button"
             onClick={onStop}
             title="Stop"
-            className="flex size-10 shrink-0 items-center justify-center border border-border bg-surface-2 text-faint transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+            className="flex size-10 shrink-0 items-center justify-center bg-surface-2 text-faint transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
             data-testid={testId ? `${testId}-stop` : undefined}
           >
             <X className="size-4" />

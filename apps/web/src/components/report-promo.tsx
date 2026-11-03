@@ -1,4 +1,4 @@
-import { CalendarDays, Sparkles, X } from "lucide-react";
+import { CalendarDots, Sparkle, X } from "@phosphor-icons/react";
 import { useState } from "react";
 import { Link } from "react-router";
 import { IconButton } from "@/components/ui/icon-button";
@@ -72,7 +72,7 @@ export function ReportPromo() {
       {showMonthly && (
         <PromoCard
           to="/stats/monthly"
-          icon={<Sparkles className="size-4" />}
+          icon={<Sparkle className="size-4" />}
           label={t(
             `Your ${monthNameFmt.format(prev)} report is ready`,
             `The ${monthNameFmt.format(prev)} report is in`,
@@ -88,7 +88,7 @@ export function ReportPromo() {
       {showYear && (
         <PromoCard
           to="/stats/year"
-          icon={<CalendarDays className="size-4" />}
+          icon={<CalendarDots className="size-4" />}
           label={t(
             `Your ${now.getFullYear()} in Review`,
             `Your ${now.getFullYear()}, in review`,
@@ -122,7 +122,7 @@ function PromoCard({
 }) {
   return (
     <div
-      className="flex items-center gap-3 border border-border bg-accent-soft p-3"
+      className="flex items-center gap-3 bg-accent-soft p-3"
       data-testid={testId}
     >
       <Link to={to} className="flex min-w-0 flex-1 items-center gap-3">

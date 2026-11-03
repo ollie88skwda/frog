@@ -22,20 +22,19 @@ import {
   unitLabel,
   weightLabel,
 } from "@frog/core";
-import { Select } from "@radix-ui/themes";
 import {
   ArrowDown,
   ArrowUp,
+  Barbell,
   Check,
-  ClipboardPaste,
-  Dumbbell,
+  Clipboard,
+  DotsThreeVertical,
   Flame,
-  Link2,
-  MoreVertical,
+  Link,
   Plus,
-  Trash2,
+  Trash,
   X,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { MachineAttachDialog } from "@/components/attach-machine";
@@ -56,6 +55,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   formatMMSS,
   parseDuration,
@@ -786,10 +786,8 @@ export default function RoutineEditScreen() {
         <Select.Root
           value={folderId ?? NO_FOLDER}
           onValueChange={(v) => setFolderId(v === NO_FOLDER ? null : v)}
-          size="3"
         >
           <Select.Trigger
-            variant="surface"
             className="w-full sm:w-40"
             data-testid="routine-folder-select"
           />
@@ -840,7 +838,7 @@ export default function RoutineEditScreen() {
           return (
             <div
               key={d.key}
-              className="rounded-lg border border-border bg-surface p-3"
+              className="rounded-md bg-surface p-3"
               data-testid={`routine-ex-${i}`}
             >
               <div className="flex items-center gap-2">
@@ -952,7 +950,7 @@ export default function RoutineEditScreen() {
                     <div
                       key={s.key}
                       className={cn(
-                        "-mx-3 border-t border-border px-3 pt-2 pb-3",
+                        "-mx-3 px-3 pt-2 pb-3",
                         si % 2 === 0 ? "bg-surface" : "bg-surface-2",
                       )}
                     >
@@ -1058,7 +1056,7 @@ export default function RoutineEditScreen() {
                                 />
                               </div>
                               <p className="flex items-center gap-1 text-2xs text-faint">
-                                <Link2 className="size-3 shrink-0" />
+                                <Link className="size-3 shrink-0" />
                                 Same target both sides — log a different result
                                 per side in the session.
                               </p>
@@ -1195,7 +1193,7 @@ export default function RoutineEditScreen() {
           {unmatched.map((u) => (
             <div
               key={u.key}
-              className="rounded-lg border border-border border-l-2 border-l-warn bg-surface p-3"
+              className="rounded-md bg-surface p-3"
               data-testid={`routine-unmatched-${u.key}`}
             >
               {/* Stacked on phones: the name is what the user is resolving,
@@ -1246,7 +1244,7 @@ export default function RoutineEditScreen() {
 
       {unparsed.length > 0 && (
         <div
-          className="mt-4 rounded-lg border border-border bg-surface p-3"
+          className="mt-4 rounded-md bg-surface p-3"
           data-testid="routine-unparsed"
         >
           <div className="flex items-start gap-2">
@@ -1277,7 +1275,7 @@ export default function RoutineEditScreen() {
 
       {overflowCount > 0 && (
         <div
-          className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-surface p-3"
+          className="mt-4 flex items-start gap-2 rounded-md bg-surface p-3"
           data-testid="routine-paste-overflow"
         >
           <p className="flex-1 text-xs text-soft">
@@ -1314,7 +1312,7 @@ export default function RoutineEditScreen() {
           disabled={!draftReady}
           data-testid="routine-paste-btn"
         >
-          <ClipboardPaste className="size-4" /> Paste workout
+          <Clipboard className="size-4" /> Paste workout
         </Button>
       </div>
 
@@ -1370,7 +1368,7 @@ export default function RoutineEditScreen() {
                           ? `${e.name} is still saving`
                           : undefined
                       }
-                      className="flex h-10 items-center rounded-md px-2 text-left text-sm hover:bg-surface-2 disabled:opacity-50 disabled:hover:bg-transparent"
+                      className="flex h-10 items-center rounded-sm px-2 text-left text-sm hover:bg-surface-2 disabled:opacity-50 disabled:hover:bg-transparent"
                       onClick={() => selectFromPicker(e)}
                       data-testid={`routine-pick-${e.name}`}
                     >
@@ -1425,7 +1423,7 @@ export default function RoutineEditScreen() {
             placeholder={
               "Push day\nBench press 4x8\nIncline dumbbell press 3x10\nTricep pushdown 3x12"
             }
-            className="mt-2 w-full resize-y rounded-md border border-border-strong bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+            className="mt-2 w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:outline-none"
             data-testid="routine-paste-textarea"
           />
           {pasteError && <p className="mt-2 text-xs text-neg">{pasteError}</p>}
@@ -1532,7 +1530,7 @@ function ExerciseMenu({
         onClick={() => setOpen((o) => !o)}
         data-testid={`routine-ex-${index}-menu`}
       >
-        <MoreVertical className="size-4" />
+        <DotsThreeVertical className="size-4" />
       </IconButton>
       {open && (
         <>
@@ -1559,7 +1557,7 @@ function ExerciseMenu({
               <Flame className="size-3.5 shrink-0 text-warn" />
               Add warm-up set
             </button>
-            <div className="border-t border-border" />
+            <div className="" />
             <p className={labelCls}>Laterality</p>
             {(
               [
@@ -1584,11 +1582,11 @@ function ExerciseMenu({
                   </span>
                 </span>
                 {setsLaterality === l && (
-                  <Check className="ml-auto size-3.5 shrink-0 text-accent" />
+                  <Check className="ml-auto size-3.5 shrink-0 text-accent-ink" />
                 )}
               </button>
             ))}
-            <div className="border-t border-border" />
+            <div className="" />
             <p className={labelCls}>Machine</p>
             <button
               type="button"
@@ -1599,7 +1597,7 @@ function ExerciseMenu({
               data-testid={`routine-ex-${index}-machine-attach`}
               className={itemCls}
             >
-              <Dumbbell className="size-3.5 shrink-0 text-faint" />
+              <Barbell className="size-3.5 shrink-0 text-faint" />
               <span className="truncate">
                 {machineName ? `Change — ${machineName}` : "Attach machine…"}
               </span>
@@ -1618,7 +1616,7 @@ function ExerciseMenu({
                 Remove machine
               </button>
             )}
-            <div className="border-t border-border" />
+            <div className="" />
             <p className={labelCls}>Default laterality</p>
             <p className="px-3 pb-1 text-2xs text-faint">
               Applies everywhere this exercise is used — pre-loads the session
@@ -1643,11 +1641,11 @@ function ExerciseMenu({
               >
                 {label}
                 {defaultLaterality === l && (
-                  <Check className="ml-auto size-3.5 shrink-0 text-accent" />
+                  <Check className="ml-auto size-3.5 shrink-0 text-accent-ink" />
                 )}
               </button>
             ))}
-            <div className="border-t border-border" />
+            <div className="" />
             <button
               type="button"
               onClick={() => {
@@ -1674,7 +1672,7 @@ function ExerciseMenu({
               <ArrowDown className="size-3.5 shrink-0 text-faint" />
               Move down
             </button>
-            <div className="border-t border-border" />
+            <div className="" />
             <button
               type="button"
               onClick={() => {
@@ -1684,7 +1682,7 @@ function ExerciseMenu({
               data-testid={`routine-ex-${index}-remove`}
               className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
             >
-              <Trash2 className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
+              <Trash className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
               Remove exercise
             </button>
           </div>
@@ -1725,7 +1723,7 @@ function SetMenu({
         onClick={() => setOpen((o) => !o)}
         data-testid={`routine-ex-${index}-set-${si}-menu`}
       >
-        <MoreVertical className="size-4" />
+        <DotsThreeVertical className="size-4" />
       </Button>
       {open && (
         <>
@@ -1761,11 +1759,11 @@ function SetMenu({
               >
                 {label}
                 {laterality === l && (
-                  <Check className="ml-auto size-3.5 shrink-0 text-accent" />
+                  <Check className="ml-auto size-3.5 shrink-0 text-accent-ink" />
                 )}
               </button>
             ))}
-            <div className="border-t border-border" />
+            <div className="" />
             <button
               type="button"
               onClick={() => {
@@ -1775,7 +1773,7 @@ function SetMenu({
               data-testid={`routine-ex-${index}-set-${si}-remove`}
               className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
             >
-              <Trash2 className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
+              <Trash className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
               Remove set
             </button>
           </div>

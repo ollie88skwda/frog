@@ -25,12 +25,12 @@ import {
   unitLabel,
 } from "@frog/core";
 import {
-  ChevronDown,
-  ChevronRight,
+  CaretDown,
+  CaretRight,
   Copy,
-  MoreVertical,
-  Pencil,
-} from "lucide-react";
+  DotsThreeVertical,
+  PencilSimple,
+} from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import {
@@ -112,7 +112,10 @@ export default function ExerciseDetailScreen() {
             "Specimen not found. The frog checked twice.",
           )}
         </p>
-        <Link to="/library" className="mt-2 inline-block text-xs text-accent">
+        <Link
+          to="/library"
+          className="mt-2 inline-block text-xs text-accent-ink"
+        >
           Back to library
         </Link>
       </div>
@@ -169,7 +172,7 @@ export default function ExerciseDetailScreen() {
             className={cn(
               "h-9 flex-1 text-xs transition-colors duration-150",
               tab === t
-                ? "bg-accent-soft text-accent"
+                ? "bg-accent-soft text-accent-ink"
                 : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
             )}
             data-testid={`tab-${t}`}
@@ -252,7 +255,7 @@ function SummaryTab({
 
   // The trend tooltip's series label follows the active metric chip.
   const summaryConfig: ChartConfig = {
-    y: { label: metric?.label ?? "Value", color: "var(--accent)" },
+    y: { label: metric?.label ?? "Value", color: "var(--color-accent-solid)" },
   };
 
   // Records sparkline for the share card's graphic — independent of the
@@ -286,7 +289,7 @@ function SummaryTab({
             className={cn(
               "h-9 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150",
               m.key === metricKey
-                ? "bg-accent-soft text-accent"
+                ? "bg-accent-soft text-accent-ink"
                 : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
             )}
             data-testid={`metric-chip-${m.key}`}
@@ -296,7 +299,7 @@ function SummaryTab({
         ))}
       </div>
 
-      <div className="mt-3 border border-border bg-surface p-4">
+      <div className="mt-3 bg-surface p-4">
         <div className="flex items-baseline justify-between">
           <span className="text-sm font-medium">{metric?.label}</span>
           <span className="num text-sm text-soft" data-testid="summary-latest">
@@ -385,7 +388,7 @@ function SummaryTab({
               className={cn(
                 "h-8 flex-1 text-2xs transition-colors duration-150",
                 range === r
-                  ? "bg-accent-soft text-accent"
+                  ? "bg-accent-soft text-accent-ink"
                   : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
               )}
               data-testid={`range-${r}`}
@@ -475,7 +478,7 @@ function RecordsPanel({
           )}
         </p>
       ) : (
-        <ul className="mt-2 divide-y divide-border border border-border bg-surface">
+        <ul className="mt-2 [&>*+*]:mt-0.5 bg-surface">
           {bests.map(({ pr, entry }) => (
             <li key={pr}>
               <Link
@@ -488,7 +491,7 @@ function RecordsPanel({
                   <span className="num text-sm">
                     {formatPrValue(pr, entry.value, unit, distUnit)}
                   </span>
-                  <ChevronRight className="size-4 text-faint" />
+                  <CaretRight className="size-4 text-faint" />
                 </span>
               </Link>
             </li>
@@ -525,9 +528,9 @@ function SetRecordsTable({
         data-testid="set-records-toggle"
       >
         {open ? (
-          <ChevronDown className="size-4 text-faint" />
+          <CaretDown className="size-4 text-faint" />
         ) : (
-          <ChevronRight className="size-4 text-faint" />
+          <CaretRight className="size-4 text-faint" />
         )}
         <span className="text-2xs font-medium tracking-widest text-faint uppercase">
           Set records
@@ -543,7 +546,7 @@ function SetRecordsTable({
             )}
           </p>
         ) : (
-          <ul className="mt-2 divide-y divide-border border border-border bg-surface">
+          <ul className="mt-2 [&>*+*]:mt-0.5 bg-surface">
             {rows.map((r) => (
               <li key={r.reps} data-testid={`set-record-${r.reps}`}>
                 <Link to={`/history/${r.sessionId}`} className={rowClass()}>
@@ -597,16 +600,16 @@ function HistoryTab({
         const block = s.exercises.find((e) => e.exerciseId === exerciseId);
         const sets = block?.sets ?? [];
         return (
-          <li key={s.sessionId} className="border border-border bg-surface">
+          <li key={s.sessionId} className="bg-surface">
             <Link
               to={`/history/${s.sessionId}`}
-              className="flex items-center justify-between border-b border-border px-4 py-2 transition-colors duration-150 hover:bg-surface-hover"
+              className="flex items-center justify-between px-4 py-2 transition-colors duration-150 hover:bg-surface-hover"
               data-testid={`history-session-${s.sessionId}`}
             >
               <span className="num text-xs text-soft">
                 {formatDateTime(s.startedAt)}
               </span>
-              <ChevronRight className="size-4 text-faint" />
+              <CaretRight className="size-4 text-faint" />
             </Link>
             <ul className="px-4 py-2">
               {sets.map((set, i) => {
@@ -662,7 +665,7 @@ function HowToTab({
           {frames.map((url) => (
             <span
               key={url}
-              className="flex items-center justify-center border border-border bg-white"
+              className="flex items-center justify-center bg-white"
             >
               <img
                 src={url}
@@ -698,7 +701,7 @@ function HowToTab({
       )}
 
       {ratings.length > 0 && (
-        <div className="border-t border-border pt-3">
+        <div className="pt-3">
           <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
             Why it's rated
           </h2>
@@ -779,7 +782,7 @@ function MoreMenu({
         title="More"
         data-testid="exercise-more"
       >
-        <MoreVertical className="size-4" />
+        <DotsThreeVertical className="size-4" />
       </IconButton>
       {open && (
         <>
@@ -804,7 +807,7 @@ function MoreMenu({
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
                 data-testid="exercise-edit"
               >
-                <Pencil className="size-3.5" />
+                <PencilSimple className="size-3.5" />
                 Edit
               </button>
             )}

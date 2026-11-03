@@ -8,8 +8,8 @@ import {
   toDisplayLength,
   unitLabel,
 } from "@frog/core";
-import { Select } from "@radix-ui/themes";
-import { Camera, Share2, Trash2 } from "lucide-react";
+import { Camera, ShareNetwork, Trash } from "@phosphor-icons/react";
+import { Select } from "@/components/ui/select";
 
 // Radix Select forbids an empty-string value; the "None" comparison option
 // uses a sentinel mapped back to "" (no comparison) at the boundary.
@@ -212,7 +212,7 @@ function Editor({
   }
 
   return (
-    <div className="mt-4 border border-border bg-surface p-4">
+    <div className="mt-4 bg-surface p-4">
       <div className="flex items-center gap-2">
         <label
           htmlFor="measure-date"
@@ -245,16 +245,16 @@ function Editor({
         ))}
       </div>
 
-      <div className="mt-4 flex items-center gap-2 border-t border-border pt-3">
+      <div className="mt-4 flex items-center gap-2 pt-3">
         {photoUrl && (
           <img
             src={photoUrl}
             alt="Progress"
             loading="lazy"
-            className="h-16 w-16 border border-border object-cover"
+            className="h-16 w-16 object-cover"
           />
         )}
-        <label className="flex h-11 min-h-11 cursor-pointer items-center gap-2 bg-translucent px-3 text-xs text-soft shadow-(--inset-control) transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
+        <label className="flex h-11 min-h-11 cursor-pointer items-center gap-2 bg-translucent px-3 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
           <Camera className="size-4" />
           {entry?.photoPath ? "Replace photo" : "Add progress photo"}
           <input
@@ -385,9 +385,9 @@ function Trends({
   }, [latest, def, suffix, series, prefs]);
 
   return (
-    <div className="mt-4 border border-border bg-surface">
+    <div className="mt-4 bg-surface">
       {/* Metric chips */}
-      <div className="flex gap-1 overflow-x-auto border-b border-border p-2">
+      <div className="flex gap-1 overflow-x-auto p-2">
         {METRICS.map((m) => (
           <button
             key={m.key}
@@ -395,7 +395,7 @@ function Trends({
             onClick={() => onMetricChange(m.key)}
             className={`h-9 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150 ${
               m.key === metricKey
-                ? "bg-accent-soft text-accent"
+                ? "bg-accent-soft text-accent-ink"
                 : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink"
             }`}
             data-testid={`metric-chip-${m.key}`}
@@ -425,7 +425,7 @@ function Trends({
 
       {/* Dated value list, newest first */}
       {rows.length > 0 && (
-        <ul className="divide-y divide-border border-t border-border">
+        <ul className="[&>*+*]:mt-0.5">
           {rows.map(({ m, value }) => (
             <li
               key={m.id}
@@ -472,7 +472,7 @@ function Trends({
                   onClick={() => setConfirmId(m.id)}
                   data-testid={`measure-delete-${m.measuredOn}`}
                 >
-                  <Trash2 className="size-4" />
+                  <Trash className="size-4" />
                 </IconButton>
               )}
             </li>
@@ -512,7 +512,7 @@ function MeasurementShareGate({
         title="Share as image"
         data-testid="measures-share-btn"
       >
-        <Share2 className="size-4" />
+        <ShareNetwork className="size-4" />
       </Button>
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent title="Share this measurement?">
@@ -613,14 +613,14 @@ function TrendChart({
         y1={H - padBottom}
         x2={W - padX}
         y2={H - padBottom}
-        stroke="var(--border)"
+        stroke="var(--color-bg-active)"
         strokeWidth="1"
       />
       {series.length > 1 && (
         <polyline
           points={pts}
           fill="none"
-          stroke="var(--accent)"
+          stroke="var(--color-accent-solid)"
           strokeWidth="1.5"
           strokeLinejoin="round"
           strokeLinecap="round"
@@ -632,10 +632,16 @@ function TrendChart({
           cx={x(days[i])}
           cy={y(s.value)}
           r="2.5"
-          fill="var(--accent)"
+          fill="var(--color-accent-solid)"
         />
       ))}
-      <text x={padX} y={H - 6} className="num" fontSize="9" fill="var(--faint)">
+      <text
+        x={padX}
+        y={H - 6}
+        className="num"
+        fontSize="9"
+        fill="var(--color-text-secondary)"
+      >
         {axisFmt.format(days[0])}
       </text>
       {series.length > 1 && (
@@ -645,7 +651,7 @@ function TrendChart({
           textAnchor="end"
           className="num"
           fontSize="9"
-          fill="var(--faint)"
+          fill="var(--color-text-secondary)"
         >
           {axisFmt.format(days[days.length - 1])}
         </text>
@@ -702,7 +708,7 @@ function PhotoThumb({
     <button
       type="button"
       onClick={onOpen}
-      className="relative size-20 shrink-0 border border-border bg-surface-2"
+      className="relative size-20 shrink-0 bg-surface-2"
       data-testid={`photo-thumb-${measurement.measuredOn}`}
     >
       {url && (
@@ -779,7 +785,7 @@ function PhotoViewer({
           <figure>
             <PhotoImg
               measurement={measurement}
-              className="max-h-[50dvh] w-full border border-border object-contain"
+              className="max-h-[50dvh] w-full object-contain"
             />
             <figcaption className="num mt-1 text-center text-2xs text-faint">
               {formatDay(measurement.measuredOn)}
@@ -789,7 +795,7 @@ function PhotoViewer({
             <figure>
               <PhotoImg
                 measurement={compare}
-                className="max-h-[50dvh] w-full border border-border object-contain"
+                className="max-h-[50dvh] w-full object-contain"
               />
               <figcaption className="num mt-1 text-center text-2xs text-faint">
                 {formatDay(compare.measuredOn)}
@@ -804,10 +810,8 @@ function PhotoViewer({
             <Select.Root
               value={compareId || COMPARE_NONE}
               onValueChange={(v) => setCompareId(v === COMPARE_NONE ? "" : v)}
-              size="2"
             >
               <Select.Trigger
-                variant="surface"
                 className="flex-1"
                 aria-label="Compare with"
                 data-testid="photo-compare-select"
@@ -824,8 +828,8 @@ function PhotoViewer({
           </span>
         )}
 
-        <div className="flex items-center gap-2 border-t border-border pt-3">
-          <label className="flex h-11 cursor-pointer items-center gap-2 bg-translucent px-3 text-xs text-soft shadow-(--inset-control) transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
+        <div className="flex items-center gap-2 pt-3">
+          <label className="flex h-11 cursor-pointer items-center gap-2 bg-translucent px-3 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
             <Camera className="size-4" />
             Replace
             <input
@@ -863,7 +867,7 @@ function PhotoViewer({
               onClick={() => setConfirmDelete(true)}
               data-testid="photo-delete"
             >
-              <Trash2 className="size-4" />
+              <Trash className="size-4" />
               Delete
             </Button>
           )}

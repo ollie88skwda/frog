@@ -1,46 +1,33 @@
-import {
-  Button as RtButton,
-  IconButton as RtIconButton,
-} from "@radix-ui/themes";
 import type { ButtonHTMLAttributes } from "react";
+import { cn } from "@/lib/utils";
 
-type Variant = "primary" | "outline" | "ghost" | "danger";
+type Variant = "primary" | "accent" | "outline" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg" | "icon" | "icon-lg";
 
-// Frog variant -> Radix Themes (variant, color).
-//
-// `ghost` deliberately maps to Radix `soft`, NOT Radix `ghost`: soft keeps a
-// resting background, which is exactly what the no-bare-text-buttons rule
-// requires (AGENTS.md) — Radix's own `ghost` is transparent until hover.
-// `outline`/`ghost`/`danger` pin an explicit color because Radix defaults to
-// the theme accent, and these are quiet/neutral controls; only `primary` is
-// meant to carry the frog green.
-const VARIANT = {
-  primary: { variant: "solid" },
-  outline: { variant: "surface", color: "gray" },
-  ghost: { variant: "soft", color: "gray" },
-  danger: { variant: "soft", color: "red" },
-} as const satisfies Record<
-  Variant,
-  { variant: "solid" | "surface" | "soft"; color?: "gray" | "red" }
->;
+// Because button anatomy (docs/brand/because-reference): no borders, tone
+// separation only. `primary` = ink by day / paper at night (one per view);
+// `accent` = Fern, for the one creative action and selected states; `outline`
+// and `ghost` both keep a resting sand fill (AGENTS.md: never a bare-text
+// button) — the old outline line is gone with the no-lines rule.
+const VARIANT: Record<Variant, string> = {
+  primary: "bg-action text-on-action hover:bg-action-hover",
+  accent: "bg-accent text-on-accent hover:bg-accent-hover",
+  outline: "bg-secondary text-on-secondary hover:bg-active",
+  ghost: "bg-secondary/60 text-on-secondary hover:bg-secondary",
+  danger: "bg-danger-soft text-danger hover:bg-danger-soft/70",
+};
 
-// Heights are held at the pre-Radix scale so no call-site layout shifts:
-// Radix size 2 = 32px (was h-8), size 3 = 40px (was h-10). `sm` and `md`
-// collapse onto the same height because they already both rendered at h-8.
-// `icon-lg` is the ≥40px tap target AGENTS.md requires on the logging path
-// (session screen) — `icon` stays 32px for icon buttons elsewhere.
-const SIZE = {
-  sm: "2",
-  md: "2",
-  lg: "3",
-  icon: "2",
-  "icon-lg": "3",
-} as const;
+// Heights held from the pre-rebrand scale so no call-site layout shifts:
+// 32px (sm/md/icon) and 40px (lg/icon-lg). Radius is Base 8 (8px) for both.
+const SIZE: Record<Size, string> = {
+  sm: "h-8 px-3 text-xs",
+  md: "h-8 px-3 text-sm",
+  lg: "h-10 px-4 text-sm",
+  icon: "size-8 p-0",
+  "icon-lg": "size-10 p-0",
+};
 
-// `color` is omitted from the HTML attrs because React's HTMLAttributes still
-// carries the legacy `color?: string`, which collides with Radix's accent prop.
-type ButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "color"> & {
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
   size?: Size;
 };
@@ -52,14 +39,15 @@ export function Button({
   type = "button",
   ...props
 }: ButtonProps) {
-  const styling = VARIANT[variant];
-  const Comp = size === "icon" || size === "icon-lg" ? RtIconButton : RtButton;
   return (
-    <Comp
+    <button
       type={type}
-      size={SIZE[size]}
-      {...styling}
-      className={className}
+      className={cn(
+        "inline-flex shrink-0 items-center justify-center gap-2 rounded-sm font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:bg-hover disabled:text-disabled",
+        VARIANT[variant],
+        SIZE[size],
+        className,
+      )}
       {...props}
     />
   );

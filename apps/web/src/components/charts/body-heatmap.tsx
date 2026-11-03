@@ -52,8 +52,8 @@ function Figure({
         <path
           key={d}
           d={d}
-          fill="var(--surface-3)"
-          stroke="var(--border-strong)"
+          fill="var(--color-bg-hover)"
+          stroke="var(--color-bg-active)"
           strokeWidth={0.8}
           strokeLinejoin="round"
         />
@@ -64,8 +64,8 @@ function Figure({
           <path
             key={part}
             d={PART[part]}
-            fill="var(--surface-3)"
-            stroke="var(--border-strong)"
+            fill="var(--color-bg-hover)"
+            stroke="var(--color-bg-active)"
             strokeWidth={0.8}
             strokeLinejoin="round"
           />
@@ -101,9 +101,9 @@ function Figure({
                 <path
                   key={part}
                   d={PART[part]}
-                  fill="var(--accent)"
+                  fill="var(--color-accent-solid)"
                   fillOpacity={opacityFor(regionSets[region], max)}
-                  stroke={isSel ? "var(--accent)" : "none"}
+                  stroke={isSel ? "var(--color-accent-solid)" : "none"}
                   strokeWidth={isSel ? 1.4 : 0}
                   strokeLinejoin="round"
                   style={{ transition: "fill-opacity 150ms" }}
@@ -113,7 +113,13 @@ function Figure({
           );
         },
       )}
-      <text x={36} y={126} textAnchor="middle" fontSize="9" fill="var(--faint)">
+      <text
+        x={36}
+        y={126}
+        textAnchor="middle"
+        fontSize="9"
+        fill="var(--color-text-secondary)"
+      >
         {view === "front" ? "Front" : "Back"}
       </text>
     </g>
@@ -178,7 +184,7 @@ export function BodyHeatmap({
                 onClick={() => setSelected(region)}
                 className={
                   isSel
-                    ? "num h-7 bg-accent-soft px-2 text-2xs text-accent"
+                    ? "num h-7 bg-accent-soft px-2 text-2xs text-accent-ink"
                     : "num h-7 bg-translucent px-2 text-2xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
                 }
                 data-testid={`heatmap-chip-${region}`}

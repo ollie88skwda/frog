@@ -1,13 +1,13 @@
 import type { Routine, RoutineFolder } from "@frog/core";
 import {
-  ChevronDown,
-  ChevronRight,
+  CaretDown,
+  CaretRight,
+  DotsThree,
   Folder,
   FolderPlus,
-  MoreHorizontal,
   Play,
   Plus,
-} from "lucide-react";
+} from "@phosphor-icons/react";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -133,7 +133,7 @@ export default function RoutinesScreen() {
         )}
 
         {routines.length === 0 && folders.length === 0 && (
-          <div className="rounded-lg border border-border bg-surface p-6 text-center">
+          <div className="rounded-md bg-surface p-6 text-center">
             <p className="text-sm text-soft">
               {t(
                 "No routines yet. Build one to make every session start pre-filled.",
@@ -213,13 +213,13 @@ function FolderSection({
       <div className="flex items-center gap-1">
         <button
           type="button"
-          className="flex h-10 flex-1 items-center gap-2 rounded-md px-1 text-left hover:bg-surface-2"
+          className="flex h-10 flex-1 items-center gap-2 rounded-sm px-1 text-left hover:bg-surface-2"
           onClick={() => setOpen((o) => !o)}
         >
           {open ? (
-            <ChevronDown className="size-4 text-faint" />
+            <CaretDown className="size-4 text-faint" />
           ) : (
-            <ChevronRight className="size-4 text-faint" />
+            <CaretRight className="size-4 text-faint" />
           )}
           <Folder className="size-4 text-faint" />
           <span className="text-sm font-medium">{folder.name}</span>
@@ -232,12 +232,12 @@ function FolderSection({
             aria-label="Folder menu"
             onClick={menu.toggle}
           >
-            <MoreHorizontal className="size-4" />
+            <DotsThree className="size-4" />
           </Button>
           {menu.open && (
             <div
               className={cn(
-                "absolute right-0 z-10 flex w-36 flex-col rounded-md border border-border bg-surface p-1 shadow-md",
+                "absolute right-0 z-10 flex w-36 flex-col rounded-sm bg-surface p-1 shadow-md",
                 menu.upward ? "bottom-full mb-1" : "top-full mt-1",
               )}
             >
@@ -335,7 +335,7 @@ function RoutineCard({
 
   return (
     <div
-      className="flex items-center gap-2 rounded-lg border border-border bg-surface p-3"
+      className="flex items-center gap-2 rounded-md bg-surface p-3"
       data-testid={`routine-card-${routine.name}`}
     >
       <div className="min-w-0 flex-1">
@@ -361,12 +361,12 @@ function RoutineCard({
           onClick={menu.toggle}
           data-testid={`routine-menu-${routine.name}`}
         >
-          <MoreHorizontal className="size-4" />
+          <DotsThree className="size-4" />
         </Button>
         {menu.open && (
           <div
             className={cn(
-              "absolute right-0 z-10 flex w-40 flex-col rounded-md border border-border bg-surface p-1 shadow-md",
+              "absolute right-0 z-10 flex w-40 flex-col rounded-sm bg-surface p-1 shadow-md",
               menu.upward ? "bottom-full mb-1" : "top-full mt-1",
             )}
             data-testid={`routine-menu-${routine.name}-popup`}
@@ -410,7 +410,7 @@ function RoutineCard({
           <div className="mt-2 flex flex-col gap-1">
             <button
               type="button"
-              className="flex h-10 items-center rounded-md px-2 text-left text-sm hover:bg-surface-2"
+              className="flex h-10 items-center rounded-sm px-2 text-left text-sm hover:bg-surface-2"
               onClick={() => {
                 move.mutate({ routineId: routine.id, folderId: null });
                 setMoveOpen(false);
@@ -423,8 +423,8 @@ function RoutineCard({
                 key={f.id}
                 type="button"
                 className={cn(
-                  "flex h-10 items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-surface-2",
-                  f.id === routine.folderId && "text-accent",
+                  "flex h-10 items-center gap-2 rounded-sm px-2 text-left text-sm hover:bg-surface-2",
+                  f.id === routine.folderId && "text-accent-ink",
                 )}
                 onClick={() => {
                   move.mutate({ routineId: routine.id, folderId: f.id });
@@ -456,7 +456,7 @@ function MenuItem({
     <button
       type="button"
       className={cn(
-        "flex h-9 items-center rounded px-2 text-left text-xs hover:bg-surface-2",
+        "flex h-9 items-center rounded-sm px-2 text-left text-xs hover:bg-surface-2",
         destructive && "text-neg",
       )}
       onClick={onClick}

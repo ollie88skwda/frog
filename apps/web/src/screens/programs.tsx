@@ -1,5 +1,5 @@
 import { type GeneratedProgram, generateProgram } from "@frog/core";
-import { Dumbbell } from "lucide-react";
+import { Barbell } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { BackButton } from "@/components/ui/back-button";
@@ -53,7 +53,7 @@ function Chip({
       className={cn(
         "h-8 shrink-0 px-3 text-xs transition-colors duration-150",
         active
-          ? "bg-accent-soft text-accent"
+          ? "bg-accent-soft text-accent-ink"
           : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
       )}
     >
@@ -169,7 +169,7 @@ function ProgramCard({ entry }: { entry: ProgramCatalogEntry }) {
   return (
     <Link
       to={`/programs/${entry.key}`}
-      className="block border border-border bg-surface p-4 transition-colors duration-150 hover:bg-surface-hover"
+      className="block bg-surface p-4 transition-colors duration-150 hover:bg-surface-hover"
       data-testid={`program-card-${entry.key}`}
     >
       <div className="flex items-baseline justify-between gap-2">
@@ -226,7 +226,10 @@ function ProgramDetail({ programKey }: { programKey: string }) {
             "Program not found. The frog looked everywhere.",
           )}
         </p>
-        <Link to="/programs" className="mt-2 inline-block text-xs text-accent">
+        <Link
+          to="/programs"
+          className="mt-2 inline-block text-xs text-accent-ink"
+        >
           Back to programs
         </Link>
       </div>
@@ -284,9 +287,9 @@ function ProgramDetail({ programKey }: { programKey: string }) {
       {/* Per-routine preview */}
       <div className="mt-6 flex flex-col gap-3">
         {generated?.routines.map((r) => (
-          <div key={r.name} className="border border-border bg-surface p-4">
+          <div key={r.name} className="bg-surface p-4">
             <div className="flex items-center gap-2">
-              <Dumbbell className="size-4 text-faint" />
+              <Barbell className="size-4 text-faint" />
               <span className="text-sm font-medium">{r.name}</span>
               <span className="num text-2xs text-faint">
                 {r.exercises.length} exercises

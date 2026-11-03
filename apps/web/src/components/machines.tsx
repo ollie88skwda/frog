@@ -1,6 +1,6 @@
 import type { Machine, MachineCatalogEntry, MachineSetting } from "@frog/core";
+import { Camera, CaretDown, CaretRight } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, ChevronDown, ChevronRight } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useState } from "react";
 import { MachineCatalogPicker } from "@/components/machine-catalog-picker";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ export function MachinesSection({ machines }: { machines: Machine[] }) {
       <AddMachine />
 
       {machines.length > 0 && (
-        <ul className="mt-3 divide-y divide-border overflow-hidden border border-border bg-surface">
+        <ul className="mt-3 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
           {machines.map((m) => (
             <MachineRow
               key={m.id}
@@ -111,7 +111,7 @@ function MachineRow({
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const Chevron = expanded ? ChevronDown : ChevronRight;
+  const Chevron = expanded ? CaretDown : CaretRight;
   const settingsSummary = (machine.settings ?? [])
     .filter((s) => s.value != null)
     .map((s) => `${s.label} ${s.value}`)
@@ -163,7 +163,7 @@ export function MachineEditor({ machine }: { machine: Machine }) {
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t border-border bg-surface-2 px-4 py-2">
+    <div className="flex flex-col gap-2 bg-surface-2 px-4 py-2">
       {settings.map((s, i) => (
         <SettingRow
           key={s.label}
@@ -201,7 +201,7 @@ export function MachineEditor({ machine }: { machine: Machine }) {
         }}
         placeholder="Setup notes (grip, position…)"
         rows={2}
-        className="w-full border border-border bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
+        className="w-full border border-field bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
         data-testid={`machine-notes-${machine.name}`}
       />
 
@@ -211,10 +211,10 @@ export function MachineEditor({ machine }: { machine: Machine }) {
             src={photoUrl}
             alt={machine.name}
             loading="lazy"
-            className="h-16 w-16 border border-border object-cover"
+            className="h-16 w-16 object-cover"
           />
         )}
-        <label className="flex h-8 cursor-pointer items-center gap-2 bg-translucent px-2 text-xs text-soft shadow-(--inset-control) transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
+        <label className="flex h-8 cursor-pointer items-center gap-2 bg-translucent px-2 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
           <Camera className="size-4" />
           {machine.photoPath
             ? "Replace photo"
@@ -304,7 +304,7 @@ function SettingRow({
         data-testid={`setting-value-${machine.name}-${s.label}`}
       />
       <label
-        className="flex h-6 cursor-pointer items-center gap-1 border border-border bg-surface px-1.5 text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+        className="flex h-6 cursor-pointer items-center gap-1 bg-surface px-1.5 text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
         title={s.photoPath ? "Replace setting photo" : "Add setting photo"}
         data-testid={`setting-photo-${machine.name}-${s.label}`}
       >
@@ -313,7 +313,7 @@ function SettingRow({
             src={photoUrl}
             alt={`${s.label} setting`}
             loading="lazy"
-            className="h-5 w-5 border border-border object-cover"
+            className="h-5 w-5 object-cover"
             data-testid={`setting-photo-img-${machine.name}-${s.label}`}
           />
         )}

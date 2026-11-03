@@ -23,14 +23,7 @@ import {
   unitLabel,
   weeklyConsistency,
 } from "@frog/core";
-import { Select } from "@radix-ui/themes";
-import {
-  Check,
-  MoreHorizontal,
-  Play,
-  Settings,
-  TrendingUp,
-} from "lucide-react";
+import { Check, DotsThree, Gear, Play, TrendUp } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import {
@@ -50,6 +43,7 @@ import {
 } from "@/components/ui/chart";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { useMeasurements } from "@/lib/measure-queries";
 import {
   useActiveProgram,
@@ -136,7 +130,7 @@ function Segmented<T extends string | number>({
           className={cn(
             "h-9 flex-1 shrink-0 px-3 text-xs whitespace-nowrap transition-colors duration-150",
             value === o
-              ? "bg-accent-soft text-accent"
+              ? "bg-accent-soft text-accent-ink"
               : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
           )}
         >
@@ -244,7 +238,7 @@ function QuestionnaireForm({
               className={cn(
                 "h-8 px-3 text-xs transition-colors duration-150",
                 equipSet.has(k)
-                  ? "bg-accent-soft text-accent"
+                  ? "bg-accent-soft text-accent-ink"
                   : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
               )}
             >
@@ -278,13 +272,8 @@ function QuestionnaireForm({
           onValueChange={(v) =>
             setConfig({ ...config, focusMuscle: v === FOCUS_NONE ? null : v })
           }
-          size="2"
         >
-          <Select.Trigger
-            variant="surface"
-            className="w-full"
-            data-testid="q-focus"
-          />
+          <Select.Trigger className="w-full" data-testid="q-focus" />
           <Select.Content>
             <Select.Item value={FOCUS_NONE}>None</Select.Item>
             {MUSCLES.map((m) => (
@@ -325,7 +314,7 @@ function GeneratedPreview({
   return (
     <div className="flex flex-col gap-3" data-testid="generated-preview">
       {program.routines.map((r) => (
-        <div key={r.name} className="border border-border bg-surface p-4">
+        <div key={r.name} className="bg-surface p-4">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">{r.name}</span>
             <span className="num text-2xs text-faint">
@@ -399,7 +388,7 @@ function TrainerOnboarding() {
 
   return (
     <div className="mt-4 flex flex-col gap-5">
-      <div className="border border-border bg-surface p-4">
+      <div className="bg-surface p-4">
         <p className="text-sm text-soft">
           {t(
             `Answer a few questions and the Trainer builds a full program from ${APP_NAME}'s exercise tiers. Each week it prescribes a small weight increase on lifts where you hit the top of the rep range — no guesswork, no AI.`,
@@ -483,7 +472,7 @@ function TrainerDashboard({ program }: { program: Program }) {
           onClick={() => setSettingsOpen(true)}
           data-testid="program-settings-btn"
         >
-          <Settings className="size-4" /> Settings
+          <Gear className="size-4" /> Gear
         </Button>
       </div>
 
@@ -634,13 +623,10 @@ function NextWorkoutCard({
   const est = estMinutes(detail);
 
   return (
-    <div
-      className="border border-border bg-surface p-4"
-      data-testid="next-workout-card"
-    >
+    <div className="bg-surface p-4" data-testid="next-workout-card">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-2xs font-medium tracking-widest text-accent uppercase">
+          <p className="text-2xs font-medium tracking-widest text-accent-ink uppercase">
             Next workout
           </p>
           <p className="mt-0.5 text-base font-semibold">{routine.name}</p>
@@ -668,11 +654,11 @@ function NextWorkoutCard({
           onClick={applyProgression}
           data-testid="apply-progression-btn"
         >
-          <TrendingUp className="size-4" /> Apply progression to routine
+          <TrendUp className="size-4" /> Apply progression to routine
         </Button>
       )}
 
-      <div className="mt-3 flex flex-col divide-y divide-border">
+      <div className="mt-3 flex flex-col [&>*+*]:mt-0.5">
         {editableExercises(detail).map((ex) => (
           <ExerciseRow
             key={ex.detailId}
@@ -771,10 +757,10 @@ function ExerciseRow({
           onClick={() => setMenuOpen((o) => !o)}
           data-testid={`trainer-ex-menu-${name}`}
         >
-          <MoreHorizontal className="size-4" />
+          <DotsThree className="size-4" />
         </Button>
         {menuOpen && (
-          <div className="absolute right-0 z-10 mt-1 flex w-44 flex-col border border-border bg-surface p-1 shadow-md">
+          <div className="absolute right-0 z-10 mt-1 flex w-44 flex-col bg-surface p-1 shadow-md">
             <MenuItem
               label="Replace exercise"
               onClick={() => {
@@ -1014,7 +1000,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Bodyweight trend — one accent line, display-unit values.
 const BW_CONFIG = {
-  y: { label: "Weight", color: "var(--accent)" },
+  y: { label: "Weight", color: "var(--color-accent-solid)" },
 } satisfies ChartConfig;
 
 function ProgressReport({
@@ -1169,7 +1155,7 @@ function ProgressReport({
       {exerciseFlags.length > 0 && (
         <div>
           <p className="mb-2 text-2xs text-faint">Exercise progression</p>
-          <div className="flex flex-col divide-y divide-border">
+          <div className="flex flex-col [&>*+*]:mt-0.5">
             {exerciseFlags.map(([id, status]) => (
               <div
                 key={id}
@@ -1265,7 +1251,7 @@ function ProgressReport({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-border bg-surface p-3">
+    <div className="bg-surface p-3">
       <p className="text-2xs tracking-widest text-faint uppercase">{label}</p>
       <p className="num mt-0.5 text-sm font-semibold text-ink">{value}</p>
     </div>

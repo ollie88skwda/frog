@@ -19,8 +19,8 @@ import { paletteFor } from "./grounds";
 import { drawFrogMark, loadFrogMarkImage } from "./mark";
 import { type MascotPose, paintMascotMoment } from "./mascot";
 
-const FONT_SANS = `"Bricolage Grotesque", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-const FONT_MONO = `ui-monospace, "SF Mono", "Berkeley Mono", Menlo, monospace`;
+const FONT_SANS = `"Geologica", "Avenir Next", "Segoe UI", Arial, sans-serif`;
+const FONT_MONO = FONT_SANS; // Geologica only (Because brand): numerals use its tnum
 const MARK_SIZE_RATIO = 84 / 1080;
 /** Breathing room (× frame width) between the graphic and the footer above
  * which it must never encroach. */
@@ -81,7 +81,10 @@ export async function paintShareCard(
 
   // Background is enough for a "the card painted" check — everything below,
   // including the async mark rasterization, can safely take a beat.
-  if (typeof document !== "undefined") await document.fonts.ready;
+  if (typeof document !== "undefined") {
+    await document.fonts.load(`700 16px ${FONT_SANS}`);
+    await document.fonts.ready;
+  }
 
   const shadow = () => {
     if (p.shadow) {

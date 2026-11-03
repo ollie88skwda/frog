@@ -5,11 +5,11 @@ import {
   type MetricType,
   SEED_CONDITIONS,
 } from "@frog/core";
-import { Switch } from "@radix-ui/themes";
-import { ClipboardList, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { ClipboardText, DotsThree, Plus, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   useCreateMetric,
   useDeleteMetric,
@@ -235,9 +235,9 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
         <button
           type="button"
           data-testid="conditions-chip"
-          className="num flex h-8 max-w-full items-center gap-2 truncate rounded-md bg-translucent px-2 text-xs text-soft shadow-(--inset-control) transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
+          className="num flex h-8 max-w-full items-center gap-2 truncate rounded-sm bg-translucent px-2 text-xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
         >
-          <ClipboardList className="size-4 shrink-0" />
+          <ClipboardText className="size-4 shrink-0" />
           <span className="truncate">{summary ?? "Log conditions"}</span>
         </button>
       </DialogTrigger>
@@ -298,7 +298,7 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
           </section>
 
           {/* Add ---------------------------------------------------------- */}
-          <section className="flex flex-col gap-2 border-t border-border pt-4">
+          <section className="flex flex-col gap-2 pt-4">
             <span className={eyebrow}>Track something else</span>
             <Input
               placeholder="Add a condition or note…"
@@ -319,10 +319,10 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
                       onClick={() => setNewType(t.value)}
                       data-testid={`condition-type-${t.value}`}
                       className={cn(
-                        "rounded-md border px-2 py-1 text-2xs transition-colors duration-150",
+                        "rounded-sm px-2 py-1 text-2xs transition-colors duration-150",
                         newType === t.value
-                          ? "border-accent bg-accent-soft text-ink"
-                          : "border-border bg-translucent text-soft hover:bg-surface-hover",
+                          ? "bg-accent-soft text-ink"
+                          : "bg-translucent text-soft hover:bg-surface-hover",
                       )}
                     >
                       {t.label}
@@ -348,7 +348,7 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
                     key={m.id}
                     type="button"
                     onClick={() => trackExisting(m.id)}
-                    className="rounded-md bg-translucent px-2 py-1 text-2xs text-soft shadow-(--inset-control) transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
+                    className="rounded-sm bg-translucent px-2 py-1 text-2xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
                     data-testid={`condition-preset-${m.name}`}
                   >
                     {m.name}
@@ -359,7 +359,7 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
                     type="button"
                     onClick={() => void createCustom()}
                     disabled={createMetric.isPending}
-                    className="flex items-center gap-1 rounded-md bg-accent-soft px-2 py-1 text-2xs text-accent transition-colors duration-150 ease-(--ease-out-quad) hover:bg-accent/20 disabled:opacity-50"
+                    className="flex items-center gap-1 rounded-sm bg-accent-soft px-2 py-1 text-2xs text-accent-ink transition-colors duration-150 ease-(--ease-out-quad) hover:bg-accent-selected disabled:opacity-50"
                     data-testid="condition-create-btn"
                   >
                     <Plus className="size-3" />
@@ -403,7 +403,7 @@ function ConditionRow({
     metric.type === "number" || metric.type === "text" ? null : metric.type;
 
   return (
-    <div className="flex flex-col gap-1.5 border-b border-border py-2.5 last:border-b-0">
+    <div className="flex flex-col gap-1.5 py-2.5">
       <div className="flex min-h-8 items-center justify-between gap-2">
         <span className="min-w-0 truncate text-sm text-ink">{label}</span>
         <div className="flex shrink-0 items-center gap-1">
@@ -489,7 +489,7 @@ function NumberField({
         onChange={(e) => onChange(e.target.value)}
         onBlur={flush}
         data-testid={testId}
-        className="num h-9 w-20 rounded-md border border-border bg-translucent px-2 text-right text-base font-semibold text-ink shadow-(--inset-control) focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70 md:h-8"
+        className="num h-9 w-20 rounded-sm border border-field bg-translucent px-2 text-right text-base font-semibold text-ink focus:outline-none md:h-8"
       />
       {unit && <span className="w-6 text-xs text-faint">{unit}</span>}
     </div>
@@ -525,7 +525,7 @@ function TextField({
       onBlur={flush}
       placeholder="…"
       data-testid={testId}
-      className="h-9 w-40 rounded-md border border-border bg-translucent px-2 text-sm text-ink shadow-(--inset-control) focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70 md:h-8"
+      className="h-9 w-40 rounded-sm border border-field bg-translucent px-2 text-sm text-ink focus:outline-none md:h-8"
     />
   );
 }
@@ -545,7 +545,6 @@ function ToggleField({
       checked={on}
       onCheckedChange={(c) => onCommit(c)}
       data-testid={testId}
-      size="2"
     />
   );
 }
@@ -575,10 +574,10 @@ function ScaleField({
             aria-label={`${n}`}
             onClick={() => onCommit(current === n ? undefined : n)}
             className={cn(
-              "h-7 rounded-md border transition-colors duration-150",
+              "h-7 rounded-sm transition-colors duration-150",
               current != null && n <= current
-                ? "border-accent bg-accent"
-                : "border-border bg-translucent hover:bg-surface-hover",
+                ? "bg-accent"
+                : "bg-translucent hover:bg-surface-hover",
             )}
           />
         ))}
@@ -620,9 +619,9 @@ function RowMenu({
         onClick={() => setOpen((o) => !o)}
         data-testid={`condition-menu-${metricId}`}
         aria-label="Condition options"
-        className="flex size-8 items-center justify-center rounded-md text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+        className="flex size-8 items-center justify-center rounded-sm text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
       >
-        <MoreHorizontal className="size-4" />
+        <DotsThree className="size-4" />
       </button>
       {open && (
         <>
@@ -655,7 +654,7 @@ function RowMenu({
                 data-testid={`condition-delete-${metricId}`}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
               >
-                <Trash2 className="size-3.5" />
+                <Trash className="size-3.5" />
                 Delete
               </button>
             )}
@@ -689,7 +688,7 @@ function NotesBlock({
       rows={3}
       placeholder="How did it feel? Anything worth remembering…"
       data-testid="condition-notes"
-      className="min-h-16 w-full resize-y rounded-md border border-border bg-translucent px-2.5 py-2 text-sm text-ink shadow-(--inset-control) placeholder:text-faint focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+      className="min-h-16 w-full resize-y rounded-sm border border-field bg-translucent px-2.5 py-2 text-sm text-ink placeholder:text-faint focus:outline-none"
     />
   );
 }

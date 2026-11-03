@@ -41,9 +41,9 @@ function renderInline(text: string): ReactNode[] {
 }
 
 // Dev-facing changelog (docs/DECISIONS.md 2026-08-04): reads straight from
-// the project's own decision log rather than git/GitHub tooling. `entries`
+// the project's own decision log rather than git/GitHub tooling.`entries`
 // (the parsed, already-sorted-newest-first array) comes from the
-// `virtual:changelog-entries` module — see vite.config.ts's changelogPlugin.
+// `virtual:changelog-entries`module — see vite.config.ts's changelogPlugin.
 export default function ChangelogScreen() {
   // Snapshot the marker BEFORE marking seen below, so this visit still shows
   // what was new *when it started* instead of the section vanishing the
@@ -73,11 +73,11 @@ export default function ChangelogScreen() {
         <>
           {newEntries.length > 0 && (
             <>
-              <h2 className="mt-6 text-2xs font-medium tracking-widest text-accent uppercase">
+              <h2 className="mt-6 text-2xs font-medium tracking-widest text-accent-ink uppercase">
                 New since your last visit
               </h2>
               <div
-                className="mt-2 divide-y divide-border overflow-hidden border border-accent bg-surface"
+                className="mt-2 [&>*+*]:mt-0.5 overflow-hidden bg-surface"
                 data-testid="changelog-new"
               >
                 {newEntries.map((entry) => (
@@ -91,7 +91,7 @@ export default function ChangelogScreen() {
             All decisions
           </h2>
           <div
-            className="mt-2 divide-y divide-border overflow-hidden border border-border bg-surface"
+            className="mt-2 [&>*+*]:mt-0.5 overflow-hidden bg-surface"
             data-testid="changelog-all"
           >
             {entries.map((entry, i) => (

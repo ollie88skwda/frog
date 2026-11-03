@@ -19,7 +19,7 @@ import {
   weeklyConsistency,
   weekStart,
 } from "@frog/core";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
@@ -127,7 +127,7 @@ export default function StatsScreen() {
 
       {history.length === 0 && (
         <p
-          className="mt-6 border border-border bg-surface p-4 text-xs text-faint"
+          className="mt-6 bg-surface p-4 text-xs text-faint"
           data-testid="stats-empty"
         >
           {t(
@@ -179,10 +179,7 @@ function Section({
   testId?: string;
 }) {
   return (
-    <Card
-      className="mt-4 border-border bg-surface px-4 py-4 ring-border"
-      data-testid={testId}
-    >
+    <Card className="mt-4 bg-surface px-4 py-4" data-testid={testId}>
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
           {title}
@@ -217,7 +214,7 @@ function Chips<T extends string>({
           className={cn(
             "h-8 flex-1 whitespace-nowrap px-2 text-2xs transition-colors duration-150",
             o === value
-              ? "bg-accent-soft text-accent"
+              ? "bg-accent-soft text-accent-ink"
               : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
           )}
           data-testid={`${testIdPrefix}-${o}`}
@@ -231,7 +228,7 @@ function Chips<T extends string>({
 
 // ── 1. Last 7 days: consistency mini-bars + rolling body heat map ─────────────
 const CONSISTENCY_CONFIG = {
-  sessions: { label: "Workouts", color: "var(--accent)" },
+  sessions: { label: "Workouts", color: "var(--color-accent-solid)" },
 } satisfies ChartConfig;
 
 function SevenDaySection({ history, muscleMap, opts }: SectionProps) {
@@ -316,7 +313,7 @@ function SevenDaySection({ history, muscleMap, opts }: SectionProps) {
 
 // ── 2. Set count per muscle group over time ──────────────────────────────────
 const SETS_CONFIG = {
-  sets: { label: "Total sets", color: "var(--accent)" },
+  sets: { label: "Total sets", color: "var(--color-accent-solid)" },
 } satisfies ChartConfig;
 
 // Note 6: per-muscle stack colors failed once many muscles carried one set
@@ -429,7 +426,7 @@ function SetsPerMuscleSection({ history, muscleMap, opts }: SectionProps) {
 
       {breakdown.length > 0 && (
         <ul
-          className="mt-3 divide-y divide-border border border-border"
+          className="mt-3 [&>*+*]:mt-0.5"
           data-testid="sets-per-muscle-breakdown"
         >
           {breakdown.map(([m, n]) => (
@@ -450,8 +447,8 @@ function SetsPerMuscleSection({ history, muscleMap, opts }: SectionProps) {
 
 // ── 3. Muscle distribution vs prior equal period ─────────────────────────────
 const DIST_CONFIG = {
-  current: { label: "This period", color: "var(--accent)" },
-  previous: { label: "Previous", color: "var(--faint)" },
+  current: { label: "This period", color: "var(--color-accent-solid)" },
+  previous: { label: "Previous", color: "var(--color-text-secondary)" },
 } satisfies ChartConfig;
 
 function DistributionSection({
@@ -571,10 +568,7 @@ function DistributionSection({
         </ChartContainer>
       </div>
 
-      <ul
-        className="mt-3 divide-y divide-border border border-border"
-        data-testid="distribution-totals"
-      >
+      <ul className="mt-3 [&>*+*]:mt-0.5" data-testid="distribution-totals">
         {totals.map((t) => (
           <li
             key={t.label}
@@ -641,7 +635,7 @@ function WeekBodySection({ history, muscleMap, opts }: SectionProps) {
             title="Previous week"
             data-testid="week-prev"
           >
-            <ChevronLeft className="size-4" />
+            <CaretLeft className="size-4" />
           </IconButton>
           <IconButton
             onClick={() => setOffset((o) => Math.max(0, o - 1))}
@@ -649,7 +643,7 @@ function WeekBodySection({ history, muscleMap, opts }: SectionProps) {
             title="Next week"
             data-testid="week-next"
           >
-            <ChevronRight className="size-4" />
+            <CaretRight className="size-4" />
           </IconButton>
         </span>
       }
@@ -664,7 +658,7 @@ function WeekBodySection({ history, muscleMap, opts }: SectionProps) {
       {rows.length === 0 ? (
         <p className="mt-2 text-xs text-faint">No sets logged this week.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-border border border-border">
+        <ul className="mt-2 [&>*+*]:mt-0.5">
           {rows.map(([m, n]) => (
             <li key={m}>
               <Row interactive={false}>
@@ -711,7 +705,7 @@ function MainExercisesSection({
       {ranked.length === 0 ? (
         <p className="mt-3 text-xs text-faint">No exercises logged yet.</p>
       ) : (
-        <ul className="mt-3 divide-y divide-border border border-border">
+        <ul className="mt-3 [&>*+*]:mt-0.5">
           {ranked.slice(0, 15).map((ex, i) => (
             <li key={ex.exerciseId}>
               <Link
@@ -729,7 +723,7 @@ function MainExercisesSection({
                   <span className="num text-xs text-faint">
                     {ex.sessions} {ex.sessions === 1 ? "session" : "sessions"}
                   </span>
-                  <ChevronRight className="size-4 text-faint" />
+                  <CaretRight className="size-4 text-faint" />
                 </span>
               </Link>
             </li>
@@ -754,11 +748,11 @@ function ReportButton({ to, label }: { to: string; label: string }) {
   return (
     <Link
       to={to}
-      className="flex h-14 items-center justify-between border border-border bg-surface px-4 transition-colors duration-150 hover:border-border-strong"
+      className="flex h-14 items-center justify-between bg-surface px-4 transition-colors duration-150"
       data-testid={`report-${label.split(" ")[0].toLowerCase()}`}
     >
       <span className="text-sm font-medium">{label}</span>
-      <ChevronRight className="size-4 text-faint" />
+      <CaretRight className="size-4 text-faint" />
     </Link>
   );
 }
