@@ -241,7 +241,7 @@ export function FavoriteButton({
       active={favorite}
       className={className}
     >
-      <Star className="size-4" fill={favorite ? "currentColor" : "none"} />
+      <Star className="size-4" weight={favorite ? "fill" : "regular"} />
     </IconButton>
   );
 }

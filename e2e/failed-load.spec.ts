@@ -30,7 +30,7 @@ async function failedThenRecovers(
   route: string,
   pattern: string,
   falseEmpty: RegExp,
-  recovered: RegExp,
+  recovered: string,
 ) {
   await page.route(pattern, (r) => r.fulfill(FAIL));
   await page.goto(route);
@@ -39,9 +39,11 @@ async function failedThenRecovers(
   await expect(page.getByText(falseEmpty)).toHaveCount(0);
   await page.unroute(pattern);
   await alert.getByRole("button", { name: "Retry" }).click();
-  await expect(page.getByText(recovered).first()).toBeVisible({
-    timeout: 20_000,
-  });
+  // Recovered: the error is gone and the screen shows its real content.
+  await expect(alert).toBeHidden({ timeout: 20_000 });
+  await expect(
+    page.getByRole("heading", { name: recovered }).first(),
+  ).toBeVisible();
 }
 
 test("history: failed load shows an error, not 'No sessions yet'", async ({
@@ -52,7 +54,7 @@ test("history: failed load shows an error, not 'No sessions yet'", async ({
     "/history",
     "**/api/query?fn=sessions:list*",
     /No sessions yet|The lab is empty/,
-    /No sessions yet|The lab is empty/,
+    "History",
   );
 });
 
@@ -64,7 +66,7 @@ test("routines: failed load shows an error, not 'No routines yet'", async ({
     "/routines",
     "**/api/query?fn=rows:find&t=routine*",
     /No routines yet|The lab is empty/,
-    /No routines yet|The lab is empty/,
+    "Routines",
   );
 });
 
@@ -76,7 +78,7 @@ test("measures: failed load shows an error, not an editable empty day", async ({
     "/measures",
     "**/api/query?fn=data:page&t=measurements*",
     /No data yet/,
-    /No data yet|Measures/,
+    "Measures",
   );
 });
 

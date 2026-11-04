@@ -23,7 +23,13 @@
     "enabled": true,
     "rules": {
       "preset": "recommended",
-      "style": { "noNonNullAssertion": "off" }
+      "style": { "noNonNullAssertion": "off" },
+      "a11y": {
+        "noLabelWithoutControl": {
+          "level": "error",
+          "options": { "inputComponents": ["Input", "Textarea", "Field"] }
+        }
+      }
     }
   },
   "javascript": {
