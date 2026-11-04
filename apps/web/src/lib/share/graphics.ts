@@ -1,9 +1,8 @@
 // Signature-graphic canvas painters (share redesign, report §5.2/§6 step 4):
 // the body heat map, the 13-week consistency strip, the 12-month bar strip,
 // and the e1RM sparkline. Plain Path2D/lineTo — no chart library, per
-// AGENTS.md's "audit every dependency" rule. The heat map draws the exact
-// same path geometry as the interactive SVG (components/charts/body-paths.ts)
-// so the two never drift.
+// AGENTS.md's "audit every dependency" rule. The heat map draws its
+// path geometry from components/charts/body-paths.ts, the one copy.
 import type { MuscleRegion } from "@frog/core";
 import {
   type BodyView,

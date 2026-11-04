@@ -337,8 +337,13 @@ export default function HistoryDetailScreen() {
         )
       : 0;
 
-  if (sessionQ.isError || blocksQ.isError || sessionQ.isLoading || !session) {
-    const failed = sessionQ.isError || blocksQ.isError;
+  if (
+    sessionQ.isLoadingError ||
+    blocksQ.isLoadingError ||
+    sessionQ.isLoading ||
+    !session
+  ) {
+    const failed = sessionQ.isLoadingError || blocksQ.isLoadingError;
     return (
       <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
         <BackButton to="/history" label="Back to history" />

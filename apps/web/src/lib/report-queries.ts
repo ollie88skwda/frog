@@ -28,7 +28,7 @@ export type ReportData = {
 export function useReportData(): {
   data: ReportData | undefined;
   isLoading: boolean;
-  isError: boolean;
+  isLoadingError: boolean;
   error: unknown;
   refetch: () => void;
 } {
@@ -62,7 +62,7 @@ export function useReportData(): {
   return {
     data,
     isLoading: recLoading || exLoading,
-    isError: rec.isError || exQ.isError,
+    isLoadingError: rec.isLoadingError || exQ.isLoadingError,
     error: rec.error ?? exQ.error,
     refetch: () => {
       rec.refetch();

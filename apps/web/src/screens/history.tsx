@@ -13,7 +13,7 @@ export default function HistoryScreen() {
   const {
     data,
     isLoading,
-    isError,
+    isLoadingError,
     error,
     refetch,
     hasNextPage,
@@ -29,7 +29,7 @@ export default function HistoryScreen() {
       <div className="mt-4 overflow-hidden rounded-md bg-surface">
         <QueryState
           isLoading={isLoading}
-          isError={isError}
+          isError={isLoadingError}
           error={error}
           onRetry={() => void refetch()}
           loadingLabel={t("Loading…", "The frog is thinking…")}

@@ -70,7 +70,7 @@ export default function RoutinesScreen() {
   const routinesQ = useRoutines();
   const folders = foldersQ.data ?? [];
   const routines = routinesQ.data ?? [];
-  const isError = foldersQ.isError || routinesQ.isError;
+  const isError = foldersQ.isLoadingError || routinesQ.isLoadingError;
   const isLoading = !isError && (foldersQ.isLoading || routinesQ.isLoading);
   const createFolder = useCreateRoutineFolder();
   const [newFolderOpen, setNewFolderOpen] = useState(false);

@@ -84,7 +84,7 @@ export default function TrainerScreen() {
   const {
     data: program,
     isLoading,
-    isError,
+    isLoadingError,
     error,
     refetch,
   } = useActiveProgram();
@@ -103,7 +103,7 @@ export default function TrainerScreen() {
 
       <QueryState
         isLoading={isLoading}
-        isError={isError}
+        isError={isLoadingError}
         error={error}
         onRetry={() => void refetch()}
       >

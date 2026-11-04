@@ -180,14 +180,14 @@ export default function CalendarScreen() {
 
   const todayKey = localDateKey(Date.now());
 
-  if (sessionsQ.isLoading || sessionsQ.isError) {
+  if (sessionsQ.isLoading || sessionsQ.isLoadingError) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
         <h1 className="text-lg font-semibold tracking-tight">Calendar</h1>
         <div className="mt-4 rounded-md bg-surface">
           <QueryState
             isLoading={sessionsQ.isLoading}
-            isError={sessionsQ.isError}
+            isError={sessionsQ.isLoadingError}
             error={sessionsQ.error}
             onRetry={() => void sessionsQ.refetch()}
           >

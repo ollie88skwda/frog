@@ -110,12 +110,12 @@ export default function StatsScreen() {
   );
   const history = recordsData?.history ?? [];
 
-  if (recLoading || exLoading || recQ.isError || exQ.isError) {
+  if (recLoading || exLoading || recQ.isLoadingError || exQ.isLoadingError) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10">
         <QueryState
           isLoading={recLoading || exLoading}
-          isError={recQ.isError || exQ.isError}
+          isError={recQ.isLoadingError || exQ.isLoadingError}
           error={recQ.error ?? exQ.error}
           onRetry={() => {
             recQ.refetch();

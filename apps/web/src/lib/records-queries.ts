@@ -26,7 +26,7 @@ export type RecordsData = {
 export function useRecordsData(): {
   data: RecordsData | undefined;
   isLoading: boolean;
-  isError: boolean;
+  isLoadingError: boolean;
   error: unknown;
   refetch: () => void;
 } {
@@ -55,7 +55,7 @@ export function useRecordsData(): {
   return {
     data: records.data,
     isLoading: prefs.isLoading || records.isLoading,
-    isError: records.isError,
+    isLoadingError: records.isLoadingError,
     error: records.error,
     refetch: () => void records.refetch(),
   };
