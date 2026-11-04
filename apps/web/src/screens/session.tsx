@@ -2470,7 +2470,7 @@ function MarksBand({ marks }: { marks: Mark[] }) {
           disabled={!m.onTap}
           onClick={m.onTap}
           className={cn(
-            "relative min-w-0 flex-1 py-2.5 text-center text-base leading-none",
+            "relative min-w-0 flex-1 pt-2 pb-4 text-center text-base leading-none",
             m.kind === "done" && "text-accent-ink",
             m.kind === "warmup" && "text-warn",
             m.kind === "todo" && "text-disabled",
@@ -2484,13 +2484,13 @@ function MarksBand({ marks }: { marks: Mark[] }) {
           {m.paired && (
             <span
               data-testid={`set-mark-${i}-side-tag`}
-              className="absolute right-0 bottom-0.5 left-0 text-2xs font-bold text-faint"
+              className="absolute right-0 bottom-0.5 left-0 text-2xs leading-none font-bold text-faint"
             >
               ᴸᴿ
             </span>
           )}
           {m.kind === "warmup" && (
-            <span className="absolute right-0 bottom-0.5 left-0 text-2xs font-bold text-faint">
+            <span className="absolute right-0 bottom-0.5 left-0 text-2xs leading-none font-bold text-faint">
               W
             </span>
           )}

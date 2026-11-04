@@ -108,7 +108,7 @@ export function FinishPhotoStrip({
                 onClick={() => move(p.id, -1)}
                 disabled={i === 0}
                 title="Move left"
-                className="flex size-5 items-center justify-center text-on-accent disabled:opacity-30"
+                className="flex size-5 items-center justify-center text-white disabled:opacity-30"
                 data-testid={`finish-photo-left-${i}`}
               >
                 <CaretLeft className="size-3.5" />
@@ -118,7 +118,7 @@ export function FinishPhotoStrip({
                 onClick={() => move(p.id, 1)}
                 disabled={i === photos.length - 1}
                 title="Move right"
-                className="flex size-5 items-center justify-center text-on-accent disabled:opacity-30"
+                className="flex size-5 items-center justify-center text-white disabled:opacity-30"
                 data-testid={`finish-photo-right-${i}`}
               >
                 <CaretRight className="size-3.5" />
@@ -183,7 +183,7 @@ export function SessionPhotoCarousel({ sessionId }: { sessionId: string }) {
           )}
           {confirmId === row.id ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-scrim p-2 text-center">
-              <span className="text-xs text-on-accent">Delete photo?</span>
+              <span className="text-xs text-white">Delete photo?</span>
               <div className="flex gap-2">
                 <Button
                   size="sm"

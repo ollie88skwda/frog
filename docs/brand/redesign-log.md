@@ -30,7 +30,7 @@ A failed request used to show "No sessions yet", "No routines yet", an empty cal
 - **PR banner** timer no longer restarts every time the screen re-renders (it now always dismisses after 4s).
 - **Finish sheet duration** is now measured when you open it, not when the screen first loaded.
 - 🔗 emoji replaced with a Phosphor link icon; "linked / unlinked" copy capitalised.
-- Notes boxes use the shared textarea; outline-removal replaced by the global focus ring on all session inputs; 7–10px text raised to the 12px floor; `text-3xs` (undefined) fixed; photo-strip controls use theme colours (no raw white).
+- Notes boxes use the shared textarea; outline-removal replaced by the global focus ring on all session inputs; 7–10px text raised to the 12px floor; `text-3xs` (undefined) fixed; photo-overlay controls keep white text on the dark scrim (the accent foreground is dark in both modes and was unreadable there); set-mark side/warm-up tags sit below the glyph in a 40px mark.
 - Deleted the unused rest-countdown component and the dead superset-id helper.
 
 ## Library, Exercise detail, Machines
