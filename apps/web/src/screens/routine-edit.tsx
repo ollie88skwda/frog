@@ -1422,7 +1422,7 @@ export default function RoutineEditScreen() {
             placeholder={
               "Push day\nBench press 4x8\nIncline dumbbell press 3x10\nTricep pushdown 3x12"
             }
-            className="mt-2 w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus focus:outline-none"
+            className="mt-2 w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
             data-testid="routine-paste-textarea"
           />
           {pasteError && <p className="mt-2 text-xs text-neg">{pasteError}</p>}

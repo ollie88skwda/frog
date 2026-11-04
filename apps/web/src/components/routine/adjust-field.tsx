@@ -84,7 +84,7 @@ export function AdjustField({
           onChange={(e) => onValueChange(e.target.value)}
           placeholder={placeholder}
           className={cn(
-            "num min-w-0 flex-1 bg-transparent font-semibold text-ink focus:text-accent-ink focus:outline-none",
+            "num min-w-0 flex-1 bg-transparent font-semibold text-ink focus:text-accent-ink",
             compact ? "text-lg" : "text-2xl",
           )}
           data-testid={testId}

@@ -1,6 +1,7 @@
 import { CaretRight } from "@phosphor-icons/react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
+import { QueryState } from "@/components/ui/query-state";
 import { rowClass } from "@/components/ui/row";
 import { StatusRing } from "@/components/ui/status-ring";
 import { formatDate, formatTime } from "@/lib/format";
@@ -9,8 +10,16 @@ import { useVoice } from "@/lib/voice";
 
 export default function HistoryScreen() {
   const { t } = useVoice();
-  const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } =
-    useSessionHistory();
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    hasNextPage,
+    fetchNextPage,
+    isFetchingNextPage,
+  } = useSessionHistory();
   const sessions = data?.pages.flat() ?? [];
 
   return (
@@ -18,23 +27,30 @@ export default function HistoryScreen() {
       <h1 className="text-lg font-semibold tracking-tight">History</h1>
 
       <div className="mt-4 overflow-hidden rounded-md bg-surface">
-        {isLoading ? (
-          <p className="px-4 py-6 text-center text-xs text-faint">
-            {t("Loading…", "The frog is thinking…")}
-          </p>
-        ) : sessions.length === 0 ? (
-          <div className="px-4 py-6 text-center text-xs text-faint">
-            <p>
-              {t("No sessions yet.", "The lab is empty. The frog is waiting.")}
-            </p>
-            <p className="mt-1">
-              {t(
-                "Start one from Training and it will show up here.",
-                "Log your first set. The frog will begin taking notes immediately, possibly before you finish.",
-              )}
-            </p>
-          </div>
-        ) : (
+        <QueryState
+          isLoading={isLoading}
+          isError={isError}
+          error={error}
+          onRetry={() => void refetch()}
+          loadingLabel={t("Loading…", "The frog is thinking…")}
+          empty={sessions.length === 0}
+          emptyState={
+            <div className="px-4 py-6 text-center text-xs text-faint">
+              <p>
+                {t(
+                  "No sessions yet.",
+                  "The lab is empty. The frog is waiting.",
+                )}
+              </p>
+              <p className="mt-1">
+                {t(
+                  "Start one from Training and it will show up here.",
+                  "Log your first set. The frog will begin taking notes immediately, possibly before you finish.",
+                )}
+              </p>
+            </div>
+          }
+        >
           <ul className="[&>*+*]:mt-0.5">
             {sessions.map((s) => (
               <li key={s.id}>
@@ -56,13 +72,16 @@ export default function HistoryScreen() {
                     <span className="num text-xs text-faint">
                       {formatDate(s.startedAt)} · {formatTime(s.startedAt)}
                     </span>
-                    <CaretRight className="size-4 text-faint" />
+                    <CaretRight
+                      aria-hidden="true"
+                      className="size-4 text-faint"
+                    />
                   </span>
                 </Link>
               </li>
             ))}
           </ul>
-        )}
+        </QueryState>
       </div>
 
       {hasNextPage && (

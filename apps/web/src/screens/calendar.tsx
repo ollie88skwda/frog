@@ -7,11 +7,13 @@ import { StreakCard } from "@/components/streak-card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { IconButton } from "@/components/ui/icon-button";
+import { QueryState } from "@/components/ui/query-state";
 import { rowClass } from "@/components/ui/row";
 import { StatusRing } from "@/components/ui/status-ring";
 import { formatDate, formatTime } from "@/lib/format";
 import { useAllSessions } from "@/lib/profile-queries";
 import { useRepo } from "@/lib/repo";
+import { userFacingRepoError } from "@/lib/repo-error";
 import { useVoice } from "@/lib/voice";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
@@ -113,9 +115,11 @@ export default function CalendarScreen() {
   const navigate = useNavigate();
   const repo = useRepo();
   const qc = useQueryClient();
-  const { data: sessions = [] } = useAllSessions();
+  const sessionsQ = useAllSessions();
+  const sessions = sessionsQ.data ?? [];
 
   const now = new Date();
+  const [logError, setLogError] = useState<string | null>(null);
   const [view, setView] = useState<"month" | "year">("month");
   const [cursor, setCursor] = useState(() =>
     toCursor(now.getFullYear(), now.getMonth()),
@@ -163,20 +167,48 @@ export default function CalendarScreen() {
     // then open the live editor (Hevy retro-log = a normal session you finish).
     const [y, m, d] = key.split("-").map(Number);
     const at = new Date(y, m - 1, d, 12, 0, 0, 0).getTime();
-    const session = await repo.startSession();
-    await repo.updateSessionStartedAt(session.id, at);
-    void qc.invalidateQueries({ queryKey: ["active-session"] });
-    void qc.invalidateQueries({ queryKey: ["sessions-all"] });
-    navigate(`/session/${session.id}`);
+    try {
+      const session = await repo.startSession();
+      await repo.updateSessionStartedAt(session.id, at);
+      void qc.invalidateQueries({ queryKey: ["active-session"] });
+      void qc.invalidateQueries({ queryKey: ["sessions-all"] });
+      navigate(`/session/${session.id}`);
+    } catch (e) {
+      setLogError(userFacingRepoError(e));
+    }
   }
 
   const todayKey = localDateKey(Date.now());
+
+  if (sessionsQ.isLoading || sessionsQ.isError) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+        <h1 className="text-lg font-semibold tracking-tight">Calendar</h1>
+        <div className="mt-4 rounded-md bg-surface">
+          <QueryState
+            isLoading={sessionsQ.isLoading}
+            isError={sessionsQ.isError}
+            error={sessionsQ.error}
+            onRetry={() => void sessionsQ.refetch()}
+          >
+            {null}
+          </QueryState>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold tracking-tight">Calendar</h1>
       </div>
+
+      {logError && (
+        <p role="alert" className="mt-2 text-sm text-neg">
+          {logError}
+        </p>
+      )}
 
       <div className="mt-4">
         <StreakCard starts={starts} />
@@ -342,7 +374,7 @@ function MonthGrid({
               </span>
               {list.length > 1 && (
                 <span
-                  className="rounded-xs num absolute right-0.5 bottom-0.5 flex min-w-3 items-center justify-center bg-surface px-0.5 text-[9px] leading-none text-accent-ink"
+                  className="rounded-xs num absolute right-0.5 bottom-0.5 flex min-w-3 items-center justify-center bg-surface px-0.5 text-2xs leading-none text-accent-ink"
                   data-testid={`cal-count-${key}`}
                 >
                   {list.length}
@@ -395,7 +427,7 @@ function YearGrid({
               <div
                 // biome-ignore lint/suspicious/noArrayIndexKey: fixed 7-row weekday labels, never reordered
                 key={i}
-                className="flex items-center justify-end text-[9px] leading-none text-faint"
+                className="flex items-center justify-end text-2xs leading-none text-faint"
                 style={{ height: YEAR_CELL, width: 10 }}
               >
                 {label}
@@ -414,7 +446,7 @@ function YearGrid({
                 style={{ gap: YEAR_GAP }}
               >
                 <div
-                  className="text-[9px] leading-none text-faint"
+                  className="text-2xs leading-none text-faint"
                   style={{ height: YEAR_CELL, width: YEAR_CELL * 2 }}
                 >
                   {label}

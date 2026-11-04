@@ -9,6 +9,7 @@ import {
   unitLabel,
 } from "@frog/core";
 import { Camera, ShareNetwork, Trash } from "@phosphor-icons/react";
+import { QueryState } from "@/components/ui/query-state";
 import { Select } from "@/components/ui/select";
 
 // Radix Select forbids an empty-string value; the "None" comparison option
@@ -127,7 +128,8 @@ const formatDay = (on: string) => formatDate(parseLocal(on));
 export default function MeasuresScreen() {
   const { t } = useVoice();
   const { unit } = useUnit();
-  const { data: measurements = [] } = useMeasurements();
+  const measurementsQ = useMeasurements();
+  const measurements = measurementsQ.data ?? [];
   const upsert = useUpsertMeasurement();
 
   const [selectedDate, setSelectedDate] = useState(localDate());
@@ -146,6 +148,24 @@ export default function MeasuresScreen() {
       measuredOn: selectedDate,
       patch: { [key]: value } as MeasurementPatch,
     });
+  }
+
+  if (measurementsQ.isLoading || measurementsQ.isError) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+        <h1 className="text-lg font-semibold tracking-tight">Measures</h1>
+        <div className="mt-4 rounded-md bg-surface">
+          <QueryState
+            isLoading={measurementsQ.isLoading}
+            isError={measurementsQ.isError}
+            error={measurementsQ.error}
+            onRetry={() => void measurementsQ.refetch()}
+          >
+            {null}
+          </QueryState>
+        </div>
+      </div>
+    );
   }
 
   return (

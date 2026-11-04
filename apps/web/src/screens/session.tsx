@@ -405,7 +405,7 @@ function RpePicker({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="num h-10 w-full border border-field bg-surface px-2 text-sm font-semibold text-ink transition-colors duration-150 focus:border-focus focus:outline-none"
+        className="num h-10 w-full border border-field bg-surface px-2 text-sm font-semibold text-ink transition-colors duration-150 focus:border-focus"
         data-testid={side ? `rpe-picker-${side}` : "rpe-picker"}
       >
         <option value="">—</option>
@@ -957,14 +957,6 @@ export default function SessionScreen() {
     );
     setRest(starting ? { seId, state: startRest(Date.now()) } : null);
   }
-
-  const nextGroupId = () => {
-    const ids = (blocks ?? [])
-      .map((b) => b.supersetGroup)
-      .filter((g): g is number => g != null);
-    return ids.length ? Math.max(...ids) + 1 : 1;
-  };
-  void nextGroupId; // kept for structureInput's round-trip shape below
 
   function addWarmup(seId: string, workingWeightKg: number) {
     const block = (blocks ?? []).find((b) => b.seId === seId);
@@ -1741,7 +1733,7 @@ function FinishOverlay({
               onChange={(e) => setNotesDraft(e.target.value)}
               placeholder="How did it go? PRs, aches, focus…"
               data-testid="finish-notes"
-              className="w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus focus:outline-none"
+              className="w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
             />
           </label>
 
@@ -2486,13 +2478,13 @@ function MarksBand({ marks }: { marks: Mark[] }) {
           {m.paired && (
             <span
               data-testid={`set-mark-${i}-side-tag`}
-              className="absolute right-0 bottom-0.5 left-0 text-[7px] font-bold text-faint"
+              className="absolute right-0 bottom-0.5 left-0 text-2xs font-bold text-faint"
             >
               ᴸᴿ
             </span>
           )}
           {m.kind === "warmup" && (
-            <span className="absolute right-0 bottom-0.5 left-0 text-[7px] font-bold text-faint">
+            <span className="absolute right-0 bottom-0.5 left-0 text-2xs font-bold text-faint">
               W
             </span>
           )}
@@ -3170,7 +3162,7 @@ function ExerciseSpotlight({
           >
             <ExerciseThumb imageUrl={exercise?.imageUrl} name={block.name} />
             <span
-              className="min-w-0 truncate text-xl font-extrabold tracking-tight"
+              className="min-w-0 truncate text-xl font-bold tracking-tight"
               data-testid="exercise-name"
             >
               {block.name}
@@ -4062,7 +4054,7 @@ function Spotlight({
               if (restStartedAt != null) onStopRest();
             }}
             readOnly={key === "duration" && timerRunning}
-            className="num min-w-0 flex-1 bg-transparent text-center text-[44px] leading-none font-bold text-ink placeholder:text-3xl placeholder:text-faint focus:outline-none sm:text-[52px]"
+            className="num min-w-0 flex-1 bg-transparent text-center text-[44px] leading-none font-bold text-ink placeholder:text-3xl placeholder:text-faint sm:text-[52px]"
             data-testid={fieldTestId}
           />
           {unitTxt && (
@@ -4158,18 +4150,18 @@ function Spotlight({
     <div className="flex flex-col gap-2.5 px-4 pt-2.5 pb-4">
       <div className="flex items-center gap-2">
         <span
-          className="text-xl font-extrabold tracking-tight"
+          className="text-xl font-bold tracking-tight"
           data-testid="set-number"
         >
           Set {index + 1}
         </span>
         {setType === "warmup" && (
-          <span className="rounded-xs bg-secondary px-1.5 py-0.5 text-2xs font-extrabold tracking-widest text-warn uppercase">
+          <span className="rounded-xs bg-secondary px-1.5 py-0.5 text-2xs font-bold tracking-widest text-warn uppercase">
             Warm-up
           </span>
         )}
         {isUnilateral && (
-          <span className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-extrabold tracking-widest text-accent-ink uppercase">
+          <span className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-bold tracking-widest text-accent-ink uppercase">
             Per side
           </span>
         )}
@@ -4230,14 +4222,14 @@ function Spotlight({
             ↺
           </button>
           <span className="min-w-0 flex-1">
-            <span className="block text-2xs font-extrabold tracking-widest text-faint uppercase">
+            <span className="block text-2xs font-bold tracking-widest text-faint uppercase">
               Last time
             </span>
             <span className="num block text-base font-bold">
               {lastText || "—"}
             </span>
           </span>
-          <span className="shrink-0 bg-bg px-2 py-1 text-center text-[9px] leading-tight font-extrabold text-faint">
+          <span className="shrink-0 bg-bg px-2 py-1 text-center text-2xs leading-tight font-bold text-faint">
             ALREADY
             <br />
             LOADED
@@ -4267,7 +4259,7 @@ function Spotlight({
                     value={weight2}
                     placeholder={weight}
                     onChange={(e) => setWeight2(e.target.value)}
-                    className="num w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink focus:outline-none"
+                    className="num w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
                     data-testid="weight-field-right"
                   />
                 </div>
@@ -4308,10 +4300,10 @@ function Spotlight({
       {isUnilateral && f.reps && (
         <div className="flex flex-col gap-1">
           <div className="grid grid-cols-2 gap-2">
-            <span className="text-center text-2xs font-extrabold tracking-widest text-accent-ink uppercase">
+            <span className="text-center text-2xs font-bold tracking-widest text-accent-ink uppercase">
               ᴸ Left
             </span>
-            <span className="text-center text-2xs font-extrabold tracking-widest text-accent-ink uppercase">
+            <span className="text-center text-2xs font-bold tracking-widest text-accent-ink uppercase">
               ᴿ Right
             </span>
           </div>
@@ -4331,7 +4323,7 @@ function Spotlight({
                     onFocus={() => {
                       if (restStartedAt != null) onStopRest();
                     }}
-                    className="num w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink focus:outline-none"
+                    className="num w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
                     data-testid={`reps-field-${side}`}
                   />
                 </div>
@@ -4391,7 +4383,7 @@ function Spotlight({
                   return !v;
                 });
               }}
-              className="rounded-xs bg-accent-soft px-2 py-1 text-2xs font-extrabold tracking-widest text-accent-ink uppercase"
+              className="rounded-xs bg-accent-soft px-2 py-1 text-2xs font-bold tracking-widest text-accent-ink uppercase"
               data-testid="stats-growth-toggle"
             >
               Growth {growthOpen ? "▴" : "▾"}
@@ -4490,13 +4482,13 @@ function Spotlight({
         <DialogContent title={`Set ${index + 1} details`}>
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-1.5">
-              <span className="text-2xs font-extrabold tracking-widest text-faint uppercase">
+              <span className="text-2xs font-bold tracking-widest text-faint uppercase">
                 RIR
               </span>
               <InfoTip lessonId="rir" />
             </div>
             <label className="flex flex-col gap-1">
-              <span className="text-2xs font-extrabold tracking-widest text-faint uppercase">
+              <span className="text-2xs font-bold tracking-widest text-faint uppercase">
                 Note
               </span>
               <textarea
@@ -4505,14 +4497,14 @@ function Spotlight({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 data-testid={`set-${index}-note`}
-                className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus focus:outline-none"
+                className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
               />
             </label>
             {enabledMetrics
               .filter((m) => extras.has(m.id))
               .map((m) => (
                 <div key={m.id} className="flex flex-col gap-1">
-                  <span className="text-2xs font-extrabold tracking-widest text-faint uppercase">
+                  <span className="text-2xs font-bold tracking-widest text-faint uppercase">
                     {m.name}
                   </span>
                   {m.type === "checkbox" ? (

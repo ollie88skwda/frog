@@ -132,7 +132,7 @@ export function FinishPhotoStrip({
             data-testid="finish-photo-add"
           >
             <ImageSquare className="size-5" />
-            <span className="text-3xs">Add</span>
+            <span className="text-2xs">Add</span>
             <input
               type="file"
               accept="image/*"

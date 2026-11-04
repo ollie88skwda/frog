@@ -112,7 +112,7 @@ export function TierBadge({
   return (
     <span
       className={cn(
-        "num inline-flex size-4 shrink-0 rounded-xs items-center justify-center text-[10px] font-semibold leading-none",
+        "num inline-flex size-4 shrink-0 rounded-xs items-center justify-center text-2xs font-semibold leading-none",
         tier === "S" && "bg-accent text-accent-fg",
         tier === "A" && "bg-accent-soft text-ink",
         tier === "B" && "bg-translucent text-soft",

@@ -20,6 +20,7 @@ import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { QueryState } from "@/components/ui/query-state";
 import { Toolbar } from "@/components/ui/toolbar";
 import { formatDate } from "@/lib/format";
 import { useAllSessions, useUserPrefs } from "@/lib/profile-queries";
@@ -31,6 +32,7 @@ import {
   useUpdateSessionStartedAt,
 } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
+import { userFacingRepoError } from "@/lib/repo-error";
 import { effortReadout } from "@/lib/rir";
 import { useCreateRoutine } from "@/lib/routine-queries";
 import { useUnit } from "@/lib/settings";
@@ -204,6 +206,7 @@ function ShareWorkoutButton(
         size="sm"
         onClick={() => setOpen(true)}
         title="Share as image"
+        aria-label="Share as image"
         data-testid="history-share-btn"
       >
         <ShareNetwork className="size-4" />
@@ -224,16 +227,25 @@ export default function HistoryDetailScreen() {
   const [savingRoutine, setSavingRoutine] = useState(false);
   const [routineName, setRoutineName] = useState("");
   const [copying, setCopying] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const showSummary = searchParams.get("summary") === "1";
-  const { data: session } = useSession(id);
-  const { data: blocks = [] } = useSessionExercises(id);
+  const sessionQ = useSession(id);
+  const blocksQ = useSessionExercises(id);
+  const session = sessionQ.data;
+  const blocks = blocksQ.data ?? [];
   const { data: metrics = [] } = useMetrics();
   const updateStartedAt = useUpdateSessionStartedAt(id);
   const createRoutine = useCreateRoutine();
 
   async function deleteSession() {
-    await repo.deleteSession(id);
+    try {
+      await repo.deleteSession(id);
+    } catch (e) {
+      setConfirming(false);
+      setActionError(userFacingRepoError(e));
+      return;
+    }
     void qc.invalidateQueries({ queryKey: ["sessions"] });
     void qc.invalidateQueries({ queryKey: ["findings-data"] });
     void qc.invalidateQueries({ queryKey: ["active-session"] });
@@ -299,7 +311,8 @@ export default function HistoryDetailScreen() {
       }
       void qc.invalidateQueries({ queryKey: ["active-session"] });
       navigate(`/session/${s.id}`, { state: { seed } });
-    } catch {
+    } catch (e) {
+      setActionError(userFacingRepoError(e));
       setCopying(false);
     }
   }
@@ -323,6 +336,34 @@ export default function HistoryDetailScreen() {
           session.endedAt - session.startedAt - (session.pausedMs ?? 0),
         )
       : 0;
+
+  if (sessionQ.isError || blocksQ.isError || sessionQ.isLoading || !session) {
+    const failed = sessionQ.isError || blocksQ.isError;
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
+        <BackButton to="/history" label="Back to history" />
+        <div className="mt-4 rounded-md bg-surface">
+          <QueryState
+            isLoading={!failed && sessionQ.isLoading}
+            isError={failed}
+            error={sessionQ.error ?? blocksQ.error}
+            onRetry={() => {
+              void sessionQ.refetch();
+              void blocksQ.refetch();
+            }}
+            empty
+            emptyState={
+              <p className="p-4 text-sm text-faint">
+                Session not found. It may have been deleted.
+              </p>
+            }
+          >
+            {null}
+          </QueryState>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
@@ -373,6 +414,11 @@ export default function HistoryDetailScreen() {
           </Button>
         </Toolbar>
       </div>
+      {actionError && (
+        <p role="alert" className="mt-2 text-sm text-neg">
+          {actionError}
+        </p>
+      )}
       <Dialog open={savingRoutine} onOpenChange={setSavingRoutine}>
         <DialogContent title="Save as routine">
           <p className="text-xs text-soft">
@@ -446,7 +492,7 @@ export default function HistoryDetailScreen() {
       {session && (
         <input
           type="datetime-local"
-          className="num mt-0.5 block bg-transparent text-xs text-faint transition-colors duration-100 hover:text-soft focus:text-ink focus:outline-none"
+          className="num mt-0.5 block bg-transparent text-xs text-faint transition-colors duration-100 hover:text-soft focus:text-ink"
           value={toLocalInput(session.startedAt)}
           onChange={(e) => {
             const ms = new Date(e.target.value).getTime();

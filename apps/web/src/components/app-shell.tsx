@@ -160,7 +160,7 @@ export function AppShell() {
                   </span>
                   <span
                     className={cn(
-                      "overflow-hidden leading-none whitespace-nowrap transition-all duration-150 ease-(--ease-out-quad)",
+                      "overflow-hidden leading-none whitespace-nowrap transition-[max-width,opacity] duration-150 ease-(--ease-out-quad)",
                       (forceActive ?? isActive)
                         ? "max-w-24 opacity-100"
                         : "max-w-0 opacity-0",

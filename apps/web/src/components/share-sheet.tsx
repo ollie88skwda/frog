@@ -245,7 +245,7 @@ function PhotoPicker({
           data-testid="share-photo-camera"
         >
           <Camera className="size-5" />
-          <span className="text-3xs">Camera</span>
+          <span className="text-2xs">Camera</span>
           <input
             type="file"
             accept="image/*"

@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/chart";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { QueryState } from "@/components/ui/query-state";
 import { Select } from "@/components/ui/select";
 import { useMeasurements } from "@/lib/measure-queries";
 import {
@@ -79,7 +80,13 @@ const FOCUS_NONE = "__none__";
 // settings, and a progress report. All logic runs client-side on the same
 // generator + overload rule + stats aggregations used elsewhere.
 export default function TrainerScreen() {
-  const { data: program, isLoading } = useActiveProgram();
+  const {
+    data: program,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useActiveProgram();
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
@@ -93,11 +100,18 @@ export default function TrainerScreen() {
         </div>
       </div>
 
-      {isLoading ? null : program ? (
-        <TrainerDashboard program={program} />
-      ) : (
-        <TrainerOnboarding />
-      )}
+      <QueryState
+        isLoading={isLoading}
+        isError={isError}
+        error={error}
+        onRetry={() => void refetch()}
+      >
+        {program ? (
+          <TrainerDashboard program={program} />
+        ) : (
+          <TrainerOnboarding />
+        )}
+      </QueryState>
     </div>
   );
 }

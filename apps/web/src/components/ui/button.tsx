@@ -17,13 +17,14 @@ const VARIANT: Record<Variant, string> = {
   danger: "bg-danger-soft text-danger hover:bg-danger-soft/70",
 };
 
-// Heights held from the pre-rebrand scale so no call-site layout shifts:
-// 32px (sm/md/icon) and 40px (lg/icon-lg). Radius is Base 8 (8px) for both.
+// Touch-first: every size is 40px on a phone and drops to the denser 32px on
+// desktop (`md:`), matching IconButton. `lg` stays 40px everywhere. Radius is
+// Base 8 (8px).
 const SIZE: Record<Size, string> = {
-  sm: "h-8 px-3 text-xs",
-  md: "h-8 px-3 text-sm",
+  sm: "h-10 px-3 text-xs md:h-8",
+  md: "h-10 px-3 text-sm md:h-8",
   lg: "h-10 px-4 text-sm",
-  icon: "size-8 p-0",
+  icon: "size-10 p-0 md:size-8",
   "icon-lg": "size-10 p-0",
 };
 
