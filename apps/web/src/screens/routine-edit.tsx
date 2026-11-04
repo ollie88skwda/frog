@@ -51,6 +51,7 @@ import {
 } from "@/components/routine/adjust-field";
 import { RoutineSetTypeCell } from "@/components/routine/routine-set-type-cell";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
@@ -71,6 +72,7 @@ import {
   useMachines,
   useUpdateExercise,
 } from "@/lib/queries";
+import { userFacingRepoError } from "@/lib/repo-error";
 import { parseTargetRirFields } from "@/lib/rir";
 import {
   useCreateRoutine,
@@ -720,15 +722,14 @@ export default function RoutineEditScreen() {
     };
   }
 
-  async function save() {
+  const [confirmUnmatched, setConfirmUnmatched] = useState(false);
+
+  async function save(confirmedUnmatched = false) {
     if (saving || !draftReady) return;
-    if (
-      unmatched.length > 0 &&
-      !window.confirm(
-        `${unmatched.length} pasted line${unmatched.length === 1 ? "" : "s"} from "Paste workout" ${unmatched.length === 1 ? "is" : "are"} still unresolved and will be left out of this save. Continue?`,
-      )
-    )
+    if (unmatched.length > 0 && !confirmedUnmatched) {
+      setConfirmUnmatched(true);
       return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -737,7 +738,7 @@ export default function RoutineEditScreen() {
       else await createRoutine.mutateAsync(input);
       navigate("/routines");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      setError(userFacingRepoError(e));
       setSaving(false);
     }
   }
@@ -758,6 +759,14 @@ export default function RoutineEditScreen() {
           <Button variant="ghost" onClick={() => navigate("/routines")}>
             Cancel
           </Button>
+          <ConfirmDialog
+            open={confirmUnmatched}
+            onOpenChange={setConfirmUnmatched}
+            title="Save without pasted lines?"
+            description={`${unmatched.length} pasted line${unmatched.length === 1 ? " from Paste workout is" : "s from Paste workout are"} still unresolved and will be left out of this save.`}
+            confirmLabel="Save anyway"
+            onConfirm={() => void save(true)}
+          />
           <Button
             variant="primary"
             onClick={() => void save()}

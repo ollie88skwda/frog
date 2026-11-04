@@ -11,6 +11,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { QueryState } from "@/components/ui/query-state";
@@ -219,6 +220,7 @@ function FolderSection({
   // Mobile-first: a menu clipped below the fold must never be unreachable.
   const menu = useFlippableMenu(FOLDER_MENU_HEIGHT);
   const [renaming, setRenaming] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [name, setName] = useState(folder.name);
   const rename = useRenameRoutineFolder();
   const del = useDeleteRoutineFolder();
@@ -268,12 +270,7 @@ function FolderSection({
                 destructive
                 onClick={() => {
                   menu.close();
-                  if (
-                    window.confirm(
-                      `Delete folder "${folder.name}"? Its routines stay (unfiled).`,
-                    )
-                  )
-                    del.mutate(folder.id);
+                  setConfirmDelete(true);
                 }}
               />
             </div>
@@ -281,6 +278,14 @@ function FolderSection({
         </div>
       </div>
 
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete folder “${folder.name}”?`}
+        description="Its routines stay (unfiled)."
+        confirmLabel="Delete folder"
+        onConfirm={() => del.mutate(folder.id)}
+      />
       {renaming && (
         <div className="mt-1 flex gap-2">
           <Input
@@ -332,6 +337,7 @@ function RoutineCard({
   // the fold, with no scroll gesture that can reach it (mobile-first).
   const menu = useFlippableMenu(ROUTINE_MENU_HEIGHT);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [startingR, setStartingR] = useState(false);
   const duplicate = useDuplicateRoutine();
   const move = useMoveRoutine();
@@ -411,8 +417,7 @@ function RoutineCard({
               destructive
               onClick={() => {
                 menu.close();
-                if (window.confirm(`Delete routine "${routine.name}"?`))
-                  del.mutate(routine.id);
+                setConfirmDelete(true);
               }}
               testId={`routine-delete-${routine.name}`}
             />
@@ -420,6 +425,13 @@ function RoutineCard({
         )}
       </div>
 
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete routine “${routine.name}”?`}
+        confirmLabel="Delete routine"
+        onConfirm={() => del.mutate(routine.id)}
+      />
       <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
         <DialogContent title={`Move “${routine.name}”`}>
           <div className="mt-2 flex flex-col gap-1">

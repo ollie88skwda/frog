@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRepo } from "@/lib/repo";
+import { userFacingRepoError } from "@/lib/repo-error";
 import { useVoice } from "@/lib/voice";
 
 type CsvState =
@@ -72,7 +73,7 @@ function WorkoutCsvImport({
     } catch (e) {
       setState({
         phase: "error",
-        message: e instanceof Error ? e.message : String(e),
+        message: userFacingRepoError(e),
       });
     }
   }
@@ -87,7 +88,7 @@ function WorkoutCsvImport({
     } catch (e) {
       setState({
         phase: "error",
-        message: e instanceof Error ? e.message : String(e),
+        message: userFacingRepoError(e),
       });
     }
   }
@@ -160,7 +161,7 @@ export function ImportCard() {
     } catch (e) {
       setSleep({
         phase: "error",
-        message: e instanceof Error ? e.message : String(e),
+        message: userFacingRepoError(e),
       });
     }
   }
@@ -175,7 +176,7 @@ export function ImportCard() {
     } catch (e) {
       setSleep({
         phase: "error",
-        message: e instanceof Error ? e.message : String(e),
+        message: userFacingRepoError(e),
       });
     }
   }

@@ -32,6 +32,7 @@ import {
   usePushSubscribed,
 } from "@/lib/pwa";
 import { useRepo } from "@/lib/repo";
+import { userFacingRepoError } from "@/lib/repo-error";
 import {
   type DistanceUnit,
   type MeasurementUnit,
@@ -577,7 +578,7 @@ function NotificationsSection() {
       }
       refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(userFacingRepoError(e));
     } finally {
       setBusy(false);
     }

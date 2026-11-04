@@ -10,6 +10,7 @@ import {
 import { lazy, Suspense, useMemo } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { FrogMark } from "@/components/frog-mark";
+import { IconButton } from "@/components/ui/icon-button";
 import { useChangelogHasUnseen } from "@/lib/changelog-prefs";
 import { useActiveSession } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
@@ -64,18 +65,17 @@ export function AppShell() {
             <FrogMark className="size-5" />
             <span className="truncate text-sm font-medium">{APP_NAME}</span>
           </span>
-          <button
-            type="button"
+          <IconButton
             onClick={toggle}
             title="Toggle theme"
-            className="rounded-sm p-1 text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
+            aria-label="Toggle theme"
           >
             {theme === "night" ? (
               <Sun className="size-4" />
             ) : (
               <Moon className="size-4" />
             )}
-          </button>
+          </IconButton>
         </div>
 
         <p className="px-4 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
