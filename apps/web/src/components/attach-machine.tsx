@@ -28,9 +28,14 @@ export function MachineAttachDialog({
   const [error, setError] = useState<string | null>(null);
   const createMachine = useCreateMachine();
 
+  function handleOpenChange(next: boolean) {
+    if (!next) setError(null);
+    onOpenChange(next);
+  }
+
   function attach(machineId: string) {
     onAttach(machineId);
-    onOpenChange(false);
+    handleOpenChange(false);
   }
 
   // Catalog pick: reuse the user's existing row when it's already in "my
@@ -44,6 +49,7 @@ export function MachineAttachDialog({
       (m) => m.name === entry.model && m.brand === entry.brand,
     );
     if (existing) return attach(existing.id);
+    setError(null);
     try {
       const created = await createMachine.mutateAsync({
         name: entry.model,
@@ -57,7 +63,7 @@ export function MachineAttachDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent title={`Attach a machine — ${blockName}`}>
         {error && (
           <p role="alert" className="mb-2 text-sm text-neg">

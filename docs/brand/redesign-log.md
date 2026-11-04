@@ -9,7 +9,7 @@ Every fix made in the design audit pass, grouped by page. Audit findings: `docs/
 - **Removed `outline-none` everywhere** so the keyboard focus ring is never hidden (adjust field, fields, palette, conditions, session inputs).
 - **Text sizes below 12px and an undefined `text-3xs` class** now use the real 12px `text-2xs`; `font-extrabold` (not in the type scale) → bold.
 - **`transition-all` in the tab bar** now animates only width and opacity.
-- **New shared pieces** so screens stop hand-rolling them: `Textarea`, `Checkbox`, `DropdownMenu` (Esc, arrow keys, focus return), `ChipGroup`/`ToggleChip` (pressed state announced), `ConfirmDialog`, and `QueryState` (loading → error with Retry → empty).
+- **New shared pieces** so screens stop hand-rolling them: `Textarea`, `Checkbox`, `DropdownMenu` (Esc, arrow keys, focus return), `ChipGroup`/`ToggleChip` (pressed state announced), `ConfirmDialog`, and `QueryState` (loading → error with Retry → empty). `Textarea`, `ConfirmDialog` and `QueryState` are in use now; `Checkbox`, `DropdownMenu` and `ChipGroup`/`ToggleChip` (with their Radix deps) are deliberate kit scaffolding with no screen consumers yet — the conversions are listed under "Not changed on purpose".
 - **Deleted dead code**: `session/rest-countdown.tsx`, `charts/body-heatmap.tsx`, `ui/dots.tsx`, unused `nextGroupId` in the session.
 
 ## Failed loads no longer look like empty data
