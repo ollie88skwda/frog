@@ -788,7 +788,7 @@ export default function RoutineEditScreen() {
           // to content size) — only grow to fill width once the row is
           // actually a row. Mobile already gets full width from the default
           // align-items:stretch cross-axis behavior.
-          className="h-10 sm:flex-1"
+          className="h-10 sm:flex-1 md:h-10"
           data-testid="routine-name-input"
         />
         <Select.Root

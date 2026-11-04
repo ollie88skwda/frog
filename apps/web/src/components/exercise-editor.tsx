@@ -977,7 +977,7 @@ function AliasChips({
           }}
           onBlur={() => onAdd()}
           placeholder="+ add alias"
-          className="h-10 w-32"
+          className="h-10 w-32 md:h-10"
           data-testid="exercise-editor-alias-input"
         />
       </div>
