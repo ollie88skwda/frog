@@ -52,6 +52,8 @@ export function IconButton({
     <button
       type={type}
       className={iconButtonClass({ active, danger, className })}
+      // An icon has no text, so `title` doubles as the accessible name.
+      aria-label={props["aria-label"] ?? props.title}
       {...props}
     />
   );
@@ -76,7 +78,12 @@ export function IconLink<T extends ElementType = "a">({
   ...props
 }: IconLinkProps<T>) {
   const As = (as ?? "a") as ElementType;
+  const rest = props as { "aria-label"?: string; title?: string };
   return (
-    <As className={iconButtonClass({ active, danger, className })} {...props} />
+    <As
+      className={iconButtonClass({ active, danger, className })}
+      aria-label={rest["aria-label"] ?? rest.title}
+      {...props}
+    />
   );
 }

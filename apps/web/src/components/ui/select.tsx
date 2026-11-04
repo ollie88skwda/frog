@@ -19,7 +19,7 @@ export const Select = {
     return (
       <SelectPrimitive.Trigger
         className={cn(
-          "inline-flex h-8 min-w-0 items-center justify-between gap-2 rounded-sm border border-field bg-sunken px-3 text-sm text-ink outline-none focus-visible:border-focus disabled:cursor-not-allowed disabled:bg-hover disabled:text-disabled",
+          "inline-flex h-10 min-w-0 md:h-8 items-center justify-between gap-2 rounded-sm border border-field bg-sunken px-3 text-sm text-ink focus-visible:border-focus disabled:cursor-not-allowed disabled:bg-hover disabled:text-disabled",
           className,
         )}
         {...props}

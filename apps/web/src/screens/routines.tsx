@@ -11,8 +11,10 @@ import {
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { QueryState } from "@/components/ui/query-state";
 import { Toolbar } from "@/components/ui/toolbar";
 import { useRepo } from "@/lib/repo";
 import {
@@ -64,8 +66,12 @@ function useFlippableMenu(height: number) {
 export default function RoutinesScreen() {
   const navigate = useNavigate();
   const { t } = useVoice();
-  const { data: folders = [] } = useRoutineFolders();
-  const { data: routines = [] } = useRoutines();
+  const foldersQ = useRoutineFolders();
+  const routinesQ = useRoutines();
+  const folders = foldersQ.data ?? [];
+  const routines = routinesQ.data ?? [];
+  const isError = foldersQ.isLoadingError || routinesQ.isLoadingError;
+  const isLoading = !isError && (foldersQ.isPending || routinesQ.isPending);
   const createFolder = useCreateRoutineFolder();
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
@@ -107,49 +113,59 @@ export default function RoutinesScreen() {
       </div>
 
       {/* Folders */}
-      <div className="mt-6 flex flex-col gap-4">
-        {folders.map((f) => (
-          <FolderSection
-            key={f.id}
-            folder={f}
-            routines={byFolder.get(f.id) ?? []}
-            folders={folders}
-          />
-        ))}
+      <QueryState
+        isLoading={isLoading}
+        isError={isError}
+        error={foldersQ.error ?? routinesQ.error}
+        onRetry={() => {
+          void foldersQ.refetch();
+          void routinesQ.refetch();
+        }}
+      >
+        <div className="mt-6 flex flex-col gap-4">
+          {folders.map((f) => (
+            <FolderSection
+              key={f.id}
+              folder={f}
+              routines={byFolder.get(f.id) ?? []}
+              folders={folders}
+            />
+          ))}
 
-        {unfiled.length > 0 && (
-          <div data-testid="unfiled-routines">
-            {folders.length > 0 && (
-              <p className="mb-2 text-2xs font-medium tracking-widest text-faint uppercase">
-                Routines
-              </p>
-            )}
-            <div className="flex flex-col gap-2">
-              {unfiled.map((r) => (
-                <RoutineCard key={r.id} routine={r} folders={folders} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {routines.length === 0 && folders.length === 0 && (
-          <div className="rounded-md bg-surface p-6 text-center">
-            <p className="text-sm text-soft">
-              {t(
-                "No routines yet. Build one to make every session start pre-filled.",
-                "The lab is empty. The frog is waiting.",
+          {unfiled.length > 0 && (
+            <div data-testid="unfiled-routines">
+              {folders.length > 0 && (
+                <p className="mb-2 text-2xs font-medium tracking-widest text-faint uppercase">
+                  Routines
+                </p>
               )}
-            </p>
-            <Button
-              variant="outline"
-              className="mt-3"
-              onClick={() => navigate("/routines/new")}
-            >
-              <Plus className="size-4" /> Create your first routine
-            </Button>
-          </div>
-        )}
-      </div>
+              <div className="flex flex-col gap-2">
+                {unfiled.map((r) => (
+                  <RoutineCard key={r.id} routine={r} folders={folders} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {routines.length === 0 && folders.length === 0 && (
+            <div className="rounded-md bg-surface p-6 text-center">
+              <p className="text-sm text-soft">
+                {t(
+                  "No routines yet. Build one to make every session start pre-filled.",
+                  "The lab is empty. The frog is waiting.",
+                )}
+              </p>
+              <Button
+                variant="outline"
+                className="mt-3"
+                onClick={() => navigate("/routines/new")}
+              >
+                <Plus className="size-4" /> Create your first routine
+              </Button>
+            </div>
+          )}
+        </div>
+      </QueryState>
 
       <Dialog open={newFolderOpen} onOpenChange={setNewFolderOpen}>
         <DialogContent title="New folder">
@@ -204,6 +220,7 @@ function FolderSection({
   // Mobile-first: a menu clipped below the fold must never be unreachable.
   const menu = useFlippableMenu(FOLDER_MENU_HEIGHT);
   const [renaming, setRenaming] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [name, setName] = useState(folder.name);
   const rename = useRenameRoutineFolder();
   const del = useDeleteRoutineFolder();
@@ -253,12 +270,7 @@ function FolderSection({
                 destructive
                 onClick={() => {
                   menu.close();
-                  if (
-                    window.confirm(
-                      `Delete folder "${folder.name}"? Its routines stay (unfiled).`,
-                    )
-                  )
-                    del.mutate(folder.id);
+                  setConfirmDelete(true);
                 }}
               />
             </div>
@@ -266,6 +278,14 @@ function FolderSection({
         </div>
       </div>
 
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete folder “${folder.name}”?`}
+        description="Its routines stay (unfiled)."
+        confirmLabel="Delete folder"
+        onConfirm={() => del.mutate(folder.id)}
+      />
       {renaming && (
         <div className="mt-1 flex gap-2">
           <Input
@@ -317,6 +337,7 @@ function RoutineCard({
   // the fold, with no scroll gesture that can reach it (mobile-first).
   const menu = useFlippableMenu(ROUTINE_MENU_HEIGHT);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [startingR, setStartingR] = useState(false);
   const duplicate = useDuplicateRoutine();
   const move = useMoveRoutine();
@@ -396,8 +417,7 @@ function RoutineCard({
               destructive
               onClick={() => {
                 menu.close();
-                if (window.confirm(`Delete routine "${routine.name}"?`))
-                  del.mutate(routine.id);
+                setConfirmDelete(true);
               }}
               testId={`routine-delete-${routine.name}`}
             />
@@ -405,6 +425,13 @@ function RoutineCard({
         )}
       </div>
 
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={`Delete routine “${routine.name}”?`}
+        confirmLabel="Delete routine"
+        onConfirm={() => del.mutate(routine.id)}
+      />
       <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
         <DialogContent title={`Move “${routine.name}”`}>
           <div className="mt-2 flex flex-col gap-1">

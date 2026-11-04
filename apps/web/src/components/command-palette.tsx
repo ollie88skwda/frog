@@ -133,7 +133,7 @@ export function CommandPalette() {
     >
       <Command.Input
         placeholder="Type a command…"
-        className="h-11 w-full bg-transparent px-4 text-sm text-ink placeholder:text-faint focus:outline-none"
+        className="h-11 w-full bg-transparent px-4 text-sm text-ink placeholder:text-faint"
       />
       <Command.List className="max-h-72 overflow-y-auto p-1">
         <Command.Empty className="px-2 py-6 text-center text-xs text-faint">

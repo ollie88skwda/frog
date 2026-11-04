@@ -8,7 +8,7 @@ import {
 import { ClipboardText, DotsThree, Plus, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   useCreateMetric,
@@ -489,7 +489,7 @@ function NumberField({
         onChange={(e) => onChange(e.target.value)}
         onBlur={flush}
         data-testid={testId}
-        className="num h-9 w-20 rounded-sm border border-field bg-translucent px-2 text-right text-base font-semibold text-ink focus:border-focus focus:outline-none md:h-8"
+        className="num h-9 w-20 rounded-sm border border-field bg-translucent px-2 text-right text-base font-semibold text-ink focus:border-focus md:h-8"
       />
       {unit && <span className="w-6 text-xs text-faint">{unit}</span>}
     </div>
@@ -525,7 +525,7 @@ function TextField({
       onBlur={flush}
       placeholder="…"
       data-testid={testId}
-      className="h-9 w-40 rounded-sm border border-field bg-translucent px-2 text-sm text-ink focus:border-focus focus:outline-none md:h-8"
+      className="h-9 w-40 rounded-sm border border-field bg-translucent px-2 text-sm text-ink focus:border-focus md:h-8"
     />
   );
 }
@@ -678,7 +678,7 @@ function NotesBlock({
     setVal((prev) => (prev === notes ? prev : notes));
   }, [notes]);
   return (
-    <textarea
+    <Textarea
       value={val}
       onChange={(e) => {
         setVal(e.target.value);
@@ -688,7 +688,7 @@ function NotesBlock({
       rows={3}
       placeholder="How did it feel? Anything worth remembering…"
       data-testid="condition-notes"
-      className="min-h-16 w-full resize-y rounded-sm border border-field bg-translucent px-2.5 py-2 text-sm text-ink placeholder:text-faint focus:border-focus focus:outline-none"
+      className="min-h-16 w-full resize-y rounded-sm border border-field bg-translucent px-2.5 py-2 text-sm text-ink placeholder:text-faint focus:border-focus"
     />
   );
 }

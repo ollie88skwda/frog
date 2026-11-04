@@ -162,17 +162,23 @@ export default function ExerciseDetailScreen() {
         <MoreMenu exercise={exercise} partial={isPlaceholderData} />
       </div>
 
-      <div className="mt-4 flex gap-1">
+      <div
+        role="tablist"
+        aria-label="Exercise sections"
+        className="mt-4 flex gap-1"
+      >
         {(["summary", "history", "howto"] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
+            role="tab"
+            aria-selected={tab === t}
             onClick={() => setTab(t)}
             className={cn(
-              "h-9 flex-1 text-xs transition-colors duration-150",
+              "h-10 flex-1 rounded-sm text-xs font-semibold transition-colors duration-150 md:h-8",
               tab === t
                 ? "bg-accent-soft text-accent-ink"
-                : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
+                : "bg-secondary/60 text-on-secondary hover:bg-secondary",
             )}
             data-testid={`tab-${t}`}
           >

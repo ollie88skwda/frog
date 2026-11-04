@@ -28,7 +28,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { IconButton } from "@/components/ui/icon-button";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { rowClass } from "@/components/ui/row";
 import { StatusRing } from "@/components/ui/status-ring";
 import { useUserInfo } from "@/lib/auth";
@@ -297,13 +297,14 @@ function ProfileHeader({
                   if (e.key === "Enter") save();
                   if (e.key === "Escape") setEditing(false);
                 }}
-                className="h-9 flex-1"
+                className="flex-1"
                 data-testid="profile-name-input"
               />
               <Button
                 variant="primary"
                 size="icon"
                 onClick={save}
+                aria-label="Save name"
                 data-testid="profile-name-save"
               >
                 <Check className="size-4" />
@@ -312,11 +313,13 @@ function ProfileHeader({
                 variant="ghost"
                 size="icon"
                 onClick={() => setEditing(false)}
+                aria-label="Cancel editing"
               >
                 <X className="size-4" />
               </Button>
             </div>
-            <textarea
+            <Textarea
+              aria-label="Bio"
               value={draftBio}
               onChange={(e) => setDraftBio(e.target.value)}
               onKeyDown={(e) => {
@@ -327,7 +330,7 @@ function ProfileHeader({
               placeholder="Short bio — lifts, goals, noise"
               rows={2}
               maxLength={MAX_BIO_LENGTH}
-              className="w-full border border-field bg-surface px-2 py-2 text-sm text-ink placeholder:text-faint"
+              className="mt-2"
               data-testid="profile-bio-input"
             />
           </div>
@@ -342,6 +345,7 @@ function ProfileHeader({
               </p>
               <IconButton
                 title="Edit profile"
+                aria-label="Edit profile"
                 onClick={() => {
                   setDraft(displayName);
                   setDraftBio(bio ?? "");

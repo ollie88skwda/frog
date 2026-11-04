@@ -484,6 +484,13 @@
     outline-offset: var(--focus-offset);
   }
 
+  /* File pickers are visually hidden (sr-only) inside a <label> styled as a
+     button: show the focus ring on that label so keyboard users can find it. */
+  label:has(> input[type="file"]:focus-visible) {
+    outline: var(--focus-width) solid var(--color-border-focus);
+    outline-offset: var(--focus-offset);
+  }
+
   /* Numeric inputs: no spinners on the logging path. */
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }

@@ -19,6 +19,7 @@ import {
 } from "@/data/program-catalog";
 import { useMaterializeProgram } from "@/lib/program-queries";
 import { useExercisePrefs, useExercises } from "@/lib/queries";
+import { userFacingRepoError } from "@/lib/repo-error";
 import { selectableFrom } from "@/lib/trainer";
 import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
@@ -198,7 +199,8 @@ function ProgramDetail({ programKey }: { programKey: string }) {
   const { t } = useVoice();
   const navigate = useNavigate();
   const entry = catalogEntry(programKey);
-  const { data: exercises = [] } = useExercises();
+  const exercisesQ = useExercises();
+  const exercises = exercisesQ.data ?? [];
   const { data: prefs = [] } = useExercisePrefs();
   const materialize = useMaterializeProgram();
 
@@ -320,8 +322,18 @@ function ProgramDetail({ programKey }: { programKey: string }) {
             </div>
           </div>
         ))}
-        {generated == null && (
-          <p className="py-8 text-center text-xs text-faint">
+        {generated == null && exercisesQ.isError && (
+          <div role="alert" className="py-8 text-center">
+            <p className="text-sm text-neg">
+              {userFacingRepoError(exercisesQ.error)}
+            </p>
+            <Button className="mt-2" onClick={() => void exercisesQ.refetch()}>
+              Retry
+            </Button>
+          </div>
+        )}
+        {generated == null && !exercisesQ.isError && (
+          <p role="status" className="py-8 text-center text-xs text-faint">
             {t(
               "Loading your exercise library…",
               "The frog is thinking. Your exercise library is on its way.",

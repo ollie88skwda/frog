@@ -26,6 +26,9 @@ export type RecordsData = {
 export function useRecordsData(): {
   data: RecordsData | undefined;
   isLoading: boolean;
+  isLoadingError: boolean;
+  error: unknown;
+  refetch: () => void;
 } {
   const repo = useRepo();
 
@@ -51,6 +54,9 @@ export function useRecordsData(): {
 
   return {
     data: records.data,
-    isLoading: prefs.isLoading || records.isLoading,
+    isLoading: prefs.isPending || records.isPending,
+    isLoadingError: records.isLoadingError,
+    error: records.error,
+    refetch: () => void records.refetch(),
   };
 }

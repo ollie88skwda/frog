@@ -28,9 +28,16 @@ export type ReportData = {
 export function useReportData(): {
   data: ReportData | undefined;
   isLoading: boolean;
+  isLoadingError: boolean;
+  error: unknown;
+  refetch: () => void;
 } {
-  const { data: records, isLoading: recLoading } = useRecordsData();
-  const { data: exercises = [], isLoading: exLoading } = useExercises();
+  const rec = useRecordsData();
+  const records = rec.data;
+  const recLoading = rec.isLoading;
+  const exQ = useExercises();
+  const exercises = exQ.data ?? [];
+  const exLoading = exQ.isPending;
   const { data: measurements = [] } = useMeasurements();
 
   const data = useMemo<ReportData | undefined>(() => {
@@ -52,5 +59,14 @@ export function useReportData(): {
     };
   }, [records, exercises, measurements]);
 
-  return { data, isLoading: recLoading || exLoading };
+  return {
+    data,
+    isLoading: recLoading || exLoading,
+    isLoadingError: rec.isLoadingError || exQ.isLoadingError,
+    error: rec.error ?? exQ.error,
+    refetch: () => {
+      rec.refetch();
+      void exQ.refetch();
+    },
+  };
 }

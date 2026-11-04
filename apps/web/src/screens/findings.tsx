@@ -30,6 +30,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { QueryState } from "@/components/ui/query-state";
 import { rowClass } from "@/components/ui/row";
 import { computeFindings } from "@/lib/findings";
 import { formatDate } from "@/lib/format";
@@ -49,8 +50,12 @@ const TREND_CONFIG = {
 
 export default function FindingsScreen() {
   const { t } = useVoice();
-  const { data: sessions = [], isLoading } = useFindingsData();
-  const { data: metrics = [] } = useMetrics();
+  const findingsQ = useFindingsData();
+  const metricsQ = useMetrics();
+  const sessions = findingsQ.data ?? [];
+  const metrics = metricsQ.data ?? [];
+  const isLoading = findingsQ.isPending || metricsQ.isPending;
+  const isError = findingsQ.isLoadingError || metricsQ.isLoadingError;
   const {
     trends,
     countdowns,
@@ -63,7 +68,8 @@ export default function FindingsScreen() {
     null,
   );
 
-  const empty = !isLoading && trends.length === 0 && conditions.length === 0;
+  const empty =
+    !isLoading && !isError && trends.length === 0 && conditions.length === 0;
   const nothingOnTheWay =
     countdowns.length === 0 && conditionCountdowns.length === 0;
 
@@ -75,10 +81,21 @@ export default function FindingsScreen() {
         <span className="text-faint">Correlation, not causation.</span>
       </p>
 
-      {isLoading ? (
-        <p className="mt-8 text-center text-xs text-faint">
-          {t("Analyzing…", "The frog is thinking…")}
-        </p>
+      {isLoading || isError ? (
+        <div className="mt-8">
+          <QueryState
+            isLoading={isLoading}
+            isError={isError}
+            error={findingsQ.error ?? metricsQ.error}
+            onRetry={() => {
+              void findingsQ.refetch();
+              void metricsQ.refetch();
+            }}
+            loadingLabel={t("Analyzing…", "The frog is thinking…")}
+          >
+            {null}
+          </QueryState>
+        </div>
       ) : (
         <div className="mt-6 flex flex-col gap-6">
           {trends.length > 0 && (

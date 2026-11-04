@@ -9,6 +9,7 @@ import {
   unitLabel,
 } from "@frog/core";
 import { Camera, ShareNetwork, Trash } from "@phosphor-icons/react";
+import { QueryState } from "@/components/ui/query-state";
 import { Select } from "@/components/ui/select";
 
 // Radix Select forbids an empty-string value; the "None" comparison option
@@ -127,7 +128,8 @@ const formatDay = (on: string) => formatDate(parseLocal(on));
 export default function MeasuresScreen() {
   const { t } = useVoice();
   const { unit } = useUnit();
-  const { data: measurements = [] } = useMeasurements();
+  const measurementsQ = useMeasurements();
+  const measurements = measurementsQ.data ?? [];
   const upsert = useUpsertMeasurement();
 
   const [selectedDate, setSelectedDate] = useState(localDate());
@@ -146,6 +148,24 @@ export default function MeasuresScreen() {
       measuredOn: selectedDate,
       patch: { [key]: value } as MeasurementPatch,
     });
+  }
+
+  if (measurementsQ.isPending || measurementsQ.isLoadingError) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+        <h1 className="text-lg font-semibold tracking-tight">Measures</h1>
+        <div className="mt-4 rounded-md bg-surface">
+          <QueryState
+            isLoading={measurementsQ.isPending}
+            isError={measurementsQ.isLoadingError}
+            error={measurementsQ.error}
+            onRetry={() => void measurementsQ.refetch()}
+          >
+            {null}
+          </QueryState>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -226,7 +246,7 @@ function Editor({
           value={selectedDate}
           max={localDate()}
           onChange={(e) => e.target.value && onDateChange(e.target.value)}
-          className="num h-11 w-44"
+          className="num h-11 w-44 md:h-11"
           data-testid="measure-date"
         />
       </div>
@@ -262,7 +282,7 @@ function Editor({
             accept="image/*"
             capture="environment"
             onChange={(e) => void onPhotoPicked(e)}
-            className="hidden"
+            className="sr-only"
             data-testid="measure-photo-input"
           />
         </label>
@@ -306,7 +326,7 @@ function Field({
           onKeyDown={(e) => {
             if (e.key === "Enter") e.currentTarget.blur();
           }}
-          className="num h-11 pr-9"
+          className="num h-11 pr-9 md:h-11"
           data-testid={`measure-field-${def.key}`}
         />
         <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-2xs text-faint">
@@ -469,6 +489,7 @@ function Trends({
                 <IconButton
                   danger
                   title="Delete entry"
+                  aria-label="Delete entry"
                   onClick={() => setConfirmId(m.id)}
                   data-testid={`measure-delete-${m.measuredOn}`}
                 >
@@ -837,7 +858,7 @@ function PhotoViewer({
               accept="image/*"
               capture="environment"
               onChange={(e) => void onReplace(e)}
-              className="hidden"
+              className="sr-only"
               data-testid="photo-replace-input"
             />
           </label>

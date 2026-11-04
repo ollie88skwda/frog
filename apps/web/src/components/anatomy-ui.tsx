@@ -6,6 +6,7 @@ import {
   type Tier,
 } from "@frog/core";
 import { Barbell, Star } from "@phosphor-icons/react";
+import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
 
 // Exercise quality is encoded by the brightness of the name text: the better
@@ -112,7 +113,7 @@ export function TierBadge({
   return (
     <span
       className={cn(
-        "num inline-flex size-4 shrink-0 rounded-xs items-center justify-center text-[10px] font-semibold leading-none",
+        "num inline-flex size-4 shrink-0 rounded-xs items-center justify-center text-2xs font-semibold leading-none",
         tier === "S" && "bg-accent text-accent-fg",
         tier === "A" && "bg-accent-soft text-ink",
         tier === "B" && "bg-translucent text-soft",
@@ -223,8 +224,7 @@ export function FavoriteButton({
   className?: string;
 }) {
   return (
-    <button
-      type="button"
+    <IconButton
       onClick={(e) => {
         e.stopPropagation();
         onToggle();
@@ -238,15 +238,11 @@ export function FavoriteButton({
             : `Favorite ${name}`
       }
       aria-pressed={favorite}
-      className={cn(
-        "flex shrink-0 items-center justify-center p-1 transition-colors duration-150 ease-(--ease-out-quad)",
-        favorite ? "text-accent-ink" : "text-faint hover:text-soft",
-        disabled && "opacity-50",
-        className,
-      )}
+      active={favorite}
+      className={className}
     >
-      <Star className="size-4" fill={favorite ? "currentColor" : "none"} />
-    </button>
+      <Star className="size-4" weight={favorite ? "fill" : "regular"} />
+    </IconButton>
   );
 }
 

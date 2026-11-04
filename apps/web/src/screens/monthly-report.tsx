@@ -30,6 +30,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { QueryState } from "@/components/ui/query-state";
 import { Row, rowClass } from "@/components/ui/row";
 import { formatDuration } from "@/lib/format";
 import { useUserPrefs } from "@/lib/profile-queries";
@@ -64,7 +65,7 @@ const METRIC_LABELS: Record<Metric, string> = {
 
 export default function MonthlyReportScreen() {
   const navigate = useNavigate();
-  const { data, isLoading } = useReportData();
+  const { data, isLoading, isLoadingError, error, refetch } = useReportData();
   const { unit } = useUnit();
   const { t } = useVoice();
 
@@ -88,11 +89,18 @@ export default function MonthlyReportScreen() {
   const [selKey, setSelKey] = useState<string | null>(null);
   const activeKey = selKey ?? defaultKey;
 
-  if (isLoading || !data) {
+  if (isLoading || isLoadingError || !data) {
     return (
-      <p className="mx-auto max-w-2xl px-4 py-10 text-center text-xs text-faint">
-        Loading…
-      </p>
+      <div className="mx-auto max-w-2xl px-4 py-10">
+        <QueryState
+          isLoading={isLoading}
+          isError={isLoadingError}
+          error={error}
+          onRetry={() => void refetch()}
+        >
+          {null}
+        </QueryState>
+      </div>
     );
   }
 

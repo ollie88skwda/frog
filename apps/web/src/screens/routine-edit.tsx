@@ -51,10 +51,11 @@ import {
 } from "@/components/routine/adjust-field";
 import { RoutineSetTypeCell } from "@/components/routine/routine-set-type-cell";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
   formatMMSS,
@@ -71,6 +72,7 @@ import {
   useMachines,
   useUpdateExercise,
 } from "@/lib/queries";
+import { userFacingRepoError } from "@/lib/repo-error";
 import { parseTargetRirFields } from "@/lib/rir";
 import {
   useCreateRoutine,
@@ -720,15 +722,14 @@ export default function RoutineEditScreen() {
     };
   }
 
-  async function save() {
+  const [confirmUnmatched, setConfirmUnmatched] = useState(false);
+
+  async function save(confirmedUnmatched = false) {
     if (saving || !draftReady) return;
-    if (
-      unmatched.length > 0 &&
-      !window.confirm(
-        `${unmatched.length} pasted line${unmatched.length === 1 ? "" : "s"} from "Paste workout" ${unmatched.length === 1 ? "is" : "are"} still unresolved and will be left out of this save. Continue?`,
-      )
-    )
+    if (unmatched.length > 0 && !confirmedUnmatched) {
+      setConfirmUnmatched(true);
       return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -737,7 +738,7 @@ export default function RoutineEditScreen() {
       else await createRoutine.mutateAsync(input);
       navigate("/routines");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
+      setError(userFacingRepoError(e));
       setSaving(false);
     }
   }
@@ -758,6 +759,14 @@ export default function RoutineEditScreen() {
           <Button variant="ghost" onClick={() => navigate("/routines")}>
             Cancel
           </Button>
+          <ConfirmDialog
+            open={confirmUnmatched}
+            onOpenChange={setConfirmUnmatched}
+            title="Save without pasted lines?"
+            description={`${unmatched.length} pasted line${unmatched.length === 1 ? " from Paste workout is" : "s from Paste workout are"} still unresolved and will be left out of this save.`}
+            confirmLabel="Save anyway"
+            onConfirm={() => void save(true)}
+          />
           <Button
             variant="primary"
             onClick={() => void save()}
@@ -779,7 +788,7 @@ export default function RoutineEditScreen() {
           // to content size) — only grow to fill width once the row is
           // actually a row. Mobile already gets full width from the default
           // align-items:stretch cross-axis behavior.
-          className="h-10 sm:flex-1"
+          className="h-10 sm:flex-1 md:h-10"
           data-testid="routine-name-input"
         />
         <Select.Root
@@ -787,7 +796,7 @@ export default function RoutineEditScreen() {
           onValueChange={(v) => setFolderId(v === NO_FOLDER ? null : v)}
         >
           <Select.Trigger
-            className="h-10 w-full sm:w-40"
+            className="h-10 w-full sm:w-40 md:h-10"
             data-testid="routine-folder-select"
           />
           <Select.Content>
@@ -1415,14 +1424,14 @@ export default function RoutineEditScreen() {
               'Feed the frog your scrawl, one exercise per line — e.g. "Bench press 4x8". Anything it can\'t place gets sorted out after.',
             )}
           </p>
-          <textarea
+          <Textarea
             rows={8}
             value={pasteText}
             onChange={(e) => setPasteText(e.target.value)}
             placeholder={
               "Push day\nBench press 4x8\nIncline dumbbell press 3x10\nTricep pushdown 3x12"
             }
-            className="mt-2 w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus focus:outline-none"
+            className="mt-2 w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
             data-testid="routine-paste-textarea"
           />
           {pasteError && <p className="mt-2 text-xs text-neg">{pasteError}</p>}

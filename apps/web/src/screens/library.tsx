@@ -56,7 +56,7 @@ import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { IconButton, IconLink } from "@/components/ui/icon-button";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { Row } from "@/components/ui/row";
 import { Select } from "@/components/ui/select";
 import {
@@ -628,7 +628,7 @@ function BulkAddDialog({
         </DialogTrigger>
         <DialogContent title="Bulk add exercises">
           <form onSubmit={onSubmit} className="flex flex-col gap-3">
-            <textarea
+            <Textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="One exercise name per line"
@@ -702,15 +702,14 @@ function BulkAddFailures() {
         {failed.length} name{failed.length === 1 ? "" : "s"} didn't save:{" "}
         {previewNames(failed)}. Open bulk add to try again.
       </span>
-      <button
-        type="button"
+      <IconButton
+        danger
         title="Dismiss"
         onClick={dismissBulkAddFailures}
-        className="shrink-0 px-1 text-faint transition-colors duration-100 hover:text-neg"
         data-testid="bulk-add-failures-dismiss"
       >
-        ×
-      </button>
+        <X className="size-4" />
+      </IconButton>
     </p>
   );
 }
@@ -738,12 +737,13 @@ function BestForMuscle({
 
   return (
     <Dialog>
-      <DialogTrigger
-        className="p-1 text-faint transition-colors duration-100 hover:text-ink"
-        title={`Best for ${muscleLabel(muscle)}`}
-        data-testid={`best-for-${muscle}`}
-      >
-        <Info className="size-4" />
+      <DialogTrigger asChild>
+        <IconButton
+          title={`Best for ${muscleLabel(muscle)}`}
+          data-testid={`best-for-${muscle}`}
+        >
+          <Info className="size-4" />
+        </IconButton>
       </DialogTrigger>
       <DialogContent title={`Best for ${muscleLabel(muscle)}`}>
         <div className="flex max-h-96 flex-col gap-4 overflow-y-auto">
@@ -1128,8 +1128,8 @@ function TagEditor({
   const tagsRef = useRef(exercise.tags ?? []);
   tagsRef.current = exercise.tags ?? [];
 
-  function addTag() {
-    const tag = tagDraft.trim().replace(/,+$/, "");
+  function addTag(raw: string = tagDraft) {
+    const tag = raw.trim().replace(/,+$/, "");
     setTagDraft("");
     if (!tag) return;
     const current = tagsRef.current;
@@ -1150,15 +1150,16 @@ function TagEditor({
           <button
             type="button"
             title={`Remove tag ${t}`}
+            aria-label={`Remove tag ${t}`}
             onClick={() =>
               update.mutate({
                 exerciseId: exercise.id,
                 patch: { tags: (exercise.tags ?? []).filter((x) => x !== t) },
               })
             }
-            className="text-faint hover:text-neg"
+            className="flex size-6 items-center justify-center rounded-xs text-faint hover:text-neg"
           >
-            ×
+            <X className="size-3" />
           </button>
         </span>
       ))}
@@ -1166,8 +1167,7 @@ function TagEditor({
         value={tagDraft}
         onChange={(e) => {
           if (e.target.value.endsWith(",")) {
-            setTagDraft(e.target.value);
-            addTag();
+            addTag(e.target.value);
           } else {
             setTagDraft(e.target.value);
           }
@@ -1179,7 +1179,8 @@ function TagEditor({
           }
         }}
         placeholder="+ tag"
-        className="h-6 w-24 text-2xs"
+        aria-label="Add tag"
+        className="w-28"
         data-testid={`tag-input-${exercise.name}`}
       />
     </div>
@@ -1263,6 +1264,7 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
                   <IconButton
                     danger
                     title="Delete metric"
+                    aria-label="Delete metric"
                     onClick={() => deleteMetric.mutate(m.id)}
                     data-testid={`delete-metric-${m.name}`}
                   >

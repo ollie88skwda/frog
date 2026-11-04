@@ -71,8 +71,11 @@ export function DialogContent({
           <DialogPrimitive.Title className="text-sm font-medium">
             {title}
           </DialogPrimitive.Title>
-          <DialogPrimitive.Close className="rounded-xs p-0.5 text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
-            <X className="size-4" />
+          <DialogPrimitive.Close
+            aria-label="Close"
+            className="flex size-10 items-center justify-center rounded-sm bg-surface-2 text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink md:size-8"
+          >
+            <X aria-hidden="true" className="size-4" />
           </DialogPrimitive.Close>
         </div>
         <div

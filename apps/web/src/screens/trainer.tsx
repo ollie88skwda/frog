@@ -40,8 +40,10 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { QueryState } from "@/components/ui/query-state";
 import { Select } from "@/components/ui/select";
 import { useMeasurements } from "@/lib/measure-queries";
 import {
@@ -79,7 +81,13 @@ const FOCUS_NONE = "__none__";
 // settings, and a progress report. All logic runs client-side on the same
 // generator + overload rule + stats aggregations used elsewhere.
 export default function TrainerScreen() {
-  const { data: program, isLoading } = useActiveProgram();
+  const {
+    data: program,
+    isPending,
+    isLoadingError,
+    error,
+    refetch,
+  } = useActiveProgram();
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
@@ -93,11 +101,18 @@ export default function TrainerScreen() {
         </div>
       </div>
 
-      {isLoading ? null : program ? (
-        <TrainerDashboard program={program} />
-      ) : (
-        <TrainerOnboarding />
-      )}
+      <QueryState
+        isLoading={isPending}
+        isError={isLoadingError}
+        error={error}
+        onRetry={() => void refetch()}
+      >
+        {program ? (
+          <TrainerDashboard program={program} />
+        ) : (
+          <TrainerOnboarding />
+        )}
+      </QueryState>
     </div>
   );
 }
@@ -919,13 +934,10 @@ function ProgramSettingsDialog({
     [prefs],
   );
 
+  const [confirm, setConfirm] = useState<"regenerate" | "remove" | null>(null);
+
   function doRegenerate() {
-    if (
-      !window.confirm(
-        "Rebuild this program's workouts from the new settings? Current routines are replaced.",
-      )
-    )
-      return;
+    setConfirm(null);
     const startingWeights = records
       ? startingWeightsFrom(records.records)
       : new Map();
@@ -945,12 +957,6 @@ function ProgramSettingsDialog({
   }
 
   function doRemove() {
-    if (
-      !window.confirm(
-        "Remove this program from the Trainer? Its routines stay in your Training tab.",
-      )
-    )
-      return;
     del.mutate(program.id, { onSuccess: () => onOpenChange(false) });
   }
 
@@ -966,7 +972,7 @@ function ProgramSettingsDialog({
               variant="primary"
               className="mt-4 w-full"
               disabled={regenerate.isPending}
-              onClick={doRegenerate}
+              onClick={() => setConfirm("regenerate")}
               data-testid="regenerate-btn"
             >
               {regenerate.isPending
@@ -983,11 +989,27 @@ function ProgramSettingsDialog({
         <Button
           variant="danger"
           className="mt-2 w-full"
-          onClick={doRemove}
+          onClick={() => setConfirm("remove")}
           data-testid="remove-program-btn"
         >
           Remove program
         </Button>
+        <ConfirmDialog
+          open={confirm === "regenerate"}
+          onOpenChange={(o) => !o && setConfirm(null)}
+          title="Regenerate program?"
+          description="Rebuild this program’s workouts from the new settings. Current routines are replaced."
+          confirmLabel="Regenerate"
+          onConfirm={doRegenerate}
+        />
+        <ConfirmDialog
+          open={confirm === "remove"}
+          onOpenChange={(o) => !o && setConfirm(null)}
+          title="Remove this program?"
+          description="Its routines stay in your Routines tab."
+          confirmLabel="Remove program"
+          onConfirm={doRemove}
+        />
       </DialogContent>
     </Dialog>
   );

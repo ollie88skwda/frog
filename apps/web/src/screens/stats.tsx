@@ -40,6 +40,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { IconButton } from "@/components/ui/icon-button";
+import { QueryState } from "@/components/ui/query-state";
 import { Row, rowClass } from "@/components/ui/row";
 import { formatDuration } from "@/lib/format";
 import { useExercises } from "@/lib/queries";
@@ -89,8 +90,12 @@ function compactNumber(v: number): string {
 
 export default function StatsScreen() {
   const navigate = useNavigate();
-  const { data: recordsData, isLoading: recLoading } = useRecordsData();
-  const { data: exercises = [], isLoading: exLoading } = useExercises();
+  const recQ = useRecordsData();
+  const exQ = useExercises();
+  const recordsData = recQ.data;
+  const exercises = exQ.data ?? [];
+  const recLoading = recQ.isLoading;
+  const exLoading = exQ.isPending;
   const muscleMap = useMuscleMap();
   const { unit } = useUnit();
   const { t } = useVoice();
@@ -105,11 +110,21 @@ export default function StatsScreen() {
   );
   const history = recordsData?.history ?? [];
 
-  if (recLoading || exLoading) {
+  if (recLoading || exLoading || recQ.isLoadingError || exQ.isLoadingError) {
     return (
-      <p className="mx-auto max-w-2xl px-4 py-10 text-center text-xs text-faint">
-        Loading…
-      </p>
+      <div className="mx-auto max-w-2xl px-4 py-10">
+        <QueryState
+          isLoading={recLoading || exLoading}
+          isError={recQ.isLoadingError || exQ.isLoadingError}
+          error={recQ.error ?? exQ.error}
+          onRetry={() => {
+            recQ.refetch();
+            void exQ.refetch();
+          }}
+        >
+          {null}
+        </QueryState>
+      </div>
     );
   }
 

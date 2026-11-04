@@ -10,6 +10,7 @@ import {
 import { lazy, Suspense, useMemo } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { FrogMark } from "@/components/frog-mark";
+import { IconButton } from "@/components/ui/icon-button";
 import { useChangelogHasUnseen } from "@/lib/changelog-prefs";
 import { useActiveSession } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
@@ -57,6 +58,12 @@ export function AppShell() {
 
   return (
     <div className="flex h-dvh">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-sm focus:bg-action focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-on-action"
+      >
+        Skip to content
+      </a>
       <aside className="flex w-56 shrink-0 flex-col bg-sidebar max-md:hidden">
         <div className="flex h-12 items-center justify-between px-3">
           <span className="flex min-w-0 items-center gap-2">
@@ -64,18 +71,17 @@ export function AppShell() {
             <FrogMark className="size-5" />
             <span className="truncate text-sm font-medium">{APP_NAME}</span>
           </span>
-          <button
-            type="button"
+          <IconButton
             onClick={toggle}
             title="Toggle theme"
-            className="rounded-sm p-1 text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
+            aria-label="Toggle theme"
           >
             {theme === "night" ? (
               <Sun className="size-4" />
             ) : (
               <Moon className="size-4" />
             )}
-          </button>
+          </IconButton>
         </div>
 
         <p className="px-4 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
@@ -124,7 +130,11 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto max-md:pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="min-w-0 flex-1 overflow-y-auto outline-none max-md:pb-[calc(5rem+env(safe-area-inset-bottom))]"
+      >
         <Outlet />
       </main>
 
@@ -160,7 +170,7 @@ export function AppShell() {
                   </span>
                   <span
                     className={cn(
-                      "overflow-hidden leading-none whitespace-nowrap transition-all duration-150 ease-(--ease-out-quad)",
+                      "overflow-hidden leading-none whitespace-nowrap transition-[max-width,opacity] duration-150 ease-(--ease-out-quad)",
                       (forceActive ?? isActive)
                         ? "max-w-24 opacity-100"
                         : "max-w-0 opacity-0",
