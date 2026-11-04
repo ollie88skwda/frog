@@ -4466,7 +4466,7 @@ function Spotlight({
         ) : (
           <Button
             size="lg"
-            className="h-13 w-full text-base font-bold"
+            className="h-13 w-full text-base font-bold md:h-13"
             onClick={submit}
             data-testid="log-set"
           >

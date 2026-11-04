@@ -434,7 +434,7 @@ export function ExerciseEditor({
                 onChange={(e) => setName(e.target.value)}
                 onBlur={checkDuplicate}
                 placeholder="Zercher Squat"
-                className="h-10"
+                className="h-10 md:h-10"
                 aria-label="Exercise name"
                 data-testid="exercise-name-input"
               />
@@ -605,7 +605,7 @@ export function ExerciseEditor({
                 value={repsMin}
                 onChange={(e) => setRepsMin(e.target.value.replace(/\D/g, ""))}
                 placeholder="8"
-                className="num h-10 w-16"
+                className="num h-10 w-16 md:h-10"
               />
               <span className="text-faint">–</span>
               <Input
@@ -613,7 +613,7 @@ export function ExerciseEditor({
                 value={repsMax}
                 onChange={(e) => setRepsMax(e.target.value.replace(/\D/g, ""))}
                 placeholder="12"
-                className="num h-10 w-16"
+                className="num h-10 w-16 md:h-10"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -623,7 +623,7 @@ export function ExerciseEditor({
                 value={restSec}
                 onChange={(e) => setRestSec(e.target.value.replace(/\D/g, ""))}
                 placeholder="150"
-                className="num h-10 w-20"
+                className="num h-10 w-20 md:h-10"
               />
               <span className="text-2xs text-faint">seconds</span>
             </div>
@@ -845,7 +845,7 @@ function LabeledSelect({
     <Select.Root value={value} onValueChange={onChange} disabled={disabled}>
       <Select.Trigger
         placeholder={placeholder}
-        className={cn("h-10", triggerClassName)}
+        className={cn("h-10 md:h-10", triggerClassName)}
         data-testid={testId}
       />
       <Select.Content>

@@ -796,7 +796,7 @@ export default function RoutineEditScreen() {
           onValueChange={(v) => setFolderId(v === NO_FOLDER ? null : v)}
         >
           <Select.Trigger
-            className="h-10 w-full sm:w-40"
+            className="h-10 w-full sm:w-40 md:h-10"
             data-testid="routine-folder-select"
           />
           <Select.Content>

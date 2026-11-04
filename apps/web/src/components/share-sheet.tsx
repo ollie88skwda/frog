@@ -522,7 +522,7 @@ export function ShareSheet({
         )}
         <Button
           variant="primary"
-          className="h-14 w-full text-sm"
+          className="h-14 w-full text-sm md:h-14"
           disabled={busy || !pendingFile}
           onClick={() => void share()}
           data-testid="share-export"
@@ -532,7 +532,7 @@ export function ShareSheet({
         </Button>
         <Button
           variant="outline"
-          className="h-10 w-full text-sm"
+          className="h-10 w-full text-sm md:h-10"
           disabled={!pendingFile}
           onClick={save}
           data-testid="share-save"

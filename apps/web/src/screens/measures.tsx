@@ -246,7 +246,7 @@ function Editor({
           value={selectedDate}
           max={localDate()}
           onChange={(e) => e.target.value && onDateChange(e.target.value)}
-          className="num h-11 w-44"
+          className="num h-11 w-44 md:h-11"
           data-testid="measure-date"
         />
       </div>
@@ -326,7 +326,7 @@ function Field({
           onKeyDown={(e) => {
             if (e.key === "Enter") e.currentTarget.blur();
           }}
-          className="num h-11 pr-9"
+          className="num h-11 pr-9 md:h-11"
           data-testid={`measure-field-${def.key}`}
         />
         <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-2xs text-faint">
