@@ -150,13 +150,13 @@ export default function MeasuresScreen() {
     });
   }
 
-  if (measurementsQ.isLoading || measurementsQ.isLoadingError) {
+  if (measurementsQ.isPending || measurementsQ.isLoadingError) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
         <h1 className="text-lg font-semibold tracking-tight">Measures</h1>
         <div className="mt-4 rounded-md bg-surface">
           <QueryState
-            isLoading={measurementsQ.isLoading}
+            isLoading={measurementsQ.isPending}
             isError={measurementsQ.isLoadingError}
             error={measurementsQ.error}
             onRetry={() => void measurementsQ.refetch()}

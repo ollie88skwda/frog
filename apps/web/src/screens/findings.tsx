@@ -54,7 +54,7 @@ export default function FindingsScreen() {
   const metricsQ = useMetrics();
   const sessions = findingsQ.data ?? [];
   const metrics = metricsQ.data ?? [];
-  const isLoading = findingsQ.isLoading || metricsQ.isLoading;
+  const isLoading = findingsQ.isPending || metricsQ.isPending;
   const isError = findingsQ.isLoadingError || metricsQ.isLoadingError;
   const {
     trends,

@@ -12,7 +12,7 @@ export default function HistoryScreen() {
   const { t } = useVoice();
   const {
     data,
-    isLoading,
+    isPending,
     isLoadingError,
     error,
     refetch,
@@ -28,7 +28,7 @@ export default function HistoryScreen() {
 
       <div className="mt-4 overflow-hidden rounded-md bg-surface">
         <QueryState
-          isLoading={isLoading}
+          isLoading={isPending}
           isError={isLoadingError}
           error={error}
           onRetry={() => void refetch()}

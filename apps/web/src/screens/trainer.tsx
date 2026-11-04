@@ -83,7 +83,7 @@ const FOCUS_NONE = "__none__";
 export default function TrainerScreen() {
   const {
     data: program,
-    isLoading,
+    isPending,
     isLoadingError,
     error,
     refetch,
@@ -102,7 +102,7 @@ export default function TrainerScreen() {
       </div>
 
       <QueryState
-        isLoading={isLoading}
+        isLoading={isPending}
         isError={isLoadingError}
         error={error}
         onRetry={() => void refetch()}

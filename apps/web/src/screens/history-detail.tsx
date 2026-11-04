@@ -340,7 +340,8 @@ export default function HistoryDetailScreen() {
   if (
     sessionQ.isLoadingError ||
     blocksQ.isLoadingError ||
-    sessionQ.isLoading ||
+    sessionQ.isPending ||
+    blocksQ.isPending ||
     !session
   ) {
     const failed = sessionQ.isLoadingError || blocksQ.isLoadingError;
@@ -349,7 +350,7 @@ export default function HistoryDetailScreen() {
         <BackButton to="/history" label="Back to history" />
         <div className="mt-4 rounded-md bg-surface">
           <QueryState
-            isLoading={!failed && sessionQ.isLoading}
+            isLoading={!failed && (sessionQ.isPending || blocksQ.isPending)}
             isError={failed}
             error={sessionQ.error ?? blocksQ.error}
             onRetry={() => {

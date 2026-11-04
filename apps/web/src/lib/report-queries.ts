@@ -37,7 +37,7 @@ export function useReportData(): {
   const recLoading = rec.isLoading;
   const exQ = useExercises();
   const exercises = exQ.data ?? [];
-  const exLoading = exQ.isLoading;
+  const exLoading = exQ.isPending;
   const { data: measurements = [] } = useMeasurements();
 
   const data = useMemo<ReportData | undefined>(() => {

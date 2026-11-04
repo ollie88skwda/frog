@@ -95,7 +95,7 @@ export default function StatsScreen() {
   const recordsData = recQ.data;
   const exercises = exQ.data ?? [];
   const recLoading = recQ.isLoading;
-  const exLoading = exQ.isLoading;
+  const exLoading = exQ.isPending;
   const muscleMap = useMuscleMap();
   const { unit } = useUnit();
   const { t } = useVoice();

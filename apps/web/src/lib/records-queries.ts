@@ -54,7 +54,7 @@ export function useRecordsData(): {
 
   return {
     data: records.data,
-    isLoading: prefs.isLoading || records.isLoading,
+    isLoading: prefs.isPending || records.isPending,
     isLoadingError: records.isLoadingError,
     error: records.error,
     refetch: () => void records.refetch(),
