@@ -46,7 +46,7 @@ A failed request used to show "No sessions yet", "No routines yet", an empty cal
 - **History** and **History detail**: failed loads show an error with Retry; a missing session says so; delete / copy failures show the reason; the Share button has a name.
 
 ## Statistics, Findings, Monthly report, Year in review, Calendar, Measures
-- Loading and failed loads are distinct everywhere (spinner text vs. error + Retry); monthly/year/stats no longer sit on "Loading…" forever after an error; findings no longer say "no findings" after a failure.
+- Loading and failed loads are distinct everywhere (spinner text vs. error + Retry); monthly/year/stats no longer sit on "Loading…" forever after an error; findings no longer say "no findings" after a failure. A screen opened offline keeps showing loading (not "no data") and fills in when the connection returns.
 - **Calendar**: a failed "log a past workout" shows an error; the grid waits for sessions instead of flashing as empty.
 - **Measures**: no editing until the data has loaded (previously a failed load let a typed value overwrite a saved day).
 
@@ -58,5 +58,5 @@ A failed request used to show "No sessions yet", "No routines yet", an empty cal
 - Splitting `session.tsx` (4.7k lines), `routine-edit.tsx` and `library.tsx` into smaller files; moving filters/tabs into the URL; converting the remaining hand-rolled popup menus (session, routines, conditions) to the new Radix `DropdownMenu`; replacing the measures hand-drawn chart; per-route page titles. (The app-wide skip link to `#main` was added in `app-shell.tsx`.) All are listed in `audit/SUMMARY.md` with file/line detail; none change features.
 
 ## Proof
-- Typecheck, lint, unit (core 247, web 72) green; full e2e green against local Convex; new `e2e/failed-load.spec.ts` (failed loads, unnamed icon controls, confirm dialog) and `e2e/clerk-real.spec.ts` (real Clerk DEV sign-in with a `+clerk_test` email, code 424242, then new-user flows against local Convex).
+- Typecheck, lint, unit (core 247, web 72) green; full e2e green against local Convex; new `e2e/failed-load.spec.ts` (failed loads, offline first loads, unnamed icon controls, confirm dialog) and `e2e/clerk-real.spec.ts` (real Clerk DEV sign-in with a `+clerk_test` email, code 424242, then new-user flows against local Convex).
 - QA screenshots refreshed (`docs/brand/qa`, 25 routes × mobile/desktop × day/night) with the brand audit asserting no horizontal overflow, Geologica only, Base-8 radii, no lines.

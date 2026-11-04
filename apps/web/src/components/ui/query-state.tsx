@@ -4,8 +4,10 @@ import { Button } from "./button";
 
 /**
  * One loading → error → empty → content ladder, so a failed or in-flight query
- * never renders as an empty one (AGENTS.md). Pass the query's flags; `empty`
- * decides whether `emptyState` shows instead of `children`.
+ * never renders as an empty one (AGENTS.md). Pass the query's `isPending` as
+ * `isLoading` (a query started offline is paused, not loading) and
+ * `isLoadingError` as `isError` (a failed background refetch keeps its data);
+ * `empty` decides whether `emptyState` shows instead of `children`.
  */
 export function QueryState({
   isLoading,

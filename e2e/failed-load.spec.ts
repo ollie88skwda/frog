@@ -131,3 +131,51 @@ test("routine delete asks for confirmation in a dialog", async ({ page }) => {
     .click();
   await expect(page.getByTestId(`routine-card-${name}`)).toHaveCount(0);
 });
+
+// A query started while the device is offline is *paused* (pending, not
+// loading, not errored). It must read as loading — never as "you have no
+// data" — and fill in once the connection returns. TanStack Query learns
+// connectivity from the window online/offline events; the network itself
+// stays up so the lazy route chunks still load.
+test("offline: paused first loads read as loading, then recover", async ({
+  page,
+}) => {
+  const goClient = (path: string) =>
+    page.evaluate((p) => {
+      history.pushState({}, "", p);
+      dispatchEvent(new PopStateEvent("popstate"));
+    }, path);
+  const setOnline = (on: boolean) =>
+    page.evaluate(
+      (o) => dispatchEvent(new Event(o ? "online" : "offline")),
+      on,
+    );
+  const cases: [string, string, RegExp][] = [
+    ["history", "/history", /No sessions yet|The lab is empty/],
+    ["history-detail", `/history/${crypto.randomUUID()}`, /Session not found/],
+    ["measures", "/measures", /No data yet/],
+    ["calendar", "/calendar", /No sessions/],
+  ];
+  for (const [name, path, falseEmpty] of cases) {
+    await setOnline(false);
+    await goClient(path);
+    const loading = page.locator("main").getByRole("status");
+    await expect(loading.first()).toBeVisible();
+    await page.waitForTimeout(1500);
+    await expect(page.getByText(falseEmpty)).toHaveCount(0);
+    await expect(loading.first()).toBeVisible();
+    if (process.env.NM_EVIDENCE)
+      await page.screenshot({
+        path: `${process.env.NM_EVIDENCE}/offline-${name}.png`,
+      });
+    await setOnline(true);
+    await expect(loading).toHaveCount(0, { timeout: 20_000 });
+    if (process.env.NM_EVIDENCE)
+      await page.screenshot({
+        path: `${process.env.NM_EVIDENCE}/online-${name}.png`,
+      });
+    if (name === "history-detail")
+      await expect(page.getByText(/Session not found/)).toBeVisible();
+    await goClient("/train");
+  }
+});
