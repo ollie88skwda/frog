@@ -2,7 +2,7 @@ import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { useVoice } from "@/lib/voice";
 
-// 404 — pure playground zone (docs/brand/frog-brand-identity.html §04): no
+// 404 — pure playground zone (docs/brand/archive/frog-brand-identity.html §04): no
 // data lives here, so the frog gets the whole page. Copy comes verbatim from
 // the brand doc's 404 sample and re-voices with the register setting.
 export default function NotFoundScreen() {

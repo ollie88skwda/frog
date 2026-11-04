@@ -10,12 +10,12 @@ import { type MuscleRegion, regionOf } from "@frog/core";
 // xOffset 2 and 90, label at y 126).
 //
 // The figure is a faceless squatting-frog schematic, head-on in the mark's
-// sitting pose (docs/brand/frog-brand-identity.html "The mark"): two eye-hump
+// sitting pose (docs/brand/archive/frog-brand-identity.html "The mark"): two eye-hump
 // silhouette bumps, a wide body, front legs hanging at the sides (arms), big
 // haunches at the bottom corners (legs), and the mark's ground bar. Deliberately
 // NO eyes/mouth/nostrils — a data figure may borrow the mark's silhouette, never
 // the mascot's face (docs/DECISIONS.md 2026-08-08, frog-heatmap entry;
-// frog-brand-identity.html §13). Still legibility-first: blocky on purpose so
+// docs/brand/archive/frog-brand-identity.html §13). Still legibility-first: blocky on purpose so
 // the region a set lands in is unmistakable, and region parts tile edge-to-edge
 // with zero positive-area overlap (guarded by body-paths.test.ts).
 

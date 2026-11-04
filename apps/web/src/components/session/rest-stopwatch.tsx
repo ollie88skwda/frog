@@ -42,7 +42,7 @@ export function RestStopwatch({
   return (
     <div
       role="status"
-      className="flex h-13 w-full items-center gap-2.5 border border-accent bg-accent-soft px-3"
+      className="rounded-md flex h-13 w-full items-center gap-2.5 bg-accent-soft px-3"
       data-testid="rest-stopwatch"
     >
       {/* Square, not a dot: circles are reserved for avatars and the frog
@@ -54,12 +54,12 @@ export function RestStopwatch({
       />
       <span className="flex min-w-0 flex-1 items-baseline gap-2">
         <span
-          className="num shrink-0 text-2xl leading-none font-bold tabular-nums text-accent"
+          className="num shrink-0 text-2xl leading-none font-bold tabular-nums text-accent-ink"
           data-testid="rest-elapsed"
         >
           {mmss(elapsed)}
         </span>
-        <span className="min-w-0 text-2xs leading-tight text-accent">
+        <span className="min-w-0 text-2xs leading-tight text-accent-ink">
           after set {setNumber} · stops on your next set
         </span>
       </span>

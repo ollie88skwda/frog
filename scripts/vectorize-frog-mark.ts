@@ -35,7 +35,7 @@
 // — see docs/DECISIONS.md for the before/after zoom pair.
 //
 // Source is docs/brand/assets/frog-logo-reference.jpg — the original supplied
-// reference art (see docs/DECISIONS.md 2026-08-06). docs/brand/frog-source-1024.png
+// reference art (see docs/DECISIONS.md 2026-08-06). docs/brand/archive/frog-source-1024.png
 // (main's own prior flattened reference, used by a hand-fitted trace this
 // pipeline replaces) loses the eye-highlight color in its flatten — it gets
 // merged into the near-white background — so it can't reproduce the glints

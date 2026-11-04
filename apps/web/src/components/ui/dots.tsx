@@ -1,4 +1,4 @@
-import { MoreHorizontal } from "lucide-react";
+import { DotsThree } from "@phosphor-icons/react";
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
@@ -17,12 +17,12 @@ export function Dots({
     <button
       type={type}
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-md text-faint transition-colors duration-100 hover:bg-surface-hover hover:text-ink md:size-6",
+        "flex size-10 shrink-0 items-center justify-center rounded-sm text-faint transition-colors duration-100 hover:bg-surface-hover hover:text-ink md:size-6",
         className,
       )}
       {...props}
     >
-      <MoreHorizontal className="size-4 md:size-3.5" aria-hidden="true" />
+      <DotsThree className="size-4 md:size-3.5" aria-hidden="true" />
     </button>
   );
 }

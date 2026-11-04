@@ -1,7 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 // Language registers — Human · Frog · Ultrafrog (docs/brand/
-// frog-brand-identity.html §03). One setting changes how the app TALKS,
+// archive/frog-brand-identity.html §03). One setting changes how the app TALKS,
 // never what it REPORTS: registers are a pure text transform at render
 // time; data, timers, and charts are untouched. Copy passes through t()
 // only in playground zones (empty states, toasts, errors, celebrations) —

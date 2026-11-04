@@ -9,10 +9,10 @@ import {
   musclesInRegion,
   type Tier,
 } from "@frog/core";
-import { Select } from "@radix-ui/themes";
-import { Search } from "lucide-react";
+import { MagnifyingGlass } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 // Radix Select forbids an empty-string item value, so the "All …" options use
 // a sentinel that maps to "" (the filter's "no value") at the boundary.
@@ -127,7 +127,7 @@ export function ExerciseFilterBar({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="relative min-w-40 flex-1">
-        <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-faint" />
+        <MagnifyingGlass className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-faint" />
         <Input
           placeholder="Search exercises…"
           value={query}
@@ -154,10 +154,8 @@ export function ExerciseFilterBar({
             )
               onMuscle("");
           }}
-          size="2"
         >
           <Select.Trigger
-            variant="surface"
             className="w-28 shrink-0"
             data-testid="exercise-region-select"
           />
@@ -174,10 +172,8 @@ export function ExerciseFilterBar({
       <Select.Root
         value={muscle || ALL}
         onValueChange={(v) => onMuscle(v === ALL ? "" : v)}
-        size="2"
       >
         <Select.Trigger
-          variant="surface"
           className="w-32 shrink-0"
           data-testid="exercise-filter-select"
         />
@@ -195,10 +191,8 @@ export function ExerciseFilterBar({
         <Select.Root
           value={equipment || ALL}
           onValueChange={(v) => onEquipment(v === ALL ? "" : v)}
-          size="2"
         >
           <Select.Trigger
-            variant="surface"
             className="w-28 shrink-0"
             data-testid="exercise-equipment-select"
           />

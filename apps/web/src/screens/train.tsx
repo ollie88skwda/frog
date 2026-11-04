@@ -1,4 +1,4 @@
-import { Compass, Dumbbell, Play, Sparkles } from "lucide-react";
+import { Barbell, Compass, Play, Sparkle } from "@phosphor-icons/react";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { formatTime } from "@/lib/format";
@@ -21,7 +21,7 @@ export default function TrainScreen() {
       <h1 className="text-lg font-semibold tracking-tight">Training</h1>
 
       {/* Quick start */}
-      <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+      <div className="mt-4 rounded-md bg-surface p-4">
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
           {active && (
             <Button
@@ -82,7 +82,7 @@ export default function TrainScreen() {
           onClick={() => navigate("/trainer")}
           data-testid="trainer-link"
         >
-          <Sparkles className="size-4" /> Trainer
+          <Sparkle className="size-4" /> Trainer
         </Button>
         <Button
           variant="outline"
@@ -90,7 +90,7 @@ export default function TrainScreen() {
           onClick={() => navigate("/library")}
           data-testid="exercises-link"
         >
-          <Dumbbell className="size-4" /> Exercises
+          <Barbell className="size-4" /> Exercises
         </Button>
       </div>
     </div>

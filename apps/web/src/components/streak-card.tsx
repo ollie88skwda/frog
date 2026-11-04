@@ -1,5 +1,5 @@
 import { computeStreak, FIRST_WEEKDAY } from "@frog/core";
-import { Flame } from "lucide-react";
+import { Flame } from "@phosphor-icons/react";
 import { useVoice } from "@/lib/voice";
 
 // Weekly-streak summary card (Hevy-parity M6). A streak is consecutive calendar
@@ -31,7 +31,7 @@ export function StreakCard({
 
   return (
     <div
-      className={`border border-border bg-surface p-4 ${className ?? ""}`}
+      className={`rounded-md bg-surface p-4 ${className ?? ""}`}
       data-testid="streak-card"
     >
       <div className="flex items-center gap-1.5 text-2xs font-medium tracking-widest text-faint uppercase">

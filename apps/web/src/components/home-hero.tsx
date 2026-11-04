@@ -1,5 +1,5 @@
 import { lastPerformedByRoutine, suggestRoutineId } from "@frog/core";
-import { ChevronRight, Play, Plus } from "lucide-react";
+import { CaretRight, Play, Plus } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -57,11 +57,11 @@ function Shell({
 }) {
   return (
     <section
-      className="mt-4 border border-border bg-surface"
+      className="overflow-hidden rounded-md mt-4 bg-surface"
       data-testid={testId}
     >
-      <div className="flex items-baseline justify-between gap-3 border-b border-border bg-accent-soft px-4 py-2">
-        <span className="truncate text-2xs font-medium tracking-widest text-accent uppercase">
+      <div className="flex items-baseline justify-between gap-3 bg-accent-soft px-4 py-2">
+        <span className="truncate text-2xs font-medium tracking-widest text-accent-ink uppercase">
           {eyebrow}
         </span>
         <span className="shrink-0 text-2xs text-faint">
@@ -232,10 +232,7 @@ export function HomeHero() {
         {/* Placeholder rows while the prescription loads: the hero is the top
             of the screen, so it must not grow under the reader's thumb. */}
         {detail === undefined && (
-          <ul
-            className="mt-3 flex flex-col gap-1.5 border-t border-border pt-3"
-            aria-hidden
-          >
+          <ul className="mt-3 flex flex-col gap-1.5 pt-3" aria-hidden>
             {[0, 1, 2].map((i) => (
               <li key={i} className="h-[18px] w-full bg-translucent" />
             ))}
@@ -244,7 +241,7 @@ export function HomeHero() {
 
         {/* The prescription itself — the point is that it already exists. */}
         {preview.length > 0 && (
-          <ul className="mt-3 flex flex-col gap-1.5 border-t border-border pt-3">
+          <ul className="mt-3 flex flex-col gap-1.5 pt-3">
             {preview.map((e) => {
               const first = e.sets[0];
               const reps =
@@ -288,7 +285,7 @@ export function HomeHero() {
       </div>
 
       {/* Change your mind — every other pre-saved plan, one tap away. */}
-      <div className="mt-4 border-t border-border px-4 py-3">
+      <div className="mt-4 px-4 py-3">
         <p className="text-2xs font-medium tracking-widest text-faint uppercase">
           Or run
         </p>
@@ -308,10 +305,10 @@ export function HomeHero() {
                 aria-pressed={isSelected}
                 data-testid={`hero-pick-${r.name}`}
                 className={cn(
-                  "w-36 shrink-0 border p-2 text-left transition-colors duration-150 ease-(--ease-out-quad)",
+                  "w-36 shrink-0 rounded-sm p-2 text-left transition-colors duration-150 ease-(--ease-out-quad)",
                   isSelected
-                    ? "border-accent bg-accent-soft"
-                    : "border-border bg-surface-2 hover:bg-surface-hover",
+                    ? "bg-accent-soft"
+                    : "bg-surface-2 hover:bg-surface-hover",
                 )}
               >
                 <span className="block truncate text-xs font-medium">
@@ -325,7 +322,7 @@ export function HomeHero() {
           })}
           <Link
             to="/routines/new"
-            className="flex w-36 shrink-0 items-center gap-1 border border-dashed border-border bg-surface-2 p-2 text-xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+            className="rounded-sm flex w-36 shrink-0 items-center gap-1 bg-surface-2 p-2 text-xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
             data-testid="hero-new-routine"
           >
             <Plus className="size-4" /> New routine
@@ -346,7 +343,7 @@ export function HomeHero() {
             to="/routines"
             className="flex items-center gap-0.5 px-1 text-2xs text-faint transition-colors duration-150 hover:text-ink"
           >
-            All routines <ChevronRight className="size-3" />
+            All routines <CaretRight className="size-3" />
           </Link>
         </div>
         {error && <p className="mt-2 text-xs text-neg">{error}</p>}

@@ -66,24 +66,24 @@ import {
   warmupSets,
   weightLabel,
 } from "@frog/core";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Calculator,
+  CaretDown,
+  CaretRight,
   Check,
-  ChevronDown,
-  ChevronRight,
   Flame,
+  MagnifyingGlass,
   Medal,
-  Mic,
-  NotebookPen,
+  Microphone,
+  Notebook,
   Pause,
   Play,
   Plus,
-  Search,
   Square,
-  Trash2,
+  Trash,
   Wrench,
-} from "lucide-react";
+} from "@phosphor-icons/react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   type TouchEvent as ReactTouchEvent,
   useCallback,
@@ -372,10 +372,10 @@ function RirSegmented({
               }
               aria-pressed={on}
               className={cn(
-                "num h-10 flex-1 border text-sm font-semibold transition-colors duration-100",
+                "rounded-sm num h-10 flex-1 text-sm font-semibold transition-colors duration-100",
                 on
-                  ? "border-ink bg-ink text-(--accent-fg)"
-                  : "border-border-strong bg-surface text-soft hover:bg-surface-hover",
+                  ? "bg-ink text-on-action"
+                  : "bg-surface text-soft hover:bg-surface-hover",
               )}
               data-testid={rirOptionId(v, side)}
             >
@@ -405,7 +405,7 @@ function RpePicker({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="num h-10 w-full border border-border-strong bg-surface px-2 text-sm font-semibold text-ink transition-colors duration-150 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+        className="num h-10 w-full border border-field bg-surface px-2 text-sm font-semibold text-ink transition-colors duration-150 focus:border-focus focus:outline-none"
         data-testid={side ? `rpe-picker-${side}` : "rpe-picker"}
       >
         <option value="">—</option>
@@ -1384,7 +1384,7 @@ export default function SessionScreen() {
           role="status"
           data-testid="set-sync-error"
         >
-          <div className="pointer-events-auto flex max-w-md items-center gap-2 border border-neg bg-(--color-panel-solid) px-3 py-2 shadow-(--shadow-6)">
+          <div className="rounded-md pointer-events-auto flex max-w-md items-center gap-2 bg-raised px-3 py-2 shadow-lg">
             <span className="min-w-0 text-xs text-neg">
               {t(
                 `${failedSetCount} set${failedSetCount === 1 ? "" : "s"} didn't save — couldn't reach the server.`,
@@ -1405,7 +1405,7 @@ export default function SessionScreen() {
       )}
 
       {/* 1. Session line — name, elapsed clock, Finish. */}
-      <header className="sticky top-0 z-10 border-b border-border bg-bg">
+      <header className="sticky top-0 z-10 bg-bg">
         <div className="mx-auto flex h-12 max-w-2xl items-center justify-between gap-3 px-4">
           <h1 className="min-w-0 truncate text-base font-semibold tracking-tight">
             {session?.title ?? "Session"}
@@ -1438,7 +1438,7 @@ export default function SessionScreen() {
                   aria-pressed={listening}
                   data-testid="voice-log-mic"
                 >
-                  <Mic className="size-4" />
+                  <Microphone className="size-4" />
                 </Button>
                 <span
                   role="status"
@@ -1464,7 +1464,7 @@ export default function SessionScreen() {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-2xl flex-wrap items-center gap-3 border-b border-border px-4 py-1.5">
+      <div className="mx-auto flex max-w-2xl flex-wrap items-center gap-3 px-4 py-1.5">
         {/* The chip owns the leftover space (flex-1) while the stats text
             stays shrink-0, so the chip never gets squeezed to a sliver on a
             narrow phone — it wraps to its own row before that happens. */}
@@ -1484,7 +1484,7 @@ export default function SessionScreen() {
           onClick={() => navigate("/routines")}
           data-testid="session-routines-btn"
         >
-          <NotebookPen className="size-4" />
+          <Notebook className="size-4" />
           Routines
         </Button>
       </div>
@@ -1693,7 +1693,7 @@ function FinishOverlay({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Finish workout" className="md:max-w-sm">
         <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-border pb-3">
+          <div className="flex items-center justify-between pb-3">
             <span
               className="num text-sm text-soft"
               data-testid="finish-summary"
@@ -1741,19 +1741,19 @@ function FinishOverlay({
               onChange={(e) => setNotesDraft(e.target.value)}
               placeholder="How did it go? PRs, aches, focus…"
               data-testid="finish-notes"
-              className="w-full resize-y rounded-md border border-border-strong bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+              className="w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus focus:outline-none"
             />
           </label>
 
           <FinishPhotoStrip photos={photos} onChange={setPhotos} />
 
           {isRoutine && (
-            <label className="flex items-start gap-2 rounded-md border border-border bg-surface-2 p-2">
+            <label className="flex items-start gap-2 rounded-sm bg-surface-2 p-2">
               <input
                 type="checkbox"
                 checked={updateValues}
                 onChange={(e) => setUpdateValues(e.target.checked)}
-                className="mt-0.5 size-4 accent-(--accent)"
+                className="mt-0.5 size-4 accent-(--color-accent-mark)"
                 data-testid="finish-update-values"
               />
               <span className="text-xs text-soft">
@@ -1768,7 +1768,7 @@ function FinishOverlay({
           )}
 
           {isRoutine && structuralChange && (
-            <div className="rounded-md border border-border bg-surface-2 p-2">
+            <div className="rounded-sm bg-surface-2 p-2">
               <p className="text-xs text-soft">
                 You changed this workout's structure. Update the routine to
                 match, or keep the original?
@@ -1796,7 +1796,7 @@ function FinishOverlay({
             </div>
           )}
 
-          <div className="flex items-center justify-between border-t border-border pt-3">
+          <div className="flex items-center justify-between pt-3">
             {confirmDiscard ? (
               <Button
                 variant="danger"
@@ -1804,7 +1804,7 @@ function FinishOverlay({
                 onClick={() => void onDiscard()}
                 data-testid="finish-discard-confirm"
               >
-                <Trash2 className="size-3.5" />
+                <Trash className="size-3.5" />
                 Confirm discard
               </Button>
             ) : (
@@ -1814,7 +1814,7 @@ function FinishOverlay({
                 onClick={() => setConfirmDiscard(true)}
                 data-testid="finish-discard"
               >
-                <Trash2 className="size-3.5" />
+                <Trash className="size-3.5" />
                 Discard
               </Button>
             )}
@@ -1891,7 +1891,7 @@ function ExercisePicker({
                 className={cn(
                   "h-8 shrink-0 px-2.5 text-2xs transition-colors duration-150",
                   yoursOnly
-                    ? "bg-accent-soft text-accent"
+                    ? "bg-accent-soft text-accent-ink"
                     : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
                 )}
                 data-testid="picker-filter-yours"
@@ -1945,13 +1945,13 @@ function ExercisePicker({
               </Button>
             </div>
           ) : (
-            <div className="overflow-hidden border border-border bg-surface">
+            <div className="rounded-md overflow-hidden bg-surface">
               {groups.map((group) => (
                 <section key={group.key}>
-                  <p className="border-b border-border bg-surface-2 px-4 py-1 text-2xs font-medium tracking-widest text-faint uppercase">
+                  <p className="bg-surface-2 px-4 py-1 text-2xs font-medium tracking-widest text-faint uppercase">
                     {group.label}
                   </p>
-                  <ul className="divide-y divide-border">
+                  <ul className="[&>*+*]:mt-0.5">
                     {group.items.map((ex) => (
                       <PickerRow
                         key={ex.id}
@@ -2020,7 +2020,7 @@ function VoiceMatchPicker({
       <DialogContent title="Which exercise?" className="md:max-w-sm">
         <div className="flex flex-col gap-3">
           <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-faint" />
+            <MagnifyingGlass className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-faint" />
             <Input
               placeholder="Search this session…"
               value={search}
@@ -2038,7 +2038,7 @@ function VoiceMatchPicker({
               )}
             </p>
           ) : (
-            <ul className="divide-y divide-border overflow-hidden border border-border bg-surface">
+            <ul className="rounded-md [&>*+*]:mt-0.5 overflow-hidden bg-surface">
               {rows.map((row) => (
                 <li key={row.id}>
                   <button
@@ -2098,10 +2098,10 @@ function PickerRow({
           onClick={() => setShowHistory((v) => !v)}
           title="Last session"
           aria-expanded={showHistory}
-          className="flex shrink-0 items-center gap-1 border-l border-border px-3 text-faint transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
+          className="flex shrink-0 items-center gap-1 px-3 text-faint transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
           data-testid={`pick-history-toggle-${exercise.name}`}
         >
-          <ChevronDown
+          <CaretDown
             className={cn(
               "size-3 transition-transform duration-150",
               showHistory && "rotate-180",
@@ -2135,7 +2135,7 @@ function PickerHistory({
     .join(", ");
   return (
     <div
-      className="border-t border-border bg-surface-2 px-4 py-2 text-2xs text-soft"
+      className="rounded-sm bg-surface-2 px-4 py-2 text-2xs text-soft"
       data-testid={`pick-history-${name}`}
     >
       {isLoading ? (
@@ -2173,10 +2173,7 @@ function ExerciseSwitcher({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title="Switch exercise" className="md:max-w-md">
-        <ul
-          className="flex flex-col border border-border"
-          data-testid="exercise-sheet"
-        >
+        <ul className="flex flex-col" data-testid="exercise-sheet">
           {blocks.map((b, i) => {
             const planned = seedFor(b).length;
             const done = countSets(b.committed);
@@ -2185,7 +2182,7 @@ function ExerciseSwitcher({
               <li
                 key={b.seId}
                 className={cn(
-                  "border-border not-first:border-t",
+                  "",
                   b.seId === activeSeId ? "bg-accent-soft" : "bg-surface",
                 )}
               >
@@ -2201,14 +2198,14 @@ function ExerciseSwitcher({
                   <span
                     className={cn(
                       "num shrink-0 text-xs tabular-nums",
-                      complete ? "text-accent" : "text-faint",
+                      complete ? "text-accent-ink" : "text-faint",
                     )}
                     data-testid={`switcher-progress-${b.name}`}
                   >
                     {planned > 0 ? `${done}/${planned}` : done}
                     {complete ? " ✓" : ""}
                   </span>
-                  <ChevronRight className="size-3.5 shrink-0 text-faint" />
+                  <CaretRight className="size-3.5 shrink-0 text-faint" />
                 </button>
               </li>
             );
@@ -2391,7 +2388,7 @@ function GrowthBars({
               axisLine={false}
               tickMargin={4}
               fontSize={9}
-              stroke="var(--faint)"
+              stroke="var(--color-text-secondary)"
             />
             <YAxis hide domain={[0, "dataMax"]} />
             <Bar
@@ -2421,8 +2418,12 @@ function GrowthBars({
                     y={y}
                     width={width}
                     height={height}
-                    fill={bar?.isToday ? "var(--accent-soft)" : "var(--accent)"}
-                    stroke={bar?.isToday ? "var(--accent)" : undefined}
+                    fill={
+                      bar?.isToday
+                        ? "var(--color-accent-bg-subtle)"
+                        : "var(--chart-1)"
+                    }
+                    stroke={bar?.isToday ? "var(--chart-1)" : undefined}
                     strokeDasharray={bar?.isToday ? "3 2" : undefined}
                     data-testid={`stats-growth-bar-${index}`}
                   />
@@ -2462,7 +2463,7 @@ type Mark = {
 
 function MarksBand({ marks }: { marks: Mark[] }) {
   return (
-    <div className="flex border-b border-border" data-testid="marks-band">
+    <div className="flex" data-testid="marks-band">
       {marks.map((m, i) => (
         <button
           // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
@@ -2471,11 +2472,11 @@ function MarksBand({ marks }: { marks: Mark[] }) {
           disabled={!m.onTap}
           onClick={m.onTap}
           className={cn(
-            "relative min-w-0 flex-1 border-r border-border py-2.5 text-center text-base leading-none last:border-r-0",
-            m.kind === "done" && "text-accent",
+            "relative min-w-0 flex-1 py-2.5 text-center text-base leading-none",
+            m.kind === "done" && "text-accent-ink",
             m.kind === "warmup" && "text-warn",
-            m.kind === "todo" && "text-border-strong",
-            m.kind === "current" && "bg-ink text-(--accent-fg)",
+            m.kind === "todo" && "text-disabled",
+            m.kind === "current" && "bg-ink text-on-action",
           )}
           data-testid={`set-mark-${i}`}
         >
@@ -2497,7 +2498,7 @@ function MarksBand({ marks }: { marks: Mark[] }) {
           )}
           {m.pr && (
             <Medal
-              className="absolute top-0.5 right-0.5 size-2.5 text-accent"
+              className="absolute top-0.5 right-0.5 size-2.5 text-accent-ink"
               data-testid={`set-mark-${i}-medal`}
             />
           )}
@@ -2524,7 +2525,7 @@ function EdgeDots({ total, position }: { total: number; position: number }) {
             "size-1 shrink-0",
             i < position - 1 && "bg-accent",
             i === position - 1 && "size-2 bg-ink",
-            i > position - 1 && "bg-border-strong",
+            i > position - 1 && "bg-active",
           )}
         />
       ))}
@@ -2606,7 +2607,6 @@ function ExerciseSettingsMenu({
             )}
             {showUnitOverride && (
               <>
-                <div className="border-t border-border" />
                 <p className="px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
                   Weight unit
                 </p>
@@ -2627,13 +2627,12 @@ function ExerciseSettingsMenu({
                   >
                     {o.label}
                     {unitOverride === o.value && (
-                      <Check className="size-3.5 shrink-0 text-accent" />
+                      <Check className="size-3.5 shrink-0 text-accent-ink" />
                     )}
                   </button>
                 ))}
               </>
             )}
-            <div className="border-t border-border" />
             <p className="px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
               Default laterality
             </p>
@@ -2651,11 +2650,10 @@ function ExerciseSettingsMenu({
               >
                 {LATERALITY_LABELS[l]}
                 {currentLaterality === l && (
-                  <Check className="size-3.5 shrink-0 text-accent" />
+                  <Check className="size-3.5 shrink-0 text-accent-ink" />
                 )}
               </button>
             ))}
-            <div className="border-t border-border" />
             <button
               type="button"
               onClick={() => {
@@ -2666,7 +2664,7 @@ function ExerciseSettingsMenu({
               className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg disabled:cursor-default disabled:opacity-50"
               data-testid={`remove-block-${blockName}`}
             >
-              <Trash2 className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
+              <Trash className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
               Remove exercise
             </button>
           </div>
@@ -2709,7 +2707,7 @@ function SetActionsMenu({
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => setOpen((o) => !o)}
         title="Set options"
-        className="flex size-9 shrink-0 items-center justify-center border border-border-strong bg-surface-2 text-lg font-bold text-soft"
+        className="rounded-sm flex size-9 shrink-0 items-center justify-center bg-surface-2 text-lg font-bold text-soft"
         data-testid="set-type-menu"
       >
         ⋯
@@ -2742,7 +2740,7 @@ function SetActionsMenu({
                 <Flame className="size-3.5 shrink-0 text-warn" />
                 Make it a warm-up
               </span>
-              {isWarmup && <Check className="size-3.5 text-accent" />}
+              {isWarmup && <Check className="size-3.5 text-accent-ink" />}
             </button>
             <button
               type="button"
@@ -2755,7 +2753,7 @@ function SetActionsMenu({
               data-testid="set-type-perside"
             >
               <span>Log left/right separately</span>
-              {isUnilateral && <Check className="size-3.5 text-accent" />}
+              {isUnilateral && <Check className="size-3.5 text-accent-ink" />}
             </button>
             {onDelete && (
               <button
@@ -2773,7 +2771,7 @@ function SetActionsMenu({
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-neg transition-colors duration-150 hover:bg-surface-hover"
                 data-testid="set-type-delete"
               >
-                <Trash2 className="size-3.5 shrink-0" />
+                <Trash className="size-3.5 shrink-0" />
                 {confirmDelete ? "Confirm delete" : "Delete set"}
               </button>
             )}
@@ -3177,7 +3175,7 @@ function ExerciseSpotlight({
             >
               {block.name}
             </span>
-            <ChevronDown className="size-3 shrink-0 text-faint" />
+            <CaretDown className="size-3 shrink-0 text-faint" />
           </button>
           <ExerciseSettingsMenu
             blockName={block.name}
@@ -3230,7 +3228,7 @@ function ExerciseSpotlight({
                   unit: null,
                 })
               }
-              className="num shrink-0 border border-border bg-surface-2 px-1.5 py-0.5 text-2xs text-faint"
+              className="rounded-sm num shrink-0 bg-surface-2 px-1.5 py-0.5 text-2xs text-faint"
               title="Using a per-exercise weight unit override — tap to clear"
               data-testid={`block-${block.name}-unit-clear`}
             >
@@ -3242,7 +3240,7 @@ function ExerciseSpotlight({
           <div
             role="status"
             data-testid={`block-${block.name}-copy-error`}
-            className="mt-2 flex items-center justify-between gap-2 border border-border px-2 py-1.5"
+            className="mt-2 flex items-center justify-between gap-2 px-2 py-1.5"
           >
             <span className="min-w-0 text-2xs text-neg">
               {copyError.unresolved
@@ -4019,10 +4017,7 @@ function Spotlight({
     return (
       <div
         key={key}
-        className={cn(
-          "border p-2.5",
-          beat ? "border-accent bg-accent-soft" : "border-border-strong bg-bg",
-        )}
+        className={cn("rounded-md p-2.5", beat ? "bg-accent-soft" : "bg-bg")}
         data-beat={beat ? "true" : "false"}
       >
         <div className="flex items-baseline justify-between gap-2">
@@ -4032,7 +4027,7 @@ function Spotlight({
           <span
             className={cn(
               "num text-xs font-bold",
-              cmp.state === "up" && "text-accent",
+              cmp.state === "up" && "text-accent-ink",
               cmp.state === "down" && "text-warn",
               (cmp.state === "same" || cmp.state === "none") && "text-faint",
             )}
@@ -4043,7 +4038,7 @@ function Spotlight({
         </div>
         <div
           className={cn(
-            "mt-1.5 mb-2 flex items-center justify-center gap-2 border border-border-strong border-b-[3px] border-b-accent bg-surface px-2.5 py-2",
+            "rounded-sm mt-1.5 mb-2 flex items-center justify-center gap-2 bg-surface px-2.5 py-2",
             beat && "bg-bg",
           )}
         >
@@ -4083,9 +4078,7 @@ function Spotlight({
                 onToggleTimer();
               }}
               title={timerRunning ? "Stop timer" : "Start timer"}
-              className={cn(
-                timerRunning && "border-accent bg-accent text-accent-fg",
-              )}
+              className={cn(timerRunning && "bg-accent text-accent-fg")}
               data-testid="set-timer"
             >
               {timerRunning ? (
@@ -4096,7 +4089,7 @@ function Spotlight({
             </IconButton>
           ) : (
             <span
-              className="shrink-0 text-base text-border-strong"
+              className="shrink-0 text-base text-disabled"
               aria-hidden="true"
             >
               ⌨
@@ -4125,7 +4118,7 @@ function Spotlight({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => bump(key, d)}
-                className="num h-10 flex-1 border border-border-strong bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
+                className="rounded-sm num h-10 flex-1 bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
                 data-testid={`${adjustPrefix}-${d}`}
               >
                 {d}
@@ -4138,7 +4131,7 @@ function Spotlight({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => bump(key, d)}
-                className="num h-10 flex-1 border border-accent/45 bg-accent-soft text-sm font-bold text-accent transition-colors duration-100 hover:bg-accent-soft/80"
+                className="rounded-sm num h-10 flex-1 bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
                 data-testid={`${adjustPrefix}-${d}`}
               >
                 +{d}
@@ -4171,12 +4164,12 @@ function Spotlight({
           Set {index + 1}
         </span>
         {setType === "warmup" && (
-          <span className="border border-warn/45 bg-amber-soft px-1.5 py-0.5 text-2xs font-extrabold tracking-widest text-warn uppercase">
+          <span className="rounded-xs bg-secondary px-1.5 py-0.5 text-2xs font-extrabold tracking-widest text-warn uppercase">
             Warm-up
           </span>
         )}
         {isUnilateral && (
-          <span className="border border-accent/45 bg-accent-soft px-1.5 py-0.5 text-2xs font-extrabold tracking-widest text-accent uppercase">
+          <span className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-extrabold tracking-widest text-accent-ink uppercase">
             Per side
           </span>
         )}
@@ -4194,10 +4187,10 @@ function Spotlight({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setDetailsOpen(true)}
             title="Set details"
-            className="flex size-9 shrink-0 items-center justify-center border border-border-strong bg-surface-2 text-soft"
+            className="rounded-sm flex size-9 shrink-0 items-center justify-center bg-surface-2 text-soft"
             data-testid={`set-${index}-more`}
           >
-            <NotebookPen className="size-4" />
+            <Notebook className="size-4" />
           </button>
           <SetActionsMenu
             isWarmup={setType === "warmup"}
@@ -4223,7 +4216,7 @@ function Spotlight({
 
       {hasGhost && !isEditing && (
         <div
-          className="flex items-center gap-2.5 border border-border-strong bg-surface px-2.5 py-2"
+          className="rounded-sm flex items-center gap-2.5 bg-surface px-2.5 py-2"
           data-testid="last-time-row"
         >
           <button
@@ -4231,7 +4224,7 @@ function Spotlight({
             onMouseDown={(e) => e.preventDefault()}
             onClick={resetToLastTime}
             title="Reset to last time's values"
-            className="flex size-7 shrink-0 items-center justify-center border border-border bg-bg text-sm text-soft"
+            className="flex size-7 shrink-0 items-center justify-center bg-bg text-sm text-soft"
             data-testid="last-time-reset"
           >
             ↺
@@ -4244,7 +4237,7 @@ function Spotlight({
               {lastText || "—"}
             </span>
           </span>
-          <span className="shrink-0 border border-border bg-bg px-2 py-1 text-center text-[9px] leading-tight font-extrabold text-faint">
+          <span className="shrink-0 bg-bg px-2 py-1 text-center text-[9px] leading-tight font-extrabold text-faint">
             ALREADY
             <br />
             LOADED
@@ -4259,7 +4252,7 @@ function Spotlight({
             <button
               type="button"
               onClick={() => setWeightLinked((v) => !v)}
-              className="self-start border border-border bg-surface-2 px-1.5 py-0.5 text-2xs font-semibold text-faint"
+              className="rounded-sm self-start bg-surface-2 px-1.5 py-0.5 text-2xs font-semibold text-faint"
               data-testid="weight-link-toggle"
             >
               {weightLinked
@@ -4267,8 +4260,8 @@ function Spotlight({
                 : "unlinked · tap to link"}
             </button>
             {!weightLinked && (
-              <div className="border border-border-strong bg-bg p-2">
-                <div className="flex items-center justify-center border border-border-strong bg-surface px-2 py-1">
+              <div className="rounded-md bg-bg p-2">
+                <div className="rounded-xs flex items-center justify-center bg-surface px-2 py-1">
                   <input
                     inputMode="decimal"
                     value={weight2}
@@ -4285,7 +4278,7 @@ function Spotlight({
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => bump("weight", d, "right")}
-                      className="num h-8 flex-1 border border-border-strong bg-surface text-xs font-bold text-soft"
+                      className="rounded-sm num h-8 flex-1 bg-surface text-xs font-bold text-soft"
                       data-testid={`weight-adjust-${d}-right`}
                     >
                       {d}
@@ -4297,7 +4290,7 @@ function Spotlight({
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => bump("weight", d, "right")}
-                      className="num h-8 flex-1 border border-accent/45 bg-accent-soft text-xs font-bold text-accent"
+                      className="rounded-sm num h-8 flex-1 bg-accent-soft text-xs font-bold text-accent-ink"
                       data-testid={`weight-adjust-${d}-right`}
                     >
                       +{d}
@@ -4315,20 +4308,17 @@ function Spotlight({
       {isUnilateral && f.reps && (
         <div className="flex flex-col gap-1">
           <div className="grid grid-cols-2 gap-2">
-            <span className="text-center text-2xs font-extrabold tracking-widest text-accent uppercase">
+            <span className="text-center text-2xs font-extrabold tracking-widest text-accent-ink uppercase">
               ᴸ Left
             </span>
-            <span className="text-center text-2xs font-extrabold tracking-widest text-accent uppercase">
+            <span className="text-center text-2xs font-extrabold tracking-widest text-accent-ink uppercase">
               ᴿ Right
             </span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             {(["left", "right"] as const).map((side) => (
-              <div
-                key={side}
-                className="border border-border-strong bg-bg p-1.5"
-              >
-                <div className="flex items-center justify-center border border-border-strong bg-surface px-2 py-1">
+              <div key={side} className="rounded-md bg-bg p-1.5">
+                <div className="rounded-xs flex items-center justify-center bg-surface px-2 py-1">
                   <input
                     inputMode="numeric"
                     value={side === "left" ? reps : reps2}
@@ -4350,7 +4340,7 @@ function Spotlight({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => bump("reps", -1, side)}
-                    className="num h-8 flex-1 border border-border-strong bg-surface text-xs font-bold text-soft"
+                    className="rounded-sm num h-8 flex-1 bg-surface text-xs font-bold text-soft"
                     data-testid={`reps-adjust--1-${side}`}
                   >
                     −1
@@ -4359,7 +4349,7 @@ function Spotlight({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => bump("reps", 1, side)}
-                    className="num h-8 flex-1 border border-accent/45 bg-accent-soft text-xs font-bold text-accent"
+                    className="rounded-sm num h-8 flex-1 bg-accent-soft text-xs font-bold text-accent-ink"
                     data-testid={`reps-adjust-1-${side}`}
                   >
                     +1
@@ -4373,7 +4363,7 @@ function Spotlight({
 
       {deltaLine && (
         <p
-          className="num text-2xs font-semibold text-accent"
+          className="num text-2xs font-semibold text-accent-ink"
           data-testid="set-delta"
         >
           ▲ {deltaLine}
@@ -4381,7 +4371,7 @@ function Spotlight({
       )}
 
       {f.weight && (
-        <div className="border border-border bg-surface px-2.5 py-1.5">
+        <div className="rounded-sm bg-surface px-2.5 py-1.5">
           <div className="flex items-center justify-between gap-2">
             <span className="num text-xs text-soft" data-testid="stats-line">
               {(() => {
@@ -4401,17 +4391,14 @@ function Spotlight({
                   return !v;
                 });
               }}
-              className="border border-accent/45 bg-accent-soft px-2 py-1 text-2xs font-extrabold tracking-widest text-accent uppercase"
+              className="rounded-xs bg-accent-soft px-2 py-1 text-2xs font-extrabold tracking-widest text-accent-ink uppercase"
               data-testid="stats-growth-toggle"
             >
               Growth {growthOpen ? "▴" : "▾"}
             </button>
           </div>
           {growthOpen && (
-            <div
-              className="mt-2 border-t border-border pt-2"
-              data-testid="stats-growth-chart"
-            >
+            <div className="mt-2 pt-2" data-testid="stats-growth-chart">
               <GrowthBars
                 history={history}
                 exerciseId={exerciseId}
@@ -4518,7 +4505,7 @@ function Spotlight({
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 data-testid={`set-${index}-note`}
-                className="w-full resize-y border border-border-strong bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-transparent focus:outline-none focus:ring-2 focus:ring-ring/70"
+                className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus focus:outline-none"
               />
             </label>
             {enabledMetrics
@@ -4538,7 +4525,7 @@ function Spotlight({
                           [m.id]: e.target.checked ? "true" : "",
                         }))
                       }
-                      className="size-4 justify-self-start accent-(--accent)"
+                      className="size-4 justify-self-start accent-(--color-accent-mark)"
                       data-testid={`set-${index}-metric-${m.id}`}
                     />
                   ) : (
@@ -4560,7 +4547,7 @@ function Spotlight({
                 </div>
               ))}
             {enabledMetrics.some((m) => !extras.has(m.id)) && (
-              <div className="flex flex-wrap gap-1.5 border-t border-border pt-3">
+              <div className="flex flex-wrap gap-1.5 pt-3">
                 {enabledMetrics
                   .filter((m) => !extras.has(m.id))
                   .map((m) => (
@@ -4569,7 +4556,7 @@ function Spotlight({
                       type="button"
                       onClick={() => toggleExtra(m.id)}
                       data-testid={`set-${index}-add-${m.id}`}
-                      className="flex items-center gap-1 border border-border bg-surface-2 px-2.5 py-1 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+                      className="rounded-sm flex items-center gap-1 bg-surface-2 px-2.5 py-1 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
                     >
                       <Plus className="size-3" />
                       {m.name}
@@ -4587,7 +4574,7 @@ function Spotlight({
                   );
                 }}
                 data-testid={`set-${index}-plates`}
-                className="flex items-center gap-2 border-t border-border pt-3 text-left text-xs text-soft transition-colors duration-150 hover:text-ink"
+                className="flex items-center gap-2 pt-3 text-left text-xs text-soft transition-colors duration-150 hover:text-ink"
               >
                 <Calculator className="size-3.5" />
                 Plate calculator
@@ -4637,9 +4624,9 @@ function SessionDurationControl({
         onClick={() => setOpen((o) => !o)}
         title="Duration · pause / edit start"
         className={cn(
-          "num flex h-8 items-center gap-1 rounded-md px-1.5 text-xs transition-colors duration-100",
+          "num flex h-8 items-center gap-1 rounded-sm px-1.5 text-xs transition-colors duration-100",
           paused
-            ? "bg-accent-soft text-accent"
+            ? "bg-accent-soft text-accent-ink"
             : "text-soft hover:bg-surface-hover",
         )}
         data-testid="session-clock"

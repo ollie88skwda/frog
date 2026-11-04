@@ -4,11 +4,10 @@ import {
   PR_TYPE_LABELS,
   yearReview,
 } from "@frog/core";
-import { ChevronRight } from "lucide-react";
+import { CaretRight } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
-  CartesianGrid,
   LabelList,
   Bar as RechartsBar,
   BarChart as RechartsBarChart,
@@ -38,7 +37,7 @@ const monthShortFmt = new Intl.DateTimeFormat(undefined, { month: "short" });
 
 // Top-muscle-region bars — one accent series, per-bar value labels.
 const REGIONS_CONFIG = {
-  value: { label: "Sets", color: "var(--accent)" },
+  value: { label: "Sets", color: "var(--chart-1)" },
 } satisfies ChartConfig;
 
 export default function YearReviewScreen() {
@@ -97,7 +96,7 @@ export default function YearReviewScreen() {
                 onClick={() => setSelYear(y)}
                 className={`num h-9 shrink-0 px-4 text-xs transition-colors duration-150 ${
                   y === activeYear
-                    ? "bg-accent-soft text-accent"
+                    ? "bg-accent-soft text-accent-ink"
                     : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink"
                 }`}
                 data-testid={`year-tab-${y}`}
@@ -223,7 +222,6 @@ function YearBody({
               margin={{ top: 16, right: 4, left: 0, bottom: 0 }}
               accessibilityLayer
             >
-              <CartesianGrid vertical={false} />
               <XAxis
                 dataKey="label"
                 tickLine={false}
@@ -243,7 +241,7 @@ function YearBody({
                   position="top"
                   formatter={(v) => (Number(v) > 0 ? String(v) : "")}
                   className="num"
-                  fill="var(--soft)"
+                  fill="var(--color-text-secondary)"
                   fontSize={10}
                 />
               </RechartsBar>
@@ -256,7 +254,7 @@ function YearBody({
         {review.topExercises.length === 0 ? (
           <p className="text-xs text-faint">No exercises this year.</p>
         ) : (
-          <ul className="divide-y divide-border border border-border">
+          <ul className="[&>*+*]:mt-0.5">
             {review.topExercises.map((ex) => (
               <li key={ex.exerciseId}>
                 <Row interactive={false}>
@@ -280,7 +278,7 @@ function YearBody({
         {review.prEvents.length === 0 ? (
           <p className="text-xs text-faint">No PRs this year.</p>
         ) : (
-          <ul className="divide-y divide-border border border-border">
+          <ul className="[&>*+*]:mt-0.5">
             {review.prEvents.slice(0, 20).map((e) => (
               <li key={`${e.exerciseId}-${e.prType}-${e.at}`}>
                 <Link
@@ -300,7 +298,7 @@ function YearBody({
                     <span className="num text-sm">
                       {prValue(e.prType, e.value, unit, distUnit)}
                     </span>
-                    <ChevronRight className="size-4 text-faint" />
+                    <CaretRight className="size-4 text-faint" />
                   </span>
                 </Link>
               </li>
@@ -349,7 +347,7 @@ function Stat({
   testId?: string;
 }) {
   return (
-    <div className="border border-border bg-surface-2 p-3" data-testid={testId}>
+    <div className="rounded-md bg-surface-2 p-3" data-testid={testId}>
       <div className="text-2xs font-medium tracking-widest text-faint uppercase">
         {label}
       </div>
@@ -370,8 +368,11 @@ function Slide({
   testId?: string;
 }) {
   return (
-    <section className="border border-border bg-surface" data-testid={testId}>
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
+    <section
+      className="overflow-hidden rounded-md bg-surface"
+      data-testid={testId}
+    >
+      <div className="flex items-center justify-between gap-2 px-4 py-2">
         <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
           {title}
         </h2>

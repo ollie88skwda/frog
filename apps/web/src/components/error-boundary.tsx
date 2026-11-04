@@ -14,10 +14,9 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 // The reload control is a hand-rolled <button>, not ui/button.tsx, and that is
 // deliberate rather than an oversight of AGENTS.md's library-components rule:
 // this card is the floor under a broken app, so it must not depend on code
-// that may itself be unloadable, and it is eager by construction — importing
-// ui/button pulls @radix-ui/themes' Button + IconButton into the eager chunk
-// for +3.2 kB gz against a 220 kB budget. It still carries a visible resting
-// background, so the no-bare-text-buttons rule holds.
+// that may itself be unloadable, and it is eager by construction. It still
+// carries a visible resting background, so the no-bare-text-buttons rule
+// holds.
 const STALE_CHUNK =
   /dynamically imported module|importing a module script failed/i;
 
@@ -60,7 +59,7 @@ export class AppErrorBoundary extends Component<Props, State> {
           type="button"
           data-testid="app-error-reload"
           onClick={() => window.location.reload()}
-          className="border border-border bg-surface-2 px-4 py-2 text-sm transition-colors duration-100 hover:bg-surface-hover"
+          className="rounded-sm bg-surface-2 px-4 py-2 text-sm transition-colors duration-100 hover:bg-surface-hover"
         >
           Reload
         </button>

@@ -85,7 +85,7 @@ export function PlateSheet({
             </p>
           ) : (
             <>
-              <div className="flex items-baseline justify-between border-b border-border pb-3">
+              <div className="flex items-baseline justify-between pb-3">
                 <span className="num text-sm text-soft">
                   Target{" "}
                   <span className="text-ink">
@@ -110,7 +110,7 @@ export function PlateSheet({
                       <span
                         // biome-ignore lint/suspicious/noArrayIndexKey: plates repeat (e.g. 25,25) so position is the identity
                         key={`${p}-${i}`}
-                        className="num flex h-8 min-w-8 items-center justify-center border border-border-strong bg-surface-2 px-2 text-xs text-ink"
+                        className="rounded-sm num flex h-8 min-w-8 items-center justify-center bg-surface-2 px-2 text-xs text-ink"
                       >
                         {p}
                       </span>
@@ -133,7 +133,7 @@ export function PlateSheet({
             </>
           )}
 
-          <div className="border-t border-border pt-3">
+          <div className="pt-3">
             {managing ? (
               <ManagePlates
                 unit={unit}

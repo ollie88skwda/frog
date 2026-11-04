@@ -57,7 +57,7 @@ export function MachineAttachDialog({
             <p className="mb-1 text-2xs font-medium tracking-widest text-faint uppercase">
               From your gym
             </p>
-            <ul className="divide-y divide-border border border-border bg-surface">
+            <ul className="overflow-hidden rounded-md [&>*+*]:mt-0.5 bg-surface">
               {machines.map((m) => (
                 <MachineRow
                   key={m.id}

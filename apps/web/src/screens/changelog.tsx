@@ -73,11 +73,11 @@ export default function ChangelogScreen() {
         <>
           {newEntries.length > 0 && (
             <>
-              <h2 className="mt-6 text-2xs font-medium tracking-widest text-accent uppercase">
+              <h2 className="mt-6 text-2xs font-medium tracking-widest text-accent-ink uppercase">
                 New since your last visit
               </h2>
               <div
-                className="mt-2 divide-y divide-border overflow-hidden border border-accent bg-surface"
+                className="rounded-md mt-2 [&>*+*]:mt-0.5 overflow-hidden bg-surface"
                 data-testid="changelog-new"
               >
                 {newEntries.map((entry) => (
@@ -91,7 +91,7 @@ export default function ChangelogScreen() {
             All decisions
           </h2>
           <div
-            className="mt-2 divide-y divide-border overflow-hidden border border-border bg-surface"
+            className="rounded-md mt-2 [&>*+*]:mt-0.5 overflow-hidden bg-surface"
             data-testid="changelog-all"
           >
             {entries.map((entry, i) => (

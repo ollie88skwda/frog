@@ -9,11 +9,10 @@ import {
   PR_TYPE_LABELS,
   reportableMonths,
 } from "@frog/core";
-import { ChevronRight } from "lucide-react";
+import { CaretRight } from "@phosphor-icons/react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
-  CartesianGrid,
   LabelList,
   Bar as RechartsBar,
   BarChart as RechartsBarChart,
@@ -52,8 +51,8 @@ const monthShortFmt = new Intl.DateTimeFormat(undefined, { month: "short" });
 
 // Muscle split vs prior month — two grouped series, legend below the plot.
 const DIST_CONFIG = {
-  current: { label: "This month", color: "var(--accent)" },
-  previous: { label: "Prior", color: "var(--faint)" },
+  current: { label: "This month", color: "var(--chart-1)" },
+  previous: { label: "Prior", color: "var(--color-text-secondary)" },
 } satisfies ChartConfig;
 
 type Metric = "time" | "volume" | "sets";
@@ -133,7 +132,7 @@ export default function MonthlyReportScreen() {
                   onClick={() => setSelKey(key)}
                   className={`num h-9 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150 ${
                     selected
-                      ? "bg-accent-soft text-accent"
+                      ? "bg-accent-soft text-accent-ink"
                       : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink"
                   }`}
                   data-testid={`monthly-month-${key}`}
@@ -250,7 +249,7 @@ function ReportBody({
         {report.prEvents.length === 0 ? (
           <p className="text-xs text-faint">No PRs this month.</p>
         ) : (
-          <ul className="divide-y divide-border border border-border">
+          <ul className="[&>*+*]:mt-0.5">
             {report.prEvents.map((e) => (
               <li key={`${e.exerciseId}-${e.prType}-${e.at}`}>
                 <Link
@@ -270,7 +269,7 @@ function ReportBody({
                     <span className="num text-sm">
                       {prValue(e.prType, e.value, unit, distUnit)}
                     </span>
-                    <ChevronRight className="size-4 text-faint" />
+                    <CaretRight className="size-4 text-faint" />
                   </span>
                 </Link>
               </li>
@@ -309,7 +308,6 @@ function ReportBody({
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
             accessibilityLayer
           >
-            <CartesianGrid vertical={false} />
             <XAxis
               dataKey="label"
               tickLine={false}
@@ -338,7 +336,7 @@ function ReportBody({
         {report.topExercises.length === 0 ? (
           <p className="text-xs text-faint">No exercises logged this month.</p>
         ) : (
-          <ul className="divide-y divide-border border border-border">
+          <ul className="[&>*+*]:mt-0.5">
             {report.topExercises.map((ex) => (
               <li key={ex.exerciseId}>
                 <Row interactive={false}>
@@ -385,7 +383,7 @@ function TrendSlide({
   // The tooltip/axis formatting follows the active metric; the label stays
   // the metric name so a tooltip reads "Volume: 12.5k".
   const trendConfig: ChartConfig = {
-    value: { label: METRIC_LABELS[metric], color: "var(--accent)" },
+    value: { label: METRIC_LABELS[metric], color: "var(--chart-1)" },
   };
 
   return (
@@ -401,7 +399,7 @@ function TrendSlide({
               onClick={() => setMetric(m)}
               className={`h-7 px-2 text-2xs transition-colors duration-150 ${
                 metric === m
-                  ? "bg-accent-soft text-accent"
+                  ? "bg-accent-soft text-accent-ink"
                   : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink"
               }`}
               data-testid={`monthly-metric-${m}`}
@@ -424,7 +422,6 @@ function TrendSlide({
           margin={{ top: 16, right: 4, left: 0, bottom: 0 }}
           accessibilityLayer
         >
-          <CartesianGrid vertical={false} />
           <XAxis
             dataKey="label"
             tickLine={false}
@@ -449,7 +446,7 @@ function TrendSlide({
               position="top"
               formatter={(v) => (Number(v) > 0 ? fmt(Number(v)) : "")}
               className="num"
-              fill="var(--soft)"
+              fill="var(--color-text-secondary)"
               fontSize={10}
             />
           </RechartsBar>
@@ -524,7 +521,7 @@ function TotalsSlide({
           fmtDelta={(d) => String(d)}
         />
       </div>
-      <div className="mt-2 border border-border bg-surface-2 p-3">
+      <div className="rounded-md mt-2 bg-surface-2 p-3">
         <div className="text-2xs font-medium tracking-widest text-faint uppercase">
           Personal records
         </div>
@@ -551,7 +548,7 @@ function Stat({
   fmtDelta: (d: number) => string;
 }) {
   return (
-    <div className="border border-border bg-surface-2 p-3">
+    <div className="rounded-md bg-surface-2 p-3">
       <div className="text-2xs font-medium tracking-widest text-faint uppercase">
         {label}
       </div>
@@ -581,8 +578,11 @@ function Slide({
   testId?: string;
 }) {
   return (
-    <section className="border border-border bg-surface" data-testid={testId}>
-      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2">
+    <section
+      className="overflow-hidden rounded-md bg-surface"
+      data-testid={testId}
+    >
+      <div className="flex items-center justify-between gap-2 px-4 py-2">
         <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
           {title}
         </h2>

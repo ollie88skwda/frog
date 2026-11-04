@@ -14,7 +14,7 @@ export function Field({ className, ...props }: FieldProps) {
   return (
     <input
       className={cn(
-        "num h-10 min-w-0 w-full bg-transparent px-1 text-sm text-ink placeholder:text-faint focus:bg-transparent focus:text-accent focus:outline-none md:h-8",
+        "num h-10 min-w-0 w-full bg-transparent px-1 text-sm text-ink placeholder:text-faint focus:bg-transparent focus:text-accent-ink focus:outline-none md:h-8",
         className,
       )}
       {...props}

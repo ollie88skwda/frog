@@ -28,10 +28,10 @@ export function StatusRing({
         aria-hidden="true"
         role="presentation"
       >
-        <circle cx={c} cy={c} r={r + 1} fill="var(--accent)" />
+        <circle cx={c} cy={c} r={r + 1} fill="var(--color-accent-solid)" />
         <path
           d={`M ${c - 2.6} ${c} l 1.9 1.9 l 3.3 -3.6`}
-          stroke="var(--accent-fg)"
+          stroke="var(--color-text-on-accent)"
           strokeWidth="1.4"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -61,13 +61,17 @@ export function StatusRing({
         cy={c}
         r={r}
         fill="none"
-        stroke={state === "partial" ? "var(--warn)" : "var(--faint)"}
+        stroke={
+          state === "partial"
+            ? "var(--color-text-primary)"
+            : "var(--color-text-secondary)"
+        }
         strokeWidth="1.4"
       />
       {state === "partial" && clamped > 0 && (
         <path
           d={`M ${c} ${c} L ${c} ${c - (r - 1.5)} A ${r - 1.5} ${r - 1.5} 0 ${large} 1 ${px} ${py} Z`}
-          fill="var(--warn)"
+          fill="var(--color-text-primary)"
         />
       )}
     </svg>

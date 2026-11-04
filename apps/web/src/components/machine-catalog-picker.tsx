@@ -1,5 +1,5 @@
 import type { MachineCatalogEntry } from "@frog/core";
-import { Search } from "lucide-react";
+import { MagnifyingGlass } from "@phosphor-icons/react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,7 +70,7 @@ export function MachineCatalogPicker({
   return (
     <div>
       <div className="relative">
-        <Search className="pointer-events-none absolute top-2 left-2 size-4 text-faint" />
+        <MagnifyingGlass className="pointer-events-none absolute top-2 left-2 size-4 text-faint" />
         <Input
           value={query}
           onChange={(e) => {
@@ -95,7 +95,7 @@ export function MachineCatalogPicker({
                 key={cat}
                 type="button"
                 onClick={() => pickCategory(cat)}
-                className="h-8 shrink-0 rounded-md border border-border bg-surface-2 px-2 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+                className="h-8 shrink-0 rounded-sm bg-surface-2 px-2 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
                 data-testid={`catalog-category-${cat}`}
               >
                 {cat.replace(/-/g, " ")}
@@ -127,7 +127,7 @@ export function MachineCatalogPicker({
       )}
 
       {results.length > 0 && (
-        <ul className="mt-1 divide-y divide-border border border-border bg-surface">
+        <ul className="overflow-hidden rounded-md mt-1 [&>*+*]:mt-0.5 bg-surface">
           {results.map((r) => (
             <li key={r.id}>
               <button
@@ -141,7 +141,7 @@ export function MachineCatalogPicker({
                 className="flex h-10 w-full items-center gap-2 px-2 text-left text-xs transition-colors duration-100 hover:bg-surface-hover md:h-8"
                 data-testid={resultTestId(r)}
               >
-                <span className="bg-translucent px-1 text-2xs text-faint">
+                <span className="rounded-xs bg-translucent px-1 text-2xs text-faint">
                   {r.category.replace(/-/g, " ")}
                 </span>
                 <span className="truncate">

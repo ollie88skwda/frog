@@ -30,14 +30,20 @@ import {
   secondaryMuscles,
   type Tier,
 } from "@frog/core";
-import { Select } from "@radix-ui/themes";
-import { Camera, ChevronDown, ChevronRight, Video, X } from "lucide-react";
+import {
+  Camera,
+  CaretDown,
+  CaretRight,
+  VideoCamera,
+  X,
+} from "@phosphor-icons/react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { TierBadge } from "@/components/anatomy-ui";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { resizePhoto } from "@/lib/photo";
 import {
   useClearExerciseMedia,
@@ -463,7 +469,7 @@ export function ExerciseEditor({
           </div>
 
           {/* Section 2 — What it trains (open by default) */}
-          <div className="flex flex-col gap-2 border-t border-border pt-4">
+          <div className="flex flex-col gap-2 pt-4">
             <h3 className="text-2xs font-medium tracking-widest text-faint uppercase">
               What it trains
             </h3>
@@ -511,7 +517,7 @@ export function ExerciseEditor({
           </div>
 
           {/* Section 3 — How it's performed (one control per row) */}
-          <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <div className="flex flex-col gap-3 pt-4">
             <h3 className="text-2xs font-medium tracking-widest text-faint uppercase">
               How it's performed
             </h3>
@@ -639,7 +645,7 @@ export function ExerciseEditor({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Notes / cues — brace before you unrack; elbows high"
               rows={3}
-              className="w-full border border-border bg-surface px-2 py-2 text-sm text-ink placeholder:text-faint"
+              className="w-full border border-field bg-surface px-2 py-2 text-sm text-ink placeholder:text-faint"
               data-testid="exercise-editor-notes"
             />
             <MediaField
@@ -695,7 +701,7 @@ export function ExerciseEditor({
           )}
         </div>
 
-        <div className="mt-5 flex justify-end gap-2 border-t border-border pt-4">
+        <div className="mt-5 flex justify-end gap-2 pt-4">
           {mode === "create" && (machineId || pendingMedia) && (
             <p
               className="mr-auto self-center text-2xs text-warn"
@@ -741,7 +747,7 @@ function CollapsibleSection({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-t border-border pt-4">
+    <div className="pt-4">
       <button
         type="button"
         onClick={onToggle}
@@ -749,9 +755,9 @@ function CollapsibleSection({
         data-testid={testId}
       >
         {open ? (
-          <ChevronDown className="size-4 shrink-0 text-faint" />
+          <CaretDown className="size-4 shrink-0 text-faint" />
         ) : (
-          <ChevronRight className="size-4 shrink-0 text-faint" />
+          <CaretRight className="size-4 shrink-0 text-faint" />
         )}
         <span className="text-2xs font-medium tracking-widest text-faint uppercase">
           {title}
@@ -795,7 +801,7 @@ function SegmentedButton({
       className={cn(
         "h-10 flex-1 text-xs transition-colors duration-150",
         active
-          ? "bg-accent-soft text-accent"
+          ? "bg-accent-soft text-accent-ink"
           : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
       )}
       data-testid={testId}
@@ -836,14 +842,8 @@ function LabeledSelect({
     // "add" picker (muscle/joint-action) resets to "" after every pick, and
     // an uncontrolled Select keeps its own last-picked value internally,
     // which then can't resolve once that option is excluded from the list.
-    <Select.Root
-      value={value}
-      onValueChange={onChange}
-      disabled={disabled}
-      size="2"
-    >
+    <Select.Root value={value} onValueChange={onChange} disabled={disabled}>
       <Select.Trigger
-        variant="surface"
         placeholder={placeholder}
         className={cn("h-10", triggerClassName)}
         data-testid={testId}
@@ -993,7 +993,7 @@ function Chip({
   onRemove: () => void;
 }) {
   return (
-    <span className="flex h-8 items-center gap-1.5 border border-border bg-surface px-2 text-xs text-soft">
+    <span className="rounded-sm flex h-8 items-center gap-1.5 bg-surface px-2 text-xs text-soft">
       {children}
       <button
         type="button"
@@ -1039,19 +1039,19 @@ function MediaField({
           <video
             src={mediaUrl}
             controls
-            className="max-h-56 w-full border border-border bg-black object-contain"
+            className="max-h-56 w-full bg-black object-contain"
           />
         ) : (
           <img
             src={mediaUrl}
             alt="Exercise demo"
-            className="max-h-56 w-full border border-border bg-white object-contain"
+            className="max-h-56 w-full bg-white object-contain"
           />
         ))}
       <div className="flex items-center gap-2">
-        <label className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 bg-translucent px-2 text-xs text-soft shadow-(--inset-control) transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
+        <label className="rounded-sm flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 bg-translucent px-2 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
           <Camera className="size-4" />
-          <Video className="size-4" />
+          <VideoCamera className="size-4" />
           {mediaUrl || hasPending ? "Replace" : "Add image or video"}
           <input
             type="file"

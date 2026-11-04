@@ -1,6 +1,6 @@
 import type { Machine, MachineCatalogEntry } from "@frog/core";
+import { Wrench } from "@phosphor-icons/react";
 import { Command } from "cmdk";
-import { Wrench } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -152,7 +152,7 @@ function MachineCommandDialog({
             onValueChange={setQuery}
             autoFocus
             placeholder="Search your gym or the catalog…"
-            className="h-11 w-full border border-border bg-surface-2 px-3 text-sm text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-ring/70"
+            className="h-11 w-full border border-field bg-surface-2 px-3 text-sm text-ink placeholder:text-faint focus:border-focus focus:outline-none"
             data-testid="machine-search"
           />
           <Command.List className="mt-2 max-h-72 overflow-y-auto">

@@ -5,8 +5,8 @@ import {
   parseHevyCsv,
   parseStrongCsv,
 } from "@frog/core";
+import { UploadSimple } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRepo } from "@/lib/repo";
@@ -93,7 +93,7 @@ function WorkoutCsvImport({
   }
 
   return (
-    <div className="mt-3 border-t border-border pt-3">
+    <div className="mt-3 pt-3">
       <p className="text-xs font-medium">{label}</p>
       <p className="mt-0.5 text-2xs text-faint">{hint}</p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -101,7 +101,7 @@ function WorkoutCsvImport({
           type="file"
           accept=".csv,text/csv"
           onChange={(e) => void onFile(e.target.files?.[0])}
-          className="text-xs text-soft file:mr-2 file:rounded-md file:border file:border-border file:bg-surface-2 file:px-2 file:py-1 file:text-xs file:text-ink"
+          className="text-xs text-soft file:mr-2 file:rounded-sm file:bg-surface-2 file:px-2 file:py-1 file:text-xs file:text-ink"
           data-testid={`import-${testid}-input`}
         />
         {state.phase === "parsed" && (
@@ -111,7 +111,7 @@ function WorkoutCsvImport({
             onClick={() => void runImport()}
             data-testid={`import-${testid}-btn`}
           >
-            <Upload className="size-4" />
+            <UploadSimple className="size-4" />
             Import {state.sessions.length} sessions
           </Button>
         )}
@@ -181,7 +181,7 @@ export function ImportCard() {
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+    <div className="mt-4 rounded-md bg-surface p-4">
       <h2 className="text-sm font-medium">Import</h2>
       <p className="mt-0.5 text-2xs text-faint">
         Bring your history in. Import workouts (Hevy or Strong) first, then
@@ -201,7 +201,7 @@ export function ImportCard() {
         testid="strong"
       />
 
-      <div className="mt-3 border-t border-border pt-3">
+      <div className="mt-3 pt-3">
         <p className="text-xs font-medium">
           Fitbit sleep — Google Takeout (sleep-*.json)
         </p>
@@ -212,7 +212,7 @@ export function ImportCard() {
             accept=".json,application/json"
             multiple
             onChange={(e) => void onSleepFiles(e.target.files)}
-            className="text-xs text-soft file:mr-2 file:rounded-md file:border file:border-border file:bg-surface-2 file:px-2 file:py-1 file:text-xs file:text-ink"
+            className="text-xs text-soft file:mr-2 file:rounded-sm file:bg-surface-2 file:px-2 file:py-1 file:text-xs file:text-ink"
             data-testid="import-sleep-input"
           />
           {sleep.phase === "parsed" && (
@@ -222,7 +222,7 @@ export function ImportCard() {
               onClick={() => void runSleepApply()}
               data-testid="import-sleep-btn"
             >
-              <Upload className="size-4" />
+              <UploadSimple className="size-4" />
               Apply {sleep.map.size} nights
             </Button>
           )}

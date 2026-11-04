@@ -27,10 +27,8 @@ test("unit toggles persist across reload", async ({ page }) => {
 
   // The stored choice re-hydrates the active segment after a full reload.
   await page.reload();
-  await expect(page.getByTestId("unit-kg")).toHaveClass(/bg-surface-active/);
-  await expect(page.getByTestId("distance-unit-km")).toHaveClass(
-    /bg-surface-active/,
-  );
+  await expect(page.getByTestId("unit-kg")).toHaveClass(/bg-accent/);
+  await expect(page.getByTestId("distance-unit-km")).toHaveClass(/bg-accent/);
 });
 
 test("warm-up method editor adds, removes, and resets steps", async ({

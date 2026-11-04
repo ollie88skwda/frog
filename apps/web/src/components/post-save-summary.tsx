@@ -12,7 +12,7 @@ import {
   setVolumeKg,
   weekStart,
 } from "@frog/core";
-import { Flame, Medal, Trophy, X } from "lucide-react";
+import { Flame, Medal, Trophy, X } from "@phosphor-icons/react";
 import {
   type ReactElement,
   type ReactNode,
@@ -355,7 +355,7 @@ export function PostSaveSummary({
           filename={`workout-${ordinal}`}
           testId="share-slide-hero"
         >
-          <p className="text-2xs font-medium tracking-widest text-accent uppercase">
+          <p className="text-2xs font-medium tracking-widest text-accent-ink uppercase">
             {t("Workout complete", "Workout recorded")}
           </p>
           <p
@@ -368,10 +368,10 @@ export function PostSaveSummary({
           <p className="num mt-0.5 text-xs text-faint">{subtitle}</p>
           {showStreak && (
             <div
-              className="mt-6 flex items-center gap-2 border border-border bg-surface-2 px-4 py-3"
+              className="rounded-md mt-6 flex items-center gap-2 bg-surface-2 px-4 py-3"
               data-testid="summary-streak"
             >
-              <Flame className="size-5 text-accent" />
+              <Flame className="size-5 text-accent-ink" />
               <span className="num text-sm">
                 <span className="font-semibold">{streak.weeks}</span>
                 <span className="text-soft">
@@ -401,7 +401,7 @@ export function PostSaveSummary({
           testId="share-slide-pr"
         >
           <div className="flex items-center gap-2">
-            <Trophy className="size-5 text-accent" />
+            <Trophy className="size-5 text-accent-ink" />
             <p className="text-sm font-semibold" data-testid="summary-pr-count">
               {t(
                 `${sessionPrEvents.length} new record${sessionPrEvents.length === 1 ? "" : "s"}`,
@@ -413,9 +413,9 @@ export function PostSaveSummary({
             {sessionPrEvents.map((e) => (
               <li
                 key={`${e.exerciseId}-${e.prType}`}
-                className="flex items-center gap-2 border border-border bg-surface-2 px-3 py-2 text-left text-sm"
+                className="rounded-sm flex items-center gap-2 bg-surface-2 px-3 py-2 text-left text-sm"
               >
-                <Medal className="size-4 shrink-0 text-accent" />
+                <Medal className="size-4 shrink-0 text-accent-ink" />
                 <span className="truncate">
                   {nameById.get(e.exerciseId) ?? "Exercise"} ·{" "}
                   {PR_TYPE_LABELS[e.prType]}
@@ -461,7 +461,7 @@ export function PostSaveSummary({
       className="fixed inset-0 z-50 flex flex-col bg-bg"
       data-testid="post-save-summary"
     >
-      <div className="flex shrink-0 items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between px-4 py-3">
         <span className="text-sm font-semibold tracking-tight">
           {t("Nice work", "The frog nods, slowly.")}
         </span>

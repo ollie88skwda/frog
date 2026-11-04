@@ -1,232 +1,341 @@
-/* Cascade order. Radix Themes sits ABOVE Tailwind's preflight (so base resets
-   can't strip control styling — the documented "buttons render bare" failure)
-   and BELOW Tailwind utilities (so a utility className still wins as a one-off
-   escape hatch). First @layer statement wins, so this must precede the imports;
-   Tailwind's own `@layer theme, base, components, utilities` re-declaration
-   below is consistent with it and changes nothing. */
-@layer theme, base, radix, components, utilities;
+/* Frog design system = Because/clarity GREEN (Fern). ONE source of truth:
+   the tokens in this file (docs/brand/README.md, docs/brand/because-reference/).
+   Radix Themes is gone; shadcn/Tailwind names below are thin aliases onto the
+   --color-* roles, never separate values. data-theme="green" + data-mode on
+   <html> (index.html pre-paint script, src/lib/theme.ts). */
+@layer theme, base, components, utilities;
 
 @import "tailwindcss";
 
-/* Radix Themes, imported modularly rather than as the all-in styles.css:
-   styles.css ships all 31 color scales (29 kB gz) of which we reference five.
-   base + 5 scales + components + utilities = ~65 kB gz vs ~87 kB gz for the
-   bundle — the rest is scales we never name. Keep this list in sync with the
-   bridge below: referencing a scale that isn't imported (e.g. a Radix
-   `color="tomato"` prop) silently resolves to an invalid var, not an error. */
-@import "@radix-ui/themes/tokens/base.css" layer(radix);
-@import "@radix-ui/themes/tokens/colors/sage.css" layer(radix); /* grayColor */
-@import "@radix-ui/themes/tokens/colors/grass.css" layer(radix); /* accentColor */
-@import "@radix-ui/themes/tokens/colors/red.css" layer(radix); /* --neg */
-@import "@radix-ui/themes/tokens/colors/amber.css" layer(radix); /* --warn */
-@import "@radix-ui/themes/tokens/colors/orange.css" layer(radix); /* --orange */
-/* success folds into the accent (green = the frog) — no separate green scale */
-@import "@radix-ui/themes/components.css" layer(radix);
-@import "@radix-ui/themes/utilities.css" layer(radix);
-
-/* shadcn/ui (radix-nova preset) uses the `.dark` class for dark variants —
-   the same class Radix Themes keys off (index.html sets it pre-paint). */
-@custom-variant dark (&:is(.dark *));
+/* Dark variants key off the night mode. */
+@custom-variant dark (&:is([data-mode="night"] *));
 
 @font-face {
-  font-family: "Bricolage Grotesque";
-  src: url("/fonts/BricolageGrotesque.woff2") format("woff2");
-  font-weight: 200 800;
+  font-family: "Geologica";
+  src: url("/fonts/Geologica-variable-latin.woff2") format("woff2");
+  font-weight: 100 900;
   font-display: swap;
 }
 
-/* ---------------------------------------------------------------------------
- * Frog design language — Radix Themes 3 re-skin (docs/DECISIONS.md 2026-07-16,
- * docs/brand/frog-brand-identity.html). Neutral lab-ink ground (sage), one
- * frog-green accent (grass) that doubles as semantic success, 0px radius.
- * The <Theme accentColor="grass" grayColor="sage" radius="none"> in app.tsx
- * is the single source of look-and-feel. Everything in this block is a BRIDGE:
- * the legacy token names map onto Radix's scales so the ~1,900 existing Tailwind
- * classes render in the Radix palette while screens migrate component-by-
- * component. The bridge is deleted in Phase 5, once nothing references it.
- *
- * Why the RAW scales (`--sage-N`, `--grass-N`) and not the aliases
- * (`--gray-N`, `--accent-N`): Radix defines raw scales on `:root, .light` and
- * on `.dark` — i.e. on
- * <html> — but defines the aliases only inside `.radix-themes`. Bridging at
- * :root therefore keeps these tokens resolvable on <body> too, and each raw
- * scale already swaps itself per theme class, so the bridge needs no light/dark
- * duplication. Safe because grayColor/accentColor are locked (not "auto").
- *
- * Radix step semantics: 1 app bg · 2 subtle bg · 3 element bg · 4 hover · 5
- * active · 6 subtle border · 7 element border · 9 solid bg · 10 solid hover ·
- * 11 low-contrast text · 12 high-contrast text.
- * ------------------------------------------------------------------------- */
-
 :root {
-  /* surfaces */
-  --bg: white; /* matches Radix light --color-background */
-  --surface: var(--sage-2);
-  --surface-2: var(--sage-3);
-  --surface-3: var(--sage-4);
-  --surface-hover: var(--sage-4);
-  --surface-active: var(--sage-5);
-  --translucent: var(--sage-a3);
-
-  /* hairlines */
-  --border: var(--sage-6);
-  --border-strong: var(--sage-7);
-  --border-translucent: var(--sage-a6);
-
-  /* text */
-  --ink: var(--sage-12);
-  --ink-2: var(--sage-11);
-  --soft: var(--sage-11);
-  --faint: var(--sage-10);
-
-  /* accent — --brand is a fill (bg-brand), so it must be a solid step, not text */
-  --accent: var(--grass-9);
-  --accent-hover: var(--grass-10);
-  --accent-soft: var(--grass-a3);
-  --accent-fg: white;
-  --brand: var(--grass-9);
-
-  /* semantic exceptions — text/icons and tints only, never large fills.
-     success IS the accent green: a PR is green, and the frog is pleased. */
-  --pos: var(--grass-11);
-  --neg: var(--red-11);
-  --warn: var(--amber-11);
-  --orange: var(--orange-11);
-
-  --ring: var(--grass-8);
-  --scrollbar: var(--sage-a7);
-  --overlay: var(--black-a6);
-
-  --shadow-low: 0px 1px 4px -1px rgba(0, 0, 0, 0.09);
-  --shadow-medium: 0px 3px 12px rgba(0, 0, 0, 0.09);
-  --shadow-high: 0px 7px 24px rgba(0, 0, 0, 0.06);
-  /* signature secondary-control treatment: translucent fill + inset hairlines */
-  --inset-control:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
-  /* shadcn/ui semantic tokens (radix-nova preset), bridged onto the Frog
-     scale so shadcn components (chart, card) resolve to the app palette.
-     These name shadcn's concepts but hold the app's own tokens — nothing
-     here overrides the Frog tokens above; the Radix scales stay the single
-     source for light/dark. Added by `npx shadcn@latest init` (2026-08-08). */
-  --background: var(--bg);
-  --foreground: var(--ink);
-  --card: var(--surface);
-  --card-foreground: var(--ink);
-  --popover: var(--surface);
-  --popover-foreground: var(--ink);
-  --primary: var(--accent);
-  --primary-foreground: var(--accent-fg);
-  --secondary: var(--surface-2);
-  --secondary-foreground: var(--ink);
-  --muted: var(--surface-2);
-  --muted-foreground: var(--faint);
-  --accent-foreground: var(--accent-fg);
-  --destructive: var(--neg);
-  --input: var(--border-strong);
-  --chart-1: var(--grass-9);
-  --chart-2: var(--sage-8);
-  --chart-3: var(--grass-6);
-  --chart-4: var(--sage-11);
-  --chart-5: var(--grass-11);
+  --neutral-day-1:#fcf9f4;
+  --neutral-day-2:#f7f1e8;
+  --neutral-day-3:#f3ece0;
+  --neutral-day-4:#ece5da;
+  --neutral-day-5:#e6dfd4;
+  --neutral-day-6:#dcd7ce;
+  --neutral-day-7:#c4bdb3;
+  --neutral-day-8:#8a8276;
+  --neutral-day-9:#786c63;
+  --neutral-day-10:#6b5d56;
+  --neutral-day-11:#5d4f4a;
+  --neutral-day-12:#211816;
+  --neutral-night-1:#191513;
+  --neutral-night-2:#1f1b18;
+  --neutral-night-3:#221e1c;
+  --neutral-night-4:#292421;
+  --neutral-night-5:#2f2a27;
+  --neutral-night-6:#383330;
+  --neutral-night-7:#514c48;
+  --neutral-night-8:#867f79;
+  --neutral-night-9:#958e88;
+  --neutral-night-10:#a49d96;
+  --neutral-night-11:#c4bcb4;
+  --neutral-night-12:#ece7df;
+  --green-day-1:#fafcfa;
+  --green-day-2:#f0f7ef;
+  --green-day-3:#e0f1de;
+  --green-day-4:#d8ebd6;
+  --green-day-5:#d0e5cd;
+  --green-day-6:#c4dcc1;
+  --green-day-7:#a8c8a4;
+  --green-day-8:#79a274;
+  --green-day-9:#afcfab;
+  --green-day-10:#a1c49d;
+  --green-day-11:#386134;
+  --green-day-12:#1a2f17;
+  --green-night-1:#10140f;
+  --green-night-2:#141a13;
+  --green-night-3:#182316;
+  --green-night-4:#1f2c1d;
+  --green-night-5:#263525;
+  --green-night-6:#2f402c;
+  --green-night-7:#3b5138;
+  --green-night-8:#537350;
+  --green-night-9:#99c195;
+  --green-night-10:#add1a9;
+  --green-night-11:#a3cb9e;
+  --green-night-12:#dfecdd;
+  --danger-day-bg-subtle:#ffefee;
+  --danger-day-border:#f6c2bd;
+  --danger-day-solid:#a52a24;
+  --danger-day-text:#a52a24;
+  --danger-night-bg-subtle:#321a18;
+  --danger-night-border:#6c3531;
+  --danger-night-solid:#f2a39c;
+  --danger-night-text:#f2a39c;
+  --success-day-bg-subtle:#e3f6f6;
+  --success-day-border:#a5d5d5;
+  --success-day-solid:#016869;
+  --success-day-text:#036262;
+  --success-night-bg-subtle:#0e2626;
+  --success-night-border:#225050;
+  --success-night-solid:#6bcac9;
+  --success-night-text:#77cfcf;
+  --r-0:0px;
+  --r-xs:4px;
+  --r-sm:8px;
+  --r-md:12px;
+  --r-lg:16px;
+  --r-xl:24px;
+  --r-full:9999px;
+  --space-10:40px;
+  --space-12:48px;
+  --space-16:64px;
+  --dur-fast:150ms;
+  --dur-base:200ms;
+  --dur-sidebar:220ms;
+  --ease:cubic-bezier(0.2, 0, 0, 1);
+  --focus-width:2px;--focus-offset:2px;
 }
 
-/* Dark only needs the handful of values Radix switches by appearance rather
-   than by scale — every raw-scale reference above re-resolves on its own under
-   the `.dark` class. */
-:root.dark {
-  --bg: var(--sage-1); /* matches Radix dark --color-background */
-  --overlay: var(--black-a8);
-
-  --shadow-low: 0px 2px 4px rgba(0, 0, 0, 0.1);
-  --shadow-medium: 0px 4px 24px rgba(0, 0, 0, 0.2);
-  --shadow-high: 0px 7px 32px rgba(0, 0, 0, 0.35);
-  --inset-control:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.03), inset 0 1px rgba(255, 255, 255, 0.04),
-    0 1px 2px rgba(0, 0, 0, 0.35);
+[data-theme="green"][data-mode="day"] {
+  --color-bg-page:#fcf9f4;
+  --color-bg-subtle:#f7f1e8;
+  --color-bg-surface:#fffefb;
+  --color-bg-raised:#fffefb;
+  --color-bg-sunken:#fffefb;
+  --color-bg-sidebar:#f0f7ef;
+  --color-bg-hover:#ece5da;
+  --color-bg-active:#e6dfd4;
+  --color-bg-message-learner:#ece5da;
+  --color-bg-scrim:rgb(33 24 22 / 0.32);
+  --color-text-primary:#211816;
+  --color-text-secondary:#5d4f4a;
+  --color-text-disabled:#786c63;
+  --color-text-placeholder:#5d4f4a;
+  --color-text-inverse:#fcf9f4;
+  --color-text-on-accent:#211816;
+  --color-text-link:#386134;
+  --color-border-field:#8a8276;
+  --color-border-focus:#251d1a;
+  --color-border-subtle:#dcd7ce;
+  --color-accent-bg-subtle:#e0f1de;
+  --color-accent-bg-selected:#d0e5cd;
+  --color-accent-field:#afcfab;
+  --color-accent-solid:#afcfab;
+  --color-accent-solid-hover:#a1c49d;
+  --color-accent-text:#386134;
+  --color-accent-mark:#386134;
+  --color-action-primary-bg:#251d1a;
+  --color-action-primary-bg-hover:#3d332f;
+  --color-action-primary-text:#fcf9f4;
+  --color-action-secondary-bg:#ece5da;
+  --color-action-secondary-text:#211816;
+  --color-danger-bg-subtle:#ffefee;
+  --color-danger-solid:#a52a24;
+  --color-danger-text:#a52a24;
+  --color-danger-text-on-solid:#fcf9f4;
+  --color-success-bg-subtle:#e3f6f6;
+  --color-success-solid:#016869;
+  --color-success-text:#036262;
+  --color-success-text-on-solid:#fcf9f4;
+  --shadow-1:0 1px 2px rgb(59 41 33 / 0.06), 0 1px 1px rgb(59 41 33 / 0.04);
+  --shadow-2:0 2px 6px rgb(59 41 33 / 0.06), 0 8px 24px rgb(59 41 33 / 0.08);
+  --shadow-3:0 2px 6px rgb(59 41 33 / 0.06), 0 16px 40px -8px rgb(59 41 33 / 0.18);
 }
 
-/* Point Radix's own typography hooks at the Frog faces (Bricolage head to toe;
-   numeric data stays mono via the `num` utility — Bricolage has no tnum). */
-.radix-themes {
-  --default-font-family: var(--font-sans);
-  --heading-font-family: var(--font-sans);
-  --strong-font-family: var(--font-sans);
-  --em-font-family: var(--font-sans);
-  --quote-font-family: var(--font-sans);
-  --code-font-family: var(--font-mono);
+[data-theme="green"][data-mode="night"] {
+  --color-bg-page:#191513;
+  --color-bg-subtle:#1f1b18;
+  --color-bg-surface:#221e1c;
+  --color-bg-raised:#221e1c;
+  --color-bg-sunken:#1f1b18;
+  --color-bg-sidebar:#13100e;
+  --color-bg-hover:#292421;
+  --color-bg-active:#2f2a27;
+  --color-bg-message-learner:#292421;
+  --color-bg-scrim:rgb(0 0 0 / 0.56);
+  --color-text-primary:#ece7df;
+  --color-text-secondary:#c4bcb4;
+  --color-text-disabled:#958e88;
+  --color-text-placeholder:#c4bcb4;
+  --color-text-inverse:#191513;
+  --color-text-on-accent:#191513;
+  --color-text-link:#a3cb9e;
+  --color-border-field:#867f79;
+  --color-border-focus:#99c195;
+  --color-border-subtle:#383330;
+  --color-accent-bg-subtle:#263525;
+  --color-accent-bg-selected:#263525;
+  --color-accent-field:#182316;
+  --color-accent-solid:#99c195;
+  --color-accent-solid-hover:#add1a9;
+  --color-accent-text:#a3cb9e;
+  --color-accent-mark:#99c195;
+  --color-action-primary-bg:#e2ddd5;
+  --color-action-primary-bg-hover:#f5f1ec;
+  --color-action-primary-text:#191513;
+  --color-action-secondary-bg:#292421;
+  --color-action-secondary-text:#ece7df;
+  --color-danger-bg-subtle:#321a18;
+  --color-danger-solid:#f2a39c;
+  --color-danger-text:#f2a39c;
+  --color-danger-text-on-solid:#191513;
+  --color-success-bg-subtle:#0e2626;
+  --color-success-solid:#6bcac9;
+  --color-success-text:#77cfcf;
+  --color-success-text-on-solid:#191513;
+  --shadow-1:0 1px 2px rgb(0 0 0 / 0.30);
+  --shadow-2:0 2px 6px rgb(0 0 0 / 0.30), 0 8px 24px rgb(0 0 0 / 0.36);
+  --shadow-3:0 2px 6px rgb(0 0 0 / 0.32), 0 16px 40px -8px rgb(0 0 0 / 0.55);
+}
+
+:root { color-scheme: light; }
+[data-mode="night"] { color-scheme: dark; }
+
+/* Theme/mode switch crossfade (instant with reduced motion). */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-theme-switching] *, html[data-theme-switching] *::before, html[data-theme-switching] *::after {
+    transition: background-color var(--dur-base) var(--ease), color var(--dur-base) var(--ease), fill var(--dur-base) var(--ease) !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * Semantic aliases. The app's Tailwind utilities (bg-surface, text-soft, …)
+ * resolve to Because --color-* roles here and nowhere else; there are no
+ * second values. Chart ramp = the Fern ramp, flipped per mode.
+ * ------------------------------------------------------------------------- */
+:root {
+  --font-body: "Geologica", "Avenir Next", "Segoe UI", Arial, sans-serif;
+  --font-display: var(--font-body);
+  --type-weight-body: 410;
+  --type-weight-label: 600;
+  --type-weight-heading: 700;
+  --type-tracking-heading: -0.025em;
+  --focus-ring: var(--color-border-focus);
+
+  /* Base 8 corner roles (docs/brand/because-reference/CORNERS-SPEC.md).
+     outer = inner + gap while gap <= 12px; loose nesting uses these tokens. */
+  --radius-control: var(--r-sm);
+  --radius-chip: var(--r-sm);
+  --radius-panel: var(--r-md);
+  --radius-menu: var(--r-md);
+  --radius-dialog: var(--r-md);
+  --radius-checkbox: var(--r-xs);
+
+  --chart-1: var(--green-day-11);
+  --chart-2: var(--green-day-8);
+  --chart-3: var(--green-day-9);
+  --chart-4: var(--neutral-day-10);
+  --chart-5: var(--green-day-12);
+}
+[data-mode="night"] {
+  --chart-1: var(--green-night-11);
+  --chart-2: var(--green-night-8);
+  --chart-3: var(--green-night-9);
+  --chart-4: var(--neutral-night-10);
+  --chart-5: var(--green-night-12);
 }
 
 @theme inline {
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
-  --color-surface-3: var(--surface-3);
-  --color-surface-hover: var(--surface-hover);
-  --color-surface-active: var(--surface-active);
-  --color-translucent: var(--translucent);
-  --color-border: var(--border);
-  --color-border-strong: var(--border-strong);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-soft: var(--soft);
-  --color-faint: var(--faint);
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-soft: var(--accent-soft);
-  --color-accent-fg: var(--accent-fg);
-  --color-brand: var(--brand);
-  --color-pos: var(--pos);
-  --color-neg: var(--neg);
-  --color-warn: var(--warn);
-  --color-ring: var(--ring);
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-display);
 
-  /* Radii come from Radix (radius="none" → --radius-factor 0, restoring the
-     0px/square brand mandate — every rounded-* utility resolves to 0; only
-     rounded-full survives, for avatars). `inline` emits these as var()
-     passthrough rather than resolving them at :root, which matters: Radix
-     scopes --radius-1..6 to .radix-themes, so they only resolve at the
-     element. */
-  --radius-xs: var(--radius-1);
-  --radius-sm: var(--radius-2);
-  --radius-md: var(--radius-3);
-  --radius-lg: var(--radius-4);
-  --radius-xl: var(--radius-5);
-  /* shadcn/ui color tokens — the :root values above are the single source. */
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
+  --color-bg: var(--color-bg-page);
+  --color-subtle: var(--color-bg-subtle);
+  --color-surface: var(--color-bg-surface);
+  --color-raised: var(--color-bg-raised);
+  --color-sunken: var(--color-bg-sunken);
+  --color-sidebar: var(--color-bg-sidebar);
+  --color-hover: var(--color-bg-hover);
+  --color-active: var(--color-bg-active);
+  --color-scrim: var(--color-bg-scrim);
+  --color-surface-2: var(--color-bg-subtle);
+  --color-surface-3: var(--color-bg-hover);
+  --color-surface-hover: var(--color-bg-hover);
+  --color-surface-active: var(--color-bg-active);
+  --color-translucent: var(--color-bg-subtle);
+
+  --color-ink: var(--color-text-primary);
+  --color-ink-2: var(--color-text-secondary);
+  --color-soft: var(--color-text-secondary);
+  --color-faint: var(--color-text-secondary);
+  --color-disabled: var(--color-text-disabled);
+
+  --color-accent: var(--color-accent-solid);
+  --color-accent-hover: var(--color-accent-solid-hover);
+  --color-accent-ink: var(--color-accent-text);
+  --color-accent-soft: var(--color-accent-bg-subtle);
+  --color-accent-selected: var(--color-accent-bg-selected);
+  --color-accent-fg: var(--color-text-on-accent);
+  --color-on-accent: var(--color-text-on-accent);
+  --color-brand: var(--color-accent-solid);
+
+  --color-action: var(--color-action-primary-bg);
+  --color-action-hover: var(--color-action-primary-bg-hover);
+  --color-on-action: var(--color-action-primary-text);
+  --color-secondary: var(--color-action-secondary-bg);
+  --color-on-secondary: var(--color-action-secondary-text);
+
+  --color-pos: var(--color-success-text);
+  --color-neg: var(--color-danger-text);
+  --color-warn: var(--color-text-primary);
+  --color-danger: var(--color-danger-text);
+  --color-danger-soft: var(--color-danger-bg-subtle);
+  --color-on-danger: var(--color-danger-text-on-solid);
+  --color-success-soft: var(--color-success-bg-subtle);
+
+  /* The ONE line in the system: 1px on text fields (border-field). */
+  --color-field: var(--color-border-field);
+  --color-border: var(--color-border-field);
+  --color-focus: var(--color-border-focus);
+  --color-ring: var(--color-border-focus);
+
+  /* shadcn/ui token names, aliased (never re-valued). */
+  --color-background: var(--color-bg-page);
+  --color-foreground: var(--color-text-primary);
+  --color-card: var(--color-bg-surface);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-bg-raised);
+  --color-popover-foreground: var(--color-text-primary);
+  --color-primary: var(--color-action-primary-bg);
+  --color-primary-foreground: var(--color-action-primary-text);
+  --color-secondary-foreground: var(--color-action-secondary-text);
+  --color-muted: var(--color-bg-subtle);
+  --color-muted-foreground: var(--color-text-secondary);
+  --color-accent-foreground: var(--color-text-on-accent);
+  --color-destructive: var(--color-danger-text);
+  --color-input: var(--color-border-field);
   --color-chart-1: var(--chart-1);
-  --color-input: var(--input);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Base 8 scale. Tailwind's rounded-{xs..xl} = 4/8/12/16/24. */
+  --radius-xs: var(--r-xs);
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-2xl: var(--r-xl);
+  --radius-3xl: var(--r-xl);
+
+  --shadow-xs: var(--shadow-1);
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-2);
+  --shadow-lg: var(--shadow-3);
+  --shadow-xl: var(--shadow-3);
 }
 
 @theme {
-  --font-sans:
-    "Bricolage Grotesque", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "Berkeley Mono", Menlo, monospace;
-
-  /* Bricolage Grotesque weights (display grotesque — full range available) */
-  --font-weight-medium: 500;
+  --font-weight-normal: 410;
+  --font-weight-medium: 600;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  /* Mobile-friendly scale: 15px body base (was 13px dense), bumped ~+2px per
-     step for phone legibility. Line-heights scaled to match. */
+  /* Mobile-friendly scale (body 16 in the base layer). */
   --text-2xs: 12px;
   --text-2xs--line-height: 16px;
   --text-xs: 13px;
@@ -239,26 +348,19 @@
   --text-lg--line-height: 27px;
   --text-xl: 22px;
   --text-xl--line-height: 29px;
-  --text-2xl: 26px;
-  --text-2xl--line-height: 33px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 34px;
 
-  /* Easing library (out-quad is the UI default) */
   --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  --ease-out-cubic: cubic-bezier(0.215, 0.61, 0.355, 1);
-  --ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out-quad: cubic-bezier(0.455, 0.03, 0.515, 0.955);
 }
 
-/* Tabular numerals for all data: weights, reps, e1RM, timers. Bricolage
-   Grotesque has no tabular figures, so data uses the system mono stack (which
-   is inherently fixed-width) to keep numeric columns aligned. */
+/* Tabular numerals for data: Geologica ships tnum (no second typeface). */
 @utility num {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  font-feature-settings: "tnum" 1;
 }
 
-/* Keycap-style shortcut hint chip (tooltips, palette, menus). */
+/* Keycap-style shortcut hint chip. No line: a tone step. */
 @utility keycap {
   display: inline-flex;
   align-items: center;
@@ -266,121 +368,135 @@
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
-  border-radius: var(--radius-1);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--faint);
-  font-family: var(--font-sans);
+  border-radius: var(--r-xs);
+  background: var(--color-bg-hover);
+  color: var(--color-text-secondary);
   font-size: 10.5px;
-  font-weight: 510;
+  font-weight: 600;
   line-height: 1;
 }
 
-/* Floating layers: hairline + soft shadow (the only place shadows appear). */
+/* Floating layers: raised tone + soft shadow, no line. */
 @utility floating {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-3);
-  background: var(--surface);
-  box-shadow: var(--shadow-high);
+  border-radius: var(--r-md);
+  background: var(--color-bg-raised);
+  box-shadow: var(--shadow-3);
 }
 
-/* Comfortable bottom clearance for anything flush to the viewport's bottom
-   edge on mobile (bottom sheets, the tab bar) — env() alone isn't enough
-   since it's 0 on most Android devices, so a fixed minimum stacks on top of
-   whatever inset the device reports (0 on Android, the home-indicator height
-   on iOS). Shared by DialogContent's mobile sheet footer; reuse this instead
-   of a one-off pb-* value anywhere else content sits at the bottom edge. */
+/* Comfortable bottom clearance for anything flush to the viewport's bottom. */
 @utility pb-safe-footer {
   padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem);
 }
 
-@layer base {
-  * {
-    border-color: var(--border);
+/* Smooth corners where supported; plain round must look right alone. */
+@supports (corner-shape: squircle) {
+  :where(button, select, textarea, input:not([type="radio"]), [role="dialog"], [role="menu"], [role="listbox"], [class*="rounded"]):not(.rounded-full) {
+    corner-shape: squircle;
   }
+}
+
+/* Forced colors: tone separation disappears, so restore system borders. */
+@media (forced-colors: active) {
+  button, [role="button"], [role="dialog"], [role="menu"], input, select, textarea { border: 1px solid CanvasText; }
+}
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  code, kbd, pre, samp { font-family: inherit; }
 
   html {
-    color-scheme: dark;
-  }
-  :root[data-theme="light"] {
-    color-scheme: light;
+    min-width: 0;
+    accent-color: var(--color-accent-mark);
+    background: var(--color-bg-page);
+    color: var(--color-text-primary);
   }
 
   body {
-    @apply bg-bg text-ink font-sans text-sm antialiased;
-    font-optical-sizing: auto;
-    letter-spacing: -0.011em;
+    min-width: 0;
+    min-height: 100dvh;
+    margin: 0;
+    background: var(--color-bg-page);
+    color: var(--color-text-primary);
+    font-family: var(--font-body);
+    font-size: 16px;
+    font-variation-settings: "SHRP" 100, "CRSV" 0, "slnt" 0;
+    font-weight: var(--type-weight-body);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
-  h1,
-  h2,
-  h3 {
-    letter-spacing: -0.013em;
+  button, input, select, textarea {
+    font-family: inherit;
+    font-variation-settings: inherit;
+  }
+  button, input, select, textarea { border-radius: var(--radius-control); }
+
+  /* No lines: borders are opt-in (text fields only). */
+  *, *::before, *::after { border-color: var(--color-border-field); }
+  button { border: 0; }
+
+  h1, h2, h3, h4 {
+    font-weight: var(--type-weight-heading);
+    letter-spacing: var(--type-tracking-heading);
   }
 
-  ::selection {
-    background: var(--accent-soft);
+  input[type="checkbox"], input[type="radio"] { accent-color: var(--color-accent-mark); }
+  :where(input, textarea, [contenteditable="true"]) { caret-color: var(--color-accent-mark); }
+  ::placeholder { color: var(--color-text-placeholder); opacity: 1; }
+  :where(input, textarea, select):disabled { color: var(--color-text-disabled); }
+  textarea { resize: none; }
+
+  input:-webkit-autofill, textarea:-webkit-autofill, select:-webkit-autofill {
+    -webkit-text-fill-color: var(--color-text-primary);
+    caret-color: var(--color-accent-mark);
+    box-shadow: 0 0 0 1000px var(--color-accent-bg-subtle) inset;
+    transition: background-color 9999s ease-out 0s;
   }
 
-  *::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  ::selection { background: var(--color-accent-bg-selected); color: var(--color-text-primary); }
+
+  a:where(:not([class])) { color: var(--color-text-link); }
+
+  /* Slim rounded scrollbars (Because P-013). */
+  ::-webkit-scrollbar { width: 12px; height: 12px; background: transparent; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklch, var(--color-text-primary) 20%, transparent);
+    background-clip: padding-box;
+    border: 3px solid transparent;
+    border-radius: 9999px;
+    min-height: 40px;
   }
-  *::-webkit-scrollbar-thumb {
-    background: var(--scrollbar);
+  ::-webkit-scrollbar-thumb:hover, ::-webkit-scrollbar-thumb:active { background-color: var(--color-accent-text); }
+  ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+  @supports not selector(::-webkit-scrollbar) {
+    * { scrollbar-width: thin; scrollbar-color: color-mix(in oklch, var(--color-text-primary) 24%, transparent) transparent; }
   }
-  *::-webkit-scrollbar-track {
-    background: transparent;
+
+  button, a, input, select, textarea, summary, [role="button"], [tabindex]:not([tabindex="-1"]) {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
+    outline: var(--focus-width) solid var(--color-border-focus);
+    outline-offset: var(--focus-offset);
   }
 
   /* Numeric inputs: no spinners on the logging path. */
   input[type="number"]::-webkit-outer-spin-button,
-  input[type="number"]::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  input[type="number"] {
-    -moz-appearance: textfield;
-  }
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; }
 
   @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
-    }
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
 }
 
-/* Prevent mobile zoom on input focus. iOS/WebKit (incl. Arc) auto-zooms any
-   focused form control whose font-size resolves < 16px, and `user-scalable=no`
-   / maximum-scale viewport lockdown is deliberately not used to work around it
-   (it would also disable pinch-zoom for everyone, an accessibility regression
-   worse than the bug — see https://www.smashingmagazine.com/2023/09/prevent-safari-zooming-form-inputs/
-   and the WebKit behavior described at https://css-tricks.com/16px-or-larger-text-prevents-ios-form-zoom/).
-   Radix's reset applies `all: unset` to inputs in the `radix` layer, which
-   forces `font-size: inherit` (14px from --font-size-2) and beats a
-   `@layer base` rule. The `utilities` layer is the documented escape hatch
-   that outranks `radix` — but call sites routinely put a Tailwind text-size
-   utility (`.text-sm` = 15px, `.text-xs` = 13px — see field.tsx, and every
-   boxed Input's className) directly on the same `<input>`, and a class
-   selector (0,1,0) always outranks the bare-tag selector (0,0,1) here
-   regardless of source order within the layer, so those calls were still
-   zooming. `!important`, scoped to `pointer: coarse` (the actual touch/mouse
-   distinction the bug depends on, rather than a viewport-width guess that a
-   narrow desktop window or a landscape phone could get wrong either way),
-   wins over any non-important rule regardless of specificity while leaving
-   desktop's smaller `text-sm`/`text-xs` sizing on mouse-driven pointers alone.
-   The `:not()` chain keeps file/checkbox/radio out: none of them takes text
-   entry, so none can trigger the focus zoom, and forcing a font-size on them
-   only risks resizing the control's own chrome (a file input's button label). */
+/* Prevent mobile zoom on input focus: iOS auto-zooms any focused control whose
+   font-size is < 16px (pinch-zoom stays enabled; see e2e/input-zoom.spec.ts).
+   Scoped to coarse pointers so desktop keeps its denser sizing. */
 @layer utilities {
   @media (pointer: coarse) {
     input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
@@ -393,38 +509,21 @@
 
 /* One-shot accent flash when a set row commits (opacity-only, GPU-safe). */
 @keyframes commit-flash {
-  0% {
-    box-shadow: inset 0 0 0 1px var(--accent);
-  }
-  100% {
-    box-shadow: inset 0 0 0 1px transparent;
-  }
+  0% { box-shadow: inset 0 0 0 2px var(--color-accent-solid); }
+  100% { box-shadow: inset 0 0 0 2px transparent; }
 }
-@utility commit-flash {
-  animation: commit-flash 480ms var(--ease-out-quad);
-}
+@utility commit-flash { animation: commit-flash 480ms var(--ease-out-quad); }
 
 /* Floating-layer entrance: fade + 2px rise, 160ms out-quad. */
 @keyframes float-in {
-  from {
-    opacity: 0;
-    transform: translateY(2px) scale(0.99);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(2px) scale(0.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
-@utility float-in {
-  animation: float-in 160ms var(--ease-out-quad);
-}
+@utility float-in { animation: float-in 160ms var(--ease-out-quad); }
 
-/* react-body-highlighter human body map (stats hub): the library fills each
-   muscle polygon without strokes, so neighbouring regions bleed together;
-   a hairline between polygons makes the figure read as one body. Inline
-   `fill` styles win over this rule, so the heat encoding is unaffected. */
+/* react-body-highlighter figure: a tone-step gap between polygons (no line). */
 .rbh polygon {
-  stroke: var(--border);
+  stroke: var(--color-bg-page);
   stroke-width: 0.4;
   stroke-linejoin: round;
 }

@@ -1,5 +1,11 @@
 import { newId } from "@frog/core";
-import { ChevronLeft, ChevronRight, ImagePlus, Trash2, X } from "lucide-react";
+import {
+  CaretLeft,
+  CaretRight,
+  ImageSquare,
+  Trash,
+  X,
+} from "@phosphor-icons/react";
 import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useDeleteSessionMedia, useSessionMedia } from "@/lib/media-queries";
@@ -83,7 +89,7 @@ export function FinishPhotoStrip({
         {photos.map((p, i) => (
           <div
             key={p.id}
-            className="group relative size-16 border border-border"
+            className="group relative size-16"
             data-testid={`finish-photo-${i}`}
           >
             <img src={p.url} alt="" className="size-full object-cover" />
@@ -91,12 +97,12 @@ export function FinishPhotoStrip({
               type="button"
               onClick={() => remove(p.id)}
               title="Remove photo"
-              className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center border border-border bg-bg text-faint transition-colors duration-150 hover:text-neg"
+              className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center bg-bg text-faint transition-colors duration-150 hover:text-neg"
               data-testid={`finish-photo-remove-${i}`}
             >
               <X className="size-3" />
             </button>
-            <div className="absolute inset-x-0 bottom-0 flex justify-between bg-(--overlay) opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+            <div className="absolute inset-x-0 bottom-0 flex justify-between bg-scrim opacity-0 transition-opacity duration-150 group-hover:opacity-100">
               <button
                 type="button"
                 onClick={() => move(p.id, -1)}
@@ -105,7 +111,7 @@ export function FinishPhotoStrip({
                 className="flex size-5 items-center justify-center text-white disabled:opacity-30"
                 data-testid={`finish-photo-left-${i}`}
               >
-                <ChevronLeft className="size-3.5" />
+                <CaretLeft className="size-3.5" />
               </button>
               <button
                 type="button"
@@ -115,17 +121,17 @@ export function FinishPhotoStrip({
                 className="flex size-5 items-center justify-center text-white disabled:opacity-30"
                 data-testid={`finish-photo-right-${i}`}
               >
-                <ChevronRight className="size-3.5" />
+                <CaretRight className="size-3.5" />
               </button>
             </div>
           </div>
         ))}
         {photos.length < MAX_PHOTOS && (
           <label
-            className="flex size-16 cursor-pointer flex-col items-center justify-center gap-1 border border-border border-dashed bg-translucent text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+            className="rounded-sm flex size-16 cursor-pointer flex-col items-center justify-center gap-1 bg-translucent text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
             data-testid="finish-photo-add"
           >
-            <ImagePlus className="size-5" />
+            <ImageSquare className="size-5" />
             <span className="text-3xs">Add</span>
             <input
               type="file"
@@ -168,15 +174,15 @@ export function SessionPhotoCarousel({ sessionId }: { sessionId: string }) {
               src={url}
               alt="Workout"
               loading="lazy"
-              className="h-40 w-auto max-w-full border border-border object-cover"
+              className="h-40 w-auto max-w-full object-cover"
             />
           ) : (
-            <div className="flex h-40 w-40 items-center justify-center border border-border bg-surface-2 px-2 text-center text-2xs text-faint">
+            <div className="rounded-sm flex h-40 w-40 items-center justify-center bg-surface-2 px-2 text-center text-2xs text-faint">
               {t("Unavailable", "Unavailable. The frog is annoyed.")}
             </div>
           )}
           {confirmId === row.id ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-(--overlay) p-2 text-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-scrim p-2 text-center">
               <span className="text-xs text-white">Delete photo?</span>
               <div className="flex gap-2">
                 <Button
@@ -206,12 +212,12 @@ export function SessionPhotoCarousel({ sessionId }: { sessionId: string }) {
               title="Delete photo"
               className={cn(
                 "absolute top-1 right-1 flex size-6 items-center justify-center",
-                "border border-border bg-bg/80 text-faint backdrop-blur",
+                "bg-bg/80 text-faint backdrop-blur",
                 "transition-colors duration-150 hover:text-neg",
               )}
               data-testid={`history-photo-delete-${row.position}`}
             >
-              <Trash2 className="size-3.5" />
+              <Trash className="size-3.5" />
             </button>
           )}
         </div>

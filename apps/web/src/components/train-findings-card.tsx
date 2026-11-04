@@ -1,4 +1,4 @@
-import { FlaskConical } from "lucide-react";
+import { Flask } from "@phosphor-icons/react";
 import { useMemo } from "react";
 import { Link } from "react-router";
 import { computeFindings } from "@/lib/findings";
@@ -86,11 +86,11 @@ export function TrainFindingsCard() {
   return (
     <Link
       to="/findings"
-      className="mt-4 block rounded-lg border border-border bg-surface p-4 transition-colors duration-150 ease-(--ease-out-quad) hover:border-border-strong"
+      className="mt-4 block rounded-md bg-surface p-4 transition-colors duration-150 ease-(--ease-out-quad)"
       data-testid="train-findings-card"
     >
       <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
-        <FlaskConical className="size-4" />
+        <Flask className="size-4" />
         Findings
       </div>
       <div className="mt-2">{body}</div>

@@ -4,7 +4,7 @@ import {
   SET_TYPES,
   type SetType,
 } from "@frog/core";
-import { Check } from "lucide-react";
+import { Check } from "@phosphor-icons/react";
 import { useState } from "react";
 import { StatusRing } from "@/components/ui/status-ring";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ export function markerColorClass(setType: SetType): string {
     case "failure":
       return "text-neg";
     case "drop":
-      return "text-accent";
+      return "text-accent-ink";
     default:
       return "text-faint";
   }
@@ -104,7 +104,9 @@ export function SetTypeCell({
                   </span>
                   {SET_TYPE_LABELS[t]}
                 </span>
-                {t === setType && <Check className="size-3.5 text-accent" />}
+                {t === setType && (
+                  <Check className="size-3.5 text-accent-ink" />
+                )}
               </button>
             ))}
           </div>

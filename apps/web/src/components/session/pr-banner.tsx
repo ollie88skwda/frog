@@ -1,5 +1,5 @@
 import { PR_TYPE_LABELS, type PrType } from "@frog/core";
-import { Medal, X } from "lucide-react";
+import { Medal, X } from "@phosphor-icons/react";
 import { useEffect } from "react";
 import { useVoice } from "@/lib/voice";
 
@@ -39,11 +39,11 @@ export function PrBanner({
         // Opaque panel (not bg-accent-soft): that token is a ~5% alpha wash
         // meant for pills sitting on a known surface, and read as nearly
         // transparent floating over arbitrary scrolled content underneath.
-        className="float-in pointer-events-auto flex max-w-md items-center gap-2 rounded-md border border-accent bg-(--color-panel-solid) px-3 py-2 shadow-(--shadow-6)"
+        className="float-in pointer-events-auto flex max-w-md items-center gap-2 rounded-sm bg-raised px-3 py-2 shadow-lg"
         role="status"
         data-testid="pr-banner"
       >
-        <Medal className="size-4 shrink-0 text-accent" />
+        <Medal className="size-4 shrink-0 text-accent-ink" />
         <span className="min-w-0 text-xs text-ink">
           <span className="font-semibold">New PR — {data.exerciseName}</span>
           <span
@@ -65,7 +65,7 @@ export function PrBanner({
           type="button"
           onClick={onDismiss}
           title="Dismiss"
-          className="ml-1 flex size-6 shrink-0 items-center justify-center rounded-sm border border-border bg-surface text-faint transition-colors duration-100 hover:text-ink"
+          className="ml-1 flex size-6 shrink-0 items-center justify-center rounded-xs bg-surface text-faint transition-colors duration-100 hover:text-ink"
           data-testid="pr-banner-dismiss"
         >
           <X className="size-3" />

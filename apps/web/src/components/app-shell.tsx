@@ -1,5 +1,12 @@
 import { APP_NAME } from "@frog/core";
-import { Dumbbell, Home, Moon, NotebookPen, Sun, User } from "lucide-react";
+import {
+  Barbell,
+  House,
+  Moon,
+  Notebook,
+  Sun,
+  User,
+} from "@phosphor-icons/react";
 import { lazy, Suspense, useMemo } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { FrogMark } from "@/components/frog-mark";
@@ -15,15 +22,11 @@ const CommandPalette = lazy(() =>
 );
 
 const NAV = [
-  { to: "/", label: "Home", icon: Home, end: true, key: null },
-  { to: "/train", label: "Training", icon: Dumbbell, key: null },
-  { to: "/routines", label: "Routines", icon: NotebookPen, key: null },
+  { to: "/", label: "Home", icon: House, end: true, key: null },
+  { to: "/train", label: "Training", icon: Barbell, key: null },
+  { to: "/routines", label: "Routines", icon: Notebook, key: null },
   { to: "/profile", label: "Profile", icon: User, key: null },
 ];
-
-/* One stroke weight across the shell — lucide's default 2 reads chunky at UI
- * sizes; 1.75 gives a lighter, more deliberate line. */
-const STROKE = 1.75;
 
 export function AppShell() {
   const { theme, toggle } = useTheme();
@@ -54,7 +57,7 @@ export function AppShell() {
 
   return (
     <div className="flex h-dvh">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-surface max-md:hidden">
+      <aside className="flex w-56 shrink-0 flex-col bg-sidebar max-md:hidden">
         <div className="flex h-12 items-center justify-between px-3">
           <span className="flex min-w-0 items-center gap-2">
             {/* Frog mark — quiet chrome, never the expressive mascot. */}
@@ -65,12 +68,12 @@ export function AppShell() {
             type="button"
             onClick={toggle}
             title="Toggle theme"
-            className="rounded-md p-1 text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
+            className="rounded-sm p-1 text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
           >
-            {theme === "dark" ? (
-              <Sun className="size-4" strokeWidth={STROKE} />
+            {theme === "night" ? (
+              <Sun className="size-4" />
             ) : (
-              <Moon className="size-4" strokeWidth={STROKE} />
+              <Moon className="size-4" />
             )}
           </button>
         </div>
@@ -95,7 +98,7 @@ export function AppShell() {
                 end={end}
                 className={({ isActive }) =>
                   cn(
-                    "flex h-8 items-center gap-2 rounded-md px-2 text-sm transition-colors duration-150 ease-(--ease-out-quad)",
+                    "flex h-8 items-center gap-2 rounded-sm px-2 text-sm transition-colors duration-150 ease-(--ease-out-quad)",
                     (forceActive ?? isActive)
                       ? "bg-surface-active text-ink"
                       : "text-soft hover:bg-surface-hover hover:text-ink",
@@ -103,7 +106,7 @@ export function AppShell() {
                 }
               >
                 <span className="relative shrink-0">
-                  <Icon className="size-4" strokeWidth={STROKE} />
+                  <Icon className="size-4" />
                   {badge && (
                     <span className="absolute top-0 right-0 size-1.5 bg-accent" />
                   )}
@@ -142,7 +145,7 @@ export function AppShell() {
                 cn(
                   "flex h-11 items-center justify-center gap-1.5 px-3 text-2xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
                   (forceActive ?? isActive)
-                    ? "bg-accent-soft text-accent"
+                    ? "bg-accent-soft text-accent-ink"
                     : "text-soft active:text-ink",
                 )
               }
@@ -150,7 +153,7 @@ export function AppShell() {
               {({ isActive }) => (
                 <>
                   <span className="relative shrink-0">
-                    <Icon className="size-[22px]" strokeWidth={STROKE} />
+                    <Icon className="size-[22px]" />
                     {badge && (
                       <span className="absolute top-0 right-0 size-1.5 bg-accent" />
                     )}

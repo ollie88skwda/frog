@@ -5,7 +5,7 @@ import {
   ratingsForExercise,
   type Tier,
 } from "@frog/core";
-import { Dumbbell, Star } from "lucide-react";
+import { Barbell, Star } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 // Exercise quality is encoded by the brightness of the name text: the better
@@ -73,11 +73,9 @@ export function TierLegend({
         aria-pressed={active === item.value}
         data-testid={`tier-filter-${item.value}`}
         className={cn(
-          "flex h-10 items-center border px-2 font-semibold transition-colors duration-100",
+          "flex h-10 items-center px-2 font-semibold transition-colors duration-100",
           item.className,
-          active === item.value
-            ? "border-accent bg-accent-soft"
-            : "border-border bg-surface hover:border-border-strong",
+          active === item.value ? "bg-accent-soft" : "bg-surface",
         )}
       >
         {item.label}
@@ -114,11 +112,11 @@ export function TierBadge({
   return (
     <span
       className={cn(
-        "num inline-flex size-4 shrink-0 items-center justify-center text-[10px] font-semibold leading-none",
+        "num inline-flex size-4 shrink-0 rounded-xs items-center justify-center text-[10px] font-semibold leading-none",
         tier === "S" && "bg-accent text-accent-fg",
         tier === "A" && "bg-accent-soft text-ink",
         tier === "B" && "bg-translucent text-soft",
-        tier === "C" && "border border-border text-faint",
+        tier === "C" && "text-faint",
         className,
       )}
       title={`${tier} tier`}
@@ -137,7 +135,7 @@ export function TierBadge({
 // Custom exercises never have a reference diagram, so a bare `null` here read
 // as broken/missing rather than "no photo yet" — swap in a neutral dumbbell
 // glyph instead. Deliberately monochrome (no per-muscle hue): the app has a
-// single accent color (docs/brand/frog-brand-identity.html), so this reuses
+// single accent color (docs/brand/archive/frog-brand-identity.html), so this reuses
 // the same faint/surface-2 treatment as an untiered exercise name rather than
 // inventing a color-coded palette.
 export function ExerciseThumb({
@@ -154,7 +152,7 @@ export function ExerciseThumb({
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center border border-border",
+        "flex shrink-0 items-center justify-center",
         imageUrl ? "bg-white" : "bg-surface-2",
         size === "sm" ? "size-6" : "size-16",
         className,
@@ -168,7 +166,7 @@ export function ExerciseThumb({
           className="size-full object-contain"
         />
       ) : (
-        <Dumbbell
+        <Barbell
           className={cn("text-faint", size === "sm" ? "size-3.5" : "size-6")}
           aria-hidden
         />
@@ -242,7 +240,7 @@ export function FavoriteButton({
       aria-pressed={favorite}
       className={cn(
         "flex shrink-0 items-center justify-center p-1 transition-colors duration-150 ease-(--ease-out-quad)",
-        favorite ? "text-accent" : "text-faint hover:text-soft",
+        favorite ? "text-accent-ink" : "text-faint hover:text-soft",
         disabled && "opacity-50",
         className,
       )}
@@ -288,7 +286,7 @@ export function ExerciseRibbon({
         <JointActionRatings exercise={exercise} className="mt-1.5" />
         {machine && (
           <div className="mt-1.5 flex items-center gap-1 truncate text-2xs text-faint">
-            <Dumbbell className="size-3 shrink-0" />
+            <Barbell className="size-3 shrink-0" />
             {machine.brand ? `${machine.brand} · ` : ""}
             {machine.name}
           </div>
@@ -311,7 +309,7 @@ export function JointActionChips({
       {actions.map((a) => (
         <span
           key={a}
-          className="truncate bg-translucent px-1 text-2xs text-faint"
+          className="rounded-xs truncate bg-translucent px-1 text-2xs text-faint"
         >
           {jointActionLabel(a)}
         </span>

@@ -116,10 +116,9 @@ each type's headline metric via `topRecordValue` instead of always e1RM.
 
 ## Typography
 
-**Mono-vs-display exception, written down as instructed**: the hero number
-is Bricolage (a poster headline; mono's fixed advance widths on `,`/`×`
-read like a terminal dump at 150–260px), the support-stat row stays mono
-(`.num`-equivalent — a data row, values must align).
+Geologica only (Because brand): the hero number and the support-stat row
+both paint in Geologica; the support row aligns on its tabular numerals
+(`FONT_MONO` = `FONT_SANS` in `lib/share/paint.ts`).
 
 ## Footer identity line
 

@@ -24,10 +24,10 @@ const INTENSITY_STEPS = 5;
 // the theme via theme.css, like every other Radix-token fill).
 const PALETTE = Array.from({ length: INTENSITY_STEPS }, (_, i) => {
   const pct = 18 + Math.round((82 * i) / (INTENSITY_STEPS - 1));
-  return `color-mix(in srgb, var(--accent) ${pct}%, var(--bg))`;
+  return `color-mix(in srgb, var(--chart-1) ${pct}%, var(--color-bg-page))`;
 });
 
-const BODY_COLOR = "var(--surface-3)";
+const BODY_COLOR = "var(--color-bg-hover)";
 
 // Region → the library's named muscles. Disjoint by construction (a library
 // muscle belongs to exactly one region), so each region's frequency lands on
@@ -152,7 +152,7 @@ export function HumanBodyHeatmap({
                 onClick={() => setSelected(region)}
                 className={
                   isSel
-                    ? "num h-7 bg-accent-soft px-2 text-2xs text-accent"
+                    ? "num h-7 bg-accent-soft px-2 text-2xs text-accent-ink"
                     : "num h-7 bg-translucent px-2 text-2xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
                 }
                 data-testid={`heatmap-chip-${region}`}

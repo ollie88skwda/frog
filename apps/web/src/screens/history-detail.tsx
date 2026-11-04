@@ -9,8 +9,8 @@ import {
   toDisplayWeight,
   unitLabel,
 } from "@frog/core";
+import { Copy, ListPlus, ShareNetwork, Trash } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Copy, ListPlus, Share2, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 import { PostSaveSummary } from "@/components/post-save-summary";
@@ -206,7 +206,7 @@ function ShareWorkoutButton(
         title="Share as image"
         data-testid="history-share-btn"
       >
-        <Share2 className="size-4" />
+        <ShareNetwork className="size-4" />
       </Button>
       {open && <ShareWorkoutSheet {...props} onClose={() => setOpen(false)} />}
     </>
@@ -368,7 +368,7 @@ export default function HistoryDetailScreen() {
             onClick={() => setConfirming(true)}
             data-testid="delete-session-btn"
           >
-            <Trash2 className="size-4" />
+            <Trash className="size-4" />
             Delete
           </Button>
         </Toolbar>
@@ -468,9 +468,9 @@ export default function HistoryDetailScreen() {
         {blocks.map((block) => (
           <section
             key={block.id}
-            className="overflow-hidden rounded-lg border border-border bg-surface"
+            className="overflow-hidden rounded-md bg-surface"
           >
-            <header className="flex items-center justify-between border-b border-border px-4 py-2">
+            <header className="flex items-center justify-between px-4 py-2">
               <h2 className="text-sm font-medium">{block.exerciseName}</h2>
               <span className="num text-2xs text-faint">
                 {countSets(block.sets)}{" "}
@@ -488,7 +488,7 @@ export default function HistoryDetailScreen() {
             {block.sets.map((set) => (
               <div
                 key={set.id}
-                className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 border-t border-border px-4 py-2"
+                className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 px-4 py-2"
               >
                 <span className="num text-xs text-faint">
                   {set.setNo + 1}
@@ -506,7 +506,7 @@ export default function HistoryDetailScreen() {
               </div>
             ))}
             {block.sets.length === 0 && (
-              <p className="border-t border-border px-4 py-3 text-center text-xs text-faint">
+              <p className="px-4 py-3 text-center text-xs text-faint">
                 {t(
                   "No sets logged.",
                   "No sets logged. The frog refuses to speculate.",

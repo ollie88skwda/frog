@@ -6,9 +6,8 @@ import {
   unitLabel,
   type WarmupStep,
 } from "@frog/core";
-import { Select } from "@radix-ui/themes";
+import { Copy, DownloadSimple, Plus, X } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, Download, Plus, X } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ImportCard } from "@/components/import-card";
@@ -16,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Row as ListRow } from "@/components/ui/row";
+import { Select } from "@/components/ui/select";
 import { useSignOut } from "@/lib/auth";
 import { useChangelogHasUnseen } from "@/lib/changelog-prefs";
 import { formatDate } from "@/lib/format";
@@ -40,6 +40,7 @@ import {
   useMeasurementUnit,
   useUnit,
 } from "@/lib/settings";
+import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { type Register, useRegister, useVoice, voice } from "@/lib/voice";
 import { getWarmupMethod, useWarmupMethod } from "@/lib/warmup-method";
@@ -70,7 +71,7 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <div className="mt-4 rounded-lg border border-border bg-surface p-4">
+    <div className="mt-4 rounded-md bg-surface p-4">
       <h2 className="text-sm font-medium">{title}</h2>
       {hint && <p className="mt-0.5 text-2xs text-faint">{hint}</p>}
       {children}
@@ -110,7 +111,7 @@ function Segmented<T extends string | number>({
   testid?: string;
 }) {
   return (
-    <div className="inline-flex overflow-hidden rounded-md border border-border">
+    <div className="inline-flex gap-0.5 rounded-md bg-subtle p-0.5">
       {options.map((o) => (
         <button
           key={String(o.value)}
@@ -118,9 +119,9 @@ function Segmented<T extends string | number>({
           onClick={() => onChange(o.value)}
           data-testid={testid ? `${testid}-${o.value}` : undefined}
           className={cn(
-            "px-3 py-1 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
+            "rounded-sm px-3 py-1 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
             value === o.value
-              ? "bg-surface-active text-ink"
+              ? "bg-accent text-on-accent"
               : "text-soft hover:bg-surface-hover",
           )}
         >
@@ -165,8 +166,8 @@ function SelectField({
   options: { value: string; label: string }[];
 }) {
   return (
-    <Select.Root value={value} onValueChange={onChange} size="1">
-      <Select.Trigger variant="surface" data-testid={testid} />
+    <Select.Root value={value} onValueChange={onChange}>
+      <Select.Trigger data-testid={testid} />
       <Select.Content>
         {options.map((o) => (
           <Select.Item key={o.value} value={o.value}>
@@ -234,7 +235,7 @@ function UnitsSection() {
         "Display only. Underneath, the frog keeps everything canonical (kg, meters, cm).",
       )}
     >
-      <div className="mt-1 divide-y divide-border">
+      <div className="mt-1 [&>*+*]:mt-0.5">
         <Row label="Weight">
           <Segmented
             options={WEIGHT_UNITS.map((u) => ({
@@ -287,7 +288,7 @@ function VoiceSection() {
         "How the frog talks. The numbers never change.",
       )}
     >
-      <div className="mt-1 divide-y divide-border">
+      <div className="mt-1 [&>*+*]:mt-0.5">
         <Row label="Register">
           <Segmented
             options={REGISTERS}
@@ -328,7 +329,7 @@ function WorkoutsSection() {
 
   return (
     <Section title="Workouts">
-      <div className="mt-1 divide-y divide-border">
+      <div className="mt-1 [&>*+*]:mt-0.5">
         <Row
           label="Previous values"
           hint="Which past workout the PREVIOUS column fills from."
@@ -414,7 +415,7 @@ function WarmupMethodEditor() {
   }
 
   return (
-    <div className="mt-2 border-t border-border pt-3">
+    <div className="mt-2 pt-3">
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium">Warm-up method</p>
         {isCustom && (
@@ -500,10 +501,23 @@ function DisplaySection() {
   const { data: prefs } = useUserPrefs();
   const updatePrefs = useUpdateUserPrefs();
   const bodyDiagram = prefs?.bodyDiagram ?? "neutral";
+  const { mode, setMode } = useTheme();
 
   return (
     <Section title="Display">
-      <div className="mt-1 divide-y divide-border">
+      <div className="mt-1 [&>*+*]:mt-0.5">
+        <Row label="Appearance" hint="Device follows your phone or computer.">
+          <Segmented
+            options={[
+              { label: "Device", value: "device" as const },
+              { label: "Day", value: "day" as const },
+              { label: "Night", value: "night" as const },
+            ]}
+            value={mode}
+            onChange={setMode}
+            testid="appearance"
+          />
+        </Row>
         <Row label="Body diagram" hint="Figure used on the stats heat map.">
           <SelectField
             value={bodyDiagram}
@@ -577,7 +591,7 @@ function NotificationsSection() {
         "The frog has nothing to announce yet. Send a test and it croaks once; otherwise it sits still.",
       )}
     >
-      <div className="mt-1 divide-y divide-border">
+      <div className="mt-1 [&>*+*]:mt-0.5">
         <Row
           label="System notifications"
           hint={
@@ -673,7 +687,7 @@ function InstallSection() {
           onClick={() => void promptInstall()}
           data-testid="install-btn"
         >
-          <Download className="size-4" />
+          <DownloadSimple className="size-4" />
           Install
         </Button>
       ) : ios ? (
@@ -743,7 +757,7 @@ function ExportSection() {
           onClick={() => void exportData("json")}
           data-testid="export-json-btn"
         >
-          <Download className="size-4" />
+          <DownloadSimple className="size-4" />
           {exporting === "json" ? exportingLabel : "JSON"}
         </Button>
         <Button
@@ -752,7 +766,7 @@ function ExportSection() {
           onClick={() => void exportData("csv")}
           data-testid="export-csv-btn"
         >
-          <Download className="size-4" />
+          <DownloadSimple className="size-4" />
           {exporting === "csv" ? exportingLabel : "sets.csv"}
         </Button>
         <Button
@@ -761,7 +775,7 @@ function ExportSection() {
           onClick={() => void exportData("measurements")}
           data-testid="export-measurements-btn"
         >
-          <Download className="size-4" />
+          <DownloadSimple className="size-4" />
           {exporting === "measurements" ? exportingLabel : "measurements.csv"}
         </Button>
       </div>
@@ -828,7 +842,7 @@ function ApiTokensSection() {
       </form>
 
       {tokens.length > 0 && (
-        <ul className="mt-3 divide-y divide-border overflow-hidden rounded-md border border-border">
+        <ul className="mt-3 [&>*+*]:mt-0.5 overflow-hidden rounded-sm">
           {tokens.map((t) => (
             <TokenRow
               key={t.id}
@@ -852,7 +866,7 @@ function ApiTokensSection() {
           </p>
           <div className="mt-3 flex items-center gap-2">
             <code
-              className="min-w-0 flex-1 truncate rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs"
+              className="min-w-0 flex-1 truncate rounded-sm bg-surface-2 px-2 py-1 num text-xs"
               data-testid="token-plaintext"
             >
               {plaintext}
@@ -918,7 +932,7 @@ function LearnSection() {
   const { t } = useVoice();
   return (
     <Section title="Learn">
-      <div className="mt-1 divide-y divide-border">
+      <div className="mt-1 [&>*+*]:mt-0.5">
         <Row
           label="Training tips"
           hint={t(
@@ -928,7 +942,7 @@ function LearnSection() {
         >
           <Link
             to="/tips"
-            className="flex h-8 items-center border border-border bg-surface px-3 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+            className="flex h-8 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active"
             data-testid="tips-link"
           >
             Browse
@@ -945,7 +959,7 @@ function ChangelogSection() {
   const hasUnseen = useChangelogHasUnseen();
   return (
     <Section title="Changelog">
-      <div className="mt-1 divide-y divide-border">
+      <div className="mt-1 [&>*+*]:mt-0.5">
         <Row
           label="What's new"
           hint="Dev log of what shipped, pulled from docs/DECISIONS.md."
@@ -959,7 +973,7 @@ function ChangelogSection() {
             )}
             <Link
               to="/changelog"
-              className="flex h-8 items-center border border-border bg-surface px-3 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover"
+              className="flex h-8 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active"
               data-testid="changelog-link"
             >
               Browse

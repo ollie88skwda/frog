@@ -104,7 +104,7 @@ export function MonthDots({
         return (
           <div
             key={c.key}
-            className={`aspect-square ${has ? "bg-accent" : "bg-surface-2"}`}
+            className={`rounded-xs aspect-square ${has ? "bg-accent" : "bg-surface-2"}`}
           />
         );
       })}
