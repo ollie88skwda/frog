@@ -36,7 +36,7 @@ A failed request used to show "No sessions yet", "No routines yet", an empty cal
 ## Library, Exercise detail, Machines
 - **Favorite star** is now a real 40px icon button with a name and pressed state; it was an invisible-at-rest bare button (its fill rendered nothing).
 - **"Best for" info button**, **bulk-add dismiss ×**, **tag remove ×**, **setting remove ×** are named, themed icon buttons with real icons instead of text glyphs.
-- **Exercise detail tabs** are real tabs (tablist/tab/aria-selected) at 40px.
+- **Exercise detail tabs** use hand-written tab roles (tablist/tab/aria-selected) at 40px; no Radix Tabs dependency.
 - **Tag input** no longer drops a character when you type a comma.
 - **Machines**: delete asks for confirmation; setting inputs are 40px with names; photo pickers reachable by keyboard.
 - **Attach machine** failing no longer fails silently (shows the error and keeps the dialog open).
@@ -55,7 +55,7 @@ A failed request used to show "No sessions yet", "No routines yet", an empty cal
 - Raw error text replaced with plain-language messages in Settings and the CSV import card.
 
 ## Not changed on purpose (needs a decision or is large)
-- Splitting `session.tsx` (4.7k lines), `routine-edit.tsx` and `library.tsx` into smaller files; moving filters/tabs into the URL; converting the remaining hand-rolled popup menus (session, routines, conditions) to the new Radix `DropdownMenu`; replacing the measures hand-drawn chart; app-wide skip link and per-route page titles. All are listed in `audit/SUMMARY.md` with file/line detail; none change features.
+- Splitting `session.tsx` (4.7k lines), `routine-edit.tsx` and `library.tsx` into smaller files; moving filters/tabs into the URL; converting the remaining hand-rolled popup menus (session, routines, conditions) to the new Radix `DropdownMenu`; replacing the measures hand-drawn chart; per-route page titles. (The app-wide skip link to `#main` was added in `app-shell.tsx`.) All are listed in `audit/SUMMARY.md` with file/line detail; none change features.
 
 ## Proof
 - Typecheck, lint, unit (core 247, web 72) green; full e2e green against local Convex; new `e2e/failed-load.spec.ts` (failed loads, unnamed icon controls, confirm dialog) and `e2e/clerk-real.spec.ts` (real Clerk DEV sign-in with a `+clerk_test` email, code 424242, then new-user flows against local Convex).

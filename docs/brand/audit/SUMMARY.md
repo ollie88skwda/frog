@@ -18,7 +18,7 @@ Routes (24): `/` home, `/auth`, `/train`, `/routines`, `/routines/new`, `/routin
 | 6 | Hidden `display:none` file inputs (measures ×2, machines ×2, editor media, import-card) unreachable by keyboard | `sr-only` input + `focus-within` ring | measures, machines, editor |
 | 7 | Destructive actions with no confirm (delete machine / metric / setting, 5× native `window.confirm`) | shared `ConfirmDialog` | library, routines, trainer |
 | 8 | Unhandled rejections / silent mutation failures (attach-machine, calendar retroLog, measures, history-detail, profile, settings…) | try/catch → inline `userFacingRepoError` message | all |
-| 9 | exercise-detail tabs without roles | Radix Tabs | exercise-detail |
+| 9 | exercise-detail tabs without roles | tablist/tab roles + aria-selected | exercise-detail |
 
 ## P1 highlights
 - Dead/duplicated code: `session/rest-countdown.tsx`, `charts/body-heatmap.tsx`, `ui/dots.tsx`, unused Card parts, `nextGroupId`, 5× copied ExerciseRow list, `resizePhoto` ×3, `mmss`/`formatRest`, `Slide`/`Stat`/`monthCells`, 6 hand-built list cards, 14× eyebrow label.
