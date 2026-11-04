@@ -282,7 +282,7 @@ function Editor({
             accept="image/*"
             capture="environment"
             onChange={(e) => void onPhotoPicked(e)}
-            className="hidden"
+            className="sr-only"
             data-testid="measure-photo-input"
           />
         </label>
@@ -489,6 +489,7 @@ function Trends({
                 <IconButton
                   danger
                   title="Delete entry"
+                  aria-label="Delete entry"
                   onClick={() => setConfirmId(m.id)}
                   data-testid={`measure-delete-${m.measuredOn}`}
                 >
@@ -857,7 +858,7 @@ function PhotoViewer({
               accept="image/*"
               capture="environment"
               onChange={(e) => void onReplace(e)}
-              className="hidden"
+              className="sr-only"
               data-testid="photo-replace-input"
             />
           </label>

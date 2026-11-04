@@ -72,6 +72,7 @@ import {
   CaretRight,
   Check,
   Flame,
+  LinkSimple,
   MagnifyingGlass,
   Medal,
   Microphone,
@@ -113,7 +114,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { IconButton } from "@/components/ui/icon-button";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
@@ -1727,7 +1728,7 @@ function FinishOverlay({
 
           <label className="flex flex-col gap-1">
             <span className={labelCls}>Notes</span>
-            <textarea
+            <Textarea
               rows={3}
               value={notesDraft}
               onChange={(e) => setNotesDraft(e.target.value)}
@@ -4247,9 +4248,14 @@ function Spotlight({
               className="rounded-sm self-start bg-surface-2 px-1.5 py-0.5 text-2xs font-semibold text-faint"
               data-testid="weight-link-toggle"
             >
-              {weightLinked
-                ? "🔗 linked · tap to set sides separately"
-                : "unlinked · tap to link"}
+              {weightLinked ? (
+                <>
+                  <LinkSimple className="mr-1 inline size-3" />
+                  Linked · tap to set sides separately
+                </>
+              ) : (
+                "Unlinked · tap to link"
+              )}
             </button>
             {!weightLinked && (
               <div className="rounded-md bg-bg p-2">
@@ -4491,7 +4497,7 @@ function Spotlight({
               <span className="text-2xs font-bold tracking-widest text-faint uppercase">
                 Note
               </span>
-              <textarea
+              <Textarea
                 rows={3}
                 placeholder="// note"
                 value={note}

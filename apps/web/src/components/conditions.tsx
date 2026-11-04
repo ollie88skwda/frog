@@ -8,7 +8,7 @@ import {
 import { ClipboardText, DotsThree, Plus, Trash } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   useCreateMetric,
@@ -678,7 +678,7 @@ function NotesBlock({
     setVal((prev) => (prev === notes ? prev : notes));
   }, [notes]);
   return (
-    <textarea
+    <Textarea
       value={val}
       onChange={(e) => {
         setVal(e.target.value);

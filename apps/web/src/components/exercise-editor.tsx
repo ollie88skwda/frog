@@ -42,7 +42,7 @@ import { useNavigate } from "react-router";
 import { TierBadge } from "@/components/anatomy-ui";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { resizePhoto } from "@/lib/photo";
 import {
@@ -640,7 +640,7 @@ export function ExerciseEditor({
             onToggle={() => setReferenceOpen((o) => !o)}
             testId="exercise-editor-reference"
           >
-            <textarea
+            <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Notes / cues — brace before you unrack; elbows high"
@@ -1057,7 +1057,7 @@ function MediaField({
             type="file"
             accept="image/*,video/*"
             onChange={onPick}
-            className="hidden"
+            className="sr-only"
             data-testid="exercise-editor-media-input"
           />
         </label>

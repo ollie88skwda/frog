@@ -55,7 +55,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
-import { Input } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
   formatMMSS,
@@ -1424,7 +1424,7 @@ export default function RoutineEditScreen() {
               'Feed the frog your scrawl, one exercise per line — e.g. "Bench press 4x8". Anything it can\'t place gets sorted out after.',
             )}
           </p>
-          <textarea
+          <Textarea
             rows={8}
             value={pasteText}
             onChange={(e) => setPasteText(e.target.value)}

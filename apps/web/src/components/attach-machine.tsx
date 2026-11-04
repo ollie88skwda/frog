@@ -1,7 +1,9 @@
 import type { Machine, MachineCatalogEntry } from "@frog/core";
+import { useState } from "react";
 import { MachineCatalogPicker } from "@/components/machine-catalog-picker";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useCreateMachine, useMachines } from "@/lib/queries";
+import { userFacingRepoError } from "@/lib/repo-error";
 
 // In-workout machine attach (machine-DB plan §6, phase 3): when the exercise
 // has no machine set, the block's options ⋯ menu opens this dialog (the same
@@ -23,6 +25,7 @@ export function MachineAttachDialog({
   onAttach: (machineId: string) => void;
 }) {
   const { data: machines = [] } = useMachines();
+  const [error, setError] = useState<string | null>(null);
   const createMachine = useCreateMachine();
 
   function attach(machineId: string) {
@@ -41,17 +44,26 @@ export function MachineAttachDialog({
       (m) => m.name === entry.model && m.brand === entry.brand,
     );
     if (existing) return attach(existing.id);
-    const created = await createMachine.mutateAsync({
-      name: entry.model,
-      brand: entry.brand,
-      catalogKey: entry.id,
-    });
-    attach(created.id);
+    try {
+      const created = await createMachine.mutateAsync({
+        name: entry.model,
+        brand: entry.brand,
+        catalogKey: entry.id,
+      });
+      attach(created.id);
+    } catch (e) {
+      setError(userFacingRepoError(e));
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent title={`Attach a machine — ${blockName}`}>
+        {error && (
+          <p role="alert" className="mb-2 text-sm text-neg">
+            {error}
+          </p>
+        )}
         {machines.length > 0 && (
           <>
             <p className="mb-1 text-2xs font-medium tracking-widest text-faint uppercase">

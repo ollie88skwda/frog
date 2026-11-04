@@ -251,7 +251,7 @@ function PhotoPicker({
             accept="image/*"
             capture="environment"
             onChange={(e) => void onCapture(e)}
-            className="hidden"
+            className="sr-only"
           />
         </label>
       </div>

@@ -139,6 +139,7 @@ function PromoCard({
       <IconButton
         onClick={onDismiss}
         title="Dismiss"
+        aria-label="Dismiss"
         data-testid={`${testId}-dismiss`}
       >
         <X className="size-4" />

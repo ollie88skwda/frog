@@ -43,6 +43,10 @@ export function Button({
   return (
     <button
       type={type}
+      aria-label={
+        props["aria-label"] ??
+        (size.startsWith("icon") ? props.title : undefined)
+      }
       className={cn(
         "inline-flex shrink-0 items-center justify-center gap-2 rounded-sm font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:bg-hover disabled:text-disabled",
         VARIANT[variant],

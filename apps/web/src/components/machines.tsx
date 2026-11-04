@@ -1,10 +1,12 @@
 import type { Machine, MachineCatalogEntry, MachineSetting } from "@frog/core";
-import { Camera, CaretDown, CaretRight } from "@phosphor-icons/react";
+import { Camera, CaretDown, CaretRight, X } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, type FormEvent, useState } from "react";
 import { MachineCatalogPicker } from "@/components/machine-catalog-picker";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { IconButton } from "@/components/ui/icon-button";
+import { Input, Textarea } from "@/components/ui/input";
 import {
   useCreateMachine,
   useDeleteMachine,
@@ -145,6 +147,7 @@ function MachineRow({
 export function MachineEditor({ machine }: { machine: Machine }) {
   const update = useUpdateMachine();
   const deleteMachine = useDeleteMachine();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const uploadPhoto = useUploadMachinePhoto();
   const { data: photoUrl } = useMachinePhotoUrl(machine);
   const settings = machine.settings ?? [];
@@ -187,12 +190,13 @@ export function MachineEditor({ machine }: { machine: Machine }) {
             }
           }}
           placeholder="+ setting (e.g. Seat height)"
-          className="h-6 w-48 text-2xs"
+          aria-label="Add setting"
+          className="w-56"
           data-testid={`add-setting-${machine.name}`}
         />
       </div>
 
-      <textarea
+      <Textarea
         defaultValue={machine.notes ?? ""}
         onBlur={(e) => {
           const notes = e.target.value.trim() || null;
@@ -224,7 +228,7 @@ export function MachineEditor({ machine }: { machine: Machine }) {
             accept="image/*"
             capture="environment"
             onChange={(e) => void onPhotoPicked(e)}
-            className="hidden"
+            className="sr-only"
             data-testid={`machine-photo-input-${machine.name}`}
           />
         </label>
@@ -232,11 +236,19 @@ export function MachineEditor({ machine }: { machine: Machine }) {
           variant="danger"
           size="sm"
           className="ml-auto"
-          onClick={() => deleteMachine.mutate(machine.id)}
+          onClick={() => setConfirmDelete(true)}
           data-testid={`delete-machine-${machine.name}`}
         >
           Delete
         </Button>
+        <ConfirmDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          title={`Delete “${machine.name}”?`}
+          description="It’s removed from your gym. Exercises using it keep their history."
+          confirmLabel="Delete machine"
+          onConfirm={() => deleteMachine.mutate(machine.id)}
+        />
       </div>
     </div>
   );
@@ -300,11 +312,12 @@ function SettingRow({
           if (raw !== "" && Number.isNaN(value)) return;
           onChange(settings.map((x, j) => (j === index ? { ...x, value } : x)));
         }}
-        className="num h-6 w-20 text-xs"
+        aria-label={`${s.label} value`}
+        className="num w-24"
         data-testid={`setting-value-${machine.name}-${s.label}`}
       />
       <label
-        className="rounded-sm flex h-6 cursor-pointer items-center gap-1 bg-surface px-1.5 text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+        className="rounded-sm flex h-10 md:h-8 cursor-pointer items-center gap-1 bg-surface px-1.5 text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
         title={s.photoPath ? "Replace setting photo" : "Add setting photo"}
         data-testid={`setting-photo-${machine.name}-${s.label}`}
       >
@@ -323,18 +336,17 @@ function SettingRow({
           accept="image/*"
           capture="environment"
           onChange={(e) => void onPhotoPicked(e)}
-          className="hidden"
+          className="sr-only"
           data-testid={`setting-photo-input-${machine.name}-${s.label}`}
         />
       </label>
-      <button
-        type="button"
+      <IconButton
+        danger
         title={`Remove ${s.label}`}
         onClick={() => onChange(settings.filter((_, j) => j !== index))}
-        className="p-1 text-faint hover:text-neg"
       >
-        ×
-      </button>
+        <X className="size-4" />
+      </IconButton>
     </div>
   );
 }
