@@ -1645,7 +1645,12 @@ function FinishOverlay({
   onDiscard: () => Promise<void>;
 }) {
   const repo = useRepo();
-  const [endAt] = useState(() => Date.now());
+  // The overlay stays mounted, so re-stamp the end time every time it opens
+  // (a frozen mount-time stamp understated the duration).
+  const [endAt, setEndAt] = useState(() => Date.now());
+  useEffect(() => {
+    if (open) setEndAt(Date.now());
+  }, [open]);
   const [titleDraft, setTitleDraft] = useState(title);
   const [notesDraft, setNotesDraft] = useState(notes);
   const [startedDraft, setStartedDraft] = useState(startedAt);

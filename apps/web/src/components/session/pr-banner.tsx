@@ -1,6 +1,6 @@
 import { PR_TYPE_LABELS, type PrType } from "@frog/core";
 import { Medal, X } from "@phosphor-icons/react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useVoice } from "@/lib/voice";
 
 export type PrBannerData = {
@@ -24,11 +24,15 @@ export function PrBanner({
   onDismiss: () => void;
 }) {
   const { t } = useVoice();
+  // Keep the latest callback in a ref so a parent passing an inline function
+  // doesn't restart the 4s timer on every re-render.
+  const dismissRef = useRef(onDismiss);
+  dismissRef.current = onDismiss;
   useEffect(() => {
     if (!data) return;
-    const timer = setTimeout(onDismiss, 4000);
+    const timer = setTimeout(() => dismissRef.current(), 4000);
     return () => clearTimeout(timer);
-  }, [data, onDismiss]);
+  }, [data]);
 
   if (!data) return null;
   const labels = data.prTypes.map((p) => PR_TYPE_LABELS[p]).join(" · ");
