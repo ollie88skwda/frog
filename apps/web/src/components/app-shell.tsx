@@ -58,6 +58,12 @@ export function AppShell() {
 
   return (
     <div className="flex h-dvh">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-sm focus:bg-action focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:text-on-action"
+      >
+        Skip to content
+      </a>
       <aside className="flex w-56 shrink-0 flex-col bg-sidebar max-md:hidden">
         <div className="flex h-12 items-center justify-between px-3">
           <span className="flex min-w-0 items-center gap-2">
@@ -124,7 +130,11 @@ export function AppShell() {
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-y-auto max-md:pb-[calc(5rem+env(safe-area-inset-bottom))]">
+      <main
+        id="main"
+        tabIndex={-1}
+        className="min-w-0 flex-1 overflow-y-auto outline-none max-md:pb-[calc(5rem+env(safe-area-inset-bottom))]"
+      >
         <Outlet />
       </main>
 
