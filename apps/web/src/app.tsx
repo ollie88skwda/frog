@@ -24,8 +24,8 @@ function claimReload(): boolean {
 /**
  * `lazy()` for a route, hardened against a chunk that no longer exists.
  *
- * A hashed chunk from a superseded deploy is a real 404 — vercel.json keeps
- * `/assets/` out of the SPA rewrite — so a tab or installed PWA left open
+ * A hashed chunk from a superseded deploy is a real 404 — the host (`wrangler.jsonc` +
+ * `worker/index.ts`) keeps `/assets/` out of the SPA fallback — so a tab or installed PWA left open
  * across a release fails every route import from then on, and React's answer
  * to that is to unmount the app. Retry once (clears a transient blip), then
  * reload the document exactly once per tab, which fetches the new index.html

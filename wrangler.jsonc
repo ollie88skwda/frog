@@ -1,0 +1,22 @@
+{
+  // Frog web hosting: Cloudflare Workers static assets at frog.olivernguyen.com
+  // (docs/DECISIONS.md 2026-11-09). Build first: `bun run deploy` does both.
+  // VITE_CONVEX_URL / VITE_CLERK_PUBLISHABLE_KEY are baked in at build time
+  // from the build environment (apps/web/.env.production.local or shell env),
+  // never from this file.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "frog",
+  "account_id": "e54674dd917eb61035a30f94c70a50bc",
+  "compatibility_date": "2026-11-01",
+  "main": "worker/index.ts",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "frog.olivernguyen.com", "custom_domain": true }],
+  "assets": {
+    "directory": "apps/web/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Only hashed build output hits the worker (404 on miss + immutable cache).
+    "run_worker_first": ["/assets/*"]
+  }
+}

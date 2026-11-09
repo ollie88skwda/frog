@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 
-// Every screen is a lazy() route and vercel.json keeps /assets/ out of the SPA
-// rewrite, so a hashed chunk from a superseded deploy is a real 404: a tab or
+// Every screen is a lazy() route and the host (wrangler.jsonc + worker/index.ts) keeps /assets/ out of
+// the SPA fallback, so a hashed chunk from a superseded deploy is a real 404: a tab or
 // installed PWA left open across a release could not open a new screen and
 // React unmounted the app to a blank page. app.tsx retries once then reloads
 // once per tab; <AppErrorBoundary> catches whatever survives that.

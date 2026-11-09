@@ -8,6 +8,7 @@
       "scripts/**",
       "e2e/**",
       "convex/**",
+      "worker/**",
       "!convex/_generated",
       "!scripts/convex/global-seed.json",
       "*.json",
