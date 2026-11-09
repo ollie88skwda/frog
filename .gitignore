@@ -30,7 +30,7 @@ supabase/.branches/
 *.p8
 *.p12
 .lavish/
-.vercel
+.wrangler/
 
 # machine-catalog pipeline staging output (raw crawls, extractions, QA reports)
 scripts/machine-catalog/staging/

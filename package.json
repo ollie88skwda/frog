@@ -17,7 +17,9 @@
     "convex:seed": "bun scripts/seed-convex.ts",
     "convex:seed:generate": "bun scripts/seed-convex.ts --generate",
     "import:supabase": "bun scripts/import-from-supabase.ts",
-    "test:import": "bun scripts/convex/import-roundtrip.ts"
+    "test:import": "bun scripts/convex/import-roundtrip.ts",
+    "deploy": "bun run --cwd apps/web build && wrangler deploy",
+    "preview:cf": "wrangler dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.13",
@@ -26,6 +28,7 @@
     "@types/node": "^26.1.1",
     "convex": "1.49.0",
     "typescript": "~5.9.2",
-    "vite": "^7.1.11"
+    "vite": "^7.1.11",
+    "wrangler": "^4.159.0"
   }
 }

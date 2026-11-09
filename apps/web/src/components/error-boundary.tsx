@@ -5,8 +5,8 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 // user gets a blank white page with nothing to tap.
 //
 // The case that motivated it is a stale lazy chunk. Every route is a
-// `lazy(() => import(...))` and vercel.json deliberately keeps `/assets/` out
-// of the SPA rewrite, so a hashed chunk from a superseded deploy is a real
+// `lazy(() => import(...))` and the host (wrangler.jsonc) deliberately keeps
+// `/assets/` out of the SPA fallback, so a hashed chunk from a superseded deploy is a real
 // 404 — a tab or installed PWA left open across a release then fails to open
 // any new screen. app.tsx retries and reloads first; this is what the user
 // sees when that didn't fix it. docs/DECISIONS.md 2026-08-25.

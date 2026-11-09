@@ -26,4 +26,14 @@ bun run test:integration
 bun run e2e           # Playwright against the local backend
 ```
 
+## Deploy
+
+Hosted on Cloudflare Workers (static assets) at https://frog.olivernguyen.com — config in `wrangler.jsonc`.
+
+```sh
+# apps/web/.env.production.local (gitignored): VITE_CONVEX_URL, VITE_CLERK_PUBLISHABLE_KEY (production values)
+bun run deploy        # vite build + wrangler deploy
+bunx wrangler deploy --dry-run   # validate config without publishing
+```
+
 See `AGENTS.md` for architecture and conventions.
