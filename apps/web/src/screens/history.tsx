@@ -86,9 +86,11 @@ export default function HistoryScreen() {
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
                     {summary?.get(s.id) && (
-                      <span className="num flex w-32 items-center justify-end gap-1.5 text-xs text-soft">
+                      <span className="num flex items-center justify-end gap-1.5 whitespace-nowrap text-xs text-soft">
                         {summary.get(s.id)?.hardSets}
-                        <span className="text-2xs">sets</span>
+                        <span className="text-2xs">
+                          {summary.get(s.id)?.hardSets === 1 ? "set" : "sets"}
+                        </span>
                         {summary.get(s.id)?.rirAvg != null && (
                           <span className="text-2xs">
                             RIR{" "}
