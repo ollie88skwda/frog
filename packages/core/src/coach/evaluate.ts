@@ -470,8 +470,9 @@ function baseLoadFor(input: CoachInput, exerciseId: string): number | null {
     .filter((s) => s.startedAt <= input.asOf)
     .sort((a, b) => a.startedAt - b.startedAt);
   const h: ExSession[] = buildExHistory(exerciseId, sessions, null).filter(
-    (s) => !s.isDeload && s.effortOk !== false,
+    (s) => !s.isDeload,
   );
-  const last3 = h.slice(-3).map((s) => s.heaviestKg);
+  const ok = h.filter((s) => s.effortOk !== false);
+  const last3 = (ok.length ? ok : h).slice(-3).map((s) => s.heaviestKg);
   return last3.length ? median(last3) : null;
 }

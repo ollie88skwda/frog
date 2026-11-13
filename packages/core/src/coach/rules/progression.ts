@@ -15,14 +15,16 @@ import { plannedRirAt, withinOneOfTarget } from "../history";
 
 const CITE_C2C = "C2c · Mayhew 1995 PMID 7500624; ACSM 2009 PMID 19204579";
 
-/** Direct sets for the exercise's primary muscle(s) across the routine (R7b). */
+/** Direct sets for the exercise's primary muscle(s) in this exercise's session
+ * (R7b): slots sharing its dayKey, else only its own slot. */
 export function directSetsForMuscle(ctx: ExerciseCtx): number {
   const mine = new Set(primaryMuscles(ctx.exercise.muscleTargets));
-  let total = 0;
   const slots = ctx.input.plan ?? [];
-  if (!slots.some((s) => s.exerciseId === ctx.exercise.id))
-    total += ctx.planned?.sets ?? 0;
+  const own = slots.find((s) => s.exerciseId === ctx.exercise.id);
+  if (!own) return ctx.planned?.sets ?? 0;
+  let total = 0;
   for (const slot of slots) {
+    if (own.dayKey ? slot.dayKey !== own.dayKey : slot !== own) continue;
     const ex = ctx.input.exercises.get(slot.exerciseId);
     if (!ex) continue;
     if (primaryMuscles(ex.muscleTargets).some((m) => mine.has(m)))
@@ -42,6 +44,7 @@ export function c2History(ctx: ExerciseCtx): {
   let prevKey: string | null = null;
   let prevSets: number | null = null;
   for (const s of ctx.hist) {
+    if (s.isDeload) continue;
     const range = s.planned
       ? `${s.planned.repsMin}-${s.planned.repsMax}`
       : null;

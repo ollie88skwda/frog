@@ -98,7 +98,11 @@ export function drift(ctx: ExerciseCtx): RuleOutput {
       }),
     );
   } else if (below / pool.length >= DRIFT_SHARE) {
-    const next: [number, number] = [p.rirMin + 1, p.rirMax + 1];
+    const next = clampRir(
+      [p.rirMin + 1, p.rirMax + 1],
+      ctx.exercise.isCompound,
+    );
+    if (next[0] === p.rirMin && next[1] === p.rirMax) return out; // C6 clamp: nothing to raise
     out.suggestions.push(
       mk(ctx, {
         ruleId: "C4",

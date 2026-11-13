@@ -1,4 +1,4 @@
-import { INCREMENT_PCT, MAX_STEP_FRACTION } from "./constants";
+import { INCREMENT_PCT, MAX_STEP_FRACTION, RIR_CLAMP } from "./constants";
 import type { CoachExercise } from "./types";
 
 /** Smallest load step: the user's stepKg, else 0.5 kg for plate-loaded bars,
@@ -31,11 +31,13 @@ export function nextLoad(ex: CoachExercise, fromKg: number): NextLoad {
   return { kind: "kg", loadKg: next };
 }
 
-/** C6: never prescribe failure on a compound; clamp RIR ends to ≥1 (≥0 for isolation). */
+/** C6: never prescribe failure on a compound; clamp RIR ends into RIR_CLAMP
+ * (1-3 compounds, 0-3 isolation). */
 export function clampRir(
   rir: [number, number],
   isCompound: boolean,
 ): [number, number] {
-  const floor = isCompound ? 1 : 0;
-  return [Math.max(floor, rir[0]), Math.max(floor, rir[1])];
+  const { min, max } = isCompound ? RIR_CLAMP.compound : RIR_CLAMP.isolation;
+  const clamp = (x: number) => Math.min(max, Math.max(min, x));
+  return [clamp(rir[0]), clamp(rir[1])];
 }

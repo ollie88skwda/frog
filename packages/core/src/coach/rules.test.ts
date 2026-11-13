@@ -543,3 +543,73 @@ describe("weekly volume uses Monday-Sunday weeks", () => {
     expect(find(r, "C12")).toBeDefined();
   });
 });
+
+describe("C2 history and R7b per-session cap", () => {
+  it("a deload's halved sets are not a C2 added set", () => {
+    const sessions = [
+      S("10-05", "18:00", ["100x6@2", "100x6@2"]),
+      S("10-08", "18:00", ["100x6@2", "100x6@2"]),
+      S("10-12", "18:00", ["100x6@2", "100x6@2"]),
+      S("10-15", "18:00", ["95x5@3"], {
+        planned: P(5, 8, 3, 4, 1, { isDeload: true }),
+      }),
+      S("10-23", "18:00", ["85x5@2", "85x5@2"]),
+    ];
+    expect(find(evaluateCoach(input(sessions)), "C2", "squat")).toBeUndefined();
+  });
+  it("chest sets on another routine day do not count toward the bench cap", () => {
+    const incline = {
+      ...EX.bench,
+      id: "incline",
+      name: "Incline",
+      muscleTargets: [{ muscle: "chest", tier: "S" as const }],
+    };
+    const o = { planned: P(3, 5, 2, 2, 3), exerciseId: "bench" };
+    const sess = [
+      "10-05",
+      "10-08",
+      "10-12",
+      "10-15",
+      "10-19",
+      "10-22",
+      "10-26",
+      "10-29",
+    ].map((d) => S(d, "18:00", ["100x4@2", "100x4@2", "100x4@2"], o));
+    const r = evaluateCoach(
+      input(sess, {
+        exercises: [EX.bench, incline],
+        plan: [
+          { exerciseId: "bench", planned: P(3, 5, 2, 2, 3), dayKey: "A" },
+          { exerciseId: "incline", planned: P(6, 9, 2, 2, 3), dayKey: "B" },
+        ],
+      }),
+    );
+    expect(find(r, "C2c-stall", "bench")?.action).toEqual({
+      kind: "add_set",
+      exerciseId: "bench",
+    });
+  });
+});
+
+describe("prescription load and the C6 ceiling", () => {
+  it("a drift prescription keeps a load when every session was off effort", () => {
+    const o = { planned: P(5, 8, 2, 2, 2), exerciseId: "bench" };
+    const sess = ["11-05", "11-07", "11-09", "11-11"].map((d) =>
+      S(d, "18:00", ["100x6@0", "100x6@0"], o),
+    );
+    const r = evaluateCoach(input(sess, { exercises: [EX.bench] }));
+    expect(r.perExercise.get("bench")?.prescription).toMatchObject({
+      ruleId: "C4",
+      loadKg: 100,
+    });
+  });
+  it("C4 never raises a compound above 3 RIR (C6)", () => {
+    const o = { planned: P(5, 8, 3, 3, 2), exerciseId: "bench" };
+    const sess = ["11-05", "11-07", "11-09", "11-11"].map((d) =>
+      S(d, "18:00", ["100x6@1", "100x6@1"], o),
+    );
+    const r = evaluateCoach(input(sess, { exercises: [EX.bench] }));
+    expect(find(r, "C4")).toBeUndefined();
+    expect(r.perExercise.get("bench")?.prescription?.rir).toEqual([3, 3]);
+  });
+});
