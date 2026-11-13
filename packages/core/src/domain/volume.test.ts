@@ -85,9 +85,14 @@ describe("session totals", () => {
     },
   ];
 
-  test("includes warm-ups by default, skips uncompleted", () => {
-    expect(sessionVolumeKg(blocks, null)).toBe(1100);
-    expect(sessionSetCount(blocks)).toBe(2);
+  test("excludes warm-ups by default (R6/R17b), skips uncompleted", () => {
+    expect(sessionVolumeKg(blocks, null)).toBe(500);
+    expect(sessionSetCount(blocks)).toBe(1);
+  });
+
+  test("includes warm-ups when a saved pref asks for it", () => {
+    expect(sessionVolumeKg(blocks, null, { includeWarmups: true })).toBe(1100);
+    expect(sessionSetCount(blocks, { includeWarmups: true })).toBe(2);
   });
 
   test("excludes warm-ups when includeWarmups=false", () => {

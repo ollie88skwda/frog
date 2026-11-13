@@ -1,4 +1,5 @@
 import { robustTrend } from "../domain/progression";
+import { NOISE_BAND } from "../domain/stall";
 import { rirStatsByExercise, sessionVolumeByExercise } from "./series";
 import type { FindingsSessionInput, TrendFinding } from "./types";
 
@@ -11,8 +12,10 @@ import type { FindingsSessionInput, TrendFinding } from "./types";
 // PLATEAU. The RIR intensity lever and the regressing/lower-intensity lever
 // are deferred to a later batch (captain decision 2).
 
-/** |volume trend| below this → volume is "flat" (mirrors the ±5% verdict band). */
-export const VOLUME_FLAT_PCT = 5;
+/** |volume trend| below this → volume is "flat" (the 10% noise band, C2c-noise). */
+export const VOLUME_FLAT_PCT = NOISE_BAND * 100;
+/** C2: "change volume" is only a response to a confirmed stall (7 comparable
+ * sessions). Before that the plateau advice is just the RIR nudge. */
 /** Coverage floor: share of work-set sessions with RIR logged. */
 export const RIR_COVERAGE_MIN = 0.5;
 
@@ -54,8 +57,9 @@ export function recommendationsForExercise(
 
   // Volume lever: only when the series carries real tonnage (duration-type
   // exercises sum to zero and "add a set or reps" would be nonsense).
+  const confirmedStall = trend.status.stall.status === "stalled";
   const volume = sessionVolumeByExercise(sessions).get(exerciseId);
-  if (volume?.points.some((p) => p.kg > 0)) {
+  if (confirmedStall && volume?.points.some((p) => p.kg > 0)) {
     // The volume series reuses the e1RM trend fit by mapping kg onto its
     // value slot — robustTrend is a generic {day, value} linear fit; only
     // its verdict thresholds are e1RM-tuned, and we read only pctChange.

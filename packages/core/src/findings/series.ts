@@ -1,6 +1,7 @@
-import { epley } from "../domain/e1rm";
+import { e1rmSet, sessionE1rm } from "../domain/e1rm";
 import type { SessionTop } from "../domain/progression";
 import { rirRange } from "../domain/rir";
+import type { ComparableSession } from "../domain/stall";
 import type { FindingsSessionInput } from "./types";
 
 const DAY_MS = 86_400_000;
@@ -8,11 +9,16 @@ const DAY_MS = 86_400_000;
 export type ExerciseSeries = {
   name: string;
   tops: SessionTop[];
+  /** Same sessions as `tops`, shaped for domain/stall.ts. Without a target
+   * snapshot (J2) rep range / equipment are unknown, so only the break reset
+   * applies (degraded mode, COACH-LOGIC "Comparable session"). */
+  comparable: ComparableSession[];
 };
 
-/** Best (top-set) e1RM per exercise per session — the exact series the trend
- * verdicts are fit over (raw Epley; same baseline as always, warm-ups
- * included, per the 2026-07-13 "don't change the trend baseline" decision). */
+/** Best (top-set) e1RM per exercise per session. C2c-e1rm: Brzycki with RIR over
+ * WORKING sets only (warm-ups never), sets over 10 total reps are refused. This
+ * replaces the Epley baseline of the 2026-07-13 "don't change the trend
+ * baseline" decision (superseded, docs/DECISIONS.md). */
 export function sessionTopsByExercise(
   sessions: FindingsSessionInput[],
 ): Map<string, ExerciseSeries> {
@@ -20,18 +26,34 @@ export function sessionTopsByExercise(
   for (const session of [...sessions].sort(
     (a, b) => a.startedAt - b.startedAt,
   )) {
-    const best = new Map<string, { name: string; e1rm: number }>();
+    const perExercise = new Map<
+      string,
+      { name: string; sets: ReturnType<typeof e1rmSet>[] }
+    >();
     for (const set of session.sets) {
-      if (set.weightKg == null || set.reps == null || set.reps <= 0) continue;
-      const e1 = epley(set.weightKg, set.reps);
-      if (e1 == null) continue;
-      const cur = best.get(set.exerciseId);
-      if (!cur || e1 > cur.e1rm)
-        best.set(set.exerciseId, { name: set.exerciseName, e1rm: e1 });
+      if (set.setType === "warmup") continue;
+      const e = e1rmSet(set.weightKg, set.reps, set);
+      const cur = perExercise.get(set.exerciseId) ?? {
+        name: set.exerciseName,
+        sets: [],
+      };
+      cur.sets.push(e);
+      perExercise.set(set.exerciseId, cur);
     }
-    for (const [exerciseId, { name, e1rm }] of best) {
-      const entry = byExercise.get(exerciseId) ?? { name, tops: [] };
+    for (const [exerciseId, { name, sets }] of perExercise) {
+      const e1rm = sessionE1rm(sets);
+      if (e1rm == null) continue;
+      const entry = byExercise.get(exerciseId) ?? {
+        name,
+        tops: [],
+        comparable: [],
+      };
       entry.tops.push({ day: session.startedAt / DAY_MS, e1rm });
+      entry.comparable.push({
+        sessionId: session.sessionId,
+        at: session.startedAt,
+        e1rm,
+      });
       byExercise.set(exerciseId, entry);
     }
   }

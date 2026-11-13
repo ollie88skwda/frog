@@ -1,4 +1,5 @@
 import { robustTrend } from "../domain/progression";
+import { liftStatus } from "../domain/stall";
 import { sessionTopsByExercise } from "./series";
 import type {
   CountdownFinding,
@@ -25,7 +26,9 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
 } {
   const trends: TrendFinding[] = [];
   const countdowns: CountdownFinding[] = [];
-  for (const [exerciseId, { name, tops }] of sessionTopsByExercise(sessions)) {
+  for (const [exerciseId, { name, tops, comparable }] of sessionTopsByExercise(
+    sessions,
+  )) {
     const result = robustTrend(tops);
     if (result.verdict === "INSUFFICIENT") {
       countdowns.push({
@@ -36,11 +39,27 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
         sessionsNeeded: MIN_TREND_SESSIONS - tops.length,
       });
     } else {
+      // C2c: once 7 comparable sessions exist the verdict is the status; before
+      // that it is only the fitted direction against the 10% noise band.
+      const status = liftStatus(comparable);
+      const fromStatus: TrendFinding["verdict"] | null =
+        status.state === "progressing"
+          ? "PROGRESSING"
+          : status.state === "stalled"
+            ? // a stall is "flat"; a fitted decline beyond the noise band stays one
+              result.verdict === "REGRESSING"
+              ? "REGRESSING"
+              : "PLATEAU"
+            : status.state === "dropped"
+              ? "REGRESSING"
+              : null;
       trends.push({
         kind: "trend",
         exerciseId,
         exerciseName: name,
-        verdict: result.verdict,
+        verdict: fromStatus ?? result.verdict,
+        status,
+        roughVerdict: fromStatus === null,
         pctChange: result.pctChange,
         perMonth: result.perMonth,
         n: result.n,

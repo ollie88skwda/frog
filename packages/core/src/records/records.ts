@@ -4,7 +4,7 @@
 // include-warmups stat toggle is off (toggling = cache invalidation +
 // recompute, never a server job).
 
-import { epley } from "../domain/e1rm";
+import { e1rmSet, rirMidpoint } from "../domain/e1rm";
 import type {
   ExerciseRecords,
   PrEvent,
@@ -83,7 +83,10 @@ export function setPrCandidates(
         break;
       case "best_e1rm":
         if (w != null && w > 0 && reps != null && reps >= 1) {
-          const e = epley(w, reps);
+          // C2c-e1rm: Brzycki with RIR, working sets only, over-10-total-rep
+          // sets refused (null value) so a 100x12 never outranks a 120x5.
+          if (set.setType === "warmup") break;
+          const e = e1rmSet(w, reps, set).value;
           if (e != null) out[t] = e;
         }
         break;
@@ -120,6 +123,17 @@ export function setPrCandidates(
 
 export type RecordsOptions = { includeWarmups: boolean };
 
+export type PrEffort = "max" | "near" | "easy" | "unknown";
+
+/** How hard the PR set was: RIR <= 1 "max", <= 2.5 "near", more "easy". A PR at
+ * RIR 3 is real but the true max is higher; the UI can say so. */
+export function prEffortLabel(rirMid: number | null): PrEffort {
+  if (rirMid == null) return "unknown";
+  if (rirMid <= 1) return "max";
+  if (rirMid <= 2.5) return "near";
+  return "easy";
+}
+
 export type RecordsResult = {
   byExercise: Map<string, ExerciseRecords>;
   events: PrEvent[]; // chronological
@@ -136,7 +150,7 @@ function countsForRecords(set: RecordsSetInput, opts: RecordsOptions): boolean {
  */
 export function computeRecords(
   history: RecordsSessionInput[],
-  opts: RecordsOptions = { includeWarmups: true },
+  opts: RecordsOptions = { includeWarmups: false },
 ): RecordsResult {
   const sorted = [...history].sort((a, b) => a.startedAt - b.startedAt);
   const byExercise = new Map<string, ExerciseRecords>();
@@ -160,11 +174,14 @@ export function computeRecords(
 
       // Set-scoped candidates: best value this session per PR type.
       const sessionBest: Partial<Record<PrType, number>> = {};
+      const sessionBestRir: Partial<Record<PrType, number | null>> = {};
       for (const s of sets) {
         const cand = setPrCandidates(block.exerciseType, s);
         for (const [t, v] of Object.entries(cand) as [PrType, number][]) {
-          if (sessionBest[t] === undefined || v > (sessionBest[t] as number))
+          if (sessionBest[t] === undefined || v > (sessionBest[t] as number)) {
             sessionBest[t] = v;
+            sessionBestRir[t] = rirMidpoint(s);
+          }
         }
         // Set-records table: heaviest weight per exact rep count.
         if (
@@ -229,6 +246,7 @@ export function computeRecords(
               ...entry,
               exerciseId: block.exerciseId,
               previous: prev ? prev.value : null,
+              effort: prEffortLabel(sessionBestRir[t] ?? null),
             });
           rec.bests[t] = entry;
         }

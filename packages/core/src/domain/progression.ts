@@ -1,3 +1,5 @@
+import { NOISE_BAND } from "./stall";
+
 export type SessionTop = { day: number; e1rm: number };
 
 function median(xs: number[]): number {
@@ -30,7 +32,16 @@ function linregSlope(xs: number[], ys: number[]): number {
   return sxx === 0 ? 0 : sxy / sxx;
 }
 
-export function robustTrend(points: SessionTop[]) {
+/**
+ * Fitted trend over a series (a chart line and a rough direction). The verdict
+ * band is the 10% noise band (C2c-noise); the old +-5% band is retired. This is
+ * a direction read only: stall / drop / "progressing" claims come from
+ * domain/stall.ts `liftStatus` (7 comparable sessions), never from this fit.
+ */
+export function robustTrend(
+  points: SessionTop[],
+  bandPct: number = NOISE_BAND * 100,
+) {
   const n0 = points.length;
   // Two points are enough to fit a line; below that there is no trend to
   // speak of. MAD outlier rejection (isOutlier) only activates at >= 5
@@ -58,8 +69,8 @@ export function robustTrend(points: SessionTop[]) {
   const pctChange = fittedStart ? ((slope * span) / fittedStart) * 100 : 0;
   const perMonth = slope * 30;
   let verdict: "PROGRESSING" | "PLATEAU" | "REGRESSING";
-  if (pctChange >= 5 && slope > 0) verdict = "PROGRESSING";
-  else if (pctChange <= -5) verdict = "REGRESSING";
+  if (pctChange >= bandPct && slope > 0) verdict = "PROGRESSING";
+  else if (pctChange <= -bandPct) verdict = "REGRESSING";
   else verdict = "PLATEAU";
   return {
     verdict,

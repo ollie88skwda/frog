@@ -19,6 +19,8 @@ export type FindingsSessionInput = {
   }[];
 };
 
+import type { LiftStatus } from "../domain/stall";
+
 export type TrendFinding = {
   kind: "trend";
   exerciseId: string;
@@ -31,6 +33,12 @@ export type TrendFinding = {
   spanDays: number;
   /** n < 6 → a rough estimate with a high chance of error (note 12, 2026-08-08). */
   confidence: "low" | "medium";
+  /** C2c status over comparable sessions (7/6 stall, 10% drop, 14-day reset).
+   * `verdict` follows it once 7 comparable sessions exist; before that the
+   * verdict is only the fitted direction against the 10% noise band. Beta. */
+  status: LiftStatus;
+  /** True when `verdict` came from the fitted trend, not a 7-session status. */
+  roughVerdict: boolean;
 };
 
 export type CountdownFinding = {
@@ -55,6 +63,16 @@ export type ConditionFinding = {
   pctDiff: number;
   confidence: "low" | "medium";
   n: { high: number; low: number };
+  /** Cohen's d (high vs low, pooled SD); a finding needs |d| >= 0.8. */
+  effectSize: number;
+  /** Permutation p-value and its Benjamini-Hochberg adjustment across every
+   * test in the family (metrics x exercises x outcomes). */
+  p: number;
+  q: number;
+  /** How the buckets were made: median split, or a clinical cutoff. */
+  split: { kind: "median" | "threshold"; cutoff: number };
+  /** Always carried as data so every surface shows it (C8/C19). */
+  caveat: "correlation_not_causation";
 };
 
 export type Finding = TrendFinding | CountdownFinding | ConditionFinding;
