@@ -44,6 +44,7 @@ export * from "./import/types";
 export * from "./records/live";
 export * from "./records/records";
 export * from "./records/types";
+export * from "./repo/prefs";
 export * from "./repo/types";
 export * from "./share";
 export * from "./stats/aggregate";

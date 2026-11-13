@@ -1,4 +1,5 @@
 import {
+  type CoachEvent,
   type Exercise,
   type ExerciseFavorite,
   type ExercisePatch,
@@ -6,6 +7,7 @@ import {
   type Machine,
   type MachinePatch,
   type Metric,
+  type NewCoachEventInput,
   type NewExerciseOpts,
   type NewMachineInput,
   type NewMetricInput,
@@ -971,5 +973,29 @@ export function useRecentExerciseIds(days: number) {
     queryKey: ["recent-exercise-ids", days],
     queryFn: () => repo.recentExerciseIds(days),
     staleTime: 60_000,
+  });
+}
+
+// Coach interaction log (redesign §9.3). Events are append-only and
+// idempotent on the client id, so the optimistic id is minted once per call
+// and rides every mutation retry (QueryClient `retry: 3`).
+export function useCoachEvents(opts: { ruleId?: string; since?: number } = {}) {
+  const repo = useRepo();
+  return useQuery<CoachEvent[]>({
+    queryKey: ["coach-events", opts.ruleId ?? null, opts.since ?? null],
+    queryFn: () => repo.listCoachEvents(opts),
+    staleTime: 60_000,
+  });
+}
+
+export function useRecordCoachEvent() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: NewCoachEventInput & { id?: string }) => {
+      const { id, ...event } = input;
+      return repo.recordCoachEvent(event, id ?? newId());
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["coach-events"] }),
   });
 }

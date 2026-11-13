@@ -145,6 +145,14 @@ One exercise performed within one session, ordered.
 | session_id | uuid | FK → sessions |
 | exercise_id | uuid | FK → exercises |
 | order_index | integer | position within the session |
+| planned_reps_min / planned_reps_max | integer? | target snapshot written at session start (redesign §9.1); null on pre-snapshot and ad-hoc blocks |
+| planned_rir_min / planned_rir_max | integer? | snapshot of the target RIR range |
+| planned_sets | integer? | working sets planned, excluding warm-ups (R17b) |
+| planned_load_kg | real? | load prescribed at start |
+| planned_first_set_max | boolean? | top-set flag |
+| planned_is_deload | boolean? | deload overlay applied (F11) |
+| prescription_rule_id | text? | coach rule that set the prescription, e.g. `C2c-progress` |
+| snapshot_source | text? | `start` or `backfill` (backfilled snapshots are never stall-comparable) |
 | owner_id | uuid | |
 
 ### set_logs
@@ -275,7 +283,30 @@ pure device behavior (theme, display unit, sounds…) stays in localStorage.
 | plate_config | jsonb | `{barKg, platesKg[], barLb, platesLb[], dumbbellStepKg}` |
 | display_name | text? | |
 | bio | text? | short self-description on the Profile header (edit control covers name + bio; see DECISIONS.md 2026-08-08) |
+| goal | text? | `build\|cut\|bulk\|maintain` (redesign §9.2) |
+| training_status | text? | `new\|intermediate\|experienced` |
+| exercise_grouping | text? | `joint_action` (default) \| `region` |
+| coach_enabled | boolean? | default true |
+| coach_rules_off | jsonb? | string[] of rule ids the user opted out of |
+| show_evidence_labels | boolean? | default true |
+| hard_set_rir_max | integer? | R6 hard-set cutoff, default 4 |
 | owner_id | text | unique |
+
+The §9.2 columns are optional on stored rows; read them through `resolveUserPrefs` (`packages/core/src/repo/prefs.ts`), which applies the defaults. `include_warmups_in_stats` defaults to false for new users (R6/R17b); a user with existing sessions keeps true.
+
+### coach_events
+Append-only log of what the user did with a coach suggestion (redesign §9.3). Suggestions are recomputed, never stored. Idempotent on `id`.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK (client-generated; the idempotency key) |
+| suggestion_id | text | |
+| rule_id | text | e.g. `C2c-progress` |
+| exercise_id | uuid? | |
+| session_id | uuid? | |
+| state | text | `accepted\|adjusted\|dismissed\|applied\|undone` |
+| scope | text? | `once\|exercise_4w\|rule` |
+| payload | jsonb? | |
+| owner_id | text | |
 
 ### session_media
 Workout photos attached at save (photos v1; ≤3 app-enforced).

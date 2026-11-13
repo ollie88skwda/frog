@@ -182,6 +182,8 @@ export const exercises = pgTable(
     // machines.photoPath. mediaType disambiguates the two content kinds.
     mediaPath: text("media_path"),
     mediaType: text("media_type"), // 'image' | 'video', null when no media
+    // Redesign §9.7: explicit stability override; else the static equipment map.
+    stability: text("stability"),
   },
   (t) => [index("exercises_owner_idx").on(t.ownerId)],
 );
@@ -303,6 +305,9 @@ export const routineExercises = pgTable(
     restSec: integer("rest_sec"),
     // Persistent template note — re-renders under the exercise every session.
     note: text("note"),
+    // Redesign §9.7: rep-range class ('main'|'compound'|'isolation') driving
+    // presets (F1/F8). Null/absent = derive from the exercise.
+    repClass: text("rep_class"),
   },
   (t) => [
     index("routine_exercises_owner_idx").on(t.ownerId),
@@ -420,6 +425,19 @@ export const sessionExercises = pgTable(
     routineExerciseId: uuid("routine_exercise_id").references(
       () => routineExercises.id,
     ),
+    // Target snapshot written once at session start (redesign §9.1) so coach
+    // rules can judge a session against what was planned. All null on
+    // pre-snapshot rows and ad-hoc blocks.
+    plannedRepsMin: integer("planned_reps_min"),
+    plannedRepsMax: integer("planned_reps_max"),
+    plannedRirMin: integer("planned_rir_min"),
+    plannedRirMax: integer("planned_rir_max"),
+    plannedSets: integer("planned_sets"), // working sets, excl. warm-ups
+    plannedLoadKg: real("planned_load_kg"),
+    plannedFirstSetMax: boolean("planned_first_set_max"), // Oliver's top-set flag
+    plannedIsDeload: boolean("planned_is_deload"), // F11 overlay
+    prescriptionRuleId: text("prescription_rule_id"), // e.g. 'C2c-progress'
+    snapshotSource: text("snapshot_source"), // 'start' | 'backfill'
   },
   (t) => [
     index("session_exercises_owner_idx").on(t.ownerId),
@@ -464,6 +482,9 @@ export const setLogs = pgTable(
     // rows sharing (session_exercise_id, set_no): one 'left', one 'right' —
     // see docs/DECISIONS.md.
     side: text("side"), // 'left' | 'right' | null
+    // Planned RIR of the seeded set this row was committed from (§9.1/9.7).
+    plannedRirMin: integer("planned_rir_min"),
+    plannedRirMax: integer("planned_rir_max"),
   },
   (t) => [
     index("set_logs_owner_idx").on(t.ownerId),
@@ -545,9 +566,29 @@ export const userPrefs = pgTable(
     plateConfig: jsonb("plate_config").$type<PlateConfig>(),
     displayName: text("display_name"),
     bio: text("bio"),
+    // Redesign §9.2. Nullable at the storage layer (pre-existing rows lack
+    // them); resolveUserPrefs (repo/prefs.ts) applies the documented defaults.
+    goal: text("goal").$type<Goal>(),
+    trainingStatus: text("training_status").$type<TrainingStatus>(),
+    exerciseGrouping: text("exercise_grouping").$type<ExerciseGrouping>(),
+    coachEnabled: boolean("coach_enabled"),
+    coachRulesOff: jsonb("coach_rules_off").$type<string[]>(),
+    showEvidenceLabels: boolean("show_evidence_labels"),
+    hardSetRirMax: integer("hard_set_rir_max"),
   },
   (t) => [uniqueIndex("user_prefs_owner_idx").on(t.ownerId)],
 );
+
+export type Goal = "build" | "cut" | "bulk" | "maintain";
+export type TrainingStatus = "new" | "intermediate" | "experienced";
+export type ExerciseGrouping = "joint_action" | "region";
+export type CoachEventState =
+  | "accepted"
+  | "adjusted"
+  | "dismissed"
+  | "applied"
+  | "undone";
+export type CoachEventScope = "once" | "exercise_4w" | "rule";
 
 export type PlateConfig = {
   barKg: number;
@@ -590,6 +631,28 @@ export const pushSubscriptions = pgTable(
   (t) => [index("push_subscriptions_owner_idx").on(t.ownerId)],
 );
 
+// Append-only log of what the user did with a coach suggestion (redesign
+// §9.3). Suggestions themselves are recomputed, never stored. Idempotent on
+// the client id: a retried write upserts the same row.
+export const coachEvents = pgTable(
+  "coach_events",
+  {
+    ...base,
+    ownerId: requiredOwner,
+    suggestionId: text("suggestion_id").notNull(),
+    ruleId: text("rule_id").notNull(),
+    exerciseId: uuid("exercise_id"),
+    sessionId: uuid("session_id"),
+    state: text("state").$type<CoachEventState>().notNull(),
+    scope: text("scope").$type<CoachEventScope>(),
+    payload: jsonb("payload").$type<Record<string, unknown>>(),
+  },
+  (t) => [
+    index("coach_events_owner_idx").on(t.ownerId),
+    index("coach_events_owner_rule_idx").on(t.ownerId, t.ruleId),
+  ],
+);
+
 // Personal access tokens for the read-only API (sha256 of the plaintext;
 // the plaintext is shown once at creation and never stored).
 export const apiTokens = pgTable(
@@ -608,21 +671,54 @@ export const apiTokens = pgTable(
 
 export type Machine = typeof machines.$inferSelect;
 export type MachineCatalogRow = typeof machineCatalog.$inferSelect;
-export type Exercise = typeof exercises.$inferSelect;
+// Redesign §9 columns are optional in the app-facing row types: pre-redesign
+// documents (and every existing fixture/importer) lack the keys entirely, and
+// Convex needs no backfill. Readers treat absent as null.
+type Loosen<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+
+export type Exercise = Loosen<typeof exercises.$inferSelect, "stability">;
 export type Metric = typeof metrics.$inferSelect;
 export type TrackedCondition = typeof trackedConditions.$inferSelect;
 export type ExerciseFavorite = typeof exerciseFavorites.$inferSelect;
 export type Session = typeof sessions.$inferSelect;
-export type SessionExercise = typeof sessionExercises.$inferSelect;
-export type SetLog = typeof setLogs.$inferSelect;
+export type SessionExercise = Loosen<
+  typeof sessionExercises.$inferSelect,
+  | "plannedRepsMin"
+  | "plannedRepsMax"
+  | "plannedRirMin"
+  | "plannedRirMax"
+  | "plannedSets"
+  | "plannedLoadKg"
+  | "plannedFirstSetMax"
+  | "plannedIsDeload"
+  | "prescriptionRuleId"
+  | "snapshotSource"
+>;
+export type SetLog = Loosen<
+  typeof setLogs.$inferSelect,
+  "plannedRirMin" | "plannedRirMax"
+>;
 export type ApiToken = typeof apiTokens.$inferSelect;
 export type RoutineFolder = typeof routineFolders.$inferSelect;
 export type Routine = typeof routines.$inferSelect;
-export type RoutineExercise = typeof routineExercises.$inferSelect;
+export type RoutineExercise = Loosen<
+  typeof routineExercises.$inferSelect,
+  "repClass"
+>;
 export type RoutineSet = typeof routineSets.$inferSelect;
 export type Program = typeof programs.$inferSelect;
 export type Measurement = typeof measurements.$inferSelect;
 export type ExercisePref = typeof exercisePrefs.$inferSelect;
-export type UserPrefs = typeof userPrefs.$inferSelect;
+export type UserPrefs = Loosen<
+  typeof userPrefs.$inferSelect,
+  | "goal"
+  | "trainingStatus"
+  | "exerciseGrouping"
+  | "coachEnabled"
+  | "coachRulesOff"
+  | "showEvidenceLabels"
+  | "hardSetRirMax"
+>;
+export type CoachEvent = typeof coachEvents.$inferSelect;
 export type SessionMediaRow = typeof sessionMedia.$inferSelect;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;

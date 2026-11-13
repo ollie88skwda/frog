@@ -1,8 +1,13 @@
 import type {
   ApiToken,
+  CoachEvent,
+  CoachEventScope,
+  CoachEventState,
   Exercise,
   ExerciseFavorite,
+  ExerciseGrouping,
   ExercisePref,
+  Goal,
   Machine,
   MachineSetting,
   Measurement,
@@ -19,6 +24,7 @@ import type {
   SessionMediaRow,
   SetLog,
   TrackedCondition,
+  TrainingStatus,
   UserPrefs,
 } from "../db/schema";
 import type { MuscleTarget } from "../domain/anatomy";
@@ -66,6 +72,9 @@ export type NewSetInput = {
   distanceM?: number | null;
   /** Limb for a unilateral exercise; omit/null for bilateral (and legacy alternating) rows. */
   side?: SetSide | null;
+  /** Planned RIR of the seeded set (R11 drift reads the last 2 working sets). */
+  plannedRirMin?: number | null;
+  plannedRirMax?: number | null;
 };
 
 export type MetricType = "number" | "scale" | "text" | "checkbox";
@@ -185,9 +194,36 @@ export type LoggedSet = {
   note: string | null;
   restSec: number | null;
   side: SetSide | null;
+  /** Planned RIR of the seeded set this was committed from (§9.1); null if unplanned. */
+  plannedRirMin?: number | null;
+  plannedRirMax?: number | null;
 };
 
-export type SessionExerciseDetail = {
+/** Target snapshot written at session start (redesign §9.1); all null on
+ * pre-snapshot and ad-hoc blocks. */
+export type TargetSnapshotFields = {
+  plannedRepsMin: number | null;
+  plannedRepsMax: number | null;
+  plannedRirMin: number | null;
+  plannedRirMax: number | null;
+  /** Working sets, excluding warm-ups. */
+  plannedSets: number | null;
+  plannedLoadKg: number | null;
+  /** Oliver's top-set flag. */
+  plannedFirstSetMax: boolean | null;
+  plannedIsDeload: boolean | null;
+  /** e.g. `C2c-progress`, for audit. */
+  prescriptionRuleId: string | null;
+  /** `start` | `backfill`; backfilled snapshots are never stall-comparable (§9.7). */
+  snapshotSource: string | null;
+};
+
+/** Coach prescription / deload overlay for one routine exercise at start. */
+export type SnapshotOverride = Partial<
+  Omit<TargetSnapshotFields, "snapshotSource">
+>;
+
+export type SessionExerciseDetail = TargetSnapshotFields & {
   id: string;
   exerciseId: string;
   exerciseName: string;
@@ -491,6 +527,20 @@ export interface Repo {
   /** Generator "don't recommend again" flag. */
   setGeneratorExcluded(exerciseId: string, excluded: boolean): Promise<void>;
 
+  /**
+   * Appends a coach interaction (accepted/adjusted/dismissed/applied/undone).
+   * `id` is the optimistic client id and the idempotency key: a retried call
+   * with the same id and content rewrites the same row; reusing it for a
+   * different event throws.
+   */
+  recordCoachEvent(input: NewCoachEventInput, id?: string): Promise<CoachEvent>;
+  /** Newest-first coach events; optionally one rule's, or since a ms epoch. */
+  listCoachEvents(opts?: {
+    ruleId?: string;
+    since?: number;
+    limit?: number;
+  }): Promise<CoachEvent[]>;
+
   // Server-side user prefs (semantics-bearing settings; one row per user).
   getUserPrefs(): Promise<UserPrefs | null>;
   /** Partial upsert — only provided fields are written. */
@@ -530,7 +580,12 @@ export interface Repo {
    * stay on the template — the session screen reads them via
    * getRoutineDetail for draft prefill.
    */
-  startRoutineSession(routineId: string): Promise<Session>;
+  startRoutineSession(
+    routineId: string,
+    /** Coach prescriptions keyed by routine_exercise id; override the routine's
+     * targets field by field in the session's target snapshot (§9.1). */
+    prescriptions?: Record<string, SnapshotOverride>,
+  ): Promise<Session>;
 
   // Web-push subscriptions (Hevy-parity M12) for the Settings → Notifications
   // toggle; the sender Edge Function went with the rest countdown, so nothing
@@ -624,7 +679,24 @@ export type MeasurementPatch = Partial<{
   calfRCm: number | null;
 }>;
 
+export type NewCoachEventInput = {
+  suggestionId: string;
+  ruleId: string;
+  exerciseId?: string | null;
+  sessionId?: string | null;
+  state: CoachEventState;
+  scope?: CoachEventScope | null;
+  payload?: Record<string, unknown> | null;
+};
+
 export type UserPrefsPatch = Partial<{
+  goal: Goal | null;
+  trainingStatus: TrainingStatus | null;
+  exerciseGrouping: ExerciseGrouping;
+  coachEnabled: boolean;
+  coachRulesOff: string[];
+  showEvidenceLabels: boolean;
+  hardSetRirMax: number;
   includeWarmupsInStats: boolean;
   defaultRestSec: number | null;
   previousValuesScope: "any" | "routine";

@@ -80,8 +80,25 @@ export const updatePrefs = mutation({
   args: { patch: v.any() },
   handler: async (ctx, { patch }) => {
     const me = await requireUser(ctx);
+    const next = { ...(patch as Row) };
+    // R6/R17b (redesign §9.2): new rows default warm-ups OUT of stats, but a
+    // user who already has history keeps the old "in" behaviour until they
+    // change it themselves (never silently shift an existing user's totals).
+    if (next.includeWarmupsInStats === undefined) {
+      const hasRow = await ctx.db
+        .query("user_prefs")
+        .withIndex("by_owner", (q) => q.eq("ownerId", me))
+        .first();
+      if (!hasRow) {
+        const hasHistory = await ctx.db
+          .query("sessions")
+          .withIndex("by_owner", (q) => q.eq("ownerId", me))
+          .first();
+        if (hasHistory) next.includeWarmupsInStats = true;
+      }
+    }
     // One row per owner (unique by_owner); `{}` matches it in any state.
-    await upsertOne(ctx, "user_prefs", me, {}, patch as Row);
+    await upsertOne(ctx, "user_prefs", me, {}, next);
   },
 });
 

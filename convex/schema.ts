@@ -30,6 +30,12 @@ const muscleTargets = n(
       muscle: v.string(),
       tier: n(v.string()),
       role: v.optional(v.string()),
+      // Redesign §9.7 optional extensions (filled by the J12 classification
+      // backfill): explicit fractional credit, lengthened-position flag
+      // (R14 copy only) and the R12b region cell.
+      weight: v.optional(v.number()),
+      lengthened: v.optional(v.boolean()),
+      region: v.optional(v.string()),
     }),
   ),
 );
@@ -109,6 +115,9 @@ export default defineSchema({
     aliases: strings,
     mediaPath: n(v.string()),
     mediaType: n(v.string()),
+    // Redesign §9.7: explicit stability rank override (else the static
+    // equipment map). Absent on pre-redesign rows.
+    stability: v.optional(n(v.string())),
   })
     .index("by_uid", ["id"])
     .index("by_owner", ["ownerId", "createdAt"])
@@ -179,6 +188,8 @@ export default defineSchema({
     supersetGroup: n(v.number()),
     restSec: n(v.number()),
     note: n(v.string()),
+    // Redesign §9.7: rep-range class driving presets (F1/F8).
+    repClass: v.optional(n(v.string())), // 'main' | 'compound' | 'isolation'
   })
     .index("by_uid", ["id"])
     .index("by_owner", ["ownerId", "createdAt"])
@@ -242,6 +253,22 @@ export default defineSchema({
     restSec: n(v.number()),
     note: n(v.string()),
     routineExerciseId: n(v.string()),
+    // Target snapshot (redesign §9.1), written once at session start. All
+    // `v.optional` because pre-snapshot documents lack the keys entirely
+    // (Convex validates existing docs on schema push); new rows store null
+    // for anything not planned (tables.ts withDefaults).
+    plannedRepsMin: v.optional(n(v.number())),
+    plannedRepsMax: v.optional(n(v.number())),
+    plannedRirMin: v.optional(n(v.number())),
+    plannedRirMax: v.optional(n(v.number())),
+    plannedSets: v.optional(n(v.number())), // working sets, excl. warm-ups
+    plannedLoadKg: v.optional(n(v.number())),
+    plannedFirstSetMax: v.optional(n(v.boolean())),
+    plannedIsDeload: v.optional(n(v.boolean())),
+    prescriptionRuleId: v.optional(n(v.string())), // e.g. 'C2c-progress'
+    // 'start' = written at session start; 'backfill' = reconstructed later
+    // and never comparable for the C2c stall rule (§9.7).
+    snapshotSource: v.optional(n(v.string())),
   })
     .index("by_uid", ["id"])
     .index("by_owner", ["ownerId", "createdAt"])
@@ -269,6 +296,10 @@ export default defineSchema({
     metricValues: json,
     completed: v.boolean(),
     side: n(v.string()),
+    // Planned RIR for the seeded set this row was committed from (§9.1/9.7;
+    // R11 drift uses the last two working sets). Absent on older rows.
+    plannedRirMin: v.optional(n(v.number())),
+    plannedRirMax: v.optional(n(v.number())),
   })
     .index("by_uid", ["id"])
     .index("by_owner", ["ownerId", "createdAt"])
@@ -321,9 +352,63 @@ export default defineSchema({
     plateConfig: json,
     displayName: n(v.string()),
     bio: n(v.string()),
+    // Redesign §9.2. Optional: existing rows lack them; readers fill
+    // defaults through resolveUserPrefs (packages/core/src/repo/prefs.ts).
+    goal: v.optional(
+      n(
+        v.union(
+          v.literal("build"),
+          v.literal("cut"),
+          v.literal("bulk"),
+          v.literal("maintain"),
+        ),
+      ),
+    ),
+    trainingStatus: v.optional(
+      n(
+        v.union(
+          v.literal("new"),
+          v.literal("intermediate"),
+          v.literal("experienced"),
+        ),
+      ),
+    ),
+    exerciseGrouping: v.optional(
+      n(v.union(v.literal("joint_action"), v.literal("region"))),
+    ),
+    coachEnabled: v.optional(n(v.boolean())),
+    coachRulesOff: v.optional(n(v.array(v.string()))),
+    showEvidenceLabels: v.optional(n(v.boolean())),
+    hardSetRirMax: v.optional(n(v.number())),
   })
     .index("by_uid", ["id"])
     .index("by_owner", ["ownerId", "createdAt"]),
+
+  // Append-only coach interaction log (redesign §9.3). Coach outputs are
+  // recomputed, never stored; this records what the user did with them.
+  // Idempotent on the client id (insertRow upserts), see convex/coach.ts.
+  coach_events: defineTable({
+    ...base,
+    ownerId: v.string(),
+    suggestionId: v.string(),
+    ruleId: v.string(),
+    exerciseId: n(v.string()),
+    sessionId: n(v.string()),
+    state: v.union(
+      v.literal("accepted"),
+      v.literal("adjusted"),
+      v.literal("dismissed"),
+      v.literal("applied"),
+      v.literal("undone"),
+    ),
+    scope: n(
+      v.union(v.literal("once"), v.literal("exercise_4w"), v.literal("rule")),
+    ),
+    payload: json,
+  })
+    .index("by_uid", ["id"])
+    .index("by_owner", ["ownerId", "createdAt"])
+    .index("by_owner_rule", ["ownerId", "ruleId", "createdAt"]),
 
   session_media: defineTable({
     ...base,

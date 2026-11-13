@@ -298,6 +298,7 @@ function dateKey(ms: number): string {
 // row would otherwise abort mid-run and leave the account half-seeded.
 const OWNED_TABLES = [
   "set_logs",
+  "coach_events",
   "session_exercises",
   "session_media",
   "sessions",
