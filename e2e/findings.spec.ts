@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 
-// TODO(J8/J11): /findings now redirects to the /progress placeholder (J6). J8 re-enables
-// this spec against the real Progress tab.
+// TODO(J8/J11): /findings now redirects to the Progress tab (J6), whose sections don't
+// carry this spec's hooks yet. J8 re-enables it against the Progress tab.
 test.beforeEach(() => test.skip(true, "awaiting J8 Progress tab"));
 
 // P5: findings surface. Seeds sessions directly through the signed-in client

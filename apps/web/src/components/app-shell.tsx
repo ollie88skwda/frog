@@ -140,9 +140,8 @@ export function AppShell() {
 
       {/* Floating island tab bar on small screens (mobile-first logging).
           Centered, content-width — it doesn't span the viewport. Sits clear of
-          the iOS home indicator via safe-area margin. Active tab expands to
-          reveal its label (the "island" effect); square corners hold the
-          0px-radius design language. */}
+          the iOS home indicator via safe-area margin. Every tab shows its
+          label; square corners hold the 0px-radius design language. */}
       {showResume && (
         <NavLink
           to={`/session/${active?.id}`}

@@ -113,12 +113,12 @@ export function restartGapDays(
 }
 
 export function useCoach(routineId: string | null): CoachResult {
-  const { data: detail } = useRoutineDetail(routineId);
+  const { data: detail, isLoading } = useRoutineDetail(routineId);
   return {
     prescriptions: detail ? routinePrescriptions(detail) : [],
     cards: [],
     overrides: undefined,
     source: "routine",
-    isLoading: routineId != null && detail === undefined,
+    isLoading,
   };
 }
