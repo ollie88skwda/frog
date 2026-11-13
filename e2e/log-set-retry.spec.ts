@@ -28,7 +28,7 @@ test("a retried log-set write after a lost response does not duplicate the set",
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
 

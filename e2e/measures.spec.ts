@@ -1,6 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 
+// TODO(J8/J11): /measures now redirects to the /progress placeholder (J6). J8 re-enables
+// this spec against the real Progress tab.
+test.beforeEach(() => test.skip(true, "awaiting J8 Progress tab"));
+
 // Measures (M7): body-measurement entry editor (backdate, any subset, one
 // entry/day upsert), hand-rolled trend chart + metric list, and the progress
 // photo lifecycle — upload, compare, replace, and the two delete paths

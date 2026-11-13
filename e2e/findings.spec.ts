@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 
+// TODO(J8/J11): /findings now redirects to the /progress placeholder (J6). J8 re-enables
+// this spec against the real Progress tab.
+test.beforeEach(() => test.skip(true, "awaiting J8 Progress tab"));
+
 // P5: findings surface. Seeds sessions directly through the signed-in client
 // (fast; the logging UI path is covered by core-loop.spec.ts), then asserts
 // the countdown → verdict transition on /findings and the note-12 drill-down:

@@ -65,7 +65,7 @@ test("a failed exercise load in the in-session picker shows an error, not an emp
   });
 
   // Full load with the route already installed, so nothing is cached.
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
 
   // The picker still auto-opens on a session with no blocks (unchanged by

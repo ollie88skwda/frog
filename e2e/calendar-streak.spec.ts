@@ -1,6 +1,10 @@
 import { expect, type Page, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 
+// TODO(J8/J11): /calendar now redirects to the /progress placeholder (J6). J8 re-enables
+// this spec against the real Progress tab.
+test.beforeEach(() => test.skip(true, "awaiting J8 Progress tab"));
+
 // Calendar + weekly streak (M6): a logged session fills its calendar day and
 // lights the streak; an empty past day retro-logs a backdated session and opens
 // the live editor; the week grid always starts on Sunday (hardcoded — see

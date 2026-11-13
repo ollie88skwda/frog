@@ -37,7 +37,7 @@ const ROUTES: [string, string][] = [
 ];
 
 async function seedIds(page: Page): Promise<Record<string, string>> {
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await page.waitForURL(/\/session\//);
   const session = new URL(page.url()).pathname.split("/")[2];

@@ -102,7 +102,7 @@ test("machine from catalog: settings remembered into the session setup strip", a
   // only attaches/swaps the machine now, Library still owns per-machine
   // setup"), so that stays a Library-only round-trip, checked separately
   // below rather than through the chip.
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${copy}`).click();

@@ -37,7 +37,7 @@ test("core loop: add exercise, pick in session, persistence", async ({
   await waitForExercise(page, EX);
 
   // 2) Train: start a session, pick the exercise (writes a session_exercise).
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${EX}`).click();
@@ -63,7 +63,7 @@ test("logging a set via Log persists to set_logs and advances the spotlight", as
   await expect(page.getByTestId(`exercise-row-${EX}`)).toBeVisible();
   await waitForExercise(page, EX);
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   const before = await rowCount(page, "set_logs");

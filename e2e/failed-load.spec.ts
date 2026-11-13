@@ -116,7 +116,7 @@ test("routine delete asks for confirmation in a dialog", async ({ page }) => {
   await page.getByTestId("routine-add-exercise-btn").click();
   await page.getByTestId(`routine-pick-${ex}`).click();
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
   await page.getByTestId(`routine-menu-${name}`).click();
   await page.getByTestId(`routine-delete-${name}`).click();
   const dlg = page.getByRole("dialog");
@@ -176,6 +176,6 @@ test("offline: paused first loads read as loading, then recover", async ({
       });
     if (name === "history-detail")
       await expect(page.getByText(/Session not found/)).toBeVisible();
-    await goClient("/train");
+    await goClient("/");
   }
 });

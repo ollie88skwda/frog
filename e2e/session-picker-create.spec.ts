@@ -15,7 +15,7 @@ test("creating from the session picker's empty state adds the block with 0 sets"
 }) => {
   const NAME = `Picker Create ${Date.now()}`;
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
 

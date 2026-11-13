@@ -33,16 +33,16 @@ test("nav badge shows an unseen entry, /changelog surfaces it in order, and visi
   // Exact-match the nav item's title: the profile screen's Edit button is
   // titled "Edit profile" (which contains "Profile" as a substring), and
   // Playwright's default getByTitle matching is case-insensitive substring.
-  const profileTab = page.getByTitle("Profile", { exact: true });
+  const profileTab = page.getByTitle("You", { exact: true });
   await expect(profileTab.locator("span.bg-accent")).toBeVisible();
   await shot(page, "1-profile-badge-unseen");
 
   // Reach /changelog the keyboard-free way: Profile → Settings gear →
   // Changelog section's Browse link (same pattern as /tips).
   await profileTab.click();
-  await expect(page).toHaveURL(/\/profile$/);
+  await expect(page).toHaveURL(/\/you$/);
   await page.getByTestId("profile-settings").click();
-  await expect(page).toHaveURL(/\/settings$/);
+  await expect(page).toHaveURL(/\/you\?s=settings$/);
 
   const changelogLink = page.getByTestId("changelog-link");
   await expect(page.getByTestId("changelog-unseen-dot")).toBeVisible();
@@ -81,9 +81,9 @@ test("nav badge shows an unseen entry, /changelog surfaces it in order, and visi
   await page.goto("/profile");
   // Wait for the nav to actually paint first — a `toHaveCount(0)` on a shell
   // that hasn't booted yet passes for the wrong reason.
-  await expect(page.getByTitle("Profile", { exact: true })).toBeVisible();
+  await expect(page.getByTitle("You", { exact: true })).toBeVisible();
   await expect(
-    page.getByTitle("Profile", { exact: true }).locator("span.bg-accent"),
+    page.getByTitle("You", { exact: true }).locator("span.bg-accent"),
   ).toHaveCount(0);
   await shot(page, "4-profile-badge-cleared");
 

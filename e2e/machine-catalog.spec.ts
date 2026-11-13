@@ -65,7 +65,7 @@ test("in-session attach: catalog search attaches a machine to the block", async 
 }) => {
   const NAME = `Attach ${Date.now()}`;
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);
@@ -138,7 +138,7 @@ test("in-session attach: picks an existing machine from my gym", async ({
     )
     .toBe(1);
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);

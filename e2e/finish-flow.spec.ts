@@ -41,7 +41,7 @@ async function startAndLog(
   ex: string,
   sets: [string, string][],
 ): Promise<string> {
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   const id = page.url().split("/session/")[1];
@@ -130,7 +130,7 @@ test("Save as routine and Copy workout from history detail", async ({
   await page.getByTestId("save-as-routine-btn").click();
   await page.getByTestId("routine-name-input").fill(ROUTINE);
   await page.getByTestId("save-as-routine-confirm").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
   await expect(page.getByTestId(`routine-card-${ROUTINE}`)).toBeVisible();
 
   // Copy workout → new session seeded from this one's sets.

@@ -37,7 +37,7 @@ async function startAndLog(
   ex: string,
   sets: [string, string][],
 ): Promise<string> {
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   const id = page.url().split("/session/")[1];

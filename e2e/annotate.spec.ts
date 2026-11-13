@@ -34,7 +34,7 @@ test("annotate a live element, copy the payload, restore normal clicks", async (
   // opens and no session was started.
   await page.getByTestId("start-session-btn").click();
   await expect(page.getByTestId("annotate-composer")).toBeVisible();
-  await expect(page).toHaveURL(/\/train$/);
+  await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId("annotate-highlight")).toBeVisible();
   // The identity is resolved from the DOM, not from any per-component wiring.
   await expect(page.getByTestId("annotate-composer-target")).toContainText(
@@ -136,7 +136,7 @@ test("bare letters never navigate; the dev-only bare `a` toggles annotate, exemp
   }
   // Give a navigation every chance to happen before asserting it didn't.
   await page.waitForTimeout(500);
-  await expect(page).toHaveURL(/\/train$/);
+  await expect(page).toHaveURL(/\/$/);
 
   await page.getByTestId("annotate-toggle").click();
   await expect(page.getByTestId("annotate-toggle")).toHaveAttribute(
@@ -147,7 +147,7 @@ test("bare letters never navigate; the dev-only bare `a` toggles annotate, exemp
     await page.keyboard.press(key);
   }
   await page.waitForTimeout(500);
-  await expect(page).toHaveURL(/\/train$/);
+  await expect(page).toHaveURL(/\/$/);
 
   // Bare `a` toggles the mode, same key exits.
   await page.keyboard.press("a");
@@ -174,8 +174,8 @@ test("bare letters never navigate; the dev-only bare `a` toggles annotate, exemp
     "aria-pressed",
     "false",
   );
-  await page.getByTestId("exercises-link").click();
-  await expect(page).toHaveURL(/\/library$/);
+  await page.goto("/library");
+  await expect(page).toHaveURL(/\/plan\?s=library$/);
   const search = page.getByTestId("exercise-search-input");
   await search.pressSequentially("abacus"); // each `a` here must not toggle
   await expect(search).toHaveValue("abacus");

@@ -21,10 +21,10 @@ test("an unreachable server shows plain language, never a raw TypeError", async 
       : route.continue(),
   );
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
 
-  const card = page.getByTestId("start-session-btn").locator("xpath=../..");
+  const card = page.locator("main");
   await expect(card).toContainText("check your connection", {
     timeout: 10_000,
   });
@@ -32,7 +32,7 @@ test("an unreachable server shows plain language, never a raw TypeError", async 
   await expect(page.locator("body")).not.toContainText("TypeError");
   await expect(page.locator("body")).not.toContainText("Failed to fetch");
   // A failed start must not navigate — there is no session to go to.
-  await expect(page).toHaveURL(/\/train$/);
+  await expect(page).toHaveURL(/\/$/);
 });
 
 test("a real server error still reaches the user verbatim", async ({
@@ -54,7 +54,7 @@ test("a real server error still reaches the user verbatim", async ({
       : route.continue(),
   );
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page.locator("body")).toContainText(
     "permission denied for table sessions",

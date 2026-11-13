@@ -29,7 +29,7 @@ export async function signInAs(page: Page, token: string, email: string) {
 
 export async function signIn(page: Page) {
   await signInAs(page, PASSWORD, EMAIL);
-  await page.goto("/train");
+  await page.goto("/");
   await expect(page.getByTestId("start-session-btn")).toBeVisible();
 }
 

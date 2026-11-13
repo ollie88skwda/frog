@@ -44,7 +44,7 @@ test("duration exercise logs a typed m:ss time and shows the inline timer", asyn
   await createTyped(page, EX, "duration");
   const before = await rowCount(page, "set_logs");
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
 
@@ -76,7 +76,7 @@ test("weighted-bodyweight exercise carries a +weight unit suffix and honours a p
   const EX = `WPullup ${Date.now()}`;
   await createTyped(page, EX, "weighted_bodyweight");
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
 

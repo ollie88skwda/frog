@@ -42,7 +42,7 @@ test("a pre-rename set draft survives the rebrand and dies on commit", async ({
   await createExercise(page, EX);
   await waitForExercise(page, EX);
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   await page.getByTestId("weight-field").fill("142.5");

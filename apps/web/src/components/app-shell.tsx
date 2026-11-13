@@ -42,7 +42,8 @@ export function AppShell() {
 
   const inSession = pathname.startsWith("/session/");
   // Resume pill: "jump into the live session" lives above the tab bar now.
-  const showResume = active != null && !inSession;
+  // Today already carries a Resume button in its hero, so the pill skips it.
+  const showResume = active != null && !inSession && pathname !== "/";
   const nav = useMemo(
     () =>
       NAV.map((item) => ({

@@ -160,7 +160,7 @@ export function HomeHero() {
           className="mt-2 w-full"
           disabled={starting}
           onClick={() => void start()}
-          data-testid="home-start-btn"
+          data-testid="start-session-btn"
         >
           {starting ? "Starting…" : "Start empty workout"}
         </Button>
@@ -323,6 +323,16 @@ export function HomeHero() {
           </div>
         </div>
       </section>
+      <Button
+        variant="outline"
+        className="mt-3 w-full"
+        disabled={starting}
+        onClick={() => void start()}
+        data-testid="start-session-btn"
+      >
+        {starting ? "Starting…" : "Start empty workout"}
+      </Button>
+      {error && <p className="mt-2 text-xs text-neg">{error}</p>}
     </>
   );
 }

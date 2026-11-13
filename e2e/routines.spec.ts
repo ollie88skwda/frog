@@ -99,7 +99,7 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await page.getByTestId("routine-ex-0-set-1-reps").fill("8");
   await page.getByTestId("routine-ex-0-set-1-repsmax").fill("12");
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 
   // Start the routine → prefilled session.
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
@@ -176,7 +176,7 @@ test("start routine still prefills when the session row resolves after its exerc
   await page.getByTestId(`routine-pick-${EX}`).click();
   await page.getByTestId("routine-ex-0-set-0-reps").fill("5");
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 
   await page.route(/\/rest\/v1\/sessions\?/, async (route) => {
     if (route.request().method() !== "GET") return route.continue();
@@ -272,7 +272,7 @@ test("weight and reps adjust chips step the boxed target fields, and a typed wei
   await expect(reps).toHaveValue("6");
 
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 
   const routineId = await routineIdByName(page, ROUTINE);
   expect(routineId).not.toBe("");
@@ -464,7 +464,7 @@ test("start routine seeds every configured set's target with no duplication, one
     await page.getByTestId(`routine-ex-0-set-${i}-repsmax`).fill("8");
   }
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
@@ -547,7 +547,7 @@ test("exercise menu laterality/warm-up round-trip into the session", async ({
   await expect(page.getByTestId("routine-ex-0-set-0-type")).toHaveText("W");
   await page.getByTestId("routine-name-input").fill(ROUTINE);
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 
   const routineId = await routineIdByName(page, ROUTINE);
   expect(routineId).not.toBe("");
@@ -682,7 +682,7 @@ test("a unilateral set shows a shared weight row and a two-column ᴸ/ᴿ reps g
   await expect(right).toHaveValue("7");
 
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 });
 
 // Machine and default laterality (item 6) live on `exercises`, not the

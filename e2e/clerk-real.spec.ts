@@ -45,7 +45,7 @@ test("real Clerk sign-in as a new user: empty home, library, session, settings",
   await expect(
     page.getByText(/Can't reach the server|couldn’t load/i),
   ).toHaveCount(0);
-  await page.goto("/train");
+  await page.goto("/");
   await expect(page.getByTestId("start-session-btn")).toBeVisible();
   await page.goto("/history");
   await expect(

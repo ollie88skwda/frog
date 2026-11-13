@@ -65,7 +65,7 @@ async function openLoggingRow(page: Page, name: string) {
   await page.goto("/library");
   await createExercise(page, name);
   await waitForExercise(page, name);
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${name}`).click();
