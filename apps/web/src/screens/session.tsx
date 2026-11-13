@@ -3121,11 +3121,12 @@ function ExerciseSpotlight({
   );
   const mechanic = exercise?.mechanic ?? null;
   const [evidenceOpen, setEvidenceOpen] = useState(false);
-  const working = committedGroups.flatMap((g, i) =>
-    g[0].setType === "warmup"
-      ? []
-      : [{ group: g, target: setTarget(plan, seedSets[i]) }],
-  );
+  const working = committedGroups
+    .flatMap((g, i) => (g[0].setType === "warmup" ? [] : [{ g, i }]))
+    .map(({ g, i }, j) => ({
+      group: g,
+      target: j === 0 ? plan : setTarget(plan, seedSets[i]),
+    }));
   const lastWorking = working.at(-1)?.group;
   const lastTarget = working.at(-1)?.target ?? null;
   const lastState = lastWorking
