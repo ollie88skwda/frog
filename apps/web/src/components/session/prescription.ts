@@ -6,7 +6,13 @@
 // sets, R6 hard set = non-warm-up with RIR <= 4 (blank RIR counts, flagged),
 // R7 indirect credit 0.5, C2c overshoot (>= 2 reps over the top of the range
 // with RIR within 1 of plan counts as "top reached"), C4/C5 RIR drift.
-import { groupSetsBySetNo, type MuscleTarget, muscleCredits } from "@frog/core";
+import {
+  e1rmSet,
+  groupSetsBySetNo,
+  type MuscleTarget,
+  muscleCredits,
+  roundE1rmDisplay,
+} from "@frog/core";
 
 /** The plan for one exercise: the §9.1 snapshot, or the routine seed's own targets. */
 export type PlanTarget = {
