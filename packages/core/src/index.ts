@@ -1,3 +1,4 @@
+export * from "./coach";
 export {
   APP_NAME,
   COMMUNITY_SHARING,
