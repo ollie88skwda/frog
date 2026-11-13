@@ -1,8 +1,9 @@
 import { CaretRight, Plus } from "@phosphor-icons/react";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { useNavigate } from "react-router";
 import { SegmentBar, useSegment } from "@/components/segments";
 import { Button } from "@/components/ui/button";
+import { lazyRoute } from "@/lib/lazy-route";
 import { useActiveProgram } from "@/lib/program-queries";
 import { useRoutineFolders, useRoutines } from "@/lib/routine-queries";
 
@@ -10,9 +11,9 @@ import { useRoutineFolders, useRoutines } from "@/lib/routine-queries";
 // Routines · Library segments. The segments embed the existing screens as-is
 // (J9 owns routines/programs, J10 owns library); their own headings stay until
 // those jobs restyle them.
-const RoutinesScreen = lazy(() => import("@/screens/routines"));
-const ProgramsScreen = lazy(() => import("@/screens/programs"));
-const LibraryScreen = lazy(() => import("@/screens/library"));
+const RoutinesScreen = lazyRoute(() => import("@/screens/routines"));
+const ProgramsScreen = lazyRoute(() => import("@/screens/programs"));
+const LibraryScreen = lazyRoute(() => import("@/screens/library"));
 
 const SEGMENTS = ["program", "routines", "library"] as const;
 

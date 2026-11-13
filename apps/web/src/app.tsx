@@ -29,6 +29,8 @@ const SessionScreen = lazyRoute(() => import("@/screens/session"));
 const ExerciseDetailScreen = lazyRoute(
   () => import("@/screens/exercise-detail"),
 );
+const CalendarScreen = lazyRoute(() => import("@/screens/calendar"));
+const MeasuresScreen = lazyRoute(() => import("@/screens/measures"));
 const HistoryScreen = lazyRoute(() => import("@/screens/history"));
 const HistoryDetailScreen = lazyRoute(() => import("@/screens/history-detail"));
 const MonthlyReportScreen = lazyRoute(() => import("@/screens/monthly-report"));
@@ -122,13 +124,12 @@ export function App() {
                         element={<HistoryDetailScreen />}
                       />
                       <Route
-                        path="progress/monthly"
+                        path="stats/monthly"
                         element={<MonthlyReportScreen />}
                       />
-                      <Route
-                        path="progress/year"
-                        element={<YearReviewScreen />}
-                      />
+                      <Route path="stats/year" element={<YearReviewScreen />} />
+                      <Route path="calendar" element={<CalendarScreen />} />
+                      <Route path="measures" element={<MeasuresScreen />} />
                       {DataKitScreen && (
                         <Route
                           path="dev/data-kit"
@@ -155,24 +156,8 @@ export function App() {
                         element={<RedirectTo to="/progress" />}
                       />
                       <Route
-                        path="stats/monthly"
-                        element={<RedirectTo to="/progress/monthly" />}
-                      />
-                      <Route
-                        path="stats/year"
-                        element={<RedirectTo to="/progress/year" />}
-                      />
-                      <Route
                         path="findings"
                         element={<RedirectTo to="/progress" search="s=lab" />}
-                      />
-                      <Route
-                        path="calendar"
-                        element={<RedirectTo to="/progress" search="s=lab" />}
-                      />
-                      <Route
-                        path="measures"
-                        element={<RedirectTo to="/progress" search="s=body" />}
                       />
                       <Route
                         path="profile"

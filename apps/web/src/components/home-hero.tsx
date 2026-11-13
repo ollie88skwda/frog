@@ -5,7 +5,7 @@ import {
   toDisplayWeight,
 } from "@frog/core";
 import { Play, Plus } from "@phosphor-icons/react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { DeltaChip } from "@/components/data";
@@ -60,6 +60,12 @@ export function HomeHero() {
   const { data: program } = useActiveProgram();
   const { data: sessions = [] } = useAllSessions();
   const startRoutine = useStartRoutineSession();
+  const writeReadiness = useMutation({
+    mutationFn: (v: { sessionId: string; values: Record<string, number> }) =>
+      repo.updateSessionConditions(v.sessionId, v.values),
+    onSuccess: (_d, v) =>
+      qc.invalidateQueries({ queryKey: ["session", v.sessionId] }),
+  });
   const [picked, setPicked] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<Readiness>({});
   const [skipped, setSkipped] = useState(false);
@@ -115,15 +121,7 @@ export function HomeHero() {
     navigate(`/session/${session.id}`);
     const values = skipped ? {} : readinessToConditions(readiness);
     if (Object.keys(values).length === 0) return;
-    repo
-      .updateSessionConditions(session.id, values)
-      .then(() => qc.invalidateQueries({ queryKey: ["session", session.id] }))
-      .catch((e) => {
-        console.error(
-          `[today] readiness write failed for session ${session.id}; re-enter it from the session's conditions chip`,
-          e,
-        );
-      });
+    writeReadiness.mutate({ sessionId: session.id, values });
   }
 
   function startSelected() {

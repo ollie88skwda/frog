@@ -1,12 +1,13 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import { Link } from "react-router";
 import { SegmentBar, useSegment } from "@/components/segments";
+import { lazyRoute } from "@/lib/lazy-route";
 
 // You tab (redesign §7/§8.10): profile and settings as segments, plus links to
 // the rule library and changelog. Embeds the existing screens as-is; J10 owns
 // profile/settings and restyles them.
-const ProfileScreen = lazy(() => import("@/screens/profile"));
-const SettingsScreen = lazy(() => import("@/screens/settings"));
+const ProfileScreen = lazyRoute(() => import("@/screens/profile"));
+const SettingsScreen = lazyRoute(() => import("@/screens/settings"));
 
 const SEGMENTS = ["profile", "settings"] as const;
 
