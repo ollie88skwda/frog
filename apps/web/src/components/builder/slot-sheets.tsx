@@ -266,7 +266,7 @@ export function SwapSheet({
                 {primaryMuscles(current.muscleTargets as never)
                   .map(muscleLabel)
                   .join(", ") || "matching"}{" "}
-                exercises for your equipment.
+                exercises to swap in.
               </li>
             )}
           </ul>

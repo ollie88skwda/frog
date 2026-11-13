@@ -3,6 +3,7 @@ import {
   buildSavedConfig,
   DEFAULT_ANSWERS,
   type Exercise,
+  exerciseAvailable,
   fitToMinutes,
   generateProgram,
   type Philosophy,
@@ -83,7 +84,7 @@ export default function ProgramBuilderScreen() {
   const nav = useNavigate();
   const { t } = useVoice();
   const exercisesQ = useExercises();
-  const { data: ePrefs = [] } = useExercisePrefs();
+  const { data: ePrefs } = useExercisePrefs();
   const prefs = useResolvedUserPrefs();
   const updatePrefs = useUpdateUserPrefs();
   const active = useActiveBuilderConfig();
@@ -135,6 +136,20 @@ export default function ProgramBuilderScreen() {
   const byId = useMemo(
     () => new Map((exercisesQ.data ?? []).map((e) => [e.id, e])),
     [exercisesQ.data],
+  );
+  const excludedIds = useMemo(
+    () =>
+      new Set(
+        (ePrefs ?? [])
+          .filter((p) => p.generatorExcluded)
+          .map((p) => p.exerciseId),
+      ),
+    [ePrefs],
+  );
+  const startingKg = useMemo(
+    () =>
+      records.data ? startingWeightsFrom(records.data.records) : undefined,
+    [records.data],
   );
 
   const rec = answers ? recommendTemplate(answers) : null;
@@ -224,20 +239,15 @@ export default function ProgramBuilderScreen() {
       library={library}
       exercises={exercisesQ.data ?? []}
       byId={byId}
-      excludedIds={
-        new Set(
-          ePrefs.filter((p) => p.generatorExcluded).map((p) => p.exerciseId),
-        )
-      }
-      startingKg={
-        records.data ? startingWeightsFrom(records.data.records) : undefined
-      }
+      excludedIds={excludedIds}
+      startingKg={startingKg}
       onBack={() => setStep(WIZARD_STEPS.length - 1)}
       onPickTemplate={(id) => {
         setTemplateId(id);
         setPhilosophy(null);
         setOverrides([]);
         setEveryWeeks(null);
+        setUndo(null);
       }}
       saving={materialize.isPending || rebuild.isPending}
       error={error}
@@ -444,6 +454,12 @@ function Review(p: ReviewProps) {
       p.startingKg,
     ],
   );
+  const swapLibrary = useMemo(() => {
+    const equipment = new Set<string>(answers.equipment);
+    return p.exercises.filter((e) =>
+      exerciseAvailable(e, equipment, p.excludedIds),
+    );
+  }, [p.exercises, answers.equipment, p.excludedIds]);
   const choices = useMemo(
     () => slotChoices(baseView, resolved, p.byId),
     [baseView, resolved, p.byId],
@@ -891,7 +907,7 @@ function Review(p: ReviewProps) {
           open
           onOpenChange={(o) => !o && setSwapSlot(null)}
           current={swapCurrent as unknown as SwapCandidate}
-          library={p.exercises as unknown as SwapCandidate[]}
+          library={swapLibrary as unknown as SwapCandidate[]}
           slot={swapping}
           currentRegion={
             template.sessions

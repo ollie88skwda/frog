@@ -52,7 +52,8 @@ const REP_TYPES = new Set([
   "weighted_bodyweight",
 ]);
 
-function available(
+/** Equipment + generatorExcluded filter shared by resolve and swap lists. */
+export function exerciseAvailable(
   e: SelectableExercise,
   equipment: ReadonlySet<string> | null,
   excluded: ReadonlySet<string>,
@@ -124,7 +125,7 @@ export function resolveTemplate(
     ? new Set<string>(opts.answers.equipment)
     : null;
   const pool = library.filter((e) =>
-    available(e, equipment, opts.excludedIds ?? new Set()),
+    exerciseAvailable(e, equipment, opts.excludedIds ?? new Set()),
   );
   const unresolved: UnresolvedSlot[] = [];
   const chosen: ResolvedProgram["chosen"] = {};
