@@ -42,9 +42,10 @@ export function setVolumeKg(
 
 export type VolumeOptions = {
   // Settings > Workouts > "Warm Up Sets" toggle: when false, warm-up sets are
-  // excluded from totals (and records — handled in records/). Default is
-  // false (R6/R17b, redesign F2): warm-ups are not working volume. Callers that
-  // pass an explicit value (a saved user pref) keep it.
+  // excluded from totals (and records — handled in records/). sessionVolumeKg
+  // defaults to false (R6/R17b, redesign F2): warm-ups are not working volume.
+  // countSets/sessionSetCount keep true: the session screen reads countSets as
+  // the live set position, and every logged row (warm-up or not) holds one.
   includeWarmups: boolean;
 };
 
@@ -121,14 +122,14 @@ export function groupSetsBySetNo<
  */
 export function countSets(
   sets: CountableSet[],
-  opts: VolumeOptions = { includeWarmups: false },
+  opts: VolumeOptions = { includeWarmups: true },
 ): number {
   return groupSetsBySetNo(sets.filter((s) => countsForStats(s, opts))).length;
 }
 
 export function sessionSetCount(
   blocks: Array<{ sets: CountableSet[] }>,
-  opts: VolumeOptions = { includeWarmups: false },
+  opts: VolumeOptions = { includeWarmups: true },
 ): number {
   let n = 0;
   for (const b of blocks) n += countSets(b.sets, opts);

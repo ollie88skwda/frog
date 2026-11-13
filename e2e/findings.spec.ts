@@ -118,7 +118,7 @@ test("countdown appears below 2 sessions, rough-estimate verdict at 2", async ({
   // the n reads as sessions.
   const EX2 = `Trend Lift B ${Date.now()}`;
   await seedSessions(page, EX2, 2, {
-    weights: [100, 120], // steep rise: safely past the 5% PROGRESSING bar
+    weights: [100, 120], // steep rise: safely past the 10% PROGRESSING bar
   });
   await page.goto("/findings");
   const row = page.getByTestId(`trend-${EX2}`);
@@ -139,14 +139,16 @@ test("tapping a plateau trend row opens the sheet with recommendations", async (
   page,
 }) => {
   const EX = `Flat Lift ${Date.now()}`;
-  // Flat load, no RIR: PLATEAU → volume lever fires, RIR-gap nudge fires.
-  await seedSessions(page, EX, 6, { weights: Array(6).fill(100) });
+  // Flat load, no RIR, 7 sessions: a confirmed C2c stall (7 comparable
+  // sessions, no new best in the last 6) → PLATEAU, the volume lever fires
+  // (it needs a confirmed stall), and the RIR-gap nudge fires.
+  await seedSessions(page, EX, 7, { weights: Array(7).fill(100) });
   await page.goto("/findings");
 
   const row = page.getByTestId(`trend-${EX}`);
   await expect(row).toBeVisible();
   await expect(row).toContainText("PLATEAU");
-  await expect(row).toContainText("6 sessions");
+  await expect(row).toContainText("7 sessions");
   await expect(row).toContainText("Medium confidence");
   await row.click();
 
@@ -194,7 +196,8 @@ test("tapping a condition row opens its bucket breakdown", async ({ page }) => {
   });
   await page.goto("/findings");
 
-  const row = page.getByTestId("condition-Sleep (h)-tonnage");
+  // Tonnage is no longer a condition outcome; the finding is on top-set e1RM.
+  const row = page.getByTestId(`condition-Sleep (h)-e1rm-${EX}`);
   await expect(row).toBeVisible();
   await row.click();
 
