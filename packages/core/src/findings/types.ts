@@ -8,9 +8,10 @@ export type FindingsSessionInput = {
     exerciseName: string;
     weightKg: number | null;
     reps: number | null;
-    // Effort/set-type context for recommendation stats (note 12). Optional:
-    // absent means "not logged", matching the DB's nulls. The trend baseline
-    // itself reads only weight/reps and is unchanged.
+    // Effort/set-type context (optional: absent means "not logged", matching
+    // the DB's nulls). Set type and RIR/RPE feed the Brzycki e1RM baseline
+    // (C2c-e1rm): warm-ups are dropped, a missing RIR is assumed 0 and
+    // flagged. Recommendation stats (note 12) read the same fields.
     setType?: string | null;
     rir?: number | null;
     rirMin?: number | null;
