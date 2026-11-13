@@ -5,7 +5,7 @@
 // R11 [T3] early-set RIR is the least reliable, C2c overshoot (>= 2 reps over
 // the top of the range with RIR within 1 of plan counts as "top reached"),
 // C4/C5 RIR drift. Hard sets (R6/R7) come from @frog/core's fractionalHardSets.
-import { e1rmSet, roundE1rmDisplay } from "@frog/core";
+import { e1rmOfSet, type RirInput, roundE1rmDisplay } from "@frog/core";
 
 /** The plan for one exercise: the §9.1 snapshot, or the routine seed's own targets. */
 export type PlanTarget = {
@@ -93,6 +93,29 @@ export function planFromSeed(seeds: readonly SeedLike[]): PlanTarget | null {
   };
 }
 
+export type SetTarget = {
+  repsMin: number | null;
+  repsMax: number | null;
+  rirMin: number | null;
+  rirMax: number | null;
+};
+
+/** The target one working set is judged against: its own seed (back-off sets
+ * carry their own reps/RIR), else the exercise-level plan (the top set). */
+export function setTarget(
+  plan: PlanTarget | null,
+  seed: SeedLike | undefined,
+): SetTarget | null {
+  if (seed && seed.setType !== "warmup" && seed.reps != null)
+    return {
+      repsMin: seed.reps,
+      repsMax: seed.repsMax ?? seed.reps,
+      rirMin: seed.rirMin ?? plan?.rirMin ?? null,
+      rirMax: seed.rirMax ?? plan?.rirMax ?? null,
+    };
+  return plan;
+}
+
 export function formatRange(
   min: number | null,
   max: number | null,
@@ -157,25 +180,25 @@ export function rangeState(input: {
   return { kind: "top", over, label: "top of range" };
 }
 
+type PlannedRir = { rirMin: number | null; rirMax: number | null } | null;
+
 /**
- * C4/C5 drift nudge: both of the last two working sets landed 2+ RIR above the
- * plan ("last two sets ~4 left, plan is 2"). Never on set 1 (needs two logged
- * sets); the caller caps at 1 per exercise and 3 per session (F4 surface 2).
- * R11: early-set RIR is least reliable, hence the two-set requirement.
+ * C4/C5 drift nudge: both of the last two working sets landed 2+ RIR above
+ * their own planned RIR ("last two sets ~4 left, plan is 2"). Never on set 1
+ * (needs two logged sets); the caller caps at 1 per exercise and 3 per session
+ * (F4 surface 2). R11: early-set RIR is least reliable, hence two sets.
  */
 export function driftNudge(
-  workingRirs: ReadonlyArray<number | null>,
-  planned: { rirMin: number | null; rirMax: number | null } | null,
+  working: ReadonlyArray<{ rir: number | null; planned: PlannedRir }>,
 ): string | null {
-  if (!planned) return null;
-  const planMax = planned.rirMax ?? planned.rirMin;
-  if (planMax == null) return null;
-  const last = workingRirs.slice(-2);
-  if (last.length < 2 || last.some((r) => r == null)) return null;
-  const [a, b] = last as number[];
-  if (a >= planMax + 2 && b >= planMax + 2)
-    return `last two sets ~${Math.min(a, b)} left, plan is ${formatRange(planned.rirMin, planned.rirMax)}`;
-  return null;
+  const last = working.slice(-2);
+  if (last.length < 2) return null;
+  for (const { rir, planned } of last) {
+    const planMax = planned?.rirMax ?? planned?.rirMin ?? null;
+    if (rir == null || planMax == null || rir < planMax + 2) return null;
+  }
+  const planned = last[1].planned as NonNullable<PlannedRir>;
+  return `last two sets ~${Math.min(last[0].rir as number, last[1].rir as number)} left, plan is ${formatRange(planned.rirMin, planned.rirMax)}`;
 }
 
 // ── e1RM for the report ─────────────────────────────────────────────────────
@@ -190,11 +213,9 @@ export type E1rmResult =
  * so callers show a plain line instead of a number.
  */
 export function reportE1rm(
-  weightKg: number | null,
-  reps: number | null,
-  rir: number | null,
+  set: { weightKg: number | null; reps: number | null } & RirInput,
 ): E1rmResult | null {
-  const r = e1rmSet(weightKg, reps, rir);
+  const r = e1rmOfSet(set);
   if (r.flagged) return { kind: "not_estimable" };
   if (r.value == null) return null;
   return { kind: "value", kg: roundE1rmDisplay(r.value) };

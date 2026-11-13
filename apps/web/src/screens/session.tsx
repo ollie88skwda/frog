@@ -58,6 +58,7 @@ import {
   type RecordsSessionInput,
   type RestTimerState,
   type RoutineDetail,
+  rirMidpoint,
   type Session,
   type SetType,
   sessionDirectCheck,
@@ -125,6 +126,7 @@ import {
   rangeState,
   reportE1rm,
   rirPreselect,
+  setTarget,
 } from "@/components/session/prescription";
 import { RestStopwatch } from "@/components/session/rest-stopwatch";
 import {
@@ -3119,32 +3121,30 @@ function ExerciseSpotlight({
   );
   const mechanic = exercise?.mechanic ?? null;
   const [evidenceOpen, setEvidenceOpen] = useState(false);
-  const lastWorking = [...committedGroups]
-    .reverse()
-    .find((g) => g[0].setType !== "warmup");
+  const working = committedGroups.flatMap((g, i) =>
+    g[0].setType === "warmup"
+      ? []
+      : [{ group: g, target: setTarget(plan, seedSets[i]) }],
+  );
+  const lastWorking = working.at(-1)?.group;
+  const lastTarget = working.at(-1)?.target ?? null;
   const lastState = lastWorking
     ? rangeState({
         reps: lastWorking[0].reps,
-        repsMin: plan?.repsMin ?? null,
-        repsMax: plan?.repsMax ?? null,
-        rir: lastWorking[0].rirMin ?? lastWorking[0].rir,
-        plannedRirMin: plan?.rirMin,
-        plannedRirMax: plan?.rirMax,
+        repsMin: lastTarget?.repsMin ?? null,
+        repsMax: lastTarget?.repsMax ?? null,
+        rir: rirMidpoint(lastWorking[0]),
+        plannedRirMin: lastTarget?.rirMin,
+        plannedRirMax: lastTarget?.rirMax,
       })
     : null;
-  const lastWorkingE1rm = lastWorking
-    ? reportE1rm(
-        lastWorking[0].weightKg,
-        lastWorking[0].reps,
-        lastWorking[0].rirMin ?? lastWorking[0].rir,
-      )
-    : null;
-  const nudge = (() => {
-    const rirs = committedGroups
-      .filter((g) => g[0].setType !== "warmup")
-      .map((g) => g[0].rirMin ?? g[0].rir ?? null);
-    return driftNudge(rirs, plan);
-  })();
+  const lastWorkingE1rm = lastWorking ? reportE1rm(lastWorking[0]) : null;
+  const nudge = driftNudge(
+    working.map(({ group, target }) => ({
+      rir: rirMidpoint(group[0]),
+      planned: target,
+    })),
+  );
   const directThis = creditsFor(exercise?.muscleTargets)
     .filter((c) => c.kind === "direct")
     .map((c) => sessionMuscles[c.muscle])

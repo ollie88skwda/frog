@@ -10,6 +10,7 @@ import {
   muscleLabel,
   PR_TYPE_LABELS,
   type RecordsSessionInput,
+  rirMidpoint,
   type SessionCardBlock,
   setVolumeKg,
   toDisplayWeight,
@@ -239,13 +240,9 @@ export function PostSaveSummary({
       if (!block) continue;
       let best: number | null = null;
       for (const set of block.sets) {
-        if (set.weightKg == null || set.reps == null || set.reps < 1) continue;
+        if (set.setType === "warmup") continue;
         // C2c-e1rm: Brzycki + RIR; sets over 10 total reps are not estimated.
-        const r = reportE1rm(
-          set.weightKg,
-          set.reps,
-          set.rirMin ?? set.rir ?? null,
-        );
+        const r = reportE1rm(set);
         if (r?.kind === "value" && (best == null || r.kg > best)) best = r.kg;
       }
       if (best != null) out.push({ at: s.startedAt, value: best });
@@ -372,14 +369,12 @@ export function PostSaveSummary({
             reps: best.reps,
             repsMin: plan?.repsMin ?? null,
             repsMax: plan?.repsMax ?? null,
-            rir: best.rirMin ?? best.rir,
+            rir: rirMidpoint(best),
             plannedRirMin: plan?.rirMin,
             plannedRirMax: plan?.rirMax,
           })
         : null;
-      const e1rm = best
-        ? reportE1rm(best.weightKg, best.reps, best.rirMin ?? best.rir)
-        : null;
+      const e1rm = best ? reportE1rm(best) : null;
       return { b, plan, best, state, e1rm, planned: plan != null };
     });
     const credited = fractionalHardSets(

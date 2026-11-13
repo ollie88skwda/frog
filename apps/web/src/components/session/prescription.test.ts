@@ -7,6 +7,7 @@ import {
   rangeState,
   reportE1rm,
   rirPreselect,
+  setTarget,
 } from "./prescription";
 
 describe("rangeState (R8b, C2c overshoot)", () => {
@@ -106,30 +107,84 @@ describe("plans", () => {
 
 describe("driftNudge (C4/C5, R11)", () => {
   const planned = { rirMin: 1, rirMax: 3 };
+  const at = (...rirs: (number | null)[]) =>
+    rirs.map((rir) => ({ rir, planned }));
   it("never fires with fewer than two logged sets", () => {
-    expect(driftNudge([5], planned)).toBeNull();
+    expect(driftNudge(at(5))).toBeNull();
   });
   it("fires when the last two sets are 2+ above plan", () => {
-    expect(driftNudge([2, 5, 5], planned)).toBe(
-      "last two sets ~5 left, plan is 1-3",
-    );
+    expect(driftNudge(at(2, 5, 5))).toBe("last two sets ~5 left, plan is 1-3");
   });
-  it("does not fire on a single high set or blank RIR", () => {
-    expect(driftNudge([1, 5], planned)).toBeNull();
-    expect(driftNudge([5, null], planned)).toBeNull();
+  it("stays quiet when either of the last two is near plan or blank", () => {
+    expect(driftNudge(at(1, 5))).toBeNull();
+    expect(driftNudge(at(5, null))).toBeNull();
+  });
+  it("judges each set against its own planned RIR", () => {
+    // top set planned 0-1, back-offs planned 3-4: back-offs at 4 are on plan
+    expect(
+      driftNudge([
+        { rir: 1, planned: { rirMin: 0, rirMax: 1 } },
+        { rir: 4, planned: { rirMin: 3, rirMax: 4 } },
+        { rir: 4, planned: { rirMin: 3, rirMax: 4 } },
+      ]),
+    ).toBeNull();
+  });
+});
+
+describe("setTarget (back-off sets)", () => {
+  const top = {
+    setType: "normal",
+    weightKg: 100,
+    reps: 4,
+    repsMax: 6,
+    rirMin: 1,
+    rirMax: 2,
+  };
+  const backoff = { setType: "normal", weightKg: 85, reps: 8, repsMax: 10 };
+  const plan = planFromSeed([top, backoff]);
+  it("uses the set's own seed range, inheriting the plan's RIR", () => {
+    const t = setTarget(plan, backoff);
+    expect(t).toEqual({ repsMin: 8, repsMax: 10, rirMin: 1, rirMax: 2 });
+    // 85 x 10 is the top of 8-10, not "+4 over" the top set's 4-6
+    expect(
+      rangeState({
+        reps: 10,
+        repsMin: 8,
+        repsMax: 10,
+        rir: 1,
+        plannedRirMin: 1,
+        plannedRirMax: 2,
+      })?.kind,
+    ).toBe("top");
+  });
+  it("falls back to the plan without a working seed", () => {
+    expect(setTarget(plan, undefined)).toBe(plan);
   });
 });
 
 describe("reportE1rm (C2c-e1rm)", () => {
   it("is Brzycki with RIR", () => {
     // 100 x 8 @ 2 -> 100*36/27 = 133.3 -> 133.5 at 0.5 kg
-    expect(reportE1rm(100, 8, 2)).toEqual({ kind: "value", kg: 133.5 });
+    expect(reportE1rm({ weightKg: 100, reps: 8, rir: 2 })).toEqual({
+      kind: "value",
+      kg: 133.5,
+    });
   });
   it("flags sets over 10 total reps", () => {
-    expect(reportE1rm(60, 10, 2)).toEqual({ kind: "not_estimable" });
-    expect(reportE1rm(60, 10, 0)).toMatchObject({ kind: "value" });
+    expect(reportE1rm({ weightKg: 60, reps: 10, rir: 2 })).toEqual({
+      kind: "not_estimable",
+    });
+    expect(reportE1rm({ weightKg: 60, reps: 10, rir: 0 })).toMatchObject({
+      kind: "value",
+    });
+  });
+  it("reads a logged RIR range by its midpoint, like core", () => {
+    // 100 x 8 @ 1-3 -> RIR 2 -> 100*36/27 = 133.3 -> 133.5
+    expect(
+      reportE1rm({ weightKg: 100, reps: 8, rirMin: 1, rirMax: 3 }),
+    ).toEqual({ kind: "value", kg: 133.5 });
   });
   it("is null without load or reps", () => {
-    expect(reportE1rm(null, 5, 1)).toBeNull();
+    expect(reportE1rm({ weightKg: null, reps: 5, rir: 1 })).toBeNull();
   });
 });
