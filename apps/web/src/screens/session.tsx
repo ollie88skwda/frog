@@ -3420,18 +3420,20 @@ function ExerciseSpotlight({
                   Over 10 reps in total: no strength estimate for this set
                 </span>
               )}
-              {ghost[0]?.weightKg != null &&
-                lastWorking[0].weightKg != null &&
-                lastWorking[0].weightKg !== ghost[0].weightKg && (
+              {(() => {
+                const g = ghostFor(ghost, lastWorking[0].setNo);
+                const w = lastWorking[0].weightKg;
+                if (g.weightKg == null || w == null) return null;
+                const d = toDisplayWeight(w - g.weightKg, blockUnit);
+                if (Math.abs(d) < 0.1) return null;
+                return (
                   <DeltaChip
-                    delta={toDisplayWeight(
-                      lastWorking[0].weightKg - ghost[0].weightKg,
-                      blockUnit,
-                    )}
+                    delta={d}
                     unit={` ${unitLabel(blockUnit)}`}
                     basis="vs last time"
                   />
-                )}
+                );
+              })()}
               <SaveDot
                 state={lastWorking.reduce<SaveState>(
                   (acc, r) =>

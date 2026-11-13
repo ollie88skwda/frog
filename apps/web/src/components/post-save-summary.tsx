@@ -11,6 +11,8 @@ import {
   type RecordsSessionInput,
   type SessionCardBlock,
   setVolumeKg,
+  toDisplayWeight,
+  unitLabel,
   weekStart,
 } from "@frog/core";
 import { Flame, Medal, Trophy, X } from "@phosphor-icons/react";
@@ -465,7 +467,7 @@ export function PostSaveSummary({
               </div>
               {best && e1rm?.kind === "value" && (
                 <span className="num text-2xs text-soft">
-                  e1RM {e1rm.kg} kg
+                  e1RM {toDisplayWeight(e1rm.kg, unit)} {unitLabel(unit)}
                 </span>
               )}
               {best && e1rm?.kind === "not_estimable" && (
@@ -481,14 +483,17 @@ export function PostSaveSummary({
             <span className="text-sm font-semibold">Sets credited</span>
             <Num value={report.credited.total} unit="hard sets" size="sm" />
           </div>
-          {report.credited.muscles.slice(0, 6).map((m) => (
-            <MuscleMeter
-              key={m.muscle}
-              label={muscleLabel(m.muscle)}
-              sets={m.sets}
-              max={24}
-            />
-          ))}
+          {report.credited.muscles
+            .filter((m) => m.sets > 0)
+            .slice(0, 6)
+            .map((m) => (
+              <MuscleMeter
+                key={m.muscle}
+                label={muscleLabel(m.muscle)}
+                sets={m.sets}
+                max={24}
+              />
+            ))}
           {report.credited.noRir > 0 && (
             <p className="px-4 pt-1 text-2xs text-faint">
               {report.credited.noRir} set
