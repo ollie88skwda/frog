@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkSetForPR } from "./live";
-import { computeRecords, prEffortLabel, setPrCandidates } from "./records";
+import { computeRecords, setPrCandidates } from "./records";
 import type { RecordsSessionInput } from "./types";
 
 const set = (
@@ -245,12 +245,5 @@ describe("best_e1rm (C2c-e1rm Brzycki + RIR)", () => {
       setPrCandidates("weight_reps", set(100, 3, { setType: "warmup" }))
         .best_e1rm,
     ).toBeUndefined();
-  });
-  it("prEffortLabel", () => {
-    expect(prEffortLabel(0)).toBe("max");
-    expect(prEffortLabel(1)).toBe("max");
-    expect(prEffortLabel(2)).toBe("near");
-    expect(prEffortLabel(3)).toBe("easy");
-    expect(prEffortLabel(null)).toBe("unknown");
   });
 });

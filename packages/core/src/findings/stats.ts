@@ -1,7 +1,7 @@
 // Small deterministic statistics for condition findings (engine-vs-research
 // §3). No dependencies, seeded PRNG so a finding never flickers between
 // renders. Guardrails: effect size, permutation p, Benjamini-Hochberg across
-// the whole family of tests, detrending, threshold splits.
+// the whole family of tests, detrending.
 
 export function mean(xs: number[]): number {
   return xs.reduce((a, b) => a + b, 0) / xs.length;
@@ -47,16 +47,21 @@ export function permutationP(
 ): number {
   const obs = Math.abs(mean(a) - mean(b));
   const all = [...a, ...b];
+  const total = all.reduce((x, y) => x + y, 0);
+  const na = a.length;
+  const nb = b.length;
   const rand = prng(seed);
   let hits = 0;
   for (let k = 0; k < iters; k++) {
     for (let i = all.length - 1; i > 0; i--) {
       const j = Math.floor(rand() * (i + 1));
-      [all[i], all[j]] = [all[j], all[i]];
+      const t = all[i];
+      all[i] = all[j];
+      all[j] = t;
     }
-    const d = Math.abs(
-      mean(all.slice(0, a.length)) - mean(all.slice(a.length)),
-    );
+    let sa = 0;
+    for (let i = 0; i < na; i++) sa += all[i];
+    const d = Math.abs(sa / na - (total - sa) / nb);
     if (d >= obs - 1e-12) hits++;
   }
   return (hits + 1) / (iters + 1);
@@ -94,20 +99,4 @@ export function bhAdjust(ps: number[]): number[] {
     out[order[k].i] = running;
   }
   return out;
-}
-
-/** Split items by a fixed cutoff (clinical thresholds such as sleep < 6 h). */
-export function thresholdSplit<T>(
-  items: { value: number; item: T }[],
-  cutoff: number,
-  dir: "below" | "atLeast",
-): { low: T[]; high: T[] } {
-  const low: T[] = [];
-  const high: T[] = [];
-  for (const { value, item } of items) {
-    const inFlagged = dir === "below" ? value < cutoff : value >= cutoff;
-    // "high" = the flagged side (the condition present), "low" = the rest.
-    (inFlagged ? high : low).push(item);
-  }
-  return { low, high };
 }

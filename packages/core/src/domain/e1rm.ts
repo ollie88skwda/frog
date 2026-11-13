@@ -19,8 +19,6 @@ export function rirFromRpe(rpe: number): number {
 
 /** C2c-e1rm: highest total reps (reps + RIR) the estimate is valid for. */
 export const E1RM_MAX_TOTAL_REPS = 10;
-/** C9b: a set at or under this share of baseline e1RM is excluded. */
-export const E1RM_LIGHT_SET_SHARE = 0.25;
 
 /** Brzycki: load x 36 / (37 - totalReps). Null when it is undefined (no load,
  * under 1 total rep, or 37+). Does not apply the 10-rep cap; see e1rmSet. */
@@ -133,21 +131,12 @@ export function e1rmOfSet(
 
 /**
  * Session e1RM: highest e1RM among the given WORKING sets (the caller drops
- * warm-ups) with 10 or fewer total reps. With `baselineE1rm`, sets at or under
- * 25% of it are excluded (C9b). Null when no set qualifies.
+ * warm-ups) with 10 or fewer total reps. Null when no set qualifies.
  */
-export function sessionE1rm(
-  sets: SetE1rm[],
-  opts: { baselineE1rm?: number | null } = {},
-): number | null {
-  const floor =
-    opts.baselineE1rm != null && opts.baselineE1rm > 0
-      ? opts.baselineE1rm * E1RM_LIGHT_SET_SHARE
-      : null;
+export function sessionE1rm(sets: SetE1rm[]): number | null {
   let best: number | null = null;
   for (const s of sets) {
     if (s.value == null) continue;
-    if (floor != null && s.weightKg != null && s.weightKg <= floor) continue;
     if (best === null || s.value > best) best = s.value;
   }
   return best;

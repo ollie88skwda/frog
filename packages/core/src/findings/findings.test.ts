@@ -41,6 +41,16 @@ describe("progressionFindings", () => {
     expect(trends[0].confidence).toBe("medium");
   });
 
+  it("a lone unconfirmed spike on the 7th session reads as a plateau, not progress (C2c)", () => {
+    const sessions = [100, 95, 97, 99, 100, 99, 112].map((w, i) =>
+      session(i, w),
+    );
+    const { trends } = progressionFindings(sessions);
+    expect(trends[0].status.state).toBe("holding");
+    expect(trends[0].verdict).toBe("PLATEAU");
+    expect(trends[0].roughVerdict).toBe(false);
+  });
+
   it("emits an honest countdown below the session minimum", () => {
     const sessions = Array.from({ length: 1 }, (_, i) => session(i, 100));
     const { trends, countdowns } = progressionFindings(sessions);
@@ -142,19 +152,6 @@ describe("conditionFindings", () => {
     });
     const findings = conditionFindings(sessions, [SLEEP]);
     expect(findings[0]?.n).toEqual({ high: 10, low: 10 });
-  });
-
-  it("threshold split: sleep under 6.0 h vs the rest (C7/C9d cutoff)", () => {
-    const sessions = Array.from({ length: 24 }, (_, i) => {
-      const short = i % 3 === 0;
-      return session(i, short ? 90 : 110, { [SLEEP.id]: short ? 5.5 : 7.5 });
-    });
-    const f = conditionFindings(sessions, [
-      { ...SLEEP, threshold: { cutoff: 6, dir: "below" } },
-    ]);
-    expect(f).toHaveLength(1);
-    expect(f[0].split).toEqual({ kind: "threshold", cutoff: 6 });
-    expect(f[0].pctDiff).toBeLessThan(-5); // flagged (short sleep) bucket is lower
   });
 
   it("null-hypothesis guard: seeded 3% noise over many tests emits <= 1 finding", () => {

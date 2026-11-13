@@ -52,7 +52,9 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
               : "PLATEAU"
             : status.state === "dropped"
               ? "REGRESSING"
-              : null;
+              : status.state === "holding"
+                ? "PLATEAU"
+                : null;
       trends.push({
         kind: "trend",
         exerciseId,

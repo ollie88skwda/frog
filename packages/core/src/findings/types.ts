@@ -70,7 +70,7 @@ export type ConditionFinding = {
   p: number;
   q: number;
   /** How the buckets were made: median split, or a clinical cutoff. */
-  split: { kind: "median" | "threshold"; cutoff: number };
+  split: { kind: "median"; cutoff: number };
   /** Always carried as data so every surface shows it (C8/C19). */
   caveat: "correlation_not_causation";
 };

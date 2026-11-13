@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  bhAdjust,
-  cohensD,
-  detrend,
-  permutationP,
-  thresholdSplit,
-} from "./stats";
+import { bhAdjust, cohensD, detrend, permutationP } from "./stats";
 
 describe("findings/stats", () => {
   it("cohensD", () => {
@@ -34,16 +28,5 @@ describe("findings/stats", () => {
       [0, 1, 2, 3, 4].map((d) => ({ day: d, value: 100 + 2 * d })),
     );
     for (const p of r) expect(p.resid).toBeCloseTo(0, 9);
-  });
-  it("thresholdSplit puts the flagged side in high", () => {
-    const items = [5, 6, 7, 8].map((v) => ({ value: v, item: v }));
-    expect(thresholdSplit(items, 6, "below")).toEqual({
-      high: [5],
-      low: [6, 7, 8],
-    });
-    expect(thresholdSplit(items, 7, "atLeast")).toEqual({
-      high: [7, 8],
-      low: [5, 6],
-    });
   });
 });

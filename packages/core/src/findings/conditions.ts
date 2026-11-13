@@ -17,9 +17,6 @@ const MEDIUM_CONFIDENCE_N = 10;
 export type ConditionMetricDef = {
   id: string;
   name: string;
-  /** Clinical cutoff (C7/C9d): sleep < 6.0 h, stress >= 8. When set, the
-   * buckets are "flagged side vs the rest" instead of a median split. */
-  threshold?: { cutoff: number; dir: "below" | "atLeast" };
 };
 
 function median(xs: number[]): number {
@@ -87,8 +84,7 @@ function candidate(
 
 /**
  * Condition findings: for each numeric session condition, split sessions into
- * two buckets (median split, or a clinical cutoff when the metric defines one)
- * and compare the top working-set Brzycki e1RM of each exercise. Tonnage is no
+ * two buckets (median split) and compare the top working-set Brzycki e1RM of each exercise. Tonnage is no
  * longer an outcome (it follows session length and exercise choice, not
  * performance). A finding needs >= 6 sessions per bucket, |diff| >= 5%,
  * |Cohen's d| >= 0.8 on detrended values, and a Benjamini-Hochberg q <= 0.1
@@ -108,25 +104,11 @@ export function conditionFindings(
     });
     if (withValue.length < MIN_BUCKET_N * 2) continue;
 
-    let highSet: Set<string>;
-    let split: ConditionFinding["split"];
-    if (metric.threshold) {
-      const { cutoff, dir } = metric.threshold;
-      highSet = new Set(
-        withValue
-          .filter((v) =>
-            dir === "below" ? v.value < cutoff : v.value >= cutoff,
-          )
-          .map((v) => v.session.sessionId),
-      );
-      split = { kind: "threshold", cutoff };
-    } else {
-      const med = median(withValue.map((v) => v.value));
-      highSet = new Set(
-        withValue.filter((v) => v.value > med).map((v) => v.session.sessionId),
-      );
-      split = { kind: "median", cutoff: med };
-    }
+    const med = median(withValue.map((v) => v.value));
+    const highSet = new Set(
+      withValue.filter((v) => v.value > med).map((v) => v.session.sessionId),
+    );
+    const split: ConditionFinding["split"] = { kind: "median", cutoff: med };
 
     const exercises = new Map<string, string>();
     for (const v of withValue)

@@ -14,8 +14,6 @@ import type { FindingsSessionInput, TrendFinding } from "./types";
 
 /** |volume trend| below this → volume is "flat" (the 10% noise band, C2c-noise). */
 export const VOLUME_FLAT_PCT = NOISE_BAND * 100;
-/** C2: "change volume" is only a response to a confirmed stall (7 comparable
- * sessions). Before that the plateau advice is just the RIR nudge. */
 /** Coverage floor: share of work-set sessions with RIR logged. */
 export const RIR_COVERAGE_MIN = 0.5;
 
@@ -57,6 +55,8 @@ export function recommendationsForExercise(
 
   // Volume lever: only when the series carries real tonnage (duration-type
   // exercises sum to zero and "add a set or reps" would be nonsense).
+  // C2: "change volume" is only a response to a confirmed stall (7 comparable
+  // sessions). Before that the plateau advice is just the RIR nudge.
   const confirmedStall = trend.status.stall.status === "stalled";
   const volume = sessionVolumeByExercise(sessions).get(exerciseId);
   if (confirmedStall && volume?.points.some((p) => p.kg > 0)) {

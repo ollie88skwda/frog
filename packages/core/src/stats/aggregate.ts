@@ -7,7 +7,7 @@
 import type { MuscleRegion, MuscleTarget } from "../domain/anatomy";
 import { regionOf } from "../domain/anatomy";
 import type { ExerciseType } from "../domain/exercise-types";
-import { creditsFor, hardSetCount } from "../domain/hard-sets";
+import { creditsFor, fractionalHardSets } from "../domain/hard-sets";
 import { weekStart } from "../domain/streak";
 import { countSets, countsForStats, setVolumeKg } from "../domain/volume";
 import type { RecordsSessionInput, RecordsSetInput } from "../records/types";
@@ -59,6 +59,15 @@ export type SetsPerMuscleBucket = {
   counts: Record<string, number>; // muscleKey → fractional set count
 };
 
+function sessionHardSets(s: RecordsSessionInput, muscles: MuscleByExercise) {
+  return fractionalHardSets(
+    s.exercises.map((ex) => ({
+      targets: muscles.get(ex.exerciseId)?.targets,
+      sets: ex.sets,
+    })),
+  );
+}
+
 /** Bucket start for a timestamp at the requested granularity. */
 export function bucketStart(
   t: number,
@@ -90,17 +99,10 @@ export function setsPerMuscle(
       bucket = {};
       buckets.set(b, bucket);
     }
-    for (const ex of s.exercises) {
-      const info = muscles.get(ex.exerciseId);
-      const credits = muscleCredits(info?.targets);
-      if (!credits.length) continue;
-      // R6/R17b: weekly muscle volume counts HARD sets only (warm-ups never,
-      // RIR above the cap never), whatever the tonnage warm-up toggle says.
-      const n = hardSetCount(ex.sets).hard;
-      if (n === 0) continue;
-      for (const { muscle, credit } of credits) {
-        bucket[muscle] = (bucket[muscle] ?? 0) + n * credit;
-      }
+    // R6/R17b: weekly muscle volume counts HARD sets only (warm-ups never,
+    // RIR above the cap never), whatever the tonnage warm-up toggle says.
+    for (const m of sessionHardSets(s, muscles).muscles) {
+      bucket[m.muscle] = (bucket[m.muscle] ?? 0) + m.total;
     }
   }
   return [...buckets.entries()]
@@ -159,21 +161,19 @@ function distributionWindow(
         0,
         s.endedAt - s.startedAt - (s.pausedMs ?? 0),
       );
+    // Per-muscle credit counts hard sets only (R6/R17b, hard-sets.ts).
+    for (const m of sessionHardSets(s, muscles).muscles) {
+      muscleSets[m.muscle] = (muscleSets[m.muscle] ?? 0) + m.total;
+      const region = regionOf(m.muscle);
+      if (region) regionSets[region] += m.total;
+    }
     for (const ex of s.exercises) {
       const info = muscles.get(ex.exerciseId);
       const credits = muscleCredits(info?.targets);
-      // A unilateral pair (two rows sharing set_no) counts and credits once —
-      // the sibling row still contributes its own volume below, since that
-      // tonnage was actually lifted. `totals.sets` follows the warm-up toggle;
-      // per-muscle credit counts hard sets only (R6/R17b, hard-sets.ts).
+      // A unilateral pair (two rows sharing set_no) counts once — the sibling
+      // row still contributes its own volume below, since that tonnage was
+      // actually lifted. `totals.sets` follows the warm-up toggle.
       totals.sets += countSets(ex.sets, opts);
-      const hard = hardSetCount(ex.sets).hard;
-      if (hard)
-        for (const { muscle, credit } of credits) {
-          muscleSets[muscle] = (muscleSets[muscle] ?? 0) + hard * credit;
-          const region = regionOf(muscle);
-          if (region) regionSets[region] += hard * credit;
-        }
       for (const set of ex.sets) {
         if (!countsForStats(set, opts)) continue;
         const vol = setVolumeKg(

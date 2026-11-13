@@ -34,8 +34,6 @@ export type RecordEntry = {
 export type PrEvent = RecordEntry & {
   exerciseId: string;
   previous: number | null;
-  /** Effort of the set that set the record (RIR-based); never gates the PR. */
-  effort?: "max" | "near" | "easy" | "unknown";
 };
 
 export type ExerciseRecords = {

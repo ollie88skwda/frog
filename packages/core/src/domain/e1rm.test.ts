@@ -99,11 +99,6 @@ describe("sessionE1rm", () => {
   it("skips flagged sets", () => {
     expect(sessionE1rm([e1rmSet(100, 15, 0)])).toBeNull();
   });
-  it("excludes sets at or under 25% of baseline (C9b)", () => {
-    const light = e1rmSet(30, 8, 2);
-    expect(sessionE1rm([light], { baselineE1rm: 120 })).toBeNull();
-    expect(sessionE1rm([light], { baselineE1rm: 100 })).not.toBeNull();
-  });
 });
 
 describe("legacy epley", () => {
