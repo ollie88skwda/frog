@@ -28,7 +28,8 @@ const STABILITY_RANK: Record<SlotStability, number> = {
 
 export type ResolveOptions = {
   philosophy?: Philosophy;
-  answers?: Pick<BuilderAnswers, "goal" | "minutes" | "equipment">;
+  answers?: Pick<BuilderAnswers, "goal" | "minutes" | "equipment"> &
+    Partial<Pick<BuilderAnswers, "schedule">>;
   overrides?: readonly SlotOverride[];
   excludedIds?: ReadonlySet<string>;
   /** Starting working weights from records history (exerciseId → kg). */

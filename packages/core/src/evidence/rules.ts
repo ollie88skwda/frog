@@ -200,7 +200,7 @@ export const EVIDENCE_RULES: readonly EvidenceRule[] = [
     id: "R15b",
     tier: "T4",
     plain:
-      "Shorter sessions: trim sets on low-priority lifts or shorten accessory rest. Supersets save time with no detected size difference, but few studies measured size.",
+      "Shorter sessions: trim sets on low-priority lifts or shorten accessory rest.",
     tierNote: "Small number of studies on time-savers.",
     cites: [c("Zhang 2025", "39903375"), c("Davies 2021", "33475986")],
   },

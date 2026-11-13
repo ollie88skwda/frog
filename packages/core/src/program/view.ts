@@ -19,8 +19,8 @@ import { DEFAULT_PHILOSOPHY } from "./types";
 
 export type ViewOptions = {
   philosophy?: Philosophy;
-  /** Only `goal` and `minutes` affect the view; the rest picks the template. */
-  answers?: Pick<BuilderAnswers, "goal" | "minutes">;
+  /** `schedule`, `goal` and `minutes` shape the view; the rest picks the template. */
+  answers?: Partial<Pick<BuilderAnswers, "schedule" | "goal" | "minutes">>;
   overrides?: readonly SlotOverride[];
 };
 
@@ -99,12 +99,12 @@ export function viewOf(
   }));
 
   return {
-    schedule: template.schedule,
+    schedule: opts.answers?.schedule ?? template.schedule,
     rotation: template.rotation,
     sessions,
     block: template.block,
     goal,
-    philosophy: { repBias: philosophy.repBias },
+    philosophy: { repBias: philosophy.repBias, firstSet: philosophy.firstSet },
     maxMinutes: opts.answers?.minutes,
   };
 }

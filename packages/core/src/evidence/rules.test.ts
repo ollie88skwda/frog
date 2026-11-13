@@ -51,6 +51,7 @@ const BANNED: [RegExp, string][] = [
   [/\bequivalent\b/i, "equivalent"],
   [/stops? (muscle )?growth/i, "stops growth"],
   [/per.meal/i, "per-meal target"],
+  [/superset/i, "supersets (removed from product)"],
 ];
 
 describe("copy lint (report §12)", () => {

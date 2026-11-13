@@ -174,4 +174,131 @@ describe("validateProgram never blocks and cites rules", () => {
       1, 1, 1, 1, 1, 1, 1, 1, 1,
     ]);
   });
+
+  it("goal maintain checks the R18b dose, not the full 10-20 band", () => {
+    const v = viewOf(FROG_DEFAULT, {
+      answers: { goal: "maintain", minutes: 60 },
+    });
+    const r = validateProgram(v);
+    // 1 set x 3.5 sessions = 3.5 >= 10 x 0.33: on target for maintenance.
+    expect(r.findings.filter((f) => f.code === "WEEKLY_LOW")).toEqual([]);
+    expect(r.findings.filter((f) => f.code === "SESSION_LOW")).toEqual([]);
+    // One session a week (1 set) is under even the maintenance dose.
+    const under = validateProgram(
+      one([slot({ slot: "a", rx: { ...slot({ slot: "x" }).rx, sets: 1 } })], {
+        goal: "maintain",
+        schedule: { kind: "weekdays", days: [1] },
+      }),
+    ).findings.find((f) => f.code === "WEEKLY_LOW")!;
+    expect(under.rule).toBe("R18b");
+    expect(under.fix?.patch[0]).toMatchObject({ slot: "a", sets: 2 });
+  });
+
+  it("the schedule answer drives the weekly dose (2 days, not 3.5)", () => {
+    const v = viewOf(FROG_DEFAULT, {
+      answers: { schedule: { kind: "weekdays", days: [1, 4] } },
+    });
+    expect(v.schedule).toEqual({ kind: "weekdays", days: [1, 4] });
+    const perSession = viewOf(FROG_DEFAULT).sessions[0].slots;
+    const quadsPerSession = perSession
+      .filter((x) => x.credits.direct.includes("quads"))
+      .reduce((a, x) => a + x.rx.sets, 0);
+    expect(weeklySets(v).quads.direct).toBe(quadsPerSession * 2);
+    expect(codes(v)).toContain("WEEKLY_LOW");
+    expect(viewOf(FROG_DEFAULT).schedule).toEqual(FROG_DEFAULT.schedule);
+  });
+
+  it("per-slot checks see a session-scoped edit on a later session", () => {
+    const v = viewOf(RESEARCH_B, {
+      overrides: [{ session: "fri", slot: "5", reps: [20, 30] }],
+    });
+    const hits = validateProgram(v).findings.filter(
+      (f) => f.code === "REPS_RANGE" && f.target.slot === "5",
+    );
+    expect(hits.map((f) => f.target.session)).toEqual(["fri"]);
+  });
+
+  it("SESSION_CAP moves a set to a session under the cap", () => {
+    const rx = slot({ slot: "x" }).rx;
+    const v: ProgramView = {
+      ...one([]),
+      rotation: "cycle",
+      sessions: [
+        {
+          id: "a",
+          name: "A",
+          slots: [slot({ slot: "q", rx: { ...rx, sets: 6 } })],
+        },
+        {
+          id: "b",
+          name: "B",
+          slots: [slot({ slot: "q", rx: { ...rx, sets: 2 } })],
+        },
+      ],
+    };
+    const cap = validateProgram(v).findings.find(
+      (f) => f.code === "SESSION_CAP",
+    )!;
+    expect(cap.fix?.label).toBe("Move 1 set to another session");
+    expect(cap.fix?.patch).toEqual([
+      { session: "a", slot: "q", sets: 5 },
+      { session: "b", slot: "q", sets: 3 },
+    ]);
+  });
+
+  it("SESSION_CAP drops a set when no session can take it, and skips 1-set slots", () => {
+    const rx = slot({ slot: "x" }).rx;
+    const drop = validateProgram(
+      one([slot({ slot: "a", rx: { ...rx, sets: 6 } })]),
+    ).findings.find((f) => f.code === "SESSION_CAP")!;
+    expect(drop.fix).toEqual({
+      label: "Drop 1 set",
+      patch: [{ session: undefined, slot: "a", sets: 5 }],
+    });
+    const ones = validateProgram(
+      one(
+        ["a", "b", "c", "d", "e", "f"].map((id) =>
+          slot({ slot: id, rx: { ...rx, sets: 1 } }),
+        ),
+      ),
+    ).findings.find((f) => f.code === "SESSION_CAP")!;
+    expect(ones).toBeDefined();
+    expect(ones.fix).toBeUndefined();
+  });
+
+  it("firstSet max takes compound set 1 to RIR 0, so C5 notes it", () => {
+    const mk = (firstSet: "top" | "max") =>
+      one(
+        [
+          slot({
+            slot: "a",
+            role: "compound",
+            firstSetMax: true,
+            rx: {
+              ...slot({ slot: "x" }).rx,
+              reps: [4, 8],
+              restSec: [120, 180],
+            },
+          }),
+        ],
+        { philosophy: { repBias: "heavy", firstSet } },
+      );
+    const max = validateProgram(mk("max")).findings.find(
+      (f) => f.code === "RIR_RANGE",
+    )!;
+    expect(max.rule).toBe("C5");
+    expect(max.severity).toBe("info");
+    expect(codes(mk("top"))).not.toContain("RIR_RANGE");
+  });
+
+  it("fitToMinutes shortens accessory rest before it trims sets", () => {
+    const patch = fitToMinutes(viewOf(FROG_DEFAULT), 30);
+    const firstSets = patch.findIndex((p) => p.sets != null);
+    const lastRest = patch.reduce(
+      (at, p, i) => (p.restSec != null ? i : at),
+      -1,
+    );
+    expect(lastRest).toBeGreaterThanOrEqual(0);
+    if (firstSets >= 0) expect(lastRest).toBeLessThan(firstSets);
+  });
 });

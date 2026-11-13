@@ -5,6 +5,7 @@
 
 import type { EvidenceTier, RuleId } from "../evidence/rules";
 import { weakestTier } from "../evidence/rules";
+import { setTargets } from "./resolve";
 import { type ProgramRuleSet, PROGRAM_RULES as R } from "./rules";
 import type { ProgramPatch, ProgramView, ViewSlot } from "./types";
 import {
@@ -83,6 +84,11 @@ const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 const muscleLabel = (m: string) => m.replace(/-/g, " ");
 
+/** R18b: a maintain program aims at about a third of the usual dose. */
+function doseShare(view: ProgramView, rules: ProgramRuleSet): number {
+  return view.goal === "maintain" ? rules.maintainShare : 1;
+}
+
 function finding(
   f: Omit<ProgramFinding, "tier"> & { tier?: EvidenceTier },
 ): ProgramFinding {
@@ -127,9 +133,9 @@ function addSetPatch(
 }
 
 /**
- * Trim an over-time program: isolation slots lose a set first (every muscle
- * stays at the practical weekly floor), then accessory rest drops to 60 s
- * (R15d). Best effort: returns the patch (empty if nothing helps); the
+ * Trim an over-time program: accessory rest drops to 60 s first (R15d), then
+ * isolation slots lose a set (every muscle stays at the practical weekly
+ * floor). Best effort: returns the patch (empty if nothing helps); the
  * caller re-validates, so a program that cannot fit without dropping a muscle
  * below the weekly floor simply stays over time and says so.
  */
@@ -149,8 +155,9 @@ export function fitToMinutes(
   const over = () =>
     Math.max(...work.sessions.map((s) => estimateMinutes(s.slots).max)) >
     maxMinutes;
+  const floor = rules.weeklySets[0] * doseShare(view, rules);
   const weeklyOk = (muscle: string) =>
-    (weeklySets(work)[muscle]?.total ?? 0) >= rules.weeklySets[0];
+    (weeklySets(work)[muscle]?.total ?? 0) >= floor;
 
   // Lever 1: shorter accessory rest.
   if (over()) {
@@ -211,18 +218,24 @@ export function validateProgram(
     ...estimateMinutes(s.slots),
   }));
   const findings: ProgramFinding[] = [];
+  const maintain = view.goal === "maintain";
+  const share = doseShare(view, rules);
+  const weeklyFloor = rules.weeklySets[0] * share;
+  const sessionFloor = rules.directPerSession[0] * share;
 
-  // R6 / C11 / C12: weekly band per muscle.
+  // R6 / C11 / C12: weekly band per muscle; R18b scales the floor to maintain.
   for (const [muscle, w] of Object.entries(weekly)) {
     const label = muscleLabel(muscle);
-    if (w.total < rules.weeklySets[0]) {
+    if (w.total < weeklyFloor) {
       findings.push(
         finding({
           code: "WEEKLY_LOW",
           severity: "heads-up",
           target: { muscle },
-          message: `${label}: ${fmt(w.total)} sets a week, below the ${rules.weeklySets[0]}-${rules.weeklySets[1]} starting range. A starting range, not a landmark.`,
-          rule: "C11",
+          message: maintain
+            ? `${label}: ${fmt(w.total)} sets a week, below the maintenance dose of about ${fmt(weeklyFloor)} (a third of the ${rules.weeklySets[0]}-${rules.weeklySets[1]} starting range).`
+            : `${label}: ${fmt(w.total)} sets a week, below the ${rules.weeklySets[0]}-${rules.weeklySets[1]} starting range. A starting range, not a landmark.`,
+          rule: maintain ? "R18b" : "C11",
           fix: addSetPatch(view, muscle, rules),
         }),
       );
@@ -250,6 +263,40 @@ export function validateProgram(
           .filter((x) => x.credits.direct.includes(muscle))
           .sort((a, b) => b.rx.sets - a.rx.sets)[0];
         const multi = view.sessions.length > 1;
+        let fix: ProgramFinding["fix"];
+        if (reduce && reduce.rx.sets > 1) {
+          const drop = {
+            session: multi ? s.id : undefined,
+            slot: reduce.slot,
+            sets: reduce.rx.sets - 1,
+          };
+          const receiver = view.sessions
+            .filter(
+              (x) =>
+                x.id !== s.id &&
+                (perSession.find((p) => p.id === x.id)?.directByMuscle[
+                  muscle
+                ] ?? 0) < rules.directPerSession[1],
+            )
+            .map((x) => ({
+              session: x.id,
+              slot: x.slots.find((y) => y.slot === reduce.slot),
+            }))
+            .find((x) => x.slot != null);
+          fix = receiver?.slot
+            ? {
+                label: "Move 1 set to another session",
+                patch: [
+                  drop,
+                  {
+                    session: receiver.session,
+                    slot: receiver.slot.slot,
+                    sets: receiver.slot.rx.sets + 1,
+                  },
+                ],
+              }
+            : { label: "Drop 1 set", patch: [drop] };
+        }
         findings.push(
           finding({
             code: "SESSION_CAP",
@@ -257,21 +304,10 @@ export function validateProgram(
             target: { muscle, session: s.id },
             message: `${sets} ${label} sets in one session. The planning range is ${rules.directPerSession[0]}-${rules.directPerSession[1]}; no study sets a cap, so this is about fatigue and session length.`,
             rule: "R7b",
-            fix: reduce
-              ? {
-                  label: multi ? "Move 1 set to another session" : "Drop 1 set",
-                  patch: [
-                    {
-                      session: multi ? s.id : undefined,
-                      slot: reduce.slot,
-                      sets: reduce.rx.sets - 1,
-                    },
-                  ],
-                }
-              : undefined,
+            fix,
           }),
         );
-      } else if (sets < rules.directPerSession[0]) {
+      } else if (sets < sessionFloor) {
         findings.push(
           finding({
             code: "SESSION_LOW",
@@ -301,12 +337,16 @@ export function validateProgram(
     }
   }
 
-  // Per-slot checks (R8b, R10/C5/R6, R15).
+  // Per-slot checks (R8b, R10/C5/R6, R15), once per distinct prescription.
   const seen = new Set<string>();
+  const firstSet = view.philosophy?.firstSet ?? "off";
   for (const s of view.sessions) {
     for (const slot of s.slots) {
-      if (seen.has(slot.slot)) continue;
-      seen.add(slot.slot);
+      const key = [slot.slot, slot.rx.reps, slot.rx.rir, slot.rx.restSec].join(
+        "|",
+      );
+      if (seen.has(key)) continue;
+      seen.add(key);
       const target = { slot: slot.slot, session: s.id };
       const [lo, hi] = slot.rx.reps;
       const isIso = slot.role === "isolation";
@@ -327,7 +367,10 @@ export function validateProgram(
           }),
         );
       }
-      const [rLo, rHi] = slot.rx.rir;
+      const [rLo, rHi] = [
+        Math.min(...setTargets(slot, firstSet).map((t) => t.rirMin)),
+        slot.rx.rir[1],
+      ];
       if (!isIso && rLo < rules.rirFloorCompound) {
         findings.push(
           finding({

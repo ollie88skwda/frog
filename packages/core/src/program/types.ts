@@ -222,7 +222,7 @@ export type ProgramView = {
   sessions: ViewSession[];
   block: BlockPlan | null;
   goal: ProgramGoal;
-  philosophy?: Pick<Philosophy, "repBias">;
+  philosophy?: Pick<Philosophy, "repBias" | "firstSet">;
   /** The user's per-session time budget, if known. */
   maxMinutes?: number;
 };
