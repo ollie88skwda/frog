@@ -49,16 +49,18 @@ describe("overrides and one-tap fixes (principle 6: apply, with undo)", () => {
     expect(o).toHaveLength(2);
   });
 
-  it("applying every WEEKLY_LOW fix lifts that muscle", () => {
+  it("applying a WEEKLY_LOW fix lifts that muscle's weekly sets", () => {
     const t = PROGRAM_TEMPLATES[0];
     const base = [{ slot: t.sessions[0].slots[0].slot, remove: true }];
-    const v0 = viewOf(t, { overrides: base });
-    const low = validateProgram(v0).findings.find(
-      (f) => f.code === "WEEKLY_LOW" && f.fix,
+    const r0 = validateProgram(viewOf(t, { overrides: base }));
+    const low = r0.findings.find((f) => f.code === "WEEKLY_LOW" && f.fix);
+    const muscle = low?.target.muscle;
+    expect(muscle).toBeDefined();
+    if (!low?.fix || !muscle) return;
+    const r1 = validateProgram(
+      viewOf(t, { overrides: applyPatch(base, low.fix.patch) }),
     );
-    expect(low).toBeDefined();
-    const next = applyPatch(base, low?.fix?.patch ?? []);
-    expect(next.length).toBeGreaterThanOrEqual(1);
+    expect(r1.weekly[muscle].total).toBeGreaterThan(r0.weekly[muscle].total);
   });
 });
 
