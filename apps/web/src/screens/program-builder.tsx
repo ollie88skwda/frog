@@ -302,14 +302,14 @@ function Shell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5 px-4 py-6 pb-28 md:pb-6">
+    <div className="mx-auto flex max-w-2xl flex-col gap-5 px-4 py-6 pb-44 md:pb-6">
       <div className="flex items-center gap-3">
         <BackButton onClick={onBack} label="Back" />
         <h1 className="text-xl font-bold tracking-tight">{title}</h1>
       </div>
       {children}
       {footer && (
-        <div className="fixed inset-x-0 bottom-0 z-30 bg-bg px-4 pt-3 pb-safe-footer md:static md:p-0">
+        <div className="fixed inset-x-0 bottom-20 z-30 bg-bg px-4 py-2 md:static md:p-0">
           <div className="mx-auto max-w-2xl">{footer}</div>
         </div>
       )}
@@ -557,11 +557,6 @@ function Review(p: ReviewProps) {
     >
       <div className="flex flex-col gap-1">
         <p className="text-sm text-soft">{template.summary}</p>
-        {template.author === "frog-default" && (
-          <p className="text-xs text-soft" data-testid="method-note">
-            {METHOD_NOTE}
-          </p>
-        )}
       </div>
 
       {p.undo && (
