@@ -13,17 +13,21 @@ import {
   type NewRoutineInput,
   newId,
   type ParsedExercise,
+  PROGRAM_RULES,
   parseRoutineText,
   type RoutineExerciseInput,
   type SetType,
+  type SwapCandidate,
   sameExerciseName,
   TYPE_FIELDS,
   toDisplayWeight,
   unitLabel,
+  viewFromRoutines,
   weightLabel,
 } from "@frog/core";
 import {
   ArrowDown,
+  ArrowsLeftRight,
   ArrowUp,
   Barbell,
   Check,
@@ -38,6 +42,15 @@ import {
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { MachineAttachDialog } from "@/components/attach-machine";
+import {
+  applyReps,
+  applyRir,
+  applyTopSet,
+  isTopSet,
+  REP_PRESETS,
+  RIR_PRESETS,
+} from "@/components/builder/logic";
+import { SwapSheet } from "@/components/builder/slot-sheets";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
@@ -49,6 +62,7 @@ import {
   REPS_DELTAS_COMPACT,
   WEIGHT_DELTAS,
 } from "@/components/routine/adjust-field";
+import { ProgramMeterRail } from "@/components/routine/meter-rail";
 import { RoutineSetTypeCell } from "@/components/routine/routine-set-type-cell";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -64,6 +78,7 @@ import {
   parseIntOrNull,
 } from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
+import { useActiveBuilderConfig } from "@/lib/program-queries";
 import {
   copyExerciseOpts,
   useCreateExercise,
@@ -76,6 +91,7 @@ import { userFacingRepoError } from "@/lib/repo-error";
 import { parseTargetRirFields } from "@/lib/rir";
 import {
   useCreateRoutine,
+  useFolderRoutineInputs,
   useRoutineDetail,
   useRoutineFolders,
   useUpdateRoutine,
@@ -155,10 +171,10 @@ const MAX_PARSED_EXERCISES = 50;
 // null case (no folder) and maps back to null at the boundary.
 const NO_FOLDER = "__none__";
 
-// A fresh set's target RIR range default: "leave a little in the tank" for
-// most working sets (RIR ≈ 10 − RPE; 1-2 RIR ≈ RPE 8-9). Editable per set.
-const DEFAULT_RIR_MIN = "1";
-const DEFAULT_RIR_MAX = "2";
+// A fresh set's target RIR range default: 1-3 reps in reserve (R10, redesign
+// J9; was 1-2). RIR ≈ 10 − RPE. Editable per set; presets live in the ⋯ menu.
+const DEFAULT_RIR_MIN = String(PROGRAM_RULES.rirDefault[0]);
+const DEFAULT_RIR_MAX = String(PROGRAM_RULES.rirDefault[1]);
 
 function emptySet(): DraftSet {
   return {
@@ -385,6 +401,51 @@ export default function RoutineEditScreen() {
 
   const list = drafts ?? [];
   const routineName = name ?? "";
+
+  // Program meter rail (report 8.5): this draft plus the folder's other
+  // routines, run through the same validateProgram the builder uses. Shown
+  // only when the routine sits in a folder. Never blocks saving.
+  const effectiveFolder =
+    folderId === undefined ? detail?.routine.folderId : folderId;
+  const siblings = useFolderRoutineInputs(effectiveFolder, id ?? null);
+  const activeProgram = useActiveBuilderConfig();
+  const [swapFor, setSwapFor] = useState<number | null>(null);
+  const meterView = useMemo(() => {
+    if (!effectiveFolder || list.length === 0) return null;
+    const num = (v: string) => {
+      const n = Number.parseInt(v, 10);
+      return Number.isFinite(n) ? n : null;
+    };
+    const draftRoutine = {
+      id: id ?? "draft",
+      name: routineName.trim() || "This routine",
+      exercises: list.map((d) => ({
+        exerciseId: d.exerciseId,
+        restSec: d.restSec,
+        sets: d.sets.map((s) => ({
+          setType: s.setType,
+          targetReps: num(s.reps),
+          targetRepsMax: num(s.repsMax),
+          targetRirMin: num(s.rirMin),
+          targetRirMax: num(s.rirMax),
+        })),
+      })),
+    };
+    return viewFromRoutines([...siblings, draftRoutine], byId as never, {
+      schedule: activeProgram.config?.answers.schedule,
+      goal: activeProgram.config?.answers.goal,
+    });
+  }, [
+    effectiveFolder,
+    list,
+    siblings,
+    id,
+    routineName,
+    byId,
+    activeProgram.config,
+  ]);
+  const folderName =
+    folders.find((f) => f.id === effectiveFolder)?.name ?? null;
 
   // Shared gate for every action that mutates the draft on /routines/:id.
   // Any of them makes `drafts` non-null, which permanently disables the
@@ -810,6 +871,10 @@ export default function RoutineEditScreen() {
         </Select.Root>
       </div>
 
+      {meterView && (
+        <ProgramMeterRail view={meterView} folderName={folderName} />
+      )}
+
       {/* Frog frames the failure; the exact error stays outside t() so the
           fact survives every register. */}
       {error && (
@@ -921,6 +986,17 @@ export default function RoutineEditScreen() {
                           patchExerciseField(i, exercise, { laterality: l })
                       : undefined
                   }
+                  onApplyReps={(r) =>
+                    patchExercise(i, { sets: applyReps(d.sets, r) })
+                  }
+                  onApplyRir={(r) =>
+                    patchExercise(i, { sets: applyRir(d.sets, r) })
+                  }
+                  topSet={isTopSet(d.sets)}
+                  onToggleTopSet={(on) =>
+                    patchExercise(i, { sets: applyTopSet(d.sets, on) })
+                  }
+                  onSwap={exercise ? () => setSwapFor(i) : undefined}
                   onMove={(dir) => move(i, dir)}
                   onRemove={() => {
                     const key = list[i]?.key;
@@ -1462,6 +1538,40 @@ export default function RoutineEditScreen() {
         </DialogContent>
       </Dialog>
 
+      {swapFor != null &&
+        list[swapFor] &&
+        byId.get(list[swapFor].exerciseId) && (
+          <SwapSheet
+            open
+            onOpenChange={(o) => !o && setSwapFor(null)}
+            current={
+              byId.get(list[swapFor].exerciseId) as unknown as SwapCandidate
+            }
+            library={(exercises ?? []) as unknown as SwapCandidate[]}
+            slot={{
+              slot: `ex-${swapFor}`,
+              role: "isolation",
+              credits: { direct: [], indirect: [] },
+              rx: {
+                sets: list[swapFor].sets.filter((s) => s.setType !== "warmup")
+                  .length,
+                reps: [8, 12],
+                rir: [1, 3],
+              } as never,
+            }}
+            currentRegion={null}
+            regionOf={() => null}
+            perWeek={1}
+            excludeIds={new Set(list.map((d) => d.exerciseId))}
+            onPick={(e) => {
+              const ex = byId.get(e.id);
+              if (ex)
+                patchExercise(swapFor, { exerciseId: ex.id, name: ex.name });
+              setSwapFor(null);
+            }}
+          />
+        )}
+
       {attachMachineFor != null && list[attachMachineFor] && (
         <MachineAttachDialog
           blockName={list[attachMachineFor].name}
@@ -1507,6 +1617,11 @@ function ExerciseMenu({
   onRemoveMachine,
   defaultLaterality,
   onSetDefaultLaterality,
+  onApplyReps,
+  onApplyRir,
+  topSet,
+  onToggleTopSet,
+  onSwap,
   onMove,
   onRemove,
 }: {
@@ -1521,6 +1636,11 @@ function ExerciseMenu({
   onRemoveMachine?: () => void;
   defaultLaterality: Laterality;
   onSetDefaultLaterality?: (l: Laterality) => void;
+  onApplyReps: (r: readonly [number, number]) => void;
+  onApplyRir: (r: readonly [number, number]) => void;
+  topSet: boolean;
+  onToggleTopSet: (on: boolean) => void;
+  onSwap?: () => void;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
 }) {
@@ -1565,6 +1685,70 @@ function ExerciseMenu({
               <Flame className="size-3.5 shrink-0 text-warn" />
               Add warm-up set
             </button>
+            {onSwap && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSwap();
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-swap`}
+                className={itemCls}
+              >
+                <ArrowsLeftRight className="size-3.5 shrink-0 text-faint" />
+                Swap exercise
+              </button>
+            )}
+            <button
+              type="button"
+              aria-pressed={topSet}
+              onClick={() => {
+                onToggleTopSet(!topSet);
+                close();
+              }}
+              data-testid={`routine-ex-${index}-top-set`}
+              className={itemCls}
+            >
+              <span className="flex flex-col">
+                Top set first
+                <span className="text-2xs font-normal normal-case tracking-normal text-faint">
+                  Set 1 at 1 RIR, the rest 2-3. A method, not a research rule.
+                </span>
+              </span>
+              {topSet && (
+                <Check className="ml-auto size-3.5 shrink-0 text-accent-ink" />
+              )}
+            </button>
+            <p className={labelCls}>Rep range</p>
+            {REP_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  onApplyReps(p.reps);
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-reps-${p.id}`}
+                className={itemCls}
+              >
+                {p.label}
+              </button>
+            ))}
+            <p className={labelCls}>Reps in reserve</p>
+            {RIR_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  onApplyRir(p.rir);
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-rir-${p.id}`}
+                className={itemCls}
+              >
+                {p.label}
+              </button>
+            ))}
             <p className={labelCls}>Laterality</p>
             {(
               [

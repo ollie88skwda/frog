@@ -1,10 +1,15 @@
-import {
-  type ProgramFinding,
-  type SessionSummary,
-  type ValidationResult,
+import type {
+  ProgramFinding,
+  SessionSummary,
+  ValidationResult,
 } from "@frog/core";
 import { Warning } from "@phosphor-icons/react";
-import { MuscleMeter, SectionHeader, TierBadge, type Tier } from "@/components/data";
+import {
+  MuscleMeter,
+  SectionHeader,
+  type Tier,
+  TierBadge,
+} from "@/components/data";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { inBandCount, meterRows, sessionStrip } from "./logic";
@@ -27,8 +32,9 @@ export function WeeklyMeter({
     <div data-testid="weekly-meter">
       <p className="px-4 pb-1 text-xs text-soft">
         <span className="num">{inBandCount(rows)}</span> of{" "}
-        <span className="num">{rows.length}</span> muscles in the 10-20 starting range. Direct
-        sets count 1, indirect 0.5. A starting range, not a landmark.
+        <span className="num">{rows.length}</span> muscles in the 10-20 starting
+        range. Direct sets count 1, indirect 0.5. A starting range, not a
+        landmark.
       </p>
       {rows.map((r) => (
         <MuscleMeter
@@ -53,7 +59,9 @@ export function SessionStrip({ sessions }: { sessions: SessionSummary[] }) {
             key={s.id}
             className="flex min-h-11 items-center justify-between gap-2 px-4 text-sm"
           >
-            <span className="min-w-0 truncate font-semibold text-ink">{s.name}</span>
+            <span className="min-w-0 truncate font-semibold text-ink">
+              {s.name}
+            </span>
             <span className="num flex shrink-0 items-center gap-2 text-xs text-soft">
               {s.totalSets} sets
               {strip && (
@@ -98,6 +106,7 @@ export function FindingsList({
     <ul className="flex flex-col gap-2 px-4" data-testid="findings">
       {findings.map((f, i) => (
         <li
+          // biome-ignore lint/suspicious/noArrayIndexKey: findings can repeat the same code+target
           key={`${f.code}-${f.target.muscle ?? ""}-${f.target.slot ?? ""}-${f.target.session ?? ""}-${i}`}
           className="flex flex-col gap-2 rounded-md bg-surface-2 p-3"
         >
@@ -109,7 +118,12 @@ export function FindingsList({
                 className="mt-0.5 size-4 shrink-0 text-attn"
               />
             )}
-            <p className={cn("text-sm", f.severity === "heads-up" ? "text-ink" : "text-soft")}>
+            <p
+              className={cn(
+                "text-sm",
+                f.severity === "heads-up" ? "text-ink" : "text-soft",
+              )}
+            >
               {f.message}
             </p>
           </div>

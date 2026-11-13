@@ -8,21 +8,21 @@ import {
   type GeneratorConfig,
   jointActionLabel,
   MUSCLE_REGION_LABELS,
-  type MuscleTarget,
-  primaryMuscles,
-  type ProgramView,
-  type ResolvedProgram,
-  secondaryMuscles,
   type MuscleSets,
+  type MuscleTarget,
   muscleLabel,
-  PROGRAM_RULES as R,
   type ProgramGoal,
   type ProgramSchedule,
+  type ProgramView,
   type ProgramWeekday,
+  primaryMuscles,
+  PROGRAM_RULES as R,
+  type ResolvedProgram,
   regionOf,
   type SlotOverride,
   type SlotPrescription,
   type SlotTemplate,
+  secondaryMuscles,
   sessionsPerWeek,
   type TrainingStatus,
 } from "@frog/core";
@@ -66,7 +66,12 @@ export const SCHEDULE_OPTIONS: readonly ScheduleOption[] = [
     schedule: days(1, 2, 3, 4, 5),
   },
   { id: "2", label: "2 days", hint: "Mon, Thu", schedule: days(1, 4) },
-  { id: "custom", label: "Pick weekdays", hint: "Choose your own", schedule: days(1, 3, 5) },
+  {
+    id: "custom",
+    label: "Pick weekdays",
+    hint: "Choose your own",
+    schedule: days(1, 3, 5),
+  },
 ];
 
 export const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -100,11 +105,23 @@ export function scheduleLabel(s: ProgramSchedule): string {
     .join(", ")} · ${per}`;
 }
 
-export const GOAL_OPTIONS: readonly { id: ProgramGoal; label: string; hint: string }[] = [
-  { id: "muscle", label: "Build muscle", hint: "Most sets near 1-3 reps in reserve" },
+export const GOAL_OPTIONS: readonly {
+  id: ProgramGoal;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    id: "muscle",
+    label: "Build muscle",
+    hint: "Most sets near 1-3 reps in reserve",
+  },
   { id: "strength", label: "Get stronger", hint: "Heavier, lower reps" },
   { id: "general", label: "Both", hint: "A balanced mix" },
-  { id: "maintain", label: "Maintain", hint: "About a third of the sets, for busy weeks" },
+  {
+    id: "maintain",
+    label: "Maintain",
+    hint: "About a third of the sets, for busy weeks",
+  },
 ];
 
 export const STATUS_OPTIONS: readonly {
@@ -136,9 +153,24 @@ export const EQUIPMENT_PRESETS: readonly {
   hint: string;
   equipment: EquipmentKind[];
 }[] = [
-  { id: "gym", label: "Full gym", hint: "Barbells, machines, cables", equipment: ALL_GYM },
-  { id: "home", label: "Home dumbbells", hint: "Dumbbells and bodyweight", equipment: ["dumbbell", "bodyweight", "other"] },
-  { id: "bodyweight", label: "Bodyweight", hint: "No equipment", equipment: ["bodyweight"] },
+  {
+    id: "gym",
+    label: "Full gym",
+    hint: "Barbells, machines, cables",
+    equipment: ALL_GYM,
+  },
+  {
+    id: "home",
+    label: "Home dumbbells",
+    hint: "Dumbbells and bodyweight",
+    equipment: ["dumbbell", "bodyweight", "other"],
+  },
+  {
+    id: "bodyweight",
+    label: "Bodyweight",
+    hint: "No equipment",
+    equipment: ["bodyweight"],
+  },
 ];
 
 export function equipmentPresetId(equipment: readonly string[]): string {
@@ -172,7 +204,8 @@ export function prefsFromAnswers(
   a: BuilderAnswers,
   prefs: { goal: string | null; trainingStatus: string | null },
 ): { goal?: "build" | "maintain"; trainingStatus?: TrainingStatus } {
-  const out: { goal?: "build" | "maintain"; trainingStatus?: TrainingStatus } = {};
+  const out: { goal?: "build" | "maintain"; trainingStatus?: TrainingStatus } =
+    {};
   if (prefs.goal == null) {
     if (a.goal === "muscle") out.goal = "build";
     else if (a.goal === "maintain") out.goal = "maintain";
@@ -220,9 +253,10 @@ export function applyPatch(
   list: readonly SlotOverride[],
   patch: readonly SlotOverride[],
 ): SlotOverride[] {
-  return patch.reduce<SlotOverride[]>((acc, o) => upsertOverride(acc, o), [
-    ...list,
-  ]);
+  return patch.reduce<SlotOverride[]>(
+    (acc, o) => upsertOverride(acc, o),
+    [...list],
+  );
 }
 
 // ---- presets (R8b, R10) -----------------------------------------------
@@ -238,7 +272,11 @@ export const REP_PRESETS: readonly RepPreset[] = [
 export type RirPreset = { id: string; label: string; rir: [number, number] };
 export const RIR_PRESETS: readonly RirPreset[] = [
   { id: "default", label: "1-3 (default)", rir: [...R.rirDefault] },
-  { id: "last-iso", label: "0-1 (last isolation set)", rir: [...R.rirLastIsolationSet] },
+  {
+    id: "last-iso",
+    label: "0-1 (last isolation set)",
+    rir: [...R.rirLastIsolationSet],
+  },
   { id: "deload", label: "3-4 (deload)", rir: [...R.deloadRir] },
 ];
 
@@ -248,8 +286,11 @@ const range = (r: readonly [number, number]) =>
 export const formatReps = range;
 
 export function formatRest(sec: readonly [number, number]): string {
-  const m = (s: number) => (s % 60 === 0 ? `${s / 60}` : `${(s / 60).toFixed(1)}`);
-  return sec[0] === sec[1] ? `${m(sec[0])} min` : `${m(sec[0])}-${m(sec[1])} min`;
+  const m = (s: number) =>
+    s % 60 === 0 ? `${s / 60}` : `${(s / 60).toFixed(1)}`;
+  return sec[0] === sec[1]
+    ? `${m(sec[0])} min`
+    : `${m(sec[0])}-${m(sec[1])} min`;
 }
 
 /** "3 × 4-8 · RIR 1-3 · rest 2-3 min" (report 8.4 slot row). */
@@ -380,7 +421,9 @@ export function slotChoices(
   byId: ReadonlyMap<string, { name: string }>,
 ): Map<string, SlotChoice> {
   const out = new Map<string, SlotChoice>();
-  const gone = new Set(resolved.unresolved.map((u) => `${u.session}|${u.slot}`));
+  const gone = new Set(
+    resolved.unresolved.map((u) => `${u.session}|${u.slot}`),
+  );
   view.sessions.forEach((s, si) => {
     const list = resolved.program.routines[si]?.exercises ?? [];
     let k = 0;
@@ -401,7 +444,10 @@ export function slotChoices(
 
 /** Change in weekly fractional sets if a slot's credits move to a new lift. */
 export function creditDelta(
-  slot: { credits: { direct: string[]; indirect: string[] }; rx: { sets: number } },
+  slot: {
+    credits: { direct: string[]; indirect: string[] };
+    rx: { sets: number };
+  },
   next: { direct: string[]; indirect: string[] },
   perWeek: number,
 ): { muscle: string; label: string; delta: number }[] {
@@ -417,7 +463,77 @@ export function creditDelta(
   for (const k of new Set([...a.keys(), ...b.keys()])) {
     const d = ((b.get(k) ?? 0) - (a.get(k) ?? 0)) * slot.rx.sets * perWeek;
     if (Math.abs(d) > 0.01)
-      out.push({ muscle: k, label: muscleLabel(k), delta: Math.round(d * 10) / 10 });
+      out.push({
+        muscle: k,
+        label: muscleLabel(k),
+        delta: Math.round(d * 10) / 10,
+      });
   }
   return out.sort((x, y) => Math.abs(y.delta) - Math.abs(x.delta));
+}
+
+// ---- routine-editor presets (report 8.5) ------------------------------
+// Operate on the editor's string-valued draft sets without importing them.
+
+type RirSet = { setType: string; rirMin: string; rirMax: string };
+const isWarm = (s: { setType: string }) =>
+  s.setType === "warmup" || s.setType === "warm-up";
+
+/**
+ * Top set first (a method, not a research rule, T5): set 1 at RIR 1, the rest
+ * 2-3. Mirrors `setTargets` in the program resolver so a routine edited here
+ * reads the same as one the builder wrote.
+ */
+export function isTopSet(sets: readonly RirSet[]): boolean {
+  const work = sets.filter((s) => !isWarm(s));
+  if (work.length < 2) return false;
+  const [first, ...rest] = work;
+  return (
+    first.rirMin === String(R.rirFloorCompound) &&
+    first.rirMax === String(R.rirFloorCompound) &&
+    rest.every((s) => s.rirMin !== "" && Number(s.rirMin) >= 2)
+  );
+}
+
+export function applyTopSet<T extends RirSet>(
+  sets: readonly T[],
+  on: boolean,
+): T[] {
+  let seen = false;
+  return sets.map((s) => {
+    if (isWarm(s)) return s;
+    if (!on)
+      return {
+        ...s,
+        rirMin: String(R.rirDefault[0]),
+        rirMax: String(R.rirDefault[1]),
+      };
+    if (!seen) {
+      seen = true;
+      return {
+        ...s,
+        rirMin: String(R.rirFloorCompound),
+        rirMax: String(R.rirFloorCompound),
+      };
+    }
+    return { ...s, rirMin: "2", rirMax: String(R.rirDefault[1]) };
+  });
+}
+
+/** Set one rep range on every working set; warm-ups keep their own. */
+export function applyReps<
+  T extends { setType: string; reps: string; repsMax: string },
+>(sets: readonly T[], reps: readonly [number, number]): T[] {
+  return sets.map((s) =>
+    isWarm(s) ? s : { ...s, reps: String(reps[0]), repsMax: String(reps[1]) },
+  );
+}
+
+export function applyRir<T extends RirSet>(
+  sets: readonly T[],
+  rir: readonly [number, number],
+): T[] {
+  return sets.map((s) =>
+    isWarm(s) ? s : { ...s, rirMin: String(rir[0]), rirMax: String(rir[1]) },
+  );
 }

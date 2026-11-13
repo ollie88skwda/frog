@@ -14,8 +14,8 @@ import {
   GOAL_OPTIONS,
   MINUTE_OPTIONS,
   SCHEDULE_OPTIONS,
-  scheduleOptionId,
   STATUS_OPTIONS,
+  scheduleOptionId,
   WEEKDAY_SHORT,
 } from "./logic";
 
@@ -58,7 +58,9 @@ function Option({
         <span className="block text-sm font-semibold">{label}</span>
         {hint && <span className="block text-xs text-soft">{hint}</span>}
       </span>
-      {selected && <Check aria-hidden="true" weight="bold" className="size-4" />}
+      {selected && (
+        <Check aria-hidden="true" weight="bold" className="size-4" />
+      )}
     </button>
   );
 }
@@ -110,14 +112,13 @@ export function WizardStep({
           />
         ))}
         {sel === "custom" && (
-          <div
-            role="group"
-            aria-label="Training weekdays"
-            className="flex flex-wrap gap-1 pt-1"
-          >
+          <fieldset className="min-w-0 border-0 p-0 flex flex-wrap gap-1 pt-1">
+            <legend className="sr-only">Training weekdays</legend>
             {WEEKDAY_SHORT.map((d, i) => {
               const days =
-                answers.schedule.kind === "weekdays" ? answers.schedule.days : [];
+                answers.schedule.kind === "weekdays"
+                  ? answers.schedule.days
+                  : [];
               const on = days.includes(i as never);
               return (
                 <ToggleChip
@@ -138,7 +139,7 @@ export function WizardStep({
                 </ToggleChip>
               );
             })}
-          </div>
+          </fieldset>
         )}
       </Question>
     );
@@ -206,7 +207,8 @@ export function WizardStep({
           }
         />
         {sel === "custom" && (
-          <div role="group" aria-label="Equipment" className="flex flex-wrap gap-1 pt-1">
+          <fieldset className="min-w-0 border-0 p-0 flex flex-wrap gap-1 pt-1">
+            <legend className="sr-only">Equipment</legend>
             {EQUIPMENT_KINDS.map((k) => {
               const on = answers.equipment.includes(k);
               return (
@@ -225,7 +227,7 @@ export function WizardStep({
                 </ToggleChip>
               );
             })}
-          </div>
+          </fieldset>
         )}
       </Question>
     );
@@ -235,7 +237,8 @@ export function WizardStep({
       title="How long per session?"
       note="An estimate, not measured. The review trims to fit if it runs over."
     >
-      <div role="group" aria-label="Minutes per session" className="grid grid-cols-5 gap-2">
+      <fieldset className="min-w-0 border-0 p-0 grid grid-cols-5 gap-2">
+        <legend className="sr-only">Minutes per session</legend>
         {MINUTE_OPTIONS.map((m) => (
           <button
             key={m}
@@ -253,7 +256,7 @@ export function WizardStep({
             {m}
           </button>
         ))}
-      </div>
+      </fieldset>
       <p className="text-xs text-soft">minutes</p>
     </Question>
   );

@@ -1,165 +1,175 @@
-import { type GeneratedProgram, generateProgram } from "@frog/core";
-import { Barbell } from "@phosphor-icons/react";
-import { useMemo, useState } from "react";
+import {
+  type GeneratedProgram,
+  generateProgram,
+  PROGRAM_TEMPLATES,
+  templateById,
+} from "@frog/core";
+import { Barbell, MagicWand } from "@phosphor-icons/react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { scheduleLabel } from "@/components/builder/logic";
+import { SectionHeader } from "@/components/data";
 import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   catalogEntry,
   EQUIPMENT_PROFILE_LABELS,
-  type EquipmentProfile,
   entryConfig,
   equipmentProfile,
   GOAL_LABELS,
   LEVEL_LABELS,
   PROGRAM_CATALOG,
   type ProgramCatalogEntry,
-  type ProgramGoal,
-  type ProgramLevel,
 } from "@/data/program-catalog";
-import { useMaterializeProgram } from "@/lib/program-queries";
+import {
+  useActiveBuilderConfig,
+  useMaterializeProgram,
+} from "@/lib/program-queries";
 import { useExercisePrefs, useExercises } from "@/lib/queries";
 import { userFacingRepoError } from "@/lib/repo-error";
 import { selectableFrom } from "@/lib/trainer";
-import { cn } from "@/lib/utils";
 import { useVoice } from "@/lib/voice";
 
-// Explore program library (Hevy-parity M11). The catalog is a set of generator
-// configs + copy; the actual routines are materialized deterministically by
-// generateProgram at save time, so this screen ships no exercise data. One
-// component serves both the list (/programs) and a detail (/programs/:key).
+// Program catalog (F8). It leads with the guided builder and the four research
+// templates (J4); the older generator configs live under "More templates"
+// (filters removed 2026-11-13, redesign J9). /programs/new and /programs/edit
+// render the builder here so no extra route is needed in app.tsx; any other
+// :key is a legacy catalog detail, materialized by generateProgram at save.
+const ProgramBuilderScreen = lazy(() => import("@/screens/program-builder"));
+
 export default function ProgramsScreen() {
   const { key } = useParams<{ key: string }>();
+  if (key === "new" || key === "edit") {
+    return (
+      <Suspense
+        fallback={
+          <p role="status" className="py-10 text-center text-sm text-soft">
+            Loading…
+          </p>
+        }
+      >
+        <ProgramBuilderScreen />
+      </Suspense>
+    );
+  }
   if (key) return <ProgramDetail programKey={key} />;
   return <ProgramCatalog />;
 }
 
-function Chip({
-  label,
-  active,
-  onClick,
-  testId,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  testId?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      data-testid={testId}
-      className={cn(
-        "h-8 shrink-0 px-3 text-xs transition-colors duration-150",
-        active
-          ? "bg-accent-soft text-accent-ink"
-          : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
 function ProgramCatalog() {
   const { t } = useVoice();
-  const [level, setLevel] = useState<ProgramLevel | "all">("all");
-  const [goal, setGoal] = useState<ProgramGoal | "all">("all");
-  const [equip, setEquip] = useState<EquipmentProfile | "all">("all");
-
-  const filtered = useMemo(
-    () =>
-      PROGRAM_CATALOG.filter(
-        (p) =>
-          (level === "all" || p.level === level) &&
-          (goal === "all" || p.goal === goal) &&
-          (equip === "all" || equipmentProfile(p.equipment) === equip),
-      ),
-    [level, goal, equip],
-  );
+  const [more, setMore] = useState(false);
+  const active = useActiveBuilderConfig();
+  const activeTemplate = active.config
+    ? templateById(active.config.templateId)
+    : undefined;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
       <div className="flex items-center gap-3">
-        <BackButton to="/train" label="Back to training" />
+        <BackButton to="/routines" label="Back to routines" />
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Programs</h1>
-          <p className="text-2xs text-faint">
-            Curated multi-week plans — save one as a folder of routines.
+          <h1 className="text-xl font-bold tracking-tight">Programs</h1>
+          <p className="text-xs text-soft">
+            Five questions, then a plan you can tune before it saves.
           </p>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="mt-4 flex flex-col gap-2">
-        <div className="flex gap-1 overflow-x-auto pb-0.5">
-          <Chip
-            label="All levels"
-            active={level === "all"}
-            onClick={() => setLevel("all")}
-          />
-          {(["beginner", "intermediate", "advanced"] as ProgramLevel[]).map(
-            (l) => (
-              <Chip
-                key={l}
-                label={LEVEL_LABELS[l]}
-                active={level === l}
-                onClick={() => setLevel(l)}
-                testId={`filter-level-${l}`}
-              />
-            ),
-          )}
-        </div>
-        <div className="flex gap-1 overflow-x-auto pb-0.5">
-          <Chip
-            label="Any goal"
-            active={goal === "all"}
-            onClick={() => setGoal("all")}
-          />
-          {(["muscle", "strength", "general"] as ProgramGoal[]).map((g) => (
-            <Chip
-              key={g}
-              label={GOAL_LABELS[g]}
-              active={goal === g}
-              onClick={() => setGoal(g)}
-              testId={`filter-goal-${g}`}
-            />
-          ))}
-        </div>
-        <div className="flex gap-1 overflow-x-auto pb-0.5">
-          <Chip
-            label="Any equipment"
-            active={equip === "all"}
-            onClick={() => setEquip("all")}
-          />
-          {(["gym", "dumbbell", "bodyweight"] as EquipmentProfile[]).map(
-            (e) => (
-              <Chip
-                key={e}
-                label={EQUIPMENT_PROFILE_LABELS[e]}
-                active={equip === e}
-                onClick={() => setEquip(e)}
-                testId={`filter-equip-${e}`}
-              />
-            ),
-          )}
-        </div>
-      </div>
+      {active.config && activeTemplate && (
+        <Card size="sm" className="mt-5 bg-surface-2">
+          <div className="flex items-center gap-3 px-(--card-spacing)">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-soft">Your program</p>
+              <p className="truncate text-sm font-semibold text-ink">
+                {activeTemplate.name}
+              </p>
+              <p className="num text-xs text-soft">
+                {scheduleLabel(active.config.answers.schedule)}
+              </p>
+            </div>
+            <Link
+              to="/programs/edit"
+              data-testid="program-edit"
+              className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary transition-colors duration-150 hover:bg-hover md:h-8"
+            >
+              Edit
+            </Link>
+          </div>
+        </Card>
+      )}
 
-      {/* Cards */}
-      <div className="mt-4 flex flex-col gap-2">
-        {filtered.map((p) => (
-          <ProgramCard key={p.key} entry={p} />
+      <Link
+        to="/programs/new"
+        data-testid="build-my-program"
+        className="mt-5 flex min-h-16 items-center gap-3 rounded-md bg-action px-4 py-3 text-on-action transition-colors duration-150 hover:bg-action-hover"
+      >
+        <MagicWand
+          aria-hidden="true"
+          weight="fill"
+          className="size-6 shrink-0"
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold">Build my program</span>
+          <span className="block text-xs opacity-80">
+            Schedule, goal, experience, equipment, time.
+          </span>
+        </span>
+      </Link>
+
+      <SectionHeader title="Templates" />
+      <div className="flex flex-col gap-2" data-testid="template-list">
+        {PROGRAM_TEMPLATES.map((tp) => (
+          <Link
+            key={tp.id}
+            to={`/programs/new?template=${tp.id}`}
+            data-testid={`template-${tp.id}`}
+            className="block rounded-md bg-surface-2 p-4 transition-colors duration-150 hover:bg-surface-hover"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-semibold">{tp.name}</span>
+              <span className="num shrink-0 text-xs text-soft">
+                {scheduleLabel(tp.schedule).split(" · ")[1]}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-soft">{tp.summary}</p>
+            <p className="num mt-1 text-xs text-soft">
+              {tp.minutes.min}-{tp.minutes.max} min
+              {tp.block.kind === "fixed" ? " · 6-week block" : ""}
+            </p>
+          </Link>
         ))}
-        {filtered.length === 0 && (
-          <p className="py-8 text-center text-xs text-faint">
-            {t(
-              "No programs match those filters.",
-              "No programs match those filters. The frog refuses to speculate.",
+      </div>
+
+      <div className="mt-6">
+        <Button
+          variant="outline"
+          className="w-full"
+          aria-expanded={more}
+          onClick={() => setMore((m) => !m)}
+          data-testid="more-templates"
+        >
+          More templates ({PROGRAM_CATALOG.length})
+        </Button>
+        {more && (
+          <div className="mt-2 flex flex-col gap-2">
+            <p className="px-1 text-xs text-soft">
+              Older split programs (push/pull/legs, upper/lower). No weekly set
+              meter.
+            </p>
+            {PROGRAM_CATALOG.map((p) => (
+              <ProgramCard key={p.key} entry={p} />
+            ))}
+            {PROGRAM_CATALOG.length === 0 && (
+              <p className="py-8 text-center text-xs text-faint">
+                {t(
+                  "Nothing here.",
+                  "Nothing here. The frog refuses to speculate.",
+                )}
+              </p>
             )}
-          </p>
+          </div>
         )}
       </div>
     </div>

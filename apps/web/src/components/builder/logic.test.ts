@@ -109,7 +109,9 @@ describe("meter (F3/F8 review)", () => {
 
 describe("prefs round trip (D7)", () => {
   it("writes goal and status only when unset", () => {
-    expect(prefsFromAnswers(answers, { goal: null, trainingStatus: null })).toEqual({
+    expect(
+      prefsFromAnswers(answers, { goal: null, trainingStatus: null }),
+    ).toEqual({
       goal: "build",
       trainingStatus: "intermediate",
     });
@@ -128,8 +130,8 @@ describe("prefs round trip (D7)", () => {
   });
 });
 
-import { creditDelta, slotChoices, withPinnedCredits } from "./logic";
 import { resolveTemplate } from "@frog/core";
+import { creditDelta, slotChoices, withPinnedCredits } from "./logic";
 
 describe("swap keeps the meter honest", () => {
   const t = PROGRAM_TEMPLATES[0];
@@ -158,7 +160,9 @@ describe("swap keeps the meter honest", () => {
       direct: ["hamstrings"],
       indirect: ["glutes"],
     });
-    expect(next.sessions[0].slots[1].credits).toEqual(view.sessions[0].slots[1].credits);
+    expect(next.sessions[0].slots[1].credits).toEqual(
+      view.sessions[0].slots[1].credits,
+    );
   });
   it("creditDelta reports the weekly change per muscle", () => {
     const d = creditDelta(
@@ -181,8 +185,52 @@ describe("swap keeps the meter honest", () => {
       },
     ];
     const resolved = resolveTemplate(t, lib);
-    const choices = slotChoices(view, resolved, new Map([["lp", { name: "Leg Press" }]]));
-    expect(choices.get(`${view.sessions[0].id}|${slot.slot}`)?.name).toBe("Leg Press");
+    const choices = slotChoices(
+      view,
+      resolved,
+      new Map([["lp", { name: "Leg Press" }]]),
+    );
+    expect(choices.get(`${view.sessions[0].id}|${slot.slot}`)?.name).toBe(
+      "Leg Press",
+    );
     expect(choices.size).toBe(1);
+  });
+});
+
+import { applyReps, applyRir, applyTopSet, isTopSet } from "./logic";
+
+describe("routine editor presets", () => {
+  const mk = (type = "normal", min = "1", max = "3") => ({
+    setType: type,
+    reps: "",
+    repsMax: "",
+    rirMin: min,
+    rirMax: max,
+  });
+  it("top set toggle: set 1 at RIR 1, the rest 2-3, warm-ups untouched", () => {
+    const base = [mk("warmup", "", ""), mk(), mk(), mk()];
+    const on = applyTopSet(base, true);
+    expect(on[0]).toEqual(base[0]);
+    expect([on[1].rirMin, on[1].rirMax]).toEqual(["1", "1"]);
+    expect([on[2].rirMin, on[2].rirMax]).toEqual(["2", "3"]);
+    expect(isTopSet(on)).toBe(true);
+    const off = applyTopSet(on, false);
+    expect(isTopSet(off)).toBe(false);
+    expect(off[3].rirMin).toBe("1");
+  });
+  it("a single working set is never a top set", () => {
+    expect(isTopSet([mk()])).toBe(false);
+  });
+  it("rep and RIR presets skip warm-ups", () => {
+    const base = [mk("warmup", "", ""), mk()];
+    expect(applyReps(base, [4, 8])[1]).toMatchObject({
+      reps: "4",
+      repsMax: "8",
+    });
+    expect(applyReps(base, [4, 8])[0].reps).toBe("");
+    expect(applyRir(base, [3, 4])[1]).toMatchObject({
+      rirMin: "3",
+      rirMax: "4",
+    });
   });
 });

@@ -3,9 +3,10 @@ import {
   muscleLabel,
   primaryMuscles,
   rankSwaps,
-  secondaryMuscles,
   type SlotOverride,
   type SwapCandidate,
+  secondaryMuscles,
+  stabilityRank,
   type ViewSlot,
 } from "@frog/core";
 import { Minus, Plus } from "@phosphor-icons/react";
@@ -14,13 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ChipGroup, ChipItem } from "@/components/ui/chip";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { stabilityRank } from "@frog/core";
-import {
-  creditDelta,
-  formatReps,
-  REP_PRESETS,
-  RIR_PRESETS,
-} from "./logic";
+import { creditDelta, formatReps, REP_PRESETS, RIR_PRESETS } from "./logic";
 
 const STABILITY_WORD: Record<number, string> = {
   5: "Machine",
@@ -77,7 +72,10 @@ export function EditSlotSheet({
               >
                 <Minus className="size-4" />
               </Button>
-              <span className="num w-8 text-center text-lg font-bold" data-testid="slot-sets">
+              <span
+                className="num w-8 text-center text-lg font-bold"
+                data-testid="slot-sets"
+              >
                 {sets}
               </span>
               <Button
@@ -107,8 +105,8 @@ export function EditSlotSheet({
               ))}
             </ChipGroup>
             <p className="text-xs text-soft">
-              Now <span className="num">{formatReps(reps)}</span> reps. Any load near failure can
-              grow muscle; these are practical ranges.
+              Now <span className="num">{formatReps(reps)}</span> reps. Any load
+              near failure can grow muscle; these are practical ranges.
             </p>
           </section>
           <section className="flex flex-col gap-2">
@@ -193,15 +191,20 @@ export function SwapSheet({
     [current, library, currentRegion, regionOf, excludeIds],
   );
   const shown = ranked
-    .filter((r) => r.exercise.name.toLowerCase().includes(q.trim().toLowerCase()))
+    .filter((r) =>
+      r.exercise.name.toLowerCase().includes(q.trim().toLowerCase()),
+    )
     .slice(0, 40);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent title={`Swap ${current.name}`} aria-describedby={undefined}>
+      <DialogContent
+        title={`Swap ${current.name}`}
+        aria-describedby={undefined}
+      >
         <div className="flex flex-col gap-3">
           <p className="text-xs text-soft">
-            Same main muscle, easiest to load first. Stable means easier to load and progress, not
-            faster growth (R13).
+            Same main muscle, easiest to load first. Stable means easier to load
+            and progress, not faster growth (R13).
           </p>
           <Input
             placeholder="Search"
@@ -227,14 +230,17 @@ export function SwapSheet({
                     data-testid={`swap-${r.exercise.name}`}
                     className="flex min-h-14 w-full flex-col items-start justify-center gap-0.5 rounded-md bg-surface-2 px-3 py-2 text-left transition-colors duration-150 hover:bg-surface-hover"
                   >
-                    <span className="text-sm font-semibold text-ink">{r.exercise.name}</span>
+                    <span className="text-sm font-semibold text-ink">
+                      {r.exercise.name}
+                    </span>
                     <span className="text-xs text-soft">
                       {[
                         r.sameRegion ? "Same region" : null,
                         r.sharedActions.length
                           ? jointActionLabel(r.sharedActions[0])
                           : null,
-                        STABILITY_WORD[stabilityRank(r.exercise.equipment)] ?? null,
+                        STABILITY_WORD[stabilityRank(r.exercise.equipment)] ??
+                          null,
                       ]
                         .filter(Boolean)
                         .join(" · ")}
@@ -256,8 +262,11 @@ export function SwapSheet({
             })}
             {shown.length === 0 && (
               <li className="py-6 text-center text-xs text-soft">
-                No other {primaryMuscles(current.muscleTargets as never).map(muscleLabel).join(", ") || "matching"} exercises
-                for your equipment.
+                No other{" "}
+                {primaryMuscles(current.muscleTargets as never)
+                  .map(muscleLabel)
+                  .join(", ") || "matching"}{" "}
+                exercises for your equipment.
               </li>
             )}
           </ul>

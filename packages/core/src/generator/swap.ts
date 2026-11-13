@@ -37,7 +37,11 @@ export function rankSwaps(
   const out: RankedSwap[] = [];
   for (const e of library) {
     if (e.id === current.id || ctx.excludeIds?.has(e.id)) continue;
-    if (!["weight_reps", "bodyweight_reps", "weighted_bodyweight"].includes(e.exerciseType))
+    if (
+      !["weight_reps", "bodyweight_reps", "weighted_bodyweight"].includes(
+        e.exerciseType,
+      )
+    )
       continue;
     const mine = primaryMuscles(e.muscleTargets as never);
     if (primary.size === 0 || !mine.some((m) => primary.has(m))) continue;
@@ -45,7 +49,9 @@ export function rankSwaps(
     out.push({
       exercise: e,
       sameRegion:
-        ctx.currentRegion != null && region != null && region === ctx.currentRegion,
+        ctx.currentRegion != null &&
+        region != null &&
+        region === ctx.currentRegion,
       sharedActions: (e.jointActions ?? []).filter((a) => actions.has(a)),
       stability: stabilityRank(e.equipment),
     });

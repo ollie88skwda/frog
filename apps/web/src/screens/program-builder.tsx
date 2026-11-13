@@ -3,12 +3,13 @@ import {
   buildSavedConfig,
   DEFAULT_ANSWERS,
   type Exercise,
+  fitToMinutes,
+  generateProgram,
   type Philosophy,
+  PROGRAM_RULES,
+  PROGRAM_TEMPLATES,
   type ProgramFinding,
   type ProgramTemplate,
-  PROGRAM_TEMPLATES,
-  PROGRAM_RULES,
-  generateProgram,
   recommendTemplate,
   resolveTemplate,
   type SlotOverride,
@@ -17,19 +18,10 @@ import {
   templateById,
   validateProgram,
   viewOf,
-  fitToMinutes,
 } from "@frog/core";
 import { DotsThree, Flame } from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
-import {
-  SectionHeader,
-  StatTile,
-} from "@/components/data";
-import { RuleSheet, METHOD_NOTE, GROUPING_NOTE } from "@/components/builder/why-sheet";
-import { WIZARD_STEPS, WizardStep } from "@/components/builder/wizard";
-import { FindingsList, SessionStrip, WeeklyMeter } from "@/components/builder/review";
-import { EditSlotSheet, SwapSheet } from "@/components/builder/slot-sheets";
 import {
   answersFromPrefs,
   applyPatch,
@@ -44,6 +36,19 @@ import {
   upsertOverride,
   withPinnedCredits,
 } from "@/components/builder/logic";
+import {
+  FindingsList,
+  SessionStrip,
+  WeeklyMeter,
+} from "@/components/builder/review";
+import { EditSlotSheet, SwapSheet } from "@/components/builder/slot-sheets";
+import {
+  GROUPING_NOTE,
+  METHOD_NOTE,
+  RuleSheet,
+} from "@/components/builder/why-sheet";
+import { WIZARD_STEPS, WizardStep } from "@/components/builder/wizard";
+import { SectionHeader, StatTile } from "@/components/data";
 import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 import { ChipGroup, ChipItem } from "@/components/ui/chip";
@@ -56,15 +61,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { IconButton } from "@/components/ui/icon-button";
 import { Switch } from "@/components/ui/switch";
-import { useRecordsData } from "@/lib/records-queries";
-import { useResolvedUserPrefs, useUpdateUserPrefs } from "@/lib/profile-queries";
 import {
+  useResolvedUserPrefs,
+  useUpdateUserPrefs,
+} from "@/lib/profile-queries";
+import {
+  builderLibraryKey,
   useActiveBuilderConfig,
   useMaterializeProgram,
   useRebuildBuilderProgram,
-  builderLibraryKey,
 } from "@/lib/program-queries";
 import { useExercisePrefs, useExercises } from "@/lib/queries";
+import { useRecordsData } from "@/lib/records-queries";
 import { userFacingRepoError } from "@/lib/repo-error";
 import { selectableFrom, startingWeightsFrom } from "@/lib/trainer";
 import { useVoice } from "@/lib/voice";
@@ -141,9 +149,13 @@ export default function ProgramBuilderScreen() {
   }, [templateId, rec]);
 
   if (!answers) {
-    return <Shell title="Build my program" onBack={() => nav("/programs")}>
-      <p role="status" className="py-10 text-center text-sm text-soft">Loading…</p>
-    </Shell>;
+    return (
+      <Shell title="Build my program" onBack={() => nav("/programs")}>
+        <p role="status" className="py-10 text-center text-sm text-soft">
+          Loading…
+        </p>
+      </Shell>
+    );
   }
 
   const onReview = step >= WIZARD_STEPS.length;
@@ -160,7 +172,9 @@ export default function ProgramBuilderScreen() {
             size="lg"
             className="w-full"
             data-testid="wizard-next"
-            onClick={() => (last ? setStep(WIZARD_STEPS.length) : setStep(step + 1))}
+            onClick={() =>
+              last ? setStep(WIZARD_STEPS.length) : setStep(step + 1)
+            }
           >
             {last ? "See my program" : "Next"}
           </Button>
@@ -182,7 +196,9 @@ export default function ProgramBuilderScreen() {
           {step + 1} of {WIZARD_STEPS.length}
         </p>
         <WizardStep step={step} answers={answers} onChange={setAnswers} />
-        <p className="text-xs text-soft">Defaults are preselected; change only what differs.</p>
+        <p className="text-xs text-soft">
+          Defaults are preselected; change only what differs.
+        </p>
       </Shell>
     );
   }
@@ -213,8 +229,14 @@ export default function ProgramBuilderScreen() {
       library={library}
       exercises={exercisesQ.data ?? []}
       byId={byId}
-      excludedIds={new Set(ePrefs.filter((p) => p.generatorExcluded).map((p) => p.exerciseId))}
-      startingKg={records.data ? startingWeightsFrom(records.data.records) : undefined}
+      excludedIds={
+        new Set(
+          ePrefs.filter((p) => p.generatorExcluded).map((p) => p.exerciseId),
+        )
+      }
+      startingKg={
+        records.data ? startingWeightsFrom(records.data.records) : undefined
+      }
       onBack={() => setStep(WIZARD_STEPS.length - 1)}
       onPickTemplate={(id) => {
         setTemplateId(id);
@@ -310,9 +332,9 @@ function LegacyHand({
   return (
     <Shell title="Your answers" onBack={onBack}>
       <p className="text-sm text-soft">
-        {scheduleLabel(answers.schedule)} is outside the research templates. The older split
-        generator can build an upper/lower or push/pull/legs plan for it. It has no weekly set
-        meter.
+        {scheduleLabel(answers.schedule)} is outside the research templates. The
+        older split generator can build an upper/lower or push/pull/legs plan
+        for it. It has no weekly set meter.
       </p>
       <Button
         variant="primary"
@@ -323,10 +345,16 @@ function LegacyHand({
             const config = toGeneratorConfig(answers);
             const program = generateProgram(config, selectableFrom(exercises), {
               excludedIds: new Set(
-                ePrefs.filter((p) => p.generatorExcluded).map((p) => p.exerciseId),
+                ePrefs
+                  .filter((p) => p.generatorExcluded)
+                  .map((p) => p.exerciseId),
               ),
             });
-            await materialize.mutateAsync({ program, source: "generated", config });
+            await materialize.mutateAsync({
+              program,
+              source: "generated",
+              config,
+            });
             nav("/routines");
           } catch (e) {
             setErr(userFacingRepoError(e));
@@ -381,9 +409,19 @@ type ReviewProps = {
 
 function Review(p: ReviewProps) {
   const { template, answers, philosophy, overrides } = p;
-  const [why, setWhy] = useState<{ rule: string; title: string; saw: string } | null>(null);
-  const [editSlot, setEditSlot] = useState<{ session: string; slot: string } | null>(null);
-  const [swapSlot, setSwapSlot] = useState<{ session: string; slot: string } | null>(null);
+  const [why, setWhy] = useState<{
+    rule: string;
+    title: string;
+    saw: string;
+  } | null>(null);
+  const [editSlot, setEditSlot] = useState<{
+    session: string;
+    slot: string;
+  } | null>(null);
+  const [swapSlot, setSwapSlot] = useState<{
+    session: string;
+    slot: string;
+  } | null>(null);
   const [grouping, setGrouping] = useState<Grouping>(philosophy.grouping);
 
   const baseView = useMemo(
@@ -399,7 +437,15 @@ function Review(p: ReviewProps) {
         excludedIds: p.excludedIds,
         startingWeightsKg: p.startingKg,
       }),
-    [template, p.library, philosophy, answers, overrides, p.excludedIds, p.startingKg],
+    [
+      template,
+      p.library,
+      philosophy,
+      answers,
+      overrides,
+      p.excludedIds,
+      p.startingKg,
+    ],
   );
   const choices = useMemo(
     () => slotChoices(baseView, resolved, p.byId),
@@ -420,7 +466,8 @@ function Review(p: ReviewProps) {
     [baseView, overrides, creditById, template.block, p.everyWeeks],
   );
   const validation = useMemo(() => validateProgram(view), [view]);
-  const perWeek = sessionsPerWeek(view.schedule) / Math.max(1, view.sessions.length);
+  const perWeek =
+    sessionsPerWeek(view.schedule) / Math.max(1, view.sessions.length);
   const maxMin = Math.max(0, ...validation.minutes.map((m) => m.max));
   const minMin = Math.max(0, ...validation.minutes.map((m) => m.min));
   const totalSets = view.sessions.reduce(
@@ -434,20 +481,31 @@ function Review(p: ReviewProps) {
   }
 
   const editing = editSlot
-    ? view.sessions.find((s) => s.id === editSlot.session)?.slots.find((s) => s.slot === editSlot.slot)
+    ? view.sessions
+        .find((s) => s.id === editSlot.session)
+        ?.slots.find((s) => s.slot === editSlot.slot)
     : undefined;
   const swapping = swapSlot
-    ? view.sessions.find((s) => s.id === swapSlot.session)?.slots.find((s) => s.slot === swapSlot.slot)
+    ? view.sessions
+        .find((s) => s.id === swapSlot.session)
+        ?.slots.find((s) => s.slot === swapSlot.slot)
     : undefined;
-  const swapChoice = swapSlot ? choices.get(`${swapSlot.session}|${swapSlot.slot}`) : undefined;
-  const swapCurrent = swapChoice ? creditById.get(swapChoice.exerciseId) : undefined;
+  const swapChoice = swapSlot
+    ? choices.get(`${swapSlot.session}|${swapSlot.slot}`)
+    : undefined;
+  const swapCurrent = swapChoice
+    ? creditById.get(swapChoice.exerciseId)
+    : undefined;
 
   const regionByExercise = useMemo(() => {
     const m = new Map<string, string>();
     for (const s of template.sessions)
       for (const slot of s.slots)
         for (const e of slot.menu) {
-          const hit = p.library.find((x) => !x.isCustom && x.name.toLowerCase() === e.matchKey.toLowerCase());
+          const hit = p.library.find(
+            (x) =>
+              !x.isCustom && x.name.toLowerCase() === e.matchKey.toLowerCase(),
+          );
           if (hit) m.set(hit.id, slot.region);
         }
     return m;
@@ -476,7 +534,11 @@ function Review(p: ReviewProps) {
             variant="primary"
             size="lg"
             className="w-full"
-            disabled={p.saving || p.loading || resolved.program.routines.every((r) => r.exercises.length === 0)}
+            disabled={
+              p.saving ||
+              p.loading ||
+              resolved.program.routines.every((r) => r.exercises.length === 0)
+            }
             data-testid="builder-save"
             onClick={() => {
               const config = buildSavedConfig(template, answers, {
@@ -503,7 +565,10 @@ function Review(p: ReviewProps) {
       </div>
 
       {p.undo && (
-        <div className="flex items-center justify-between gap-2 rounded-md bg-accent-soft px-3 py-2 text-sm text-accent-ink" role="status">
+        <div
+          className="flex items-center justify-between gap-2 rounded-md bg-accent-soft px-3 py-2 text-sm text-accent-ink"
+          role="status"
+        >
           Change applied.
           <Button
             size="sm"
@@ -520,14 +585,22 @@ function Review(p: ReviewProps) {
       )}
 
       <div className="grid grid-cols-3 gap-2">
-        <StatTile label="Schedule" value={scheduleLabel(view.schedule).split(" · ")[1]} basis={scheduleLabel(view.schedule).split(" · ")[0]} />
+        <StatTile
+          label="Schedule"
+          value={scheduleLabel(view.schedule).split(" · ")[1]}
+          basis={scheduleLabel(view.schedule).split(" · ")[0]}
+        />
         <StatTile
           label="Per session"
           value={minMin === maxMin ? `${maxMin}` : `${minMin}-${maxMin}`}
           unit="min"
           basis="estimate"
         />
-        <StatTile label="Sets" value={String(totalSets)} basis={sessionCount > 1 ? `${sessionCount} sessions` : "per session"} />
+        <StatTile
+          label="Sets"
+          value={String(totalSets)}
+          basis={sessionCount > 1 ? `${sessionCount} sessions` : "per session"}
+        />
       </div>
 
       <section>
@@ -540,13 +613,16 @@ function Review(p: ReviewProps) {
         >
           {PROGRAM_TEMPLATES.map((tp) => (
             <ChipItem key={tp.id} value={tp.id}>
-              {tp.id === "frog-default" ? "Frog default" : tp.name.replace("Research ", "R").split(":")[0]}
+              {tp.id === "frog-default"
+                ? "Frog default"
+                : tp.name.replace("Research ", "R").split(":")[0]}
             </ChipItem>
           ))}
         </ChipGroup>
         <div className="flex flex-wrap items-center gap-3 px-4 pt-3">
-          <label className="flex items-center gap-2 text-sm">
+          <label htmlFor="sw-top" className="flex items-center gap-2 text-sm">
             <Switch
+              id="sw-top"
               checked={philosophy.firstSet !== "off"}
               onCheckedChange={(on) =>
                 p.setPhilosophy({ ...philosophy, firstSet: on ? "top" : "off" })
@@ -555,11 +631,15 @@ function Review(p: ReviewProps) {
             />
             Top set first
           </label>
-          <label className="flex items-center gap-2 text-sm">
+          <label htmlFor="sw-rep" className="flex items-center gap-2 text-sm">
             <Switch
+              id="sw-rep"
               checked={philosophy.repBias === "heavy"}
               onCheckedChange={(on) =>
-                p.setPhilosophy({ ...philosophy, repBias: on ? "heavy" : "research" })
+                p.setPhilosophy({
+                  ...philosophy,
+                  repBias: on ? "heavy" : "research",
+                })
               }
               aria-label="4-8 reps on isolation"
             />
@@ -567,7 +647,8 @@ function Review(p: ReviewProps) {
           </label>
         </div>
         <p className="px-4 pt-1 text-xs text-soft">
-          Top set first is a method, not a research rule. Isolation can grow at 4-8 or 10-15 (R8).
+          Top set first is a method, not a research rule. Isolation can grow at
+          4-8 or 10-15 (R8).
         </p>
       </section>
 
@@ -592,7 +673,9 @@ function Review(p: ReviewProps) {
 
       {view.sessions.map((s) => {
         const groups = groupBy(s.slots, (x) => {
-          const tslot = template.sessions.find((y) => y.id === s.id)?.slots.find((y) => y.slot === x.slot);
+          const tslot = template.sessions
+            .find((y) => y.id === s.id)
+            ?.slots.find((y) => y.slot === x.slot);
           return tslot ? groupLabel(tslot, grouping) : "Other";
         });
         return (
@@ -612,7 +695,9 @@ function Review(p: ReviewProps) {
             />
             {groups.map((g) => (
               <div key={g.label}>
-                <p className="px-4 pt-2 pb-1 text-xs font-semibold text-soft">{g.label}</p>
+                <p className="px-4 pt-2 pb-1 text-xs font-semibold text-soft">
+                  {g.label}
+                </p>
                 <ul className="flex flex-col gap-1 px-2">
                   {g.items.map((slot) => {
                     const c = choices.get(`${s.id}|${slot.slot}`);
@@ -626,19 +711,32 @@ function Review(p: ReviewProps) {
                           <p className="truncate text-sm font-semibold text-ink">
                             {c?.name ?? "No exercise matches your equipment"}
                           </p>
-                          <p className="num text-xs text-soft">{prescriptionText(slot.rx)}</p>
+                          <p className="num text-xs text-soft">
+                            {prescriptionText(slot.rx)}
+                          </p>
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <IconButton title="Slot options" data-testid={`slot-menu-${slot.slot}`}>
+                            <IconButton
+                              title="Slot options"
+                              data-testid={`slot-menu-${slot.slot}`}
+                            >
                               <DotsThree weight="bold" className="size-4" />
                             </IconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent>
-                            <DropdownMenuItem onSelect={() => setSwapSlot({ session: s.id, slot: slot.slot })}>
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                setSwapSlot({ session: s.id, slot: slot.slot })
+                              }
+                            >
                               Swap
                             </DropdownMenuItem>
-                            <DropdownMenuItem onSelect={() => setEditSlot({ session: s.id, slot: slot.slot })}>
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                setEditSlot({ session: s.id, slot: slot.slot })
+                              }
+                            >
                               Sets, reps, RIR
                             </DropdownMenuItem>
                             <DropdownMenuItem
@@ -658,7 +756,10 @@ function Review(p: ReviewProps) {
                                 apply(
                                   upsertOverride(overrides, {
                                     slot: slot.slot,
-                                    session: view.sessions.length > 1 ? s.id : undefined,
+                                    session:
+                                      view.sessions.length > 1
+                                        ? s.id
+                                        : undefined,
                                     remove: true,
                                   }),
                                 )
@@ -680,8 +781,8 @@ function Review(p: ReviewProps) {
       <p className="px-4 text-xs text-soft">{GROUPING_NOTE}</p>
       {unresolved > 0 && (
         <p className="px-4 text-xs text-attn" role="status">
-          {unresolved} slot{unresolved === 1 ? "" : "s"} had no exercise for your equipment and
-          were left out.
+          {unresolved} slot{unresolved === 1 ? "" : "s"} had no exercise for
+          your equipment and were left out.
         </p>
       )}
 
@@ -690,7 +791,8 @@ function Review(p: ReviewProps) {
         <div className="flex flex-col gap-3 px-4">
           {fixed ? (
             <p className="text-sm text-ink">
-              {fixed.trainingWeeks} training weeks, deload in week {fixed.deloadWeek}
+              {fixed.trainingWeeks} training weeks, deload in week{" "}
+              {fixed.deloadWeek}
               {fixed.retestWeek ? ", retest the week after" : ""}.
             </p>
           ) : (
@@ -698,7 +800,10 @@ function Review(p: ReviewProps) {
               <label className="flex items-center justify-between gap-3 text-sm">
                 <span>
                   Deload every{" "}
-                  <span className="num font-semibold" data-testid="deload-weeks">
+                  <span
+                    className="num font-semibold"
+                    data-testid="deload-weeks"
+                  >
                     {p.everyWeeks}
                   </span>{" "}
                   weeks
@@ -717,15 +822,20 @@ function Review(p: ReviewProps) {
             </>
           )}
           <p className="text-xs text-soft">
-            Half the sets, same loads, 3-4 RIR. A deload is for fatigue and recovery; its effect on
-            size is unknown. Frog also proposes one if strength drops two weeks running.
+            Half the sets, same loads, 3-4 RIR. A deload is for fatigue and
+            recovery; its effect on size is unknown. Frog also proposes one if
+            strength drops two weeks running.
           </p>
           <Button
             size="sm"
             variant="ghost"
             className="self-start"
             onClick={() =>
-              setWhy({ rule: "R17", title: "Deload", saw: `Planned every ${p.everyWeeks} weeks.` })
+              setWhy({
+                rule: "R17",
+                title: "Deload",
+                saw: `Planned every ${p.everyWeeks} weeks.`,
+              })
             }
           >
             <Flame className="size-4" /> Why?
@@ -746,13 +856,18 @@ function Review(p: ReviewProps) {
           }
           onFix={(f) => f.fix && apply(applyPatch(overrides, f.fix.patch))}
         />
-        {fitPatch.length > 0 && !validation.findings.some((f) => f.fix && f.code === "TIME_OVER") && (
-          <div className="px-4 pt-2">
-            <Button size="sm" variant="accent" onClick={() => apply(applyPatch(overrides, fitPatch))}>
-              Trim to {answers.minutes} min
-            </Button>
-          </div>
-        )}
+        {fitPatch.length > 0 &&
+          !validation.findings.some((f) => f.fix && f.code === "TIME_OVER") && (
+            <div className="px-4 pt-2">
+              <Button
+                size="sm"
+                variant="accent"
+                onClick={() => apply(applyPatch(overrides, fitPatch))}
+              >
+                Trim to {answers.minutes} min
+              </Button>
+            </div>
+          )}
       </section>
 
       {why && (
@@ -773,7 +888,10 @@ function Review(p: ReviewProps) {
         <EditSlotSheet
           open
           onOpenChange={(o) => !o && setEditSlot(null)}
-          title={choices.get(`${editSlot.session}|${editSlot.slot}`)?.name ?? "Exercise"}
+          title={
+            choices.get(`${editSlot.session}|${editSlot.slot}`)?.name ??
+            "Exercise"
+          }
           slot={editing}
           sessionId={view.sessions.length > 1 ? editSlot.session : undefined}
           onApply={(o) => apply(upsertOverride(overrides, o))}
@@ -793,12 +911,19 @@ function Review(p: ReviewProps) {
           }
           regionOf={(id) => regionByExercise.get(id) ?? null}
           perWeek={perWeek}
-          excludeIds={new Set(choices.size ? [...choices.values()].map((c) => c.exerciseId) : [])}
+          excludeIds={
+            new Set(
+              choices.size
+                ? [...choices.values()].map((c) => c.exerciseId)
+                : [],
+            )
+          }
           onPick={(e) =>
             apply(
               upsertOverride(overrides, {
                 slot: swapSlot.slot,
-                session: view.sessions.length > 1 ? swapSlot.session : undefined,
+                session:
+                  view.sessions.length > 1 ? swapSlot.session : undefined,
                 exerciseId: e.id,
               }),
             )

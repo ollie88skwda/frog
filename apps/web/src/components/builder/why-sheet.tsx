@@ -1,4 +1,8 @@
-import { type EvidenceRule, evidenceRule, EVIDENCE_TIER_LABELS } from "@frog/core";
+import {
+  EVIDENCE_TIER_LABELS,
+  type EvidenceRule,
+  evidenceRule,
+} from "@frog/core";
 import { EvidenceSheet, type Tier } from "@/components/data";
 
 const tierNum = (t: string) => Number(t.slice(1)) as Tier;

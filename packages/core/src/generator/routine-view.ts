@@ -4,8 +4,8 @@
 // indirect = secondary muscles at the rule's fractional weight; warm-ups are
 // never counted (boss preference 2026-11-13, R17b).
 
-import { primaryMuscles, secondaryMuscles } from "../domain/anatomy";
 import type { MuscleTarget } from "../domain/anatomy";
+import { primaryMuscles, secondaryMuscles } from "../domain/anatomy";
 import { PROGRAM_RULES } from "../program/rules";
 import type {
   ProgramSchedule,
