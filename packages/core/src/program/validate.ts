@@ -133,9 +133,9 @@ function addSetPatch(
 }
 
 /**
- * Trim an over-time program: accessory rest drops to 60 s first (R15d), then
- * isolation slots lose a set (every muscle stays at the practical weekly
- * floor). Best effort: returns the patch (empty if nothing helps); the
+ * Trim an over-time program: in each session over budget, accessory rest
+ * drops to 60 s first (R15d), then isolation slots lose a set until that
+ * session fits (every muscle stays at the practical weekly floor). Best effort: returns the patch (empty if nothing helps); the
  * caller re-validates, so a program that cannot fit without dropping a muscle
  * below the weekly floor simply stays over time and says so.
  */
@@ -152,55 +152,48 @@ export function fitToMinutes(
       slots: s.slots.map((x) => ({ ...x, rx: { ...x.rx } })),
     })),
   };
-  const over = () =>
-    Math.max(...work.sessions.map((s) => estimateMinutes(s.slots).max)) >
-    maxMinutes;
+  const sessionOver = (s: ProgramView["sessions"][number]) =>
+    estimateMinutes(s.slots).max > maxMinutes;
   const floor = rules.weeklySets[0] * doseShare(view, rules);
   const weeklyOk = (muscle: string) =>
-    (weeklySets(work)[muscle]?.total ?? 0) >= floor;
+    (weeklySets(work, rules.indirectWeight)[muscle]?.total ?? 0) >= floor;
+  const sessionKey = (s: { id: string }) =>
+    work.sessions.length > 1 ? s.id : undefined;
 
-  // Lever 1: shorter accessory rest.
-  if (over()) {
-    for (const s of work.sessions) {
-      for (const slot of s.slots) {
-        if (slot.role !== "isolation") continue;
-        const short: [number, number] = [
-          rules.restAccessorySec[0],
-          rules.restAccessorySec[0],
-        ];
-        if (slot.rx.restSec[1] > short[1]) {
-          slot.rx.restSec = short;
-          patch.push({
-            session: work.sessions.length > 1 ? s.id : undefined,
-            slot: slot.slot,
-            restSec: short,
-          });
-        }
-      }
+  // Lever 1: shorter accessory rest, only in sessions over budget.
+  const short: [number, number] = [
+    rules.restAccessorySec[0],
+    rules.restAccessorySec[0],
+  ];
+  for (const s of work.sessions) {
+    for (const slot of s.slots) {
+      if (!sessionOver(s)) break;
+      if (slot.role !== "isolation" || slot.rx.restSec[1] <= short[1]) continue;
+      slot.rx.restSec = short;
+      patch.push({ session: sessionKey(s), slot: slot.slot, restSec: short });
     }
   }
-  // Lever 2: isolation sets, one at a time, never below the weekly floor.
-  let guard = 0;
-  while (over() && guard++ < 60) {
-    let changed = false;
-    for (const s of work.sessions) {
+  // Lever 2: isolation sets, one at a time, only in sessions over budget,
+  // never below the weekly floor.
+  for (const s of work.sessions) {
+    let changed = true;
+    while (sessionOver(s) && changed) {
+      changed = false;
       for (const slot of s.slots) {
+        if (!sessionOver(s)) break;
         if (slot.role !== "isolation" || slot.rx.sets <= 1) continue;
         const muscles = slot.credits.direct;
         slot.rx.sets -= 1;
-        if (muscles.every(weeklyOk) || muscles.length === 0) {
+        if (muscles.every(weeklyOk)) {
           patch.push({
-            session: work.sessions.length > 1 ? s.id : undefined,
+            session: sessionKey(s),
             slot: slot.slot,
             sets: slot.rx.sets,
           });
           changed = true;
-          if (!over()) break;
         } else slot.rx.sets += 1;
       }
-      if (!over()) break;
     }
-    if (!changed) break;
   }
   return patch;
 }
@@ -425,7 +418,9 @@ export function validateProgram(
             target: { session: m.session },
             message: `About ${m.max} minutes against your ${view.maxMinutes}. An estimate, not measured.`,
             rule: "R15b",
-            fix: patch.length ? { label: "Trim to fit", patch } : undefined,
+            fix: patch.length
+              ? { label: "Shorten sessions", patch }
+              : undefined,
           }),
         );
         break; // one finding is enough; the fix covers every session

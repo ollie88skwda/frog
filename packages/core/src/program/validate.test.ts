@@ -154,6 +154,30 @@ describe("validateProgram never blocks and cites rules", () => {
       if (w.total >= 10) expect(after[m].total).toBeGreaterThanOrEqual(10);
   });
 
+  it("fitToMinutes only trims sessions over budget, and stops once each fits", () => {
+    const v = { ...viewOf(RESEARCH_B), maxMinutes: 66 };
+    const before = validateProgram(v).minutes;
+    const under = before.filter((m) => m.max <= 66).map((m) => m.session);
+    expect(under.length).toBeGreaterThan(0);
+    const patch = fitToMinutes(v, 66);
+    expect(patch.filter((p) => under.includes(p.session!))).toEqual([]);
+    const fitted = validateProgram(viewOf(RESEARCH_B, { overrides: patch }));
+    for (const m of fitted.minutes) expect(m.max).toBeLessThanOrEqual(66);
+    // Undoing a session's last set trim puts it back over: nothing extra cut.
+    for (const s of v.sessions) {
+      const i = patch.reduce(
+        (at, p, j) => (p.session === s.id && p.sets != null ? j : at),
+        -1,
+      );
+      if (i < 0) continue;
+      const undone = patch.filter((_, j) => j !== i);
+      const back = validateProgram(viewOf(RESEARCH_B, { overrides: undone }));
+      expect(back.minutes.find((m) => m.session === s.id)!.max).toBeGreaterThan(
+        66,
+      );
+    }
+  });
+
   it("DELOAD_MISSING when the block has no deload", () => {
     expect(codes(one([slot({ slot: "a" })]))).toContain("DELOAD_MISSING");
     expect(
