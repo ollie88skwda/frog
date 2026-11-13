@@ -44,6 +44,12 @@ import { cn } from "@/lib/utils";
 
 const MAX_ROWS = 6;
 
+/** Ref callback: centre the picked plan in the horizontal strip. `nearest` on
+ *  the block axis so it never scrolls the page vertically. */
+function scrollSelectedIntoView(el: HTMLButtonElement | null) {
+  el?.scrollIntoView({ block: "nearest", inline: "center" });
+}
+
 type StartFrom = "routine" | "empty";
 
 const CTA =
@@ -326,15 +332,7 @@ export function HomeHero() {
                 <button
                   key={r.id}
                   type="button"
-                  ref={
-                    isSelected
-                      ? (el) =>
-                          el?.scrollIntoView({
-                            block: "nearest",
-                            inline: "center",
-                          })
-                      : undefined
-                  }
+                  ref={isSelected ? scrollSelectedIntoView : undefined}
                   onClick={() => setPicked(r.id)}
                   aria-pressed={isSelected}
                   data-testid={`hero-pick-${r.name}`}
