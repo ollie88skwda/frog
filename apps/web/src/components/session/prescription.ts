@@ -254,21 +254,17 @@ export type E1rmResult =
   | { kind: "not_estimable" };
 
 /**
- * C2c-e1rm: Brzycki `load x 36 / (37 - (reps + RIR))`, valid up to 10 total
- * reps; beyond that the set is flagged, not estimated. Null RIR counts as 0.
- * TODO(J1): delegate to `e1rmSet` from @frog/core once J1 lands on main; this
- * adapter is the single call site in the workout/report files.
+ * C2c-e1rm via J1's `e1rmSet` (Brzycki with RIR, <= 10 total reps, 0.5 kg
+ * display rounding). A set refused by J1 (`flagged`) becomes `not_estimable`
+ * so callers show a plain line instead of a number.
  */
 export function reportE1rm(
   weightKg: number | null,
   reps: number | null,
   rir: number | null,
 ): E1rmResult | null {
-  if (!weightKg || !reps) return null;
-  const total = reps + Math.max(0, rir ?? 0);
-  if (total > 10) return { kind: "not_estimable" };
-  return {
-    kind: "value",
-    kg: Math.round(((weightKg * 36) / (37 - total)) * 2) / 2,
-  };
+  const r = e1rmSet(weightKg, reps, rir);
+  if (r.flagged) return { kind: "not_estimable" };
+  if (r.value == null) return null;
+  return { kind: "value", kg: roundE1rmDisplay(r.value) };
 }
