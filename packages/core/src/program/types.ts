@@ -2,6 +2,7 @@
 // §6 F8, notes/program-builder.md §3). Zero UI / Convex imports. Every number
 // that encodes a research rule lives in ./rules.ts, never here.
 
+import type { TrainingStatus } from "../db/schema";
 import type { EquipmentKind } from "../domain/exercise-types";
 import type { RuleId } from "../evidence/rules";
 
@@ -113,7 +114,6 @@ export type BlockPlan =
   | { kind: "fixed"; fixed: FixedBlock; deload: DeloadRule };
 
 export type ProgramGoal = "muscle" | "strength" | "general" | "maintain";
-export type TrainingStatus = "new" | "intermediate" | "experienced";
 export type SessionLengthMinutes = 30 | 45 | 60 | 75 | 90;
 
 /** The five builder questions (F8). */
