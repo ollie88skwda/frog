@@ -25,6 +25,7 @@ const ProgramBuilderScreen = lazyRoute(
 );
 const RoutineEditScreen = lazyRoute(() => import("@/screens/routine-edit"));
 const ProgramsScreen = lazyRoute(() => import("@/screens/programs"));
+const TrainerScreen = lazyRoute(() => import("@/screens/trainer"));
 const SessionScreen = lazyRoute(() => import("@/screens/session"));
 const ExerciseDetailScreen = lazyRoute(
   () => import("@/screens/exercise-detail"),
@@ -113,6 +114,7 @@ export function App() {
                         path="programs/:key"
                         element={<ProgramsScreen />}
                       />
+                      <Route path="trainer" element={<TrainerScreen />} />
                       <Route path="session/:id" element={<SessionScreen />} />
                       <Route
                         path="exercises/:id"
@@ -138,7 +140,6 @@ export function App() {
                       )}
                       {/* Old deep links keep working (§7). */}
                       <Route path="train" element={<RedirectTo to="/" />} />
-                      <Route path="trainer" element={<RedirectTo to="/" />} />
                       <Route
                         path="routines"
                         element={<RedirectTo to="/plan" search="s=routines" />}

@@ -35,8 +35,8 @@ test("real Clerk sign-in as a new user: empty home, library, session, settings",
   test.skip(!EMAIL, "CLERK_TEST_EMAIL not set");
   await page.goto("/auth");
   await emailCode(page, EMAIL);
-  // New user lands on Home with the empty state.
-  await expect(page.getByRole("heading", { name: "Home" })).toBeVisible({
+  // New user lands on Today with the empty state.
+  await expect(page.getByRole("heading", { name: "Today" })).toBeVisible({
     timeout: 30_000,
   });
   // Convex accepted the Clerk `convex` JWT: data pages load without error.
