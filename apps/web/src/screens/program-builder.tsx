@@ -8,7 +8,6 @@ import {
   type Philosophy,
   PROGRAM_RULES,
   PROGRAM_TEMPLATES,
-  type ProgramFinding,
   type ProgramTemplate,
   recommendTemplate,
   resolveTemplate,
@@ -42,11 +41,7 @@ import {
   WeeklyMeter,
 } from "@/components/builder/review";
 import { EditSlotSheet, SwapSheet } from "@/components/builder/slot-sheets";
-import {
-  GROUPING_NOTE,
-  METHOD_NOTE,
-  RuleSheet,
-} from "@/components/builder/why-sheet";
+import { GROUPING_NOTE, RuleSheet } from "@/components/builder/why-sheet";
 import { WIZARD_STEPS, WizardStep } from "@/components/builder/wizard";
 import { SectionHeader, StatTile } from "@/components/data";
 import { BackButton } from "@/components/ui/back-button";
@@ -795,30 +790,25 @@ function Review(p: ReviewProps) {
               {fixed.retestWeek ? ", retest the week after" : ""}.
             </p>
           ) : (
-            <>
-              <label className="flex items-center justify-between gap-3 text-sm">
-                <span>
-                  Deload every{" "}
-                  <span
-                    className="num font-semibold"
-                    data-testid="deload-weeks"
-                  >
-                    {p.everyWeeks}
-                  </span>{" "}
-                  weeks
-                </span>
-                <input
-                  type="range"
-                  min={PROGRAM_RULES.deloadIntervalWeeks[0]}
-                  max={PROGRAM_RULES.deloadIntervalWeeks[1]}
-                  step={1}
-                  value={p.everyWeeks}
-                  onChange={(e) => p.setEveryWeeks(Number(e.target.value))}
-                  aria-label="Weeks between deloads"
-                  className="h-10 w-40 accent-[var(--chart-mark)]"
-                />
-              </label>
-            </>
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span>
+                Deload every{" "}
+                <span className="num font-semibold" data-testid="deload-weeks">
+                  {p.everyWeeks}
+                </span>{" "}
+                weeks
+              </span>
+              <input
+                type="range"
+                min={PROGRAM_RULES.deloadIntervalWeeks[0]}
+                max={PROGRAM_RULES.deloadIntervalWeeks[1]}
+                step={1}
+                value={p.everyWeeks}
+                onChange={(e) => p.setEveryWeeks(Number(e.target.value))}
+                aria-label="Weeks between deloads"
+                className="h-10 w-40 accent-[var(--chart-mark)]"
+              />
+            </label>
           )}
           <p className="text-xs text-soft">
             Half the sets, same loads, 3-4 RIR. A deload is for fatigue and

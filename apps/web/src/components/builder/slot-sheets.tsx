@@ -248,13 +248,13 @@ export function SwapSheet({
                     <span className="num text-xs text-soft">
                       {delta.length === 0
                         ? "Weekly sets unchanged"
-                        : delta
+                        : `${delta
                             .slice(0, 3)
                             .map(
                               (d) =>
                                 `${d.label} ${d.delta > 0 ? "+" : ""}${d.delta}`,
                             )
-                            .join(" · ") + " sets/wk"}
+                            .join(" · ")} sets/wk`}
                     </span>
                   </button>
                 </li>
