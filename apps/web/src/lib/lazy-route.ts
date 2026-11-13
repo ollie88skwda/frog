@@ -27,8 +27,8 @@ function claimReload(): boolean {
  * falls through to <AppErrorBoundary>, which offers the reload as a button
  * rather than a blank screen. docs/DECISIONS.md 2026-08-25.
  *
- * The two dev-only lazies further down stay on bare `lazy()`: they never ship,
- * and their dead-branch shape is what scripts/check-bundle.ts gates.
+ * The dev-only lazies in app.tsx stay on bare `lazy()`: they never ship, and
+ * their dead-branch shape is what scripts/check-bundle.ts gates.
  */
 export function lazyRoute<T extends ComponentType>(
   load: () => Promise<{ default: T }>,

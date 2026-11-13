@@ -1,9 +1,11 @@
 import {
   lastPerformedByRoutine,
+  type Session,
   suggestRoutineId,
   toDisplayWeight,
 } from "@frog/core";
 import { Play, Plus } from "@phosphor-icons/react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { DeltaChip } from "@/components/data";
@@ -32,7 +34,7 @@ import {
   useRoutines,
 } from "@/lib/routine-queries";
 import { useUnit } from "@/lib/settings";
-import { useStartRoutineSession, useStartSession } from "@/lib/start-session";
+import { useStartRoutineSession } from "@/lib/start-session";
 import { cn } from "@/lib/utils";
 
 // Today hero (F5, redesign §8.1). What today is comes from `suggestRoutineId`
@@ -42,25 +44,30 @@ import { cn } from "@/lib/utils";
 
 const MAX_ROWS = 6;
 
+type StartFrom = "routine" | "empty";
+
 const CTA =
   "flex h-14 w-full items-center justify-center gap-2 bg-accent text-base font-semibold text-on-accent transition-colors duration-150 hover:bg-accent-hover disabled:opacity-60";
 
 export function HomeHero() {
   const navigate = useNavigate();
   const repo = useRepo();
+  const qc = useQueryClient();
   const { unit } = useUnit();
   const { data: active } = useActiveSession();
   const { data: routines = [] } = useRoutines();
   const { data: folders = [] } = useRoutineFolders();
   const { data: program } = useActiveProgram();
   const { data: sessions = [] } = useAllSessions();
-  const { start, starting, error } = useStartSession();
   const startRoutine = useStartRoutineSession();
   const [picked, setPicked] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<Readiness>({});
   const [skipped, setSkipped] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
+  const [starting, setStarting] = useState<StartFrom | null>(null);
+  const [startError, setStartError] = useState<{
+    from: StartFrom;
+    message: string;
+  } | null>(null);
 
   const lastPerformed = useMemo(
     () => lastPerformedByRoutine(sessions),
@@ -93,21 +100,44 @@ export function HomeHero() {
   );
   const gap = restartGapDays(lastEnded);
 
-  async function startSelected() {
-    if (!selected || busy) return;
-    setBusy(true);
+  async function begin(from: StartFrom, create: () => Promise<Session>) {
+    if (starting) return;
+    setStarting(from);
     setStartError(null);
+    let session: Session;
     try {
-      const session = await startRoutine(selected.id, coach.overrides);
-      const values = skipped ? {} : readinessToConditions(readiness);
-      if (Object.keys(values).length > 0) {
-        await repo.updateSessionConditions(session.id, values);
-      }
-      navigate(`/session/${session.id}`);
+      session = await create();
     } catch (e) {
-      setStartError(userFacingRepoError(e));
-      setBusy(false);
+      setStartError({ from, message: userFacingRepoError(e) });
+      setStarting(null);
+      return;
     }
+    navigate(`/session/${session.id}`);
+    const values = skipped ? {} : readinessToConditions(readiness);
+    if (Object.keys(values).length === 0) return;
+    repo
+      .updateSessionConditions(session.id, values)
+      .then(() => qc.invalidateQueries({ queryKey: ["session", session.id] }))
+      .catch((e) => {
+        console.error(
+          `[today] readiness write failed for session ${session.id}; re-enter it from the session's conditions chip`,
+          e,
+        );
+      });
+  }
+
+  function startSelected() {
+    if (!selected) return;
+    const id = selected.id;
+    void begin("routine", () => startRoutine(id, coach.overrides));
+  }
+
+  function startEmpty() {
+    void begin("empty", async () => {
+      const session = await repo.startSession();
+      void qc.invalidateQueries({ queryKey: ["active-session"] });
+      return session;
+    });
   }
 
   if (active) {
@@ -158,13 +188,15 @@ export function HomeHero() {
         <Button
           variant="outline"
           className="mt-2 w-full"
-          disabled={starting}
-          onClick={() => void start()}
+          disabled={starting != null}
+          onClick={startEmpty}
           data-testid="start-session-btn"
         >
-          {starting ? "Starting…" : "Start empty workout"}
+          {starting === "empty" ? "Starting…" : "Start empty workout"}
         </Button>
-        {error && <p className="mt-2 text-xs text-neg">{error}</p>}
+        {startError?.from === "empty" && (
+          <p className="mt-2 text-xs text-neg">{startError.message}</p>
+        )}
       </section>
     );
   }
@@ -268,16 +300,20 @@ export function HomeHero() {
           <button
             type="button"
             className={cn(CTA, "mt-3 rounded-sm")}
-            disabled={!selected || busy}
-            onClick={() => void startSelected()}
+            disabled={!selected || starting != null}
+            onClick={startSelected}
             data-testid="home-start-btn"
           >
             <Play className="size-5 shrink-0" />
             <span className="truncate">
-              {busy ? "Starting…" : `Start ${selected?.name ?? ""}`}
+              {starting === "routine"
+                ? "Starting…"
+                : `Start ${selected?.name ?? ""}`}
             </span>
           </button>
-          {startError && <p className="mt-2 text-xs text-neg">{startError}</p>}
+          {startError?.from === "routine" && (
+            <p className="mt-2 text-xs text-neg">{startError.message}</p>
+          )}
         </div>
 
         <div className="px-4 py-3">
@@ -326,13 +362,15 @@ export function HomeHero() {
       <Button
         variant="outline"
         className="mt-3 w-full"
-        disabled={starting}
-        onClick={() => void start()}
+        disabled={starting != null}
+        onClick={startEmpty}
         data-testid="start-session-btn"
       >
-        {starting ? "Starting…" : "Start empty workout"}
+        {starting === "empty" ? "Starting…" : "Start empty workout"}
       </Button>
-      {error && <p className="mt-2 text-xs text-neg">{error}</p>}
+      {startError?.from === "empty" && (
+        <p className="mt-2 text-xs text-neg">{startError.message}</p>
+      )}
     </>
   );
 }
