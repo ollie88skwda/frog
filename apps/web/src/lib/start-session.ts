@@ -1,3 +1,4 @@
+import type { SnapshotOverride } from "@frog/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
@@ -30,4 +31,23 @@ export function useStartSession() {
   }
 
   return { start, starting, error };
+}
+
+/**
+ * Start a session from a routine, writing the per-exercise target snapshot
+ * (redesign §9.1) server-side in the same mutation. `prescriptions` is the
+ * coach output keyed by routine_exercise id (F4); without it the snapshot is
+ * the routine's own targets. Callers (Today, Plan, Trainer) own navigation.
+ */
+export function useStartRoutineSession() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return async function startRoutine(
+    routineId: string,
+    prescriptions?: Record<string, SnapshotOverride>,
+  ) {
+    const session = await repo.startRoutineSession(routineId, prescriptions);
+    void qc.invalidateQueries({ queryKey: ["active-session"] });
+    return session;
+  };
 }

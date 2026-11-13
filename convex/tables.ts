@@ -34,6 +34,9 @@ export const FKS: Partial<Record<UidTable, Record<string, FkRule>>> = {
     sessionExerciseId: { table: "session_exercises", mode: "owned" },
   },
   session_media: { sessionId: { table: "sessions", mode: "owned" } },
+  coach_events: {
+    sessionId: { table: "sessions", mode: "owned" },
+  },
 };
 
 /**
@@ -83,7 +86,9 @@ export const DEFAULTS: Partial<Record<UidTable, Record<string, unknown>>> = {
   set_logs: { setType: "normal", completed: false },
   exercise_prefs: { generatorExcluded: false },
   user_prefs: {
-    includeWarmupsInStats: true,
+    // R6/R17b (redesign §9.2): warm-ups are excluded from stats for NEW
+    // users; existing rows keep their stored value.
+    includeWarmupsInStats: false,
     previousValuesScope: "any",
     bodyDiagram: "neutral",
   },

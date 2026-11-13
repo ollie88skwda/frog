@@ -16,6 +16,7 @@ import {
   requireUser,
 } from "./lib";
 import { insertRow, softDelete } from "./rows";
+import { buildSnapshot } from "./snapshot";
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -112,6 +113,17 @@ export const detail = query({
         restSec: b.restSec,
         note: b.note,
         routineExerciseId: b.routineExerciseId,
+        // Target snapshot (§9.1); null on pre-snapshot blocks.
+        plannedRepsMin: b.plannedRepsMin ?? null,
+        plannedRepsMax: b.plannedRepsMax ?? null,
+        plannedRirMin: b.plannedRirMin ?? null,
+        plannedRirMax: b.plannedRirMax ?? null,
+        plannedSets: b.plannedSets ?? null,
+        plannedLoadKg: b.plannedLoadKg ?? null,
+        plannedFirstSetMax: b.plannedFirstSetMax ?? null,
+        plannedIsDeload: b.plannedIsDeload ?? null,
+        prescriptionRuleId: b.prescriptionRuleId ?? null,
+        snapshotSource: b.snapshotSource ?? null,
         sets: sets.map((s) => ({
           id: s.id,
           setNo: s.setNo,
@@ -127,6 +139,8 @@ export const detail = query({
           note: s.note,
           restSec: s.restSec,
           side: (s.side as "left" | "right" | null) ?? null,
+          plannedRirMin: s.plannedRirMin ?? null,
+          plannedRirMax: s.plannedRirMax ?? null,
         })),
       });
     }
@@ -381,10 +395,34 @@ export const remove = mutation({
   },
 });
 
-/** Live session from a routine template (blocks copy the prescription). */
+// Coach prescription / deload overlay for one routine exercise (redesign
+// §9.1); keyed by routine_exercise id in `startFromRoutine`'s `prescriptions`.
+const snapshotOverride = v.object({
+  plannedLoadKg: v.optional(v.union(v.number(), v.null())),
+  plannedRepsMin: v.optional(v.union(v.number(), v.null())),
+  plannedRepsMax: v.optional(v.union(v.number(), v.null())),
+  plannedRirMin: v.optional(v.union(v.number(), v.null())),
+  plannedRirMax: v.optional(v.union(v.number(), v.null())),
+  plannedSets: v.optional(v.union(v.number(), v.null())),
+  plannedFirstSetMax: v.optional(v.union(v.boolean(), v.null())),
+  plannedIsDeload: v.optional(v.union(v.boolean(), v.null())),
+  prescriptionRuleId: v.optional(v.union(v.string(), v.null())),
+});
+
+/**
+ * Live session from a routine template (blocks copy the prescription) and a
+ * target snapshot per block (§9.1): routine working-set targets, overridden
+ * field by field by the caller's coach `prescriptions`. Only the session row
+ * is keyed on `id`; blocks get fresh ids, so replaying the same `id` adds a
+ * second set of blocks (callers mint a new session id per start).
+ */
 export const startFromRoutine = mutation({
-  args: { id: v.string(), routineId: v.string() },
-  handler: async (ctx, { id, routineId }) => {
+  args: {
+    id: v.string(),
+    routineId: v.string(),
+    prescriptions: v.optional(v.record(v.string(), snapshotOverride)),
+  },
+  handler: async (ctx, { id, routineId, prescriptions }) => {
     const me = await requireUser(ctx);
     const routine = await ownedOrThrow(ctx, "routines", routineId, me);
     if (routine.deletedAt != null) fail("Routine not found");
@@ -404,7 +442,16 @@ export const startFromRoutine = mutation({
       ).filter((r) => r.ownerId === me),
     ).sort((a, b) => a.orderIndex - b.orderIndex);
     for (const e of templates) {
+      const routineSets = (
+        await ctx.db
+          .query("routine_sets")
+          .withIndex("by_routine_exercise", (q) =>
+            q.eq("routineExerciseId", e.id),
+          )
+          .collect()
+      ).filter((r) => r.ownerId === me);
       await insertRow(ctx, "session_exercises", me, {
+        ...buildSnapshot(routineSets, prescriptions?.[e.id]),
         id: crypto.randomUUID(),
         sessionId: id,
         exerciseId: e.exerciseId,

@@ -23,6 +23,7 @@ export const TABLES = [
   "sessions",
   "session_exercises",
   "set_logs",
+  "coach_events",
   "measurements",
   "exercise_prefs",
   "user_prefs",

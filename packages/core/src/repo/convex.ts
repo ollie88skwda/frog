@@ -10,6 +10,7 @@
 // (ConvexHttpClient) each provide a small adapter.
 import type {
   ApiToken,
+  CoachEvent,
   Exercise,
   ExerciseFavorite,
   ExercisePref,
@@ -45,6 +46,7 @@ import type {
   MachineCatalogEntry,
   MachinePatch,
   MeasurementPatch,
+  NewCoachEventInput,
   NewExerciseOpts,
   NewMachineInput,
   NewMetricInput,
@@ -53,6 +55,7 @@ import type {
   Repo,
   RoutineDetail,
   SessionExerciseDetail,
+  SnapshotOverride,
   UserPrefsPatch,
 } from "./types";
 
@@ -105,6 +108,8 @@ const SET_FIELDS = [
   "durationSec",
   "distanceM",
   "side",
+  "plannedRirMin",
+  "plannedRirMax",
 ];
 
 const MEASUREMENT_FIELDS = [
@@ -504,6 +509,8 @@ export class ConvexRepo implements Repo {
         durationSec: set.durationSec ?? null,
         distanceM: set.distanceM ?? null,
         side: set.side ?? null,
+        plannedRirMin: set.plannedRirMin ?? null,
+        plannedRirMax: set.plannedRirMax ?? null,
         // Retries replay the same id; the server upserts on it.
         deletedAt: null,
       },
@@ -929,6 +936,30 @@ export class ConvexRepo implements Repo {
     });
   }
 
+  // ── coach events (append-only, idempotent on the client id) ───────────
+
+  recordCoachEvent(
+    input: NewCoachEventInput,
+    id: string = newId(),
+  ): Promise<CoachEvent> {
+    return this.m<CoachEvent>("coach:record", {
+      id,
+      suggestionId: input.suggestionId,
+      ruleId: input.ruleId,
+      exerciseId: input.exerciseId ?? null,
+      sessionId: input.sessionId ?? null,
+      state: input.state,
+      scope: input.scope ?? null,
+      payload: input.payload ?? null,
+    });
+  }
+
+  listCoachEvents(
+    opts: { ruleId?: string; since?: number; limit?: number } = {},
+  ): Promise<CoachEvent[]> {
+    return this.q<CoachEvent[]>("coach:list", opts);
+  }
+
   async getUserPrefs(): Promise<UserPrefs | null> {
     return live(await this.find<UserPrefs>("user_prefs"))[0] ?? null;
   }
@@ -938,7 +969,14 @@ export class ConvexRepo implements Repo {
     for (const [k, val] of Object.entries(patch)) {
       if (val !== undefined) row[k] = val;
     }
-    for (const k of ["defaultRestSec", "plateConfig", "displayName", "bio"]) {
+    for (const k of [
+      "defaultRestSec",
+      "plateConfig",
+      "displayName",
+      "bio",
+      "goal",
+      "trainingStatus",
+    ]) {
       if (k in patch) row[k] = (patch as Row)[k] ?? null;
     }
     await this.m("user:updatePrefs", { patch: row });
@@ -1057,10 +1095,14 @@ export class ConvexRepo implements Repo {
     await this.m("routines:remove", { routineId });
   }
 
-  startRoutineSession(routineId: string): Promise<Session> {
+  startRoutineSession(
+    routineId: string,
+    prescriptions?: Record<string, SnapshotOverride>,
+  ): Promise<Session> {
     return this.m("sessions:startFromRoutine", {
       id: newId(),
       routineId,
+      ...(prescriptions ? { prescriptions } : {}),
     });
   }
 

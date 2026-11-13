@@ -1,4 +1,11 @@
-import type { Session, UserPrefs, UserPrefsPatch } from "@frog/core";
+import {
+  type ResolvedUserPrefs,
+  resolveUserPrefs,
+  type Session,
+  USER_PREF_DEFAULTS,
+  type UserPrefs,
+  type UserPrefsPatch,
+} from "@frog/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRepo } from "./repo";
 
@@ -25,6 +32,13 @@ export function useUserPrefs() {
   });
 }
 
+/** User prefs with the redesign §9.2 defaults applied (coachEnabled,
+ * exerciseGrouping, showEvidenceLabels, hardSetRirMax, goal, …). */
+export function useResolvedUserPrefs(): ResolvedUserPrefs {
+  const { data } = useUserPrefs();
+  return resolveUserPrefs(data);
+}
+
 /** Patch user preferences with an optimistic cache write so edits (e.g.
  * display name) reflect instantly. */
 export function useUpdateUserPrefs() {
@@ -48,13 +62,20 @@ export function useUpdateUserPrefs() {
               updatedAt: now,
               deletedAt: null,
               ownerId: "",
-              includeWarmupsInStats: true,
+              includeWarmupsInStats: USER_PREF_DEFAULTS.includeWarmupsInStats,
               defaultRestSec: null,
               previousValuesScope: "any",
               bodyDiagram: "neutral",
               plateConfig: null,
               displayName: null,
               bio: null,
+              goal: null,
+              trainingStatus: null,
+              exerciseGrouping: null,
+              coachEnabled: null,
+              coachRulesOff: null,
+              showEvidenceLabels: null,
+              hardSetRirMax: null,
               ...patch,
             } as UserPrefs),
       );

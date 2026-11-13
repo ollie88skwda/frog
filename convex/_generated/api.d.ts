@@ -9,6 +9,7 @@
  */
 
 import type * as admin from "../admin.js";
+import type * as coach from "../coach.js";
 import type * as data from "../data.js";
 import type * as exercises from "../exercises.js";
 import type * as files from "../files.js";
@@ -17,6 +18,7 @@ import type * as lib from "../lib.js";
 import type * as routines from "../routines.js";
 import type * as rows from "../rows.js";
 import type * as sessions from "../sessions.js";
+import type * as snapshot from "../snapshot.js";
 import type * as tables from "../tables.js";
 import type * as tokenApi from "../tokenApi.js";
 import type * as user from "../user.js";
@@ -29,6 +31,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
+  coach: typeof coach;
   data: typeof data;
   exercises: typeof exercises;
   files: typeof files;
@@ -37,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   routines: typeof routines;
   rows: typeof rows;
   sessions: typeof sessions;
+  snapshot: typeof snapshot;
   tables: typeof tables;
   tokenApi: typeof tokenApi;
   user: typeof user;

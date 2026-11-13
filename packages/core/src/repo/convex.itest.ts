@@ -14,6 +14,7 @@ import { newId } from "../domain/ids";
 import type { ImportedSession } from "../import/types";
 import { ConvexRepo, type ConvexTransport } from "./convex";
 import { convexHttpTransport, convexSiteUrl } from "./convex-http";
+import { resolveUserPrefs } from "./prefs";
 
 const URL_ =
   process.env.CONVEX_URL ??
@@ -881,7 +882,8 @@ describe("ConvexRepo (integration, local convex)", () => {
     expect(prefs).toMatchObject({
       bodyDiagram: "female",
       displayName: null,
-      includeWarmupsInStats: true,
+      // R6/R17b: a brand-new user defaults warm-ups OUT of stats (§9.2).
+      includeWarmupsInStats: false,
     });
 
     const squatId = "00000000-0000-4000-8000-000000000001";
@@ -989,5 +991,214 @@ describe("ConvexRepo (integration, local convex)", () => {
     expect(
       (await repoA.listApiTokens()).find((t) => t.id === row.id)?.revokedAt,
     ).not.toBeNull();
+  });
+
+  // ── Redesign J2 (§9): optional fields, snapshot, prefs, coach_events ────
+
+  it("accepts old-shape and new-shape documents (v.optional is nullable-safe)", async () => {
+    const c = await makeUser();
+    const ex = await c.repo.createExercise("J2 old/new shape", {
+      muscleTargets: [{ muscle: "quads", tier: "S" }],
+    } as never);
+    const session = await c.repo.startSession("shape");
+    const blockId = await c.repo.addExerciseToSession(session.id, ex.id);
+    // Old shape: inserted through the pre-snapshot path (addExercise) — no
+    // snapshot keys written beyond the nulls withDefaults fills in.
+    const [oldBlock] = await c.repo.listSessionExercises(session.id);
+    expect(oldBlock.id).toBe(blockId);
+    expect(oldBlock.plannedRepsMin).toBeNull();
+    expect(oldBlock.snapshotSource).toBeNull();
+    // Truly old document: keys absent entirely (raw db write is impossible
+    // from a client, so assert the read path tolerates undefined via detail's
+    // `?? null`, then write a NEW-shape row through the generic layer).
+    const newId_ = newId();
+    await c.raw.mutation("rows:insert", {
+      table: "session_exercises",
+      rows: [
+        {
+          id: newId_,
+          sessionId: session.id,
+          exerciseId: ex.id,
+          orderIndex: 1,
+          plannedRepsMin: 6,
+          plannedRepsMax: 8,
+          plannedRirMin: 1,
+          plannedRirMax: 2,
+          plannedSets: 3,
+          plannedLoadKg: 102.5,
+          plannedFirstSetMax: true,
+          plannedIsDeload: false,
+          prescriptionRuleId: "C2c-progress",
+          snapshotSource: "start",
+        },
+      ],
+    });
+    const detail = await c.repo.listSessionExercises(session.id);
+    expect(detail[1]).toMatchObject({
+      plannedRepsMin: 6,
+      plannedLoadKg: 102.5,
+      plannedFirstSetMax: true,
+      prescriptionRuleId: "C2c-progress",
+    });
+    // A set with a planned RIR range round-trips (R11 drift input).
+    await c.repo.logSet(
+      newId_,
+      {
+        weightKg: 100,
+        reps: 8,
+        rirMin: 2,
+        rirMax: 2,
+        plannedRirMin: 1,
+        plannedRirMax: 2,
+      },
+      newId(),
+      1,
+    );
+    const sets = (await c.repo.listSessionExercises(session.id))[1].sets;
+    expect(sets[0]).toMatchObject({ plannedRirMin: 1, plannedRirMax: 2 });
+  });
+
+  it("startRoutineSession writes the target snapshot (F1 acceptance)", async () => {
+    const c = await makeUser();
+    const ex = await c.repo.createExercise("J2 snapshot lift", {} as never);
+    const routine = await c.repo.createRoutine({
+      name: "J2 Push",
+      folderId: null,
+      description: null,
+      exercises: [
+        {
+          exerciseId: ex.id,
+          orderIndex: 0,
+          supersetGroup: null,
+          restSec: null,
+          note: null,
+          sets: [
+            { setNo: 0, setType: "warmup", targetReps: 12 },
+            {
+              setNo: 1,
+              targetWeightKg: 100,
+              targetReps: 6,
+              targetRepsMax: 8,
+              targetRirMin: 1,
+              targetRirMax: 2,
+            },
+            { setNo: 2, targetReps: 6, targetRepsMax: 8 },
+          ],
+        },
+      ],
+    } as never);
+    const detail = await c.repo.getRoutineDetail(routine.id);
+    const reId = detail?.exercises[0].id as string;
+
+    const plain = await c.repo.startRoutineSession(routine.id);
+    const [b1] = await c.repo.listSessionExercises(plain.id);
+    expect(b1).toMatchObject({
+      plannedRepsMin: 6,
+      plannedRepsMax: 8,
+      plannedRirMin: 1,
+      plannedRirMax: 2,
+      plannedSets: 2, // warm-up excluded (R17b)
+      plannedLoadKg: 100,
+      plannedIsDeload: false,
+      prescriptionRuleId: null,
+      snapshotSource: "start",
+    });
+
+    const coached = await c.repo.startRoutineSession(routine.id, {
+      [reId]: { plannedLoadKg: 102.5, prescriptionRuleId: "C2c-progress" },
+    });
+    const [b2] = await c.repo.listSessionExercises(coached.id);
+    expect(b2).toMatchObject({
+      plannedLoadKg: 102.5,
+      plannedRepsMin: 6,
+      prescriptionRuleId: "C2c-progress",
+    });
+  });
+
+  it("stores the §9.2 prefs and resolves defaults for a legacy row", async () => {
+    const c = await makeUser();
+    await c.repo.updateUserPrefs({ displayName: "legacy-shaped" });
+    const row = await c.repo.getUserPrefs();
+    expect(resolveUserPrefs(row)).toMatchObject({
+      exerciseGrouping: "joint_action",
+      coachEnabled: true,
+      coachRulesOff: [],
+      showEvidenceLabels: true,
+      hardSetRirMax: 4,
+      goal: null,
+    });
+    await c.repo.updateUserPrefs({
+      goal: "cut",
+      trainingStatus: "intermediate",
+      exerciseGrouping: "region",
+      coachEnabled: false,
+      coachRulesOff: ["C7"],
+      showEvidenceLabels: false,
+      hardSetRirMax: 3,
+    });
+    expect(resolveUserPrefs(await c.repo.getUserPrefs())).toMatchObject({
+      goal: "cut",
+      trainingStatus: "intermediate",
+      exerciseGrouping: "region",
+      coachEnabled: false,
+      coachRulesOff: ["C7"],
+      showEvidenceLabels: false,
+      hardSetRirMax: 3,
+    });
+    await c.repo.updateUserPrefs({ goal: null });
+    expect((await c.repo.getUserPrefs())?.goal).toBeNull();
+  });
+
+  it("existing users with history keep warm-ups in stats on first prefs write", async () => {
+    const c = await makeUser();
+    await c.repo.startSession("history");
+    await c.repo.updateUserPrefs({ displayName: "veteran" });
+    expect((await c.repo.getUserPrefs())?.includeWarmupsInStats).toBe(true);
+  });
+
+  it("coach_events: owner-scoped, idempotent on id, append-only", async () => {
+    const eventId = newId();
+    const input = {
+      suggestionId: "sg-1",
+      ruleId: "C2c-progress",
+      exerciseId: null,
+      state: "accepted" as const,
+      scope: "once" as const,
+      payload: { loadKg: 102.5 },
+    };
+    const first = await repoA.recordCoachEvent(input, eventId);
+    // Retry after a lost response: same id + content → same row, no duplicate.
+    const retry = await repoA.recordCoachEvent(input, eventId);
+    expect(retry.id).toBe(first.id);
+    expect(retry.createdAt).toBe(first.createdAt);
+    const mine = await repoA.listCoachEvents({ ruleId: "C2c-progress" });
+    expect(mine.filter((e) => e.id === eventId)).toHaveLength(1);
+    expect(mine[0].payload).toEqual({ loadKg: 102.5 });
+    // Reusing the id for a different event is rejected (append-only).
+    await expect(
+      repoA.recordCoachEvent({ ...input, state: "dismissed" }, eventId),
+    ).rejects.toThrow();
+    await expect(
+      repoA.recordCoachEvent({ ...input, payload: { loadKg: 105 } }, eventId),
+    ).rejects.toThrow();
+    await expect(
+      repoA.recordCoachEvent({ ...input, scope: "rule" }, eventId),
+    ).rejects.toThrow();
+    const after = await repoA.listCoachEvents({ ruleId: "C2c-progress" });
+    expect(after.find((e) => e.id === eventId)?.payload).toEqual({
+      loadKg: 102.5,
+    });
+    // Another user cannot see it, or take its id.
+    expect(await repoB.listCoachEvents({ ruleId: "C2c-progress" })).toEqual([]);
+    await expect(repoB.recordCoachEvent(input, eventId)).rejects.toThrow();
+    // Rule filter isolates.
+    await repoA.recordCoachEvent({
+      ...input,
+      ruleId: "C7",
+      state: "dismissed",
+    });
+    expect(
+      (await repoA.listCoachEvents({ ruleId: "C7" })).map((e) => e.state),
+    ).toEqual(["dismissed"]);
   });
 });

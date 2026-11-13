@@ -203,6 +203,7 @@ export const testOwnersPage = internalQuery({
 
 const PURGE_ORDER = [
   "set_logs",
+  "coach_events",
   "session_media",
   "session_exercises",
   "routine_sets",
