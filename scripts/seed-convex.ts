@@ -6,8 +6,9 @@
 //
 // --generate replays supabase/migrations (where those rows were defined)
 // into PGlite and dumps the null-owner rows — so the Convex seed is derived
-// from, and byte-for-byte consistent with, what Supabase had. The JSON is
-// generated output; never hand-edit it. Upserting is idempotent on each
+// from, and byte-for-byte consistent with, what Supabase had, plus the
+// exercise classification merged from scripts/classify-exercises/
+// classification.json. The JSON is generated output; never hand-edit it. Upserting is idempotent on each
 // row's uuid (admin:upsertGlobal), so re-running after a seed change
 // updates rows in place. Target: see scripts/convex/admin-client.ts.
 import { readFileSync, writeFileSync } from "node:fs";
