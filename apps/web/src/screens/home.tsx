@@ -1,117 +1,95 @@
-import { FIRST_WEEKDAY, sevenDayMuscleSets } from "@frog/core";
-import { Barbell, ChartBar, Plus, Users } from "@phosphor-icons/react";
+import { FIRST_WEEKDAY, muscleLabel, sevenDayMuscleSets } from "@frog/core";
+import { CaretRight } from "@phosphor-icons/react";
 import { useMemo } from "react";
 import { Link } from "react-router";
-import { HumanBodyHeatmap } from "@/components/charts/human-body-heatmap";
+import { MuscleMeter, SectionHeader } from "@/components/data";
 import { HomeHero } from "@/components/home-hero";
-import { ReportPromo } from "@/components/report-promo";
-import { StreakCard } from "@/components/streak-card";
-import { TrainFindingsCard } from "@/components/train-findings-card";
-import { useAllSessions } from "@/lib/profile-queries";
+import { rowClass } from "@/components/ui/row";
+import { formatDate } from "@/lib/format";
+import { useAllSessions, useResolvedUserPrefs } from "@/lib/profile-queries";
 import { useRecordsData } from "@/lib/records-queries";
 import { useMuscleMap } from "@/lib/stats-queries";
-import { useVoice } from "@/lib/voice";
 
-export default function HomeScreen() {
-  const { t } = useVoice();
+// Today (redesign F5/§8.1), replacing Home + Train: readiness, the session with
+// its prescription, Start, a compact week meter, the last session. Cut: feed
+// placeholder, exercises promo, report promo, streak card (moves to You).
+// Coach cards render when useCoach yields them (J3); none exist while stubbed.
+
+const todayFmt = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+});
+const WEEK_METERS = 6;
+
+export default function TodayScreen() {
   const { data: sessions = [] } = useAllSessions();
   const { data: recordsData } = useRecordsData();
+  const { includeWarmupsInStats } = useResolvedUserPrefs();
   const muscleMap = useMuscleMap();
-  const starts = sessions.map((s) => s.startedAt);
 
-  // Trailing-7-day muscle map for the mini heat map — deep-links into /stats.
+  // R6/R7: rolling 7-day fractional hard sets. Warm-ups are excluded unless
+  // the user opted in (they are a minor part of Frog).
   const sevenDay = useMemo(
     () =>
       recordsData
         ? sevenDayMuscleSets(recordsData.history, muscleMap, {
             now: Date.now(),
-            includeWarmups: recordsData.includeWarmups,
+            includeWarmups: includeWarmupsInStats,
             firstWeekday: FIRST_WEEKDAY,
           })
         : {},
-    [recordsData, muscleMap],
+    [recordsData, muscleMap, includeWarmupsInStats],
   );
+  const top = useMemo(
+    () =>
+      Object.entries(sevenDay)
+        .filter(([, n]) => n > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, WEEK_METERS),
+    [sevenDay],
+  );
+  const last = sessions.find((s) => s.endedAt != null);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
-      <h1 className="text-lg font-semibold tracking-tight">Home</h1>
+      <h1 className="text-lg font-semibold tracking-tight">Today</h1>
+      <p className="num text-xs text-soft">{todayFmt.format(Date.now())}</p>
 
-      {/* Today's plan — the hero. Starting training is the screen's headline
-          act, not a chip in a status row (docs/DECISIONS.md 2026-07-30). */}
       <HomeHero />
 
-      {/* Monthly-report / Year-in-Review nudge (dismissible; time-gated). */}
-      <ReportPromo />
+      <section className="mt-4 overflow-hidden rounded-md bg-surface">
+        <SectionHeader
+          title="This week"
+          to="/progress"
+          seeAllLabel="All muscles"
+        />
+        {top.length === 0 ? (
+          <p className="px-4 py-4 text-xs text-soft">
+            Hard sets per muscle show up here after your first logged session.
+          </p>
+        ) : (
+          top.map(([muscle, n]) => (
+            <MuscleMeter key={muscle} label={muscleLabel(muscle)} sets={n} />
+          ))
+        )}
+      </section>
 
-      <Link to="/calendar" className="mt-4 block" data-testid="home-streak">
-        <StreakCard starts={starts} />
-      </Link>
-
-      {/* Trailing-7-day muscle map — a glanceable teaser into full Statistics.
-          The human figure (react-body-highlighter, same as /stats) in its
-          non-interactive teaser mode: no chips, no selection, just the map
-          (docs/DECISIONS.md 2026-08-08, Routines-tab & Home-heatmap entry). */}
-      <Link
-        to="/stats"
-        className="mt-4 block rounded-md bg-surface p-4 transition-colors duration-150 ease-(--ease-out-quad)"
-        data-testid="home-heatmap"
-      >
-        <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
-          <ChartBar className="size-4" />
-          This week
-        </div>
-        <div className="mx-auto mt-2 max-w-56">
-          <HumanBodyHeatmap muscleSets={sevenDay} interactive={false} />
-        </div>
-      </Link>
-
-      {/* Exercises lives on Home — promoted above Findings and retitled so the
-          "+ Custom" affordance (a straight deep-link into the create sheet,
-          docs/DECISIONS.md) is reachable without a second navigation. */}
-      <div className="mt-4 rounded-md bg-surface p-4">
-        <div className="flex items-start justify-between gap-2">
-          <Link
-            to="/library"
-            className="min-w-0 flex-1"
-            data-testid="home-exercises"
-          >
-            <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
-              <Barbell className="size-4" />
-              Exercises
-            </div>
-            <p className="mt-2 text-sm text-soft">
-              {t(
-                "Browse exercises, machines, and tier ratings.",
-                "Exercises, machines, and tier ratings. The frog has catalogued everything.",
-              )}
-            </p>
-          </Link>
-          <Link
-            to="/library?new=1"
-            className="rounded-sm flex shrink-0 items-center gap-1 bg-accent-soft px-2 py-1 text-2xs text-accent-ink transition-colors duration-150 ease-(--ease-out-quad) hover:bg-accent-selected"
-            data-testid="home-exercises-new"
-          >
-            <Plus className="size-3.5" />
-            Custom
-          </Link>
-        </div>
-      </div>
-
-      <TrainFindingsCard />
-
-      {/* Social + graphs are a future phase — labeled, not faked. */}
-      <div className="mt-4 rounded-md bg-surface p-4">
-        <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
-          <Users className="size-4" />
-          Feed &amp; graphs
-        </div>
-        <p className="mt-2 text-sm text-faint">
-          {t(
-            "Coming soon — a training feed and progress charts.",
-            "A training feed and progress charts, eventually. The frog refuses to speculate on dates.",
-          )}
-        </p>
-      </div>
+      {last && (
+        <Link
+          to={`/history/${last.id}`}
+          className={rowClass({ className: "mt-4 rounded-md bg-surface" })}
+          data-testid="today-last-session"
+        >
+          <span className="min-w-0 truncate text-sm text-ink">
+            Last: {last.title ?? "Workout"}
+          </span>
+          <span className="num flex shrink-0 items-center gap-1 text-xs text-soft">
+            {formatDate(last.startedAt)}
+            <CaretRight className="size-3.5" />
+          </span>
+        </Link>
+      )}
     </div>
   );
 }
