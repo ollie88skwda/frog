@@ -1,9 +1,10 @@
 // Coach thresholds. Every number is a COACH-LOGIC.md "Computation defaults"
 // value (research/hypertrophy/COACH-LOGIC.md); rule IDs are cited inline.
 
-/** C14/C10 week buckets are Monday-Sunday (COACH-LOGIC C14), unlike the app's
- * Sunday `FIRST_WEEKDAY`: the research defines the decline test on Mon-Sun
- * weeks, so the coach keeps its own constant (0 = Sunday … 1 = Monday). */
+/** Every coach week bucket (C10/C11/C12/C14) is Monday-Sunday (COACH-LOGIC
+ * C14), unlike the app's Sunday `FIRST_WEEKDAY`: the research defines the
+ * decline test on Mon-Sun weeks, so the coach keeps its own constant
+ * (0 = Sunday … 1 = Monday). */
 export const COACH_WEEK_START = 1;
 
 /** C2c-noise: RIR-based e1RM estimates swing ±10%; only a bigger single-session

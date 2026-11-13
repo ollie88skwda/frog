@@ -100,8 +100,27 @@ export function resolve(
 ): { suggestions: CoachSuggestion[]; suppressed: CoachSuggestion[] } {
   const kept: CoachSuggestion[] = [];
   const suppressed: CoachSuggestion[] = [];
-  const byEx = new Map<string, CoachSuggestion[]>();
+  const clamp = (s: CoachSuggestion): CoachSuggestion => ({
+    ...s,
+    action: clampAction(
+      s.action,
+      s.exerciseId ? opts.exercises.get(s.exerciseId) : undefined,
+    ),
+  });
+  // Dismissed / rule-off suggestions never render and never suppress others.
+  const active: CoachSuggestion[] = [];
   for (const s of all) {
+    if (isDismissed(s, opts.dismissed, opts.rulesOff, opts.asOf))
+      suppressed.push({
+        ...clamp(s),
+        suppressedBy: opts.rulesOff.includes(s.ruleId)
+          ? "rule_off"
+          : "dismissed",
+      });
+    else active.push(s);
+  }
+  const byEx = new Map<string, CoachSuggestion[]>();
+  for (const s of active) {
     const k = s.exerciseId ?? "all";
     const list = byEx.get(k);
     if (list) list.push(s);
@@ -203,25 +222,7 @@ export function resolve(
     kept.push(...live);
   }
 
-  // Dismissals compute silently (history stays consistent) but never render.
-  const shown: CoachSuggestion[] = [];
-  for (const s of kept) {
-    const clamped = {
-      ...s,
-      action: clampAction(
-        s.action,
-        s.exerciseId ? opts.exercises.get(s.exerciseId) : undefined,
-      ),
-    };
-    if (isDismissed(s, opts.dismissed, opts.rulesOff, opts.asOf))
-      suppressed.push({
-        ...clamped,
-        suppressedBy: opts.rulesOff.includes(s.ruleId)
-          ? "rule_off"
-          : "dismissed",
-      });
-    else shown.push(clamped);
-  }
+  const shown = kept.map(clamp);
   shown.sort(
     (a, b) =>
       SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity] ||

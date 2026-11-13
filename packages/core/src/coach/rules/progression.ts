@@ -3,14 +3,15 @@
 import { primaryMuscles } from "../../domain/anatomy";
 import {
   COMPOUND_BAND,
+  HIGH_STRESS,
   ISOLATION_BAND,
   MAX_DIRECT_SETS_PER_SESSION,
   MIN_STALL_SESSIONS,
+  SHORT_SLEEP_H,
 } from "../constants";
 import { type ExerciseCtx, empty, kg, mk, pct, type RuleOutput } from "../ctx";
 import { nextLoad } from "../grid";
-import { plannedKey, plannedRirAt, withinOneOfTarget } from "../history";
-import type { CoachSuggestion } from "../types";
+import { plannedRirAt, withinOneOfTarget } from "../history";
 
 const CITE_C2C = "C2c · Mayhew 1995 PMID 7500624; ACSM 2009 PMID 19204579";
 
@@ -41,7 +42,6 @@ export function c2History(ctx: ExerciseCtx): {
   let prevKey: string | null = null;
   let prevSets: number | null = null;
   for (const s of ctx.hist) {
-    const key = plannedKey(s.planned && { ...s.planned, rirMin: 0, rirMax: 0 });
     const range = s.planned
       ? `${s.planned.repsMin}-${s.planned.repsMax}`
       : null;
@@ -55,7 +55,6 @@ export function c2History(ctx: ExerciseCtx): {
       addedSet = true;
     if (range != null) prevKey = range;
     if (s.planned) prevSets = s.planned.sets;
-    void key;
   }
   return { rangeChanges, addedSet };
 }
@@ -83,7 +82,8 @@ export function c1(ctx: ExerciseCtx): RuleOutput {
   if (!rir || !withinOneOfTarget(rir, plannedRirAt(p, idx))) return out;
   if (s.topSet.reps >= p.repsMin) return out;
   const normal =
-    (s.sleepH == null || s.sleepH >= 6) && (s.stress == null || s.stress < 8);
+    (s.sleepH == null || s.sleepH >= SHORT_SLEEP_H) &&
+    (s.stress == null || s.stress < HIGH_STRESS);
   const ctxLine = normal
     ? `sleep${s.sleepH != null ? ` (${s.sleepH} h)` : ""} and stress${s.stress != null ? ` (${s.stress}/10)` : ""} look normal, so probably just a rough day.`
     : "sleep or stress was off that day, which likely explains it.";
@@ -361,5 +361,3 @@ export function stall(ctx: ExerciseCtx): RuleOutput {
   );
   return out;
 }
-
-export type { CoachSuggestion };

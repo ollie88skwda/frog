@@ -135,6 +135,7 @@ export function c9b(ctx: ExerciseCtx): RuleOutput {
  * check plus a deload in C14's form. */
 export function c10(ctx: ExerciseCtx): RuleOutput {
   const out = empty();
+  if (ctx.deloadActive) return out;
   const asOfDay = localDayIndex(ctx.asOf, ctx.tz);
   const recent = ctx.input.sessions.filter((s) => {
     if (s.sleepH == null || s.startedAt > ctx.asOf) return false;

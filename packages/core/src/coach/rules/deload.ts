@@ -1,19 +1,22 @@
 // C14 (deload), C15 (restart). COACH-LOGIC.md "Deload and time off".
 
-import { C14_DECLINE, DAY_MS, DELOAD_RIR, RESTART_PCT } from "../constants";
+import { C14_DECLINE, DELOAD_RIR, RESTART_PCT } from "../constants";
 import { type ExerciseCtx, empty, kg, mk, pct, type RuleOutput } from "../ctx";
 import { declinedMoreThan } from "../e1rm";
 import { gridKg, roundToGrid } from "../grid";
 import { weekKey } from "../time";
 import type { CoachAction } from "../types";
 
-/** Weekly best e1RM per Monday-Sunday week over the comparable window
- * (C14: the current week's best so far counts). */
+/** Weekly best e1RM per Monday-Sunday week over the comparable window since
+ * the last deload (C14: the current week's best so far counts; a decline a
+ * deload already answered does not call another). */
 export function weeklyBests(
   ctx: ExerciseCtx,
 ): { week: number; best: number }[] {
+  const lastDeload = [...ctx.hist].reverse().find((s) => s.isDeload);
   const byWeek = new Map<number, number>();
   for (const s of ctx.win) {
+    if (lastDeload && s.startedAt < lastDeload.startedAt) continue;
     const wk = weekKey(s.startedAt, ctx.tz, ctx.weekStart);
     byWeek.set(wk, Math.max(byWeek.get(wk) ?? 0, s.e1rm as number));
   }
@@ -149,5 +152,3 @@ export function c15(ctx: ExerciseCtx): RuleOutput {
   );
   return out;
 }
-
-export { DAY_MS };
