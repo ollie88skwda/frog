@@ -156,7 +156,13 @@ test("offline: paused first loads read as loading, then recover", async ({
     ["measures", "/measures", /No data yet/],
     ["calendar", "/calendar", /No sessions/],
   ];
+  // Today preloads the sessions list (shared with Calendar), so start each case
+  // from a page that caches no session data: a full load drops the cache.
   for (const [name, path, falseEmpty] of cases) {
+    await page.goto("/changelog");
+    await expect(
+      page.getByRole("heading", { name: "Changelog", exact: true }),
+    ).toBeVisible();
     await setOnline(false);
     await goClient(path);
     const loading = page.locator("main").getByRole("status");
@@ -176,6 +182,5 @@ test("offline: paused first loads read as loading, then recover", async ({
       });
     if (name === "history-detail")
       await expect(page.getByText(/Session not found/)).toBeVisible();
-    await goClient("/");
   }
 });
