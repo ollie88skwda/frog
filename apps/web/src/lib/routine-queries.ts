@@ -255,6 +255,10 @@ export function formatRoutineSummary(
   return parts.join(" · ");
 }
 
+function dataOnly<T>(results: { data: T | undefined }[]): (T | undefined)[] {
+  return results.map((r) => r.data);
+}
+
 export function useRoutineSummaries(
   routines: readonly Routine[],
 ): Map<string, RoutineSummary> {
@@ -267,20 +271,21 @@ export function useRoutineSummaries(
       queryFn: () => repo.getRoutineDetail(r.id),
       staleTime: 60_000,
     })),
+    combine: dataOnly,
   });
   return useMemo(() => {
     const lookup = new Map(exercises.map((e) => [e.id, e]));
     const last = lastPerformedByRoutine(sessions);
     const out = new Map<string, RoutineSummary>();
-    details.forEach((q, i) => {
+    details.forEach((d, i) => {
       const r = routines[i];
-      if (!r || !q.data) return;
+      if (!r || !d) return;
       const view = viewFromRoutines(
         [
           {
             id: r.id,
             name: r.name,
-            exercises: q.data.exercises.map((e) => ({
+            exercises: d.exercises.map((e) => ({
               exerciseId: e.exerciseId,
               restSec: e.restSec,
               sets: e.sets,
@@ -322,11 +327,12 @@ export function useFolderRoutineInputs(
       queryFn: () => repo.getRoutineDetail(r.id),
       staleTime: 60_000,
     })),
+    combine: dataOnly,
   });
   return useMemo(
     () =>
       sibs.flatMap((r, i) => {
-        const d = details[i]?.data;
+        const d = details[i];
         return d
           ? [
               {
