@@ -4,12 +4,17 @@ import {
   buildStreakCard,
   computeStreak,
   type ExerciseType,
-  epley,
   FIRST_WEEKDAY,
+  fractionalHardSets,
+  groupSetsBySetNo,
+  muscleLabel,
   PR_TYPE_LABELS,
   type RecordsSessionInput,
+  rirMidpoint,
   type SessionCardBlock,
   setVolumeKg,
+  toDisplayWeight,
+  unitLabel,
   weekStart,
 } from "@frog/core";
 import { Flame, Medal, Trophy, X } from "@phosphor-icons/react";
@@ -20,6 +25,12 @@ import {
   useRef,
   useState,
 } from "react";
+import { MuscleMeter, Num } from "@/components/data";
+import {
+  planFromSnapshot,
+  rangeState,
+  reportE1rm,
+} from "@/components/session/prescription";
 import { ShareButton, type ShareSource } from "@/components/share-sheet";
 import { formatDate } from "@/lib/format";
 import { useAllSessions, useUserPrefs } from "@/lib/profile-queries";
@@ -170,7 +181,7 @@ export function PostSaveSummary({
         unit,
         identity,
         heroSet,
-        includeWarmups: recordsData?.includeWarmups ?? true,
+        includeWarmups: recordsData?.includeWarmups ?? false,
         conditionsLine: sessionConditionsLine(
           session?.conditionValues ?? {},
           metrics.filter((m) => m.scope === "session"),
@@ -229,9 +240,10 @@ export function PostSaveSummary({
       if (!block) continue;
       let best: number | null = null;
       for (const set of block.sets) {
-        if (set.weightKg == null || set.reps == null || set.reps < 1) continue;
-        const e = epley(set.weightKg, set.reps);
-        if (e != null && (best == null || e > best)) best = e;
+        if (set.setType === "warmup") continue;
+        // C2c-e1rm: Brzycki + RIR; sets over 10 total reps are not estimated.
+        const r = reportE1rm(set);
+        if (r?.kind === "value" && (best == null || r.kg > best)) best = r.kg;
       }
       if (best != null) out.push({ at: s.startedAt, value: best });
     }
@@ -340,6 +352,40 @@ export function PostSaveSummary({
   const sessionTone =
     !heroPrEvent && !showStreak && isHeavy ? "heavy" : undefined;
 
+  // F9 report: every exercise's range state vs the saved plan, and the
+  // hard sets this session credited per muscle (R6/R7; warm-ups excluded).
+  const report = useMemo(() => {
+    const byId = new Map(exercises.map((e) => [e.id, e]));
+    const rows = blocks.map((b) => {
+      const plan = planFromSnapshot(b);
+      const working = groupSetsBySetNo(
+        b.sets.filter((s) => s.setType !== "warmup"),
+      ).map((g) => g[0]);
+      const best = [...working].sort(
+        (a, c) => (c.weightKg ?? 0) - (a.weightKg ?? 0),
+      )[0];
+      const state = best
+        ? rangeState({
+            reps: best.reps,
+            repsMin: plan?.repsMin ?? null,
+            repsMax: plan?.repsMax ?? null,
+            rir: rirMidpoint(best),
+            plannedRirMin: plan?.rirMin,
+            plannedRirMax: plan?.rirMax,
+          })
+        : null;
+      const e1rm = best ? reportE1rm(best) : null;
+      return { b, plan, best, state, e1rm, planned: plan != null };
+    });
+    const credited = fractionalHardSets(
+      blocks.map((b) => ({
+        targets: byId.get(b.exerciseId)?.muscleTargets,
+        sets: b.sets,
+      })),
+    );
+    return { rows, credited };
+  }, [blocks, exercises]);
+
   const title = session?.title || "Workout";
   const subtitle = formatDate(startedAt);
 
@@ -388,6 +434,74 @@ export function PostSaveSummary({
       ),
     },
   ];
+
+  slides.push({
+    key: "report",
+    node: (
+      <div className="mx-auto flex w-full max-w-sm flex-col gap-4 text-left">
+        <p className="text-sm font-semibold" data-testid="summary-report">
+          vs plan
+        </p>
+        <ul className="flex flex-col gap-1.5">
+          {report.rows.map(({ b, best, state, e1rm, planned }) => (
+            <li
+              key={b.id}
+              className="rounded-sm flex flex-col gap-0.5 bg-surface-2 px-3 py-2"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-sm font-semibold">
+                  {b.exerciseName}
+                </span>
+                <span
+                  className="num shrink-0 text-2xs font-semibold text-soft"
+                  data-testid="summary-range-state"
+                >
+                  {!best
+                    ? "no working sets"
+                    : (state?.label ??
+                      (planned ? "no rep range" : "no plan saved"))}
+                </span>
+              </div>
+              {best && e1rm?.kind === "value" && (
+                <span className="num text-2xs text-soft">
+                  e1RM {toDisplayWeight(e1rm.kg, unit)} {unitLabel(unit)}
+                </span>
+              )}
+              {best && e1rm?.kind === "not_estimable" && (
+                <span className="text-2xs text-soft">
+                  Over 10 reps in total: no strength estimate
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+        <div className="flex flex-col">
+          <div className="flex items-baseline justify-between px-4">
+            <span className="text-sm font-semibold">Sets credited</span>
+            <Num value={report.credited.hardSets} unit="hard sets" size="sm" />
+          </div>
+          {report.credited.muscles
+            .filter((m) => m.total > 0)
+            .slice(0, 6)
+            .map((m) => (
+              <MuscleMeter
+                key={m.muscle}
+                label={muscleLabel(m.muscle)}
+                sets={m.total}
+                max={24}
+              />
+            ))}
+          {report.credited.noRirSets > 0 && (
+            <p className="px-4 pt-1 text-2xs text-faint">
+              {report.credited.noRirSets} set
+              {report.credited.noRirSets === 1 ? "" : "s"} without RIR counted
+              as hard. Log RIR to sharpen this.
+            </p>
+          )}
+        </div>
+      </div>
+    ),
+  });
 
   if (prSource && heroPrEvent) {
     slides.push({

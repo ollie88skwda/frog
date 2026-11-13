@@ -20,12 +20,14 @@ import {
   checkSetForPR,
   computeRecords,
   countSets,
+  creditsFor,
   type Exercise,
   type ExercisePatch,
   type ExercisePref,
   type ExerciseRecords,
   type ExerciseType,
   formatWeight,
+  fractionalHardSets,
   type GhostSet,
   ghostFor,
   groupByPrimaryMuscle,
@@ -42,8 +44,10 @@ import {
   type Machine,
   type MatchCandidate,
   type Metric,
+  type MuscleHardSets,
   matchExerciseName,
   miToM,
+  muscleLabel,
   type NewRoutineInput,
   newId,
   type ParsedSetUtterance,
@@ -54,8 +58,10 @@ import {
   type RecordsSessionInput,
   type RestTimerState,
   type RoutineDetail,
+  rirMidpoint,
   type Session,
   type SetType,
+  sessionDirectCheck,
   shouldStartRest,
   startRest,
   supportsEffort,
@@ -94,9 +100,14 @@ import {
   useState,
 } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ExerciseRibbon, ExerciseThumb } from "@/components/anatomy-ui";
 import { ConditionsChip } from "@/components/conditions";
+import {
+  DeltaChip,
+  EvidenceSheet,
+  SaveDot,
+  type SaveState,
+} from "@/components/data";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import {
   ExerciseFilterBar,
@@ -106,6 +117,17 @@ import { InfoTip } from "@/components/lesson";
 import { MachineChip } from "@/components/session/machine-chip";
 import { PlateSheet } from "@/components/session/plate-sheet";
 import { PrBanner, type PrBannerData } from "@/components/session/pr-banner";
+import {
+  driftNudge,
+  formatRange,
+  type PlanTarget,
+  planFromSeed,
+  planFromSnapshot,
+  rangeState,
+  reportE1rm,
+  rirPreselect,
+  setTarget,
+} from "@/components/session/prescription";
 import { RestStopwatch } from "@/components/session/rest-stopwatch";
 import {
   FinishPhotoStrip,
@@ -168,6 +190,8 @@ type BlockState = {
   // untouched, never read for layout.
   supersetGroup: number | null;
   note: string | null;
+  /** §9.1 target snapshot written at session start; null on ad-hoc blocks. */
+  plan: PlanTarget | null;
   committed: LoggedSet[];
 };
 
@@ -223,7 +247,25 @@ export type SeedSet = {
   durationSec: number | null;
   distanceM: number | null;
   laterality?: Laterality | null;
+  /** Planned RIR for this set (routine target), drives the RIR preselect. */
+  rirMin?: number | null;
+  rirMax?: number | null;
 };
+
+function totalVolumeKg(blocks: BlockState[], includeWarmups: boolean): number {
+  return blocks.reduce(
+    (sum, b) =>
+      sum +
+      b.committed.reduce(
+        (s, x) =>
+          !includeWarmups && x.setType === "warmup"
+            ? s
+            : s + (x.weightKg ?? 0) * (x.reps ?? 0),
+        0,
+      ),
+    0,
+  );
+}
 
 // ── Small formatters / helpers ──────────────────────────────────────────────
 
@@ -334,7 +376,6 @@ function fieldText(
 // compact RPE, both single-value, replacing the old free min/max range) ─────
 
 const RIR_SEGMENTS = [0, 1, 2, 3, 4] as const;
-const RPE_VALUES = Array.from({ length: 21 }, (_, i) => i * 0.5); // 0..10
 
 // Contract testid for one RIR segment: value ∈ 0,1,2,3,4plus ("rir-option-{value}",
 // with a -left/-right suffix in per-side mode) — testid-contract.md.
@@ -385,37 +426,6 @@ function RirSegmented({
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function RpePicker({
-  value,
-  onChange,
-  side,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  side?: "left" | "right";
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-2xs font-medium tracking-widest text-faint uppercase">
-        RPE
-      </span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="num h-10 w-full border border-field bg-surface px-2 text-sm font-semibold text-ink transition-colors duration-150 focus:border-focus"
-        data-testid={side ? `rpe-picker-${side}` : "rpe-picker"}
-      >
-        <option value="">—</option>
-        {RPE_VALUES.map((v) => (
-          <option key={v} value={v}>
-            {v}
-          </option>
-        ))}
-      </select>
     </div>
   );
 }
@@ -542,8 +552,14 @@ export default function SessionScreen() {
     };
   }, [qc, repo]);
   const prSnapshot = useMemo(
-    () => (history ? computeRecords(history).byExercise : null),
-    [history],
+    () =>
+      history
+        ? computeRecords(history, {
+            // Warm-ups are excluded unless the user saved otherwise (R17b).
+            includeWarmups: userPrefs?.includeWarmupsInStats ?? false,
+          }).byExercise
+        : null,
+    [history, userPrefs?.includeWarmupsInStats],
   );
 
   const [seedOverride, setSeedOverride] = useState<Record<string, SeedSet[]>>(
@@ -747,6 +763,7 @@ export default function SessionScreen() {
         routineExerciseId: se.routineExerciseId,
         supersetGroup: se.supersetGroup,
         note: se.note,
+        plan: planFromSnapshot(se),
         committed: se.sets,
       })),
     );
@@ -819,6 +836,11 @@ export default function SessionScreen() {
     setQueuedSets((prev) => ({ ...prev, [v.tempId]: { ...v, failed: false } }));
   }
 
+  // F15: per-set save state for the SaveDot (queued -> saved | failed).
+  function saveStateOf(setId: string): SaveState {
+    const q = queuedSets[setId];
+    return q ? (q.failed ? "failed" : "queued") : "saved";
+  }
   const failedSets = Object.values(queuedSets).filter((v) => v.failed);
   const failedSetCount = failedSets.length;
   function retryFailedSets() {
@@ -852,6 +874,7 @@ export default function SessionScreen() {
         routineExerciseId: null,
         supersetGroup: null,
         note: null,
+        plan: null,
         committed: [],
       },
     ]);
@@ -887,6 +910,8 @@ export default function SessionScreen() {
             metricValues: null,
             side: "right" as const,
             restSec: null,
+            plannedRirMin: set.plannedRirMin ?? null,
+            plannedRirMax: set.plannedRirMax ?? null,
             id: rightTempId,
             setNo,
           }
@@ -931,6 +956,10 @@ export default function SessionScreen() {
             distanceM: row.distanceM,
             setNo: row.setNo,
             side: row.side ?? null,
+            rir: row.rir,
+            rirMin: row.rirMin,
+            rirMax: row.rirMax,
+            rpe: row.rpe,
           },
         );
         if (hits.length) {
@@ -1098,6 +1127,10 @@ export default function SessionScreen() {
             distanceM: rightRow.distanceM,
             setNo: rightRow.setNo,
             side: "right",
+            rir: rightRow.rir,
+            rirMin: rightRow.rirMin,
+            rirMax: rightRow.rirMax,
+            rpe: rightRow.rpe,
           },
         );
         if (hits.length) {
@@ -1182,6 +1215,8 @@ export default function SessionScreen() {
             durationSec: s.targetDurationSec,
             distanceM: s.targetDistanceM,
             laterality: (s.laterality as Laterality | null) ?? null,
+            rirMin: s.targetRirMin,
+            rirMax: s.targetRirMax,
           }));
       }
       return copySeed?.[block.seId] ?? [];
@@ -1347,13 +1382,18 @@ export default function SessionScreen() {
   }
 
   const setCount = blocks.reduce((n, b) => n + countSets(b.committed), 0);
-  const volumeKg = blocks.reduce(
-    (sum, b) =>
-      sum +
-      b.committed.reduce((s, x) => s + (x.weightKg ?? 0) * (x.reps ?? 0), 0),
-    0,
+  const volume = Math.round(
+    (unit === "lb" ? kgToLb : (kg: number) => kg)(
+      totalVolumeKg(blocks, userPrefs?.includeWarmupsInStats ?? false),
+    ),
   );
-  const volume = Math.round(unit === "lb" ? kgToLb(volumeKg) : volumeKg);
+  const exById = new Map(exercises.map((e) => [e.id, e]));
+  const live = fractionalHardSets(
+    blocks.map((b) => ({
+      targets: exById.get(b.exerciseId)?.muscleTargets,
+      sets: b.committed,
+    })),
+  );
   const activeIdx = Math.max(
     0,
     blocks.findIndex((b) => b.seId === activeSeId),
@@ -1457,37 +1497,60 @@ export default function SessionScreen() {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-2xl flex-wrap items-center gap-3 px-4 py-1.5">
-        {/* The chip owns the leftover space (flex-1) while the stats text
-            stays shrink-0, so the chip never gets squeezed to a sliver on a
-            narrow phone — it wraps to its own row before that happens. */}
+      <div className="mx-auto flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1.5">
         <div className="min-w-max flex-1">
           <ConditionsChip sessionId={sessionId} />
         </div>
+        {/* F15: failed/queued summary; per-set dots live under the set card. */}
+        <span className="flex shrink-0 items-center gap-1.5">
+          <SaveDot
+            state={
+              failedSetCount > 0
+                ? "failed"
+                : Object.keys(queuedSets).length > 0
+                  ? "queued"
+                  : "saved"
+            }
+            onRetry={retryFailedSets}
+          />
+        </span>
+      </div>
+      {/* Live strip (§8.2): this session's hard sets per muscle (R6, R7). */}
+      <div
+        className="mx-auto flex max-w-2xl items-center gap-2 overflow-x-auto px-4 pb-1.5"
+        data-testid="live-strip"
+      >
         <p
-          className="num shrink-0 text-xs text-faint"
+          className="num shrink-0 text-xs font-semibold text-ink"
           data-testid="session-stats"
         >
-          {setCount} {setCount === 1 ? "set" : "sets"} ·{" "}
-          {volume.toLocaleString()} {unitLabel(unit)}
+          {live.hardSets} hard {live.hardSets === 1 ? "set" : "sets"}
         </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("/routines")}
-          data-testid="session-routines-btn"
-        >
-          <Notebook className="size-4" />
-          Routines
-        </Button>
+        {live.muscles
+          .filter((m) => m.total > 0)
+          .slice(0, 8)
+          .map((m) => (
+            <span
+              key={m.muscle}
+              className="num shrink-0 rounded-xs bg-surface-2 px-1.5 py-0.5 text-2xs text-soft"
+            >
+              {muscleLabel(m.muscle).toLowerCase()}{" "}
+              {Math.round(m.total * 10) / 10}
+            </span>
+          ))}
+        {live.noRirSets > 0 && (
+          <span className="shrink-0 text-2xs text-faint">
+            {live.noRirSets} without RIR
+          </span>
+        )}
       </div>
 
       <div className="mx-auto flex max-w-2xl flex-col">
         {activeBlock ? (
           <ExerciseSpotlight
             key={activeBlock.seId}
-            sessionId={sessionId}
             block={activeBlock}
+            sessionMuscles={live.byMuscle}
             position={activeIdx + 1}
             total={blocks.length}
             unit={unit}
@@ -1508,7 +1571,6 @@ export default function SessionScreen() {
             onSwipe={gotoOffset}
             prSetIds={prSetIds}
             prSnapshot={prSnapshot}
-            history={history}
             voiceFill={voiceFill?.seId === activeBlock.seId ? voiceFill : null}
             onVoiceFillConsumed={clearVoiceFill}
             timerRunning={timer?.seId === activeBlock.seId}
@@ -1523,6 +1585,8 @@ export default function SessionScreen() {
             onRemoveSet={(setId) => removeSet(activeBlock.seId, setId)}
             onSetLaterality={setCommittedLaterality}
             onSwapExercise={swapBlockExercise}
+            saveStateOf={saveStateOf}
+            onRetrySets={retryFailedSets}
           />
         ) : (
           <div className="flex flex-col items-center gap-3 px-4 py-16">
@@ -1597,6 +1661,9 @@ export default function SessionScreen() {
           unit={unit}
           isRoutine={session.routineId != null}
           structuralChange={structuralChange}
+          failedSetCount={failedSetCount}
+          unsavedSetCount={Object.keys(queuedSets).length}
+          onRetryFailed={retryFailedSets}
           onFinish={handleFinish}
           onDiscard={handleDiscard}
         />
@@ -1620,9 +1687,16 @@ function FinishOverlay({
   unit,
   isRoutine,
   structuralChange,
+  failedSetCount,
+  unsavedSetCount,
+  onRetryFailed,
   onFinish,
   onDiscard,
 }: {
+  /** F15: Save is blocked while any set is unsaved. */
+  failedSetCount: number;
+  unsavedSetCount: number;
+  onRetryFailed: () => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sessionId: string;
@@ -1794,6 +1868,27 @@ function FinishOverlay({
             </div>
           )}
 
+          {failedSetCount > 0 && (
+            <div
+              className="rounded-sm flex items-center justify-between gap-2 bg-danger-soft px-3 py-2"
+              data-testid="finish-unsaved"
+            >
+              <span className="text-xs text-danger">
+                {failedSetCount} set{failedSetCount === 1 ? "" : "s"} not saved:
+                retry
+              </span>
+              <Button variant="outline" size="sm" onClick={onRetryFailed}>
+                Retry
+              </Button>
+            </div>
+          )}
+          {unsavedSetCount > failedSetCount && (
+            <p className="text-xs text-soft" data-testid="finish-saving">
+              Saving {unsavedSetCount - failedSetCount} set
+              {unsavedSetCount - failedSetCount === 1 ? "" : "s"}…
+            </p>
+          )}
+
           <div className="flex items-center justify-between pt-3">
             {confirmDiscard ? (
               <Button
@@ -1819,7 +1914,7 @@ function FinishOverlay({
             <Button
               variant="primary"
               size="sm"
-              disabled={saving}
+              disabled={saving || unsavedSetCount > 0}
               onClick={() => void save()}
               data-testid="finish-save"
             >
@@ -2312,145 +2407,6 @@ function WarmupDialog({
   );
 }
 
-// ── Growth bars: expandable six-session top-set chart ──────────────────────
-
-function GrowthBars({
-  history,
-  exerciseId,
-  unit,
-  liveTopKg,
-}: {
-  history: RecordsSessionInput[] | null;
-  exerciseId: string;
-  unit: Unit;
-  liveTopKg: number | null;
-}) {
-  const points = useMemo(() => {
-    const perSession: Array<{ at: number; kg: number }> = [];
-    for (const s of history ?? []) {
-      const block = s.exercises.find((e) => e.exerciseId === exerciseId);
-      if (!block) continue;
-      let best: number | null = null;
-      for (const set of block.sets) {
-        if (set.setType === "warmup" || set.weightKg == null) continue;
-        if (best == null || set.weightKg > best) best = set.weightKg;
-      }
-      if (best != null) perSession.push({ at: s.startedAt, kg: best });
-    }
-    perSession.sort((a, b) => a.at - b.at);
-    const past = perSession.slice(-5);
-    const bars = past.map((p) => ({
-      label: formatDayShort(p.at),
-      value: toDisplayWeight(p.kg, unit),
-      isToday: false,
-    }));
-    bars.push({
-      label: "today",
-      value: liveTopKg != null ? toDisplayWeight(liveTopKg, unit) : 0,
-      isToday: true,
-    });
-    const oldest = past[0];
-    const todayVal = liveTopKg ?? past[past.length - 1]?.kg ?? null;
-    const trend =
-      oldest && todayVal != null
-        ? {
-            weeks: Math.max(
-              1,
-              Math.round((Date.now() - oldest.at) / (7 * 86_400_000)),
-            ),
-            deltaKg: todayVal - oldest.kg,
-          }
-        : null;
-    return { bars, trend };
-  }, [history, exerciseId, unit, liveTopKg]);
-
-  if (points.bars.every((b) => b.value === 0)) {
-    return (
-      <p className="px-1 py-3 text-center text-2xs text-faint">
-        Not enough history yet.
-      </p>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-1" data-testid="growth-bars">
-      <div className="h-28 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={points.bars}
-            margin={{ top: 4, right: 4, left: 4, bottom: 0 }}
-          >
-            <XAxis
-              dataKey="label"
-              tickLine={false}
-              axisLine={false}
-              tickMargin={4}
-              fontSize={9}
-              stroke="var(--color-text-secondary)"
-            />
-            <YAxis hide domain={[0, "dataMax"]} />
-            <Bar
-              dataKey="value"
-              radius={0}
-              maxBarSize={28}
-              // A custom shape (not <Cell> children) so each bar can carry
-              // its own testid — Cell doesn't forward arbitrary DOM props.
-              shape={(props: {
-                x?: number;
-                y?: number;
-                width?: number;
-                height?: number;
-                index?: number;
-              }) => {
-                const {
-                  x = 0,
-                  y = 0,
-                  width = 0,
-                  height = 0,
-                  index = 0,
-                } = props;
-                const bar = points.bars[index];
-                return (
-                  <rect
-                    x={x}
-                    y={y}
-                    width={width}
-                    height={height}
-                    fill={
-                      bar?.isToday
-                        ? "var(--color-accent-bg-subtle)"
-                        : "var(--chart-1)"
-                    }
-                    stroke={bar?.isToday ? "var(--chart-1)" : undefined}
-                    strokeDasharray={bar?.isToday ? "3 2" : undefined}
-                    data-testid={`stats-growth-bar-${index}`}
-                  />
-                );
-              }}
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-      {points.trend && (
-        <p className="num text-center text-2xs text-faint">
-          {points.trend.weeks} wk {points.trend.deltaKg >= 0 ? "+" : "−"}
-          {Math.abs(
-            Math.round(toDisplayWeight(points.trend.deltaKg, unit) * 10) / 10,
-          )}{" "}
-          {unitLabel(unit)}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function formatDayShort(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
 type MarkState = "done" | "warmup" | "current" | "todo";
 type Mark = {
   kind: MarkState;
@@ -2782,9 +2738,64 @@ function SetActionsMenu({
 
 // ── The exercise spotlight — header, marks band, hero set, action zone ─────
 
+/**
+ * F1 target line under the exercise name: `Today 102.5 kg · 6-8 · 2 RIR ↑`
+ * (R8b rep band, R10 RIR). Tap opens the EvidenceSheet. A deload shows its
+ * own wording (F11, R17).
+ */
+function TargetLine({
+  plan,
+  unit,
+  ghostKg,
+  onWhy,
+}: {
+  plan: PlanTarget;
+  unit: Unit;
+  ghostKg: number | null;
+  onWhy: () => void;
+}) {
+  const reps = formatRange(plan.repsMin, plan.repsMax);
+  const rir = formatRange(plan.rirMin, plan.rirMax);
+  const parts: string[] = [];
+  if (plan.loadKg != null)
+    parts.push(`${toDisplayWeight(plan.loadKg, unit)} ${unitLabel(unit)}`);
+  if (reps) parts.push(reps);
+  if (rir) parts.push(`${rir} RIR`);
+  if (parts.length === 0) return null;
+  const arrow =
+    plan.loadKg != null && ghostKg != null && plan.loadKg !== ghostKg
+      ? plan.loadKg > ghostKg
+        ? " ↑"
+        : " ↓"
+      : "";
+  return (
+    <div className="mt-1.5 flex flex-col gap-1">
+      <button
+        type="button"
+        onClick={onWhy}
+        className="rounded-sm num flex min-h-10 w-full items-center gap-2 bg-surface px-2.5 text-left text-sm font-semibold text-ink md:min-h-8"
+        data-testid="target-line"
+      >
+        <span className="text-2xs font-bold tracking-widest text-faint uppercase">
+          {plan.isDeload ? "Deload" : "Today"}
+        </span>
+        <span className="min-w-0 truncate">
+          {parts.join(" · ")}
+          {arrow}
+        </span>
+      </button>
+      {plan.isDeload && (
+        <p className="text-xs text-soft">
+          {plan.sets ?? "Fewer"} sets, lighter effort, for fatigue and recovery.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ExerciseSpotlight({
   block,
-  sessionId,
+  sessionMuscles,
   position,
   total,
   unit,
@@ -2801,7 +2812,6 @@ function ExerciseSpotlight({
   onSwipe,
   prSetIds,
   prSnapshot,
-  history,
   voiceFill,
   onVoiceFillConsumed,
   timerRunning,
@@ -2812,12 +2822,14 @@ function ExerciseSpotlight({
   onRemoveSet,
   onSetLaterality,
   onSwapExercise,
+  saveStateOf,
+  onRetrySets,
 }: {
   block: BlockState;
-  /** The training session, not the exercise — scopes the GROWTH-toggle
-   * open state so it persists across exercises within one session but
-   * resets when a new session starts (spotlight-stats.spec.ts). */
-  sessionId: string;
+  sessionMuscles: Record<string, MuscleHardSets>;
+  /** F15: per-set save state from the screen's write queue. */
+  saveStateOf: (setId: string) => SaveState;
+  onRetrySets: () => void;
   position: number;
   total: number;
   unit: Unit;
@@ -2834,7 +2846,6 @@ function ExerciseSpotlight({
   onSwipe: (delta: -1 | 1) => void;
   prSetIds: Set<string>;
   prSnapshot: Map<string, ExerciseRecords> | null;
-  history: RecordsSessionInput[] | null;
   voiceFill: { weightKg: number | null; reps: number | null } | null;
   onVoiceFillConsumed: () => void;
   timerRunning: boolean;
@@ -3104,6 +3115,41 @@ function ExerciseSpotlight({
   })();
 
   const committedGroups = groupSetsBySetNo(block.committed);
+  const plan = useMemo(
+    () => block.plan ?? planFromSeed(seedSets),
+    [block.plan, seedSets],
+  );
+  const mechanic = exercise?.mechanic ?? null;
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const working = committedGroups
+    .flatMap((g, i) => (g[0].setType === "warmup" ? [] : [{ g, i }]))
+    .map(({ g, i }, j) => ({
+      group: g,
+      target: j === 0 ? plan : setTarget(plan, seedSets[i]),
+    }));
+  const lastWorking = working.at(-1)?.group;
+  const lastTarget = working.at(-1)?.target ?? null;
+  const lastState = lastWorking
+    ? rangeState({
+        reps: lastWorking[0].reps,
+        repsMin: lastTarget?.repsMin ?? null,
+        repsMax: lastTarget?.repsMax ?? null,
+        rir: rirMidpoint(lastWorking[0]),
+        plannedRirMin: lastTarget?.rirMin,
+        plannedRirMax: lastTarget?.rirMax,
+      })
+    : null;
+  const lastWorkingE1rm = lastWorking ? reportE1rm(lastWorking[0]) : null;
+  const nudge = driftNudge(
+    working.map(({ group, target }) => ({
+      rir: rirMidpoint(group[0]),
+      planned: target,
+    })),
+  );
+  const directThis = creditsFor(exercise?.muscleTargets)
+    .filter((c) => c.kind === "direct")
+    .map((c) => sessionMuscles[c.muscle])
+    .find((m) => m != null && sessionDirectCheck(m.direct) === "high");
   const totalMarks = Math.max(committedGroups.length + 1, seedSets.length + 1);
   const marks: Mark[] = [];
   for (let i = 0; i < totalMarks; i++) {
@@ -3126,16 +3172,6 @@ function ExerciseSpotlight({
       marks.push({ kind: "todo", paired: false, pr: false });
     }
   }
-
-  const liveTopKg = block.committed.reduce(
-    (max: number | null, s) =>
-      s.setType !== "warmup" &&
-      s.weightKg != null &&
-      (max == null || s.weightKg > max)
-        ? s.weightKg
-        : max,
-    null,
-  );
 
   function onTouchStart(e: ReactTouchEvent) {
     const t = e.touches[0];
@@ -3234,6 +3270,20 @@ function ExerciseSpotlight({
             </button>
           )}
         </div>
+        {plan && (
+          <TargetLine
+            plan={plan}
+            unit={blockUnit}
+            ghostKg={ghost.reduce<number | null>(
+              (max, g) =>
+                g.weightKg != null && (max == null || g.weightKg > max)
+                  ? g.weightKg
+                  : max,
+              null,
+            )}
+            onWhy={() => setEvidenceOpen(true)}
+          />
+        )}
         {copyError && (
           <div
             role="status"
@@ -3287,12 +3337,18 @@ function ExerciseSpotlight({
             committedGroups[focusedIndex]?.map((r) => r.id).join(",") ?? "live"
           }`}
           seId={block.seId}
-          sessionId={sessionId}
           index={focusedIndex}
           unit={blockUnit}
           distUnit={distUnit}
           type={type}
           seed={seedSets[focusedIndex]}
+          plan={plan}
+          topSet={
+            committedGroups
+              .slice(0, focusedIndex)
+              .every((g) => g[0].setType === "warmup") &&
+            (plan?.firstSetMax ?? mechanic === "compound")
+          }
           nextSeedType={seedSets[focusedIndex + 1]?.setType ?? null}
           ghost={ghostFor(ghost, focusedIndex)}
           hasGhost={ghost.length > 0}
@@ -3327,14 +3383,101 @@ function ExerciseSpotlight({
             if (group) onSetLaterality(block.seId, type, group[0], unilateral);
           }}
           onFocusLive={focusLive}
-          history={history}
-          liveTopKg={liveTopKg}
           exerciseId={block.exerciseId}
           prSnapshot={prSnapshot}
           voiceFill={voiceFill}
           onVoiceFillConsumed={onVoiceFillConsumed}
         />
       )}
+
+      {(lastState || nudge || directThis) && (
+        <div
+          className="flex flex-col gap-1.5 px-4 pb-3"
+          data-testid="set-result"
+        >
+          {lastState && lastWorking && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={cn(
+                  "num inline-flex h-5 items-center rounded-xs px-1.5 text-2xs font-semibold",
+                  lastState.kind === "over"
+                    ? "bg-accent-soft text-accent-ink"
+                    : "bg-hover text-soft",
+                )}
+                data-testid="range-chip"
+              >
+                {lastState.label}
+              </span>
+              {lastWorkingE1rm?.kind === "value" && (
+                <span className="num text-2xs text-soft">
+                  e1RM {toDisplayWeight(lastWorkingE1rm.kg, blockUnit)}{" "}
+                  {unitLabel(blockUnit)}
+                </span>
+              )}
+              {lastWorkingE1rm?.kind === "not_estimable" && (
+                <span className="text-2xs text-soft">
+                  Over 10 reps in total: no strength estimate for this set
+                </span>
+              )}
+              {(() => {
+                const g = ghostFor(ghost, lastWorking[0].setNo);
+                const w = lastWorking[0].weightKg;
+                if (g.weightKg == null || w == null) return null;
+                const d = toDisplayWeight(w - g.weightKg, blockUnit);
+                if (Math.abs(d) < 0.1) return null;
+                return (
+                  <DeltaChip
+                    delta={d}
+                    unit={` ${unitLabel(blockUnit)}`}
+                    basis="vs last time"
+                  />
+                );
+              })()}
+              <SaveDot
+                state={lastWorking.reduce<SaveState>(
+                  (acc, r) =>
+                    acc === "failed" || saveStateOf(r.id) === "failed"
+                      ? "failed"
+                      : acc === "queued" || saveStateOf(r.id) === "queued"
+                        ? "queued"
+                        : "saved",
+                  "saved",
+                )}
+                onRetry={onRetrySets}
+              />
+            </div>
+          )}
+          {nudge && (
+            <p className="text-xs text-soft" data-testid="coach-nudge">
+              {nudge}
+            </p>
+          )}
+          {directThis && (
+            <p className="text-xs text-soft" data-testid="direct-sets-note">
+              {directThis.direct} direct sets for{" "}
+              {muscleLabel(directThis.muscle)} in one session: a planning range
+              is 2-5.
+            </p>
+          )}
+        </div>
+      )}
+
+      <EvidenceSheet
+        open={evidenceOpen}
+        onOpenChange={setEvidenceOpen}
+        title="Today's target"
+        saw={
+          <p className="text-sm text-ink">
+            {plan?.source === "snapshot"
+              ? "Your plan for this exercise was saved when the session started."
+              : "From your routine's targets for this exercise."}
+          </p>
+        }
+        ruleId={plan?.ruleId ?? "R10"}
+        rule="Train most working sets about 1-3 reps from failure; keep reps inside the planned range and add load once you pass the top of it."
+        tier={5}
+        tierNote="A practical default, not trial-tested."
+      />
 
       <PlateSheet
         open={plateOpen}
@@ -3352,8 +3495,8 @@ function ExerciseSpotlight({
 // ── The live spotlight set: prefilled two-stacked-row input, jump buttons,
 // comparison headers, delta line, stats + growth, RIR/RPE. ─────────────────
 
-const WEIGHT_NEG = [-15, -10, -5, -1];
-const WEIGHT_POS = [1, 5, 10, 15];
+const WEIGHT_NEG = [-5, -2.5];
+const WEIGHT_POS = [2.5, 5];
 const REPS_NEG = [-2, -1];
 const REPS_POS = [1, 2];
 const DURATION_NEG = [-30, -10];
@@ -3375,12 +3518,13 @@ function jumpsFor(key: FieldKey): { neg: number[]; pos: number[] } {
 
 function Spotlight({
   seId,
-  sessionId,
   index,
   unit,
   distUnit,
   type,
   seed,
+  plan,
+  topSet,
   nextSeedType,
   ghost,
   hasGhost,
@@ -3401,8 +3545,6 @@ function Spotlight({
   onDeleteCommitted,
   onSetLaterality,
   onFocusLive,
-  history,
-  liveTopKg,
   exerciseId,
   prSnapshot,
   voiceFill,
@@ -3410,13 +3552,15 @@ function Spotlight({
   enabledMetrics,
 }: {
   seId: string;
-  /** Scopes the GROWTH-toggle's persisted open state — see ExerciseSpotlight. */
-  sessionId: string;
   index: number;
   unit: Unit;
   distUnit: DistanceUnit;
   type: ExerciseType;
   seed: SeedSet | undefined;
+  /** Exercise-level plan (snapshot, else routine seed); null when ad-hoc. */
+  plan: PlanTarget | null;
+  /** Oliver's method: the first working set of a compound is the top set. */
+  topSet: boolean;
   nextSeedType: string | null;
   ghost: GhostSet;
   hasGhost: boolean;
@@ -3439,8 +3583,6 @@ function Spotlight({
   onDeleteCommitted: () => void;
   onSetLaterality: (unilateral: boolean) => void;
   onFocusLive: () => void;
-  history: RecordsSessionInput[] | null;
-  liveTopKg: number | null;
   exerciseId: string;
   prSnapshot: Map<string, ExerciseRecords> | null;
   voiceFill: { weightKg: number | null; reps: number | null } | null;
@@ -3541,13 +3683,28 @@ function Spotlight({
   const [reps, setReps] = useState(() => seedFrom("reps"));
   const [duration, setDuration] = useState(() => seedFrom("duration"));
   const [distance, setDistance] = useState(() => seedFrom("distance"));
+  // Planned RIR for THIS set: the routine seed's own target, else the
+  // exercise-level snapshot (R10). The strip preselects its midpoint so an
+  // on-plan set stays a one-tap log; tapping the segment again clears it.
+  const plannedRirMin = seed?.rirMin ?? plan?.rirMin ?? null;
+  const plannedRirMax = seed?.rirMax ?? plan?.rirMax ?? null;
+  const preselectRir = (() => {
+    if (isEditing || !effort) return null;
+    if ((seed?.setType ?? "normal") === "warmup") return null;
+    return rirPreselect(plannedRirMin, plannedRirMax);
+  })();
+  const preselect = preselectRir != null ? segmentToFields(preselectRir) : null;
   const [rirMin, setRirMin] = useState(
-    () => draft?.rirMin ?? (left?.rirMin != null ? String(left.rirMin) : ""),
+    () =>
+      draft?.rirMin ??
+      (left?.rirMin != null ? String(left.rirMin) : (preselect?.min ?? "")),
   );
   const [rirMax, setRirMax] = useState(
-    () => draft?.rirMax ?? (left?.rirMax != null ? String(left.rirMax) : ""),
+    () =>
+      draft?.rirMax ??
+      (left?.rirMax != null ? String(left.rirMax) : (preselect?.max ?? "")),
   );
-  const [rpe, setRpe] = useState(
+  const [rpe] = useState(
     () => draft?.rpe ?? (left?.rpe != null ? String(left.rpe) : ""),
   );
   const [setType, setSetType] = useState<SetType>(
@@ -3562,14 +3719,12 @@ function Spotlight({
   const [rDuration, setRDuration] = useState(() => draft?.rDuration ?? "");
   const [rDistance, setRDistance] = useState(() => draft?.rDistance ?? "");
   const [rirMin2, setRirMin2] = useState(() =>
-    right?.rirMin != null ? String(right.rirMin) : "",
+    right?.rirMin != null ? String(right.rirMin) : (preselect?.min ?? ""),
   );
   const [rirMax2, setRirMax2] = useState(() =>
-    right?.rirMax != null ? String(right.rirMax) : "",
+    right?.rirMax != null ? String(right.rirMax) : (preselect?.max ?? ""),
   );
-  const [rpe2, setRpe2] = useState(() =>
-    right?.rpe != null ? String(right.rpe) : "",
-  );
+  const [rpe2] = useState(() => (right?.rpe != null ? String(right.rpe) : ""));
   // Weight-link (per-side mode): linked = one shared field (weight-field);
   // unlinked = weight-field-left/-right, its own jump rows each. Defaults to
   // whatever the stored pair actually is when editing an uneven set.
@@ -3581,10 +3736,6 @@ function Spotlight({
   // exercises within one session but starts fresh for a new session opened
   // in the same tab — an unscoped key would otherwise carry a stale
   // open/closed state across unrelated sessions (docs/DECISIONS.md).
-  const growthOpenKey = `frog.growth-open.${sessionId}`;
-  const [growthOpen, setGrowthOpen] = useState(
-    () => sessionStorage.getItem(growthOpenKey) === "1",
-  );
   const [, forceTick] = useState(0);
   const done = useRef(false);
 
@@ -3775,6 +3926,8 @@ function Spotlight({
         setType,
         durationSec: v.durationSec,
         distanceM: v.distanceM,
+        plannedRirMin: effort && setType !== "warmup" ? plannedRirMin : null,
+        plannedRirMax: effort && setType !== "warmup" ? plannedRirMax : null,
         rir: null,
         rirMin: effort ? parsedRir.rirMin : null,
         rirMax: effort ? parsedRir.rirMax : null,
@@ -3939,6 +4092,11 @@ function Spotlight({
       distanceM: v.distanceM,
       setNo: index,
       side: isUnilateral ? "left" : null,
+      rirMin:
+        effort && rirMin.trim() !== "" ? Number.parseInt(rirMin, 10) : null,
+      rirMax:
+        effort && rirMax.trim() !== "" ? Number.parseInt(rirMax, 10) : null,
+      rpe: effort && rpe.trim() !== "" ? Number.parseFloat(rpe) : null,
     });
     if (hits.length) {
       const friendly: Partial<Record<PrType, string>> = {
@@ -3957,6 +4115,10 @@ function Spotlight({
     parseFields,
     weightBeat,
     repsBeat,
+    effort,
+    rirMin,
+    rirMax,
+    rpe,
     prSnapshot,
     exerciseId,
     type,
@@ -4085,14 +4247,7 @@ function Spotlight({
                 <Play className="size-3.5" />
               )}
             </IconButton>
-          ) : (
-            <span
-              className="shrink-0 text-base text-disabled"
-              aria-hidden="true"
-            >
-              ⌨
-            </span>
-          )}
+          ) : null}
           {key === "weight" && barLoaded && (
             <IconButton
               onMouseDown={(e) => e.preventDefault()}
@@ -4161,6 +4316,14 @@ function Spotlight({
         >
           Set {index + 1}
         </span>
+        {topSet && setType !== "warmup" && (
+          <span
+            className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-bold tracking-widest text-accent-ink uppercase"
+            data-testid="top-set-label"
+          >
+            Top set
+          </span>
+        )}
         {setType === "warmup" && (
           <span className="rounded-xs bg-secondary px-1.5 py-0.5 text-2xs font-bold tracking-widest text-warn uppercase">
             Warm-up
@@ -4234,11 +4397,6 @@ function Spotlight({
             <span className="num block text-base font-bold">
               {lastText || "—"}
             </span>
-          </span>
-          <span className="shrink-0 bg-bg px-2 py-1 text-center text-2xs leading-tight font-bold text-faint">
-            ALREADY
-            <br />
-            LOADED
           </span>
         </div>
       )}
@@ -4374,43 +4532,16 @@ function Spotlight({
       )}
 
       {f.weight && (
-        <div className="rounded-sm bg-surface px-2.5 py-1.5">
-          <div className="flex items-center justify-between gap-2">
-            <span className="num text-xs text-soft" data-testid="stats-line">
-              {(() => {
-                if (!prSnapshot || Number.isNaN(currentReps)) return "Best —";
-                const rec = prSnapshot.get(exerciseId);
-                const best = rec?.setRecords.get(currentReps);
-                return best
-                  ? `Best ${toDisplayWeight(best.weightKg, unit)} × ${currentReps}`
-                  : "Best —";
-              })()}
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setGrowthOpen((v) => {
-                  sessionStorage.setItem(growthOpenKey, v ? "0" : "1");
-                  return !v;
-                });
-              }}
-              className="rounded-xs bg-accent-soft px-2 py-1 text-2xs font-bold tracking-widest text-accent-ink uppercase"
-              data-testid="stats-growth-toggle"
-            >
-              Growth {growthOpen ? "▴" : "▾"}
-            </button>
-          </div>
-          {growthOpen && (
-            <div className="mt-2 pt-2" data-testid="stats-growth-chart">
-              <GrowthBars
-                history={history}
-                exerciseId={exerciseId}
-                unit={unit}
-                liveTopKg={liveTopKg}
-              />
-            </div>
-          )}
-        </div>
+        <p className="num px-0.5 text-xs text-soft" data-testid="stats-line">
+          {(() => {
+            if (!prSnapshot || Number.isNaN(currentReps)) return "Best —";
+            const rec = prSnapshot.get(exerciseId);
+            const best = rec?.setRecords.get(currentReps);
+            return best
+              ? `Best ${toDisplayWeight(best.weightKg, unit)} × ${currentReps}`
+              : "Best —";
+          })()}
+        </p>
       )}
 
       {effort && !isUnilateral && (
@@ -4424,9 +4555,6 @@ function Spotlight({
                 setRirMax(v.max);
               }}
             />
-          </div>
-          <div className="w-28 shrink-0">
-            <RpePicker value={rpe} onChange={setRpe} />
           </div>
         </div>
       )}
@@ -4450,8 +4578,6 @@ function Spotlight({
             }}
             side="right"
           />
-          <RpePicker value={rpe} onChange={setRpe} side="left" />
-          <RpePicker value={rpe2} onChange={setRpe2} side="right" />
         </div>
       )}
 
@@ -4476,11 +4602,6 @@ function Spotlight({
                 ? `Log set ${index + 1} · ᴸ + ᴿ`
                 : `Log set ${index + 1}`}
           </Button>
-        )}
-        {!isEditing && restStartedAt == null && (
-          <p className="mt-1.5 text-center text-2xs text-faint">
-            the numbers are fields — tap one to type
-          </p>
         )}
       </div>
 

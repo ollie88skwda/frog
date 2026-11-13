@@ -80,18 +80,12 @@ test("weight-adjust and reps-adjust mutate the field immediately, no dialog", as
   await page.getByTestId("weight-field").fill("100");
   await page.getByTestId("weight-adjust-5").click();
   await expect(page.getByTestId("weight-field")).toHaveValue("105");
-  await page.getByTestId("weight-adjust-10").click();
-  await expect(page.getByTestId("weight-field")).toHaveValue("115");
-  await page.getByTestId("weight-adjust-15").click();
-  await expect(page.getByTestId("weight-field")).toHaveValue("130");
-  await page.getByTestId("weight-adjust--1").click();
-  await expect(page.getByTestId("weight-field")).toHaveValue("129");
+  await page.getByTestId("weight-adjust-2.5").click();
+  await expect(page.getByTestId("weight-field")).toHaveValue("107.5");
+  await page.getByTestId("weight-adjust--2.5").click();
+  await expect(page.getByTestId("weight-field")).toHaveValue("105");
   await page.getByTestId("weight-adjust--5").click();
-  await expect(page.getByTestId("weight-field")).toHaveValue("124");
-  await page.getByTestId("weight-adjust--10").click();
-  await expect(page.getByTestId("weight-field")).toHaveValue("114");
-  await page.getByTestId("weight-adjust--15").click();
-  await expect(page.getByTestId("weight-field")).toHaveValue("99");
+  await expect(page.getByTestId("weight-field")).toHaveValue("100");
 
   await page.getByTestId("reps-field").fill("5");
   await page.getByTestId("reps-adjust-1").click();
@@ -149,7 +143,8 @@ test("beating last session's value flips data-beat true and states the gain", as
   await expect(page.getByTestId("weight-compare")).toContainText("+5");
 
   // Drop back below last session's value.
-  await page.getByTestId("weight-adjust--10").click();
+  await page.getByTestId("weight-adjust--5").click();
+  await page.getByTestId("weight-adjust--5").click();
   await expect(weightRow).toHaveAttribute("data-beat", "false");
   await expect(page.getByTestId("weight-compare")).not.toContainText(
     /same as last/i,
