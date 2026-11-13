@@ -1,6 +1,6 @@
 // The one place program numbers live. Every constant is a research rule from
 // PROGRAM-RULES.md / COACH-LOGIC.md, keyed by rule ID. `rules.test.ts` parses
-// the committed YAML snapshot (`rules.source.yaml`, the "Machine-readable
+// the committed YAML snapshot (`fixtures/program-rules.yaml`, the "Machine-readable
 // parameters" block of PROGRAM-RULES.md) and fails when any value here drifts
 // from it. Prose rules win if they ever differ from the YAML.
 

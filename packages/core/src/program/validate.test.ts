@@ -301,4 +301,19 @@ describe("validateProgram never blocks and cites rules", () => {
     expect(lastRest).toBeGreaterThanOrEqual(0);
     if (firstSets >= 0) expect(lastRest).toBeLessThan(firstSets);
   });
+
+  it("C5 note still fires when one session's copy has a single set", () => {
+    const v = viewOf(RESEARCH_B, {
+      philosophy: {
+        firstSet: "max",
+        repBias: "heavy",
+        grouping: "joint_action",
+      },
+      overrides: [{ session: "mon", slot: "1", sets: 1 }],
+    });
+    const hits = validateProgram(v).findings.filter(
+      (f) => f.code === "RIR_RANGE" && f.target.slot === "1",
+    );
+    expect(hits.map((f) => f.target.session)).toEqual(["wed"]);
+  });
 });

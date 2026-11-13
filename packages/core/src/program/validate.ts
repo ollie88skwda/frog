@@ -342,9 +342,13 @@ export function validateProgram(
   const firstSet = view.philosophy?.firstSet ?? "off";
   for (const s of view.sessions) {
     for (const slot of s.slots) {
-      const key = [slot.slot, slot.rx.reps, slot.rx.rir, slot.rx.restSec].join(
-        "|",
-      );
+      const key = [
+        slot.slot,
+        slot.rx.reps,
+        slot.rx.rir,
+        slot.rx.restSec,
+        slot.rx.sets > 1,
+      ].join("|");
       if (seen.has(key)) continue;
       seen.add(key);
       const target = { slot: slot.slot, session: s.id };

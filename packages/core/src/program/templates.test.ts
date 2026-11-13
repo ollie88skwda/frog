@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { ACTION_RATINGS, JOINT_ACTIONS, MUSCLES } from "../domain/anatomy";
 import { evidenceRule } from "../evidence/rules";
+import type { SelectableExercise } from "../generator/types";
 import { applyDeload } from "./deload";
 import { resolveTemplate } from "./resolve";
 import { PROGRAM_RULES as R } from "./rules";
@@ -49,9 +50,26 @@ describe("template data is well-formed", () => {
       }
     });
     it(`${t.id}: no template emits a superset`, () => {
-      const { program } = resolveTemplate(t, [], {});
-      for (const r of program.routines)
-        for (const e of r.exercises) expect(e.supersetGroup ?? null).toBeNull();
+      const library: SelectableExercise[] = [
+        ...new Set(
+          t.sessions.flatMap((s) =>
+            s.slots.flatMap((x) => x.menu.map((m) => m.matchKey)),
+          ),
+        ),
+      ].map((name, i) => ({
+        id: `ex-${i}`,
+        name,
+        isCustom: false,
+        equipment: "machine",
+        exerciseType: "weight_reps",
+        muscleTargets: null,
+        mechanic: null,
+      }));
+      const { program, unresolved } = resolveTemplate(t, library, {});
+      expect(unresolved).toEqual([]);
+      const exercises = program.routines.flatMap((r) => r.exercises);
+      expect(exercises.length).toBeGreaterThan(0);
+      for (const e of exercises) expect(e.supersetGroup ?? null).toBeNull();
     });
   }
   it("joint-action keys on slots match a rated (muscle, action) where one exists", () => {
