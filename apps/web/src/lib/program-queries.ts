@@ -1,4 +1,10 @@
-import type { GeneratedProgram, GeneratorConfig, Program } from "@frog/core";
+import {
+  type GeneratedProgram,
+  type GeneratorConfig,
+  type Program,
+  parseSavedProgramConfig,
+  type SavedProgramConfig,
+} from "@frog/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRepo } from "./repo";
 
@@ -15,6 +21,21 @@ export function useActiveProgram() {
     queryKey: ["active-program"],
     queryFn: () => repo.activeProgram(),
   });
+}
+
+/** The active program's builder config (F8/F11), or null for legacy/library rows. */
+export function useActiveBuilderConfig(): {
+  program: Program | null;
+  config: SavedProgramConfig | null;
+  isPending: boolean;
+} {
+  const q = useActiveProgram();
+  const program = q.data ?? null;
+  return {
+    program,
+    config: program ? parseSavedProgramConfig(program.config) : null,
+    isPending: q.isPending,
+  };
 }
 
 export function usePrograms() {
@@ -37,7 +58,7 @@ export type MaterializeInput = {
   program: GeneratedProgram;
   source: "generated" | "library";
   /** Questionnaire answers for generated programs (null for catalog imports). */
-  config?: GeneratorConfig | null;
+  config?: GeneratorConfig | SavedProgramConfig | null;
   libraryKey?: string | null;
   /** Folder name override (catalog programs use their catalog name, not the
    *  generic generated "Goal · N×/week" label). Defaults to program.name. */
@@ -134,5 +155,52 @@ export function useSetGeneratorExcluded() {
       repo.setGeneratorExcluded(input.exerciseId, input.excluded),
     onSettled: () =>
       void qc.invalidateQueries({ queryKey: ["exercise-prefs"] }),
+  });
+}
+
+// F8 builder save. The program row is stored as source "library" with a
+// `builder:<template>` key so the older Trainer screen (which reads a
+// "generated" row's config as a GeneratorConfig) leaves it alone; the typed
+// builder config lives in `programs.config` and is read through
+// parseSavedProgramConfig (useActiveBuilderConfig).
+export function builderLibraryKey(templateId: string) {
+  return `builder:${templateId}`;
+}
+
+// Edit / rebuild an existing builder program in place: the folder's routines
+// are replaced (soft-deleted, then recreated) and the saved config updated.
+// Destructive for routine history links, so the caller confirms first.
+export function useRebuildBuilderProgram() {
+  const repo = useRepo();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      programId,
+      folderId,
+      program,
+      config,
+    }: {
+      programId: string;
+      folderId: string;
+      program: GeneratedProgram;
+      config: SavedProgramConfig;
+    }) => {
+      const existing = (await repo.listRoutines()).filter(
+        (r) => r.folderId === folderId,
+      );
+      for (const r of existing) await repo.deleteRoutine(r.id);
+      for (const r of program.routines) {
+        await repo.createRoutine({
+          name: r.name,
+          folderId,
+          exercises: r.exercises,
+        });
+      }
+      await repo.updateProgramConfig(
+        programId,
+        config as unknown as Record<string, unknown>,
+      );
+    },
+    onSettled: () => invalidatePrograms(qc),
   });
 }
