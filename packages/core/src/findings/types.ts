@@ -53,7 +53,9 @@ export type ConditionFinding = {
   kind: "condition";
   conditionId: string;
   conditionName: string;
-  /** What was compared: overall session tonnage, or one exercise's top-set e1RM. */
+  /** What was compared: one exercise's top working-set e1RM. `tonnage` is no
+   * longer produced by the engine (J1); it stays in the union until the web
+   * surfaces that branch on it are migrated (J8). */
   outcome:
     | { type: "tonnage" }
     | { type: "e1rm"; exerciseId: string; exerciseName: string };
@@ -66,10 +68,10 @@ export type ConditionFinding = {
   /** Cohen's d (high vs low, pooled SD); a finding needs |d| >= 0.8. */
   effectSize: number;
   /** Permutation p-value and its Benjamini-Hochberg adjustment across every
-   * test in the family (metrics x exercises x outcomes). */
+   * test in the family (metrics x exercises). */
   p: number;
   q: number;
-  /** How the buckets were made: median split, or a clinical cutoff. */
+  /** How the buckets were made: always a median split at `cutoff`. */
   split: { kind: "median"; cutoff: number };
   /** Always carried as data so every surface shows it (C8/C19). */
   caveat: "correlation_not_causation";
