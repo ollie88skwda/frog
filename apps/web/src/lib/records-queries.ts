@@ -37,7 +37,7 @@ export function useRecordsData(): {
     queryFn: () => repo.getUserPrefs(),
     staleTime: 60_000,
   });
-  const includeWarmups = prefs.data?.includeWarmupsInStats ?? true;
+  const includeWarmups = prefs.data?.includeWarmupsInStats ?? false;
 
   const records = useQuery({
     queryKey: ["records-data", includeWarmups],

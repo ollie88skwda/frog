@@ -1,11 +1,16 @@
 import { CaretRight } from "@phosphor-icons/react";
+import { useMemo } from "react";
 import { Link } from "react-router";
+import { DeltaChip } from "@/components/data";
+import { summarizeSessions } from "@/components/progress/derive";
 import { Button } from "@/components/ui/button";
 import { QueryState } from "@/components/ui/query-state";
 import { rowClass } from "@/components/ui/row";
 import { StatusRing } from "@/components/ui/status-ring";
-import { formatDate, formatTime } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { useResolvedUserPrefs } from "@/lib/profile-queries";
 import { useSessionHistory } from "@/lib/queries";
+import { useRecordsData } from "@/lib/records-queries";
 import { useVoice } from "@/lib/voice";
 
 export default function HistoryScreen() {
@@ -21,6 +26,17 @@ export default function HistoryScreen() {
     isFetchingNextPage,
   } = useSessionHistory();
   const sessions = data?.pages.flat() ?? [];
+  // F9: hard sets, RIR avg and headline e1RM delta per row (C2c, R6). Falls back
+  // to the plain row until the full-history query resolves.
+  const rec = useRecordsData();
+  const prefs = useResolvedUserPrefs();
+  const summary = useMemo(
+    () =>
+      rec.data
+        ? summarizeSessions(rec.data.history, prefs.hardSetRirMax)
+        : null,
+    [rec.data, prefs.hardSetRirMax],
+  );
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
@@ -64,14 +80,41 @@ export default function HistoryScreen() {
                       state={s.endedAt != null ? "done" : "partial"}
                       progress={0.5}
                     />
-                    <span className="truncate text-sm">
-                      {s.title ?? formatDate(s.startedAt)}
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm">
+                        {s.title ?? formatDate(s.startedAt)}
+                      </span>
+                      {s.title != null && (
+                        <span className="num truncate text-xs text-faint">
+                          {formatDate(s.startedAt)}
+                        </span>
+                      )}
                     </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
-                    <span className="num text-xs text-faint">
-                      {formatDate(s.startedAt)} · {formatTime(s.startedAt)}
-                    </span>
+                    {summary?.get(s.id) && (
+                      <span className="num flex items-center justify-end gap-1.5 whitespace-nowrap text-xs text-soft">
+                        {summary.get(s.id)?.hardSets}
+                        <span className="text-2xs">
+                          {summary.get(s.id)?.hardSets === 1 ? "set" : "sets"}
+                        </span>
+                        {summary.get(s.id)?.rirAvg != null && (
+                          <span className="text-2xs">
+                            RIR{" "}
+                            {Math.round((summary.get(s.id)?.rirAvg ?? 0) * 10) /
+                              10}
+                          </span>
+                        )}
+                        {summary.get(s.id)?.headline?.deltaPct != null && (
+                          <DeltaChip
+                            delta={summary.get(s.id)?.headline?.deltaPct ?? 0}
+                            noise={10}
+                            unit="%"
+                            basis="top-set e1RM vs previous session"
+                          />
+                        )}
+                      </span>
+                    )}
                     <CaretRight
                       aria-hidden="true"
                       className="size-4 text-faint"

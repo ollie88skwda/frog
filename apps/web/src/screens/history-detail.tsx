@@ -2,6 +2,7 @@ import {
   buildSessionCard,
   countSets,
   type ExerciseType,
+  e1rmOfSet,
   groupSetsBySetNo,
   type NewRoutineInput,
   type SessionExerciseDetail,
@@ -134,7 +135,7 @@ function ShareWorkoutSheet({
         unit,
         identity: { displayName: prefs?.displayName ?? null },
         heroSet,
-        includeWarmups: prefs?.includeWarmupsInStats ?? true,
+        includeWarmups: prefs?.includeWarmupsInStats ?? false,
         conditionsLine,
       }),
     [
@@ -235,6 +236,11 @@ export default function HistoryDetailScreen() {
   const session = sessionQ.data;
   const blocks = blocksQ.data ?? [];
   const { data: metrics = [] } = useMetrics();
+  const { data: exercises = [] } = useExercises();
+  const exerciseTypeById = useMemo(
+    () => new Map(exercises.map((e) => [e.id, e.exerciseType])),
+    [exercises],
+  );
   const updateStartedAt = useUpdateSessionStartedAt(id);
   const createRoutine = useCreateRoutine();
 
@@ -531,7 +537,25 @@ export default function HistoryDetailScreen() {
                   ` · rest ${avgRestLabel(block.sets)} avg`}
               </span>
             </header>
-            <div className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 px-4 py-1 text-2xs font-medium tracking-wide text-faint uppercase">
+            {block.plannedRepsMin != null && (
+              <p
+                className="num px-4 text-2xs text-soft"
+                data-testid="planned-line"
+              >
+                Plan{" "}
+                {block.plannedSets != null ? `${block.plannedSets} × ` : ""}
+                {block.plannedRepsMin}
+                {block.plannedRepsMax != null &&
+                block.plannedRepsMax !== block.plannedRepsMin
+                  ? `-${block.plannedRepsMax}`
+                  : ""}{" "}
+                reps
+                {block.plannedRirMin != null
+                  ? ` @ ${block.plannedRirMin}${block.plannedRirMax != null && block.plannedRirMax !== block.plannedRirMin ? `-${block.plannedRirMax}` : ""} RIR`
+                  : ""}
+              </p>
+            )}
+            <div className="grid grid-cols-[2rem_1fr_1fr_8rem] items-center gap-x-2 px-4 py-1 text-2xs font-medium tracking-wide text-faint uppercase">
               <span>#</span>
               <span>{unitLabel(unit)}</span>
               <span>reps</span>
@@ -540,7 +564,7 @@ export default function HistoryDetailScreen() {
             {block.sets.map((set) => (
               <div
                 key={set.id}
-                className="grid grid-cols-[2rem_1fr_1fr_2.5rem] items-center gap-x-2 px-4 py-2"
+                className="grid grid-cols-[2rem_1fr_1fr_8rem] items-center gap-x-2 px-4 py-2"
               >
                 <span className="num text-xs text-faint">
                   {set.setNo + 1}
@@ -554,6 +578,12 @@ export default function HistoryDetailScreen() {
                 <span className="num text-sm">{set.reps ?? "—"}</span>
                 <span className="num text-2xs text-faint">
                   {effortReadout(set)}
+                  {set.setType !== "warmup" &&
+                  (exerciseTypeById.get(block.exerciseId) ?? "weight_reps") ===
+                    "weight_reps" &&
+                  e1rmOfSet(set).value != null
+                    ? ` · e1RM ${toDisplayWeight(Math.round((e1rmOfSet(set).value as number) * 2) / 2, unit)}`
+                    : ""}
                 </span>
               </div>
             ))}
