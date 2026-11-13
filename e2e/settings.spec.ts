@@ -36,21 +36,21 @@ test("warm-up method editor adds, removes, and resets steps", async ({
 }) => {
   await page.goto("/settings");
 
-  // Default ramp = 3 steps (0..2).
-  await expect(page.getByTestId("warmup-step-2")).toBeVisible();
-  await expect(page.getByTestId("warmup-step-3")).toHaveCount(0);
+  // Default ramp = 2 steps (0..1): R17b 40% x 6 then 80% x 3.
+  await expect(page.getByTestId("warmup-step-1")).toBeVisible();
+  await expect(page.getByTestId("warmup-step-2")).toHaveCount(0);
 
   await page.getByTestId("warmup-add-step").click();
-  await expect(page.getByTestId("warmup-step-3")).toBeVisible();
+  await expect(page.getByTestId("warmup-step-2")).toBeVisible();
 
   // Editing marks the ramp custom (persisted to localStorage).
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("warmupMethod")))
     .not.toBeNull();
 
-  // Remove the first row → back to 3 rows (re-indexed 0..2).
+  // Remove the first row → back to 2 rows (re-indexed 0..1).
   await page.getByTestId("warmup-remove-0").click();
-  await expect(page.getByTestId("warmup-step-3")).toHaveCount(0);
+  await expect(page.getByTestId("warmup-step-2")).toHaveCount(0);
 
   // Reset clears the override.
   await page.getByTestId("warmup-reset").click();

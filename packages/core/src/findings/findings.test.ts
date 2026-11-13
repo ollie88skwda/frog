@@ -41,6 +41,68 @@ describe("progressionFindings", () => {
     expect(trends[0].confidence).toBe("medium");
   });
 
+  it("a lone unconfirmed spike on the 7th session reads as a plateau, not progress (C2c)", () => {
+    const sessions = [100, 95, 97, 99, 100, 99, 112].map((w, i) =>
+      session(i, w),
+    );
+    const { trends } = progressionFindings(sessions);
+    expect(trends[0].status.state).toBe("holding");
+    expect(trends[0].verdict).toBe("PLATEAU");
+    expect(trends[0].roughVerdict).toBe(false);
+  });
+
+  it("an early drop before 7 comparable sessions keeps the fitted, rough verdict (C2c)", () => {
+    const sessions = [100, 100, 100, 100, 85].map((w, i) => session(i, w));
+    const { trends } = progressionFindings(sessions);
+    expect(trends[0].status.state).toBe("dropped");
+    expect(trends[0].status.drop.kind).toBe("drop");
+    expect(trends[0].roughVerdict).toBe(true);
+  });
+
+  it("keeps a high-rep-only exercise visible as not estimable (over 10 total reps)", () => {
+    const sessions = Array.from({ length: 3 }, (_, i) => {
+      const s = session(i, 100 + i * 5);
+      s.sets.push(
+        ...[1, 2, 3].map(() => ({
+          exerciseId: "ex2",
+          exerciseName: "Lateral raise",
+          weightKg: 10,
+          reps: 15,
+        })),
+      );
+      return s;
+    });
+    const { trends, countdowns, notEstimable } = progressionFindings(sessions);
+    expect(notEstimable).toEqual([
+      {
+        kind: "not_estimable",
+        exerciseId: "ex2",
+        exerciseName: "Lateral raise",
+        sessionsLogged: 3,
+        reason: "over_10_total_reps",
+      },
+    ]);
+    expect(trends.map((t) => t.exerciseId)).toEqual(["ex1"]);
+    expect(trends[0].n).toBe(3);
+    expect(countdowns).toEqual([]);
+  });
+
+  it("does not mark an exercise not estimable when some sets still estimate", () => {
+    const sessions = Array.from({ length: 3 }, (_, i) => {
+      const s = session(i, 100 + i * 5);
+      s.sets.push({
+        exerciseId: "ex1",
+        exerciseName: "Squat",
+        weightKg: 60,
+        reps: 15,
+      });
+      return s;
+    });
+    const { trends, notEstimable } = progressionFindings(sessions);
+    expect(notEstimable).toEqual([]);
+    expect(trends).toHaveLength(1);
+  });
+
   it("emits an honest countdown below the session minimum", () => {
     const sessions = Array.from({ length: 1 }, (_, i) => session(i, 100));
     const { trends, countdowns } = progressionFindings(sessions);
@@ -88,8 +150,8 @@ describe("progressionFindings", () => {
 });
 
 describe("conditionFindings", () => {
-  it("finds a planted sleep→performance correlation with medium confidence", () => {
-    // 20 sessions: 10 on 8h sleep lift heavier, 10 on 6h lift lighter.
+  // Brzycki e1RM at 5 reps (blank RIR = 0): 100 kg -> 112.5. Planted 15% gap.
+  it("finds a planted sleep→performance correlation (working-set e1RM)", () => {
     const sessions = Array.from({ length: 20 }, (_, i) => {
       const wellSlept = i % 2 === 0;
       return session(i, wellSlept ? 110 : 95, {
@@ -97,27 +159,32 @@ describe("conditionFindings", () => {
       });
     });
     const findings = conditionFindings(sessions, [SLEEP]);
-    const tonnage = findings.find((f) => f.outcome.type === "tonnage");
-    expect(tonnage).toBeDefined();
-    expect(tonnage?.pctDiff).toBeGreaterThan(3);
-    expect(tonnage?.confidence).toBe("medium");
-    expect(tonnage?.n).toEqual({ high: 10, low: 10 });
     const e1rm = findings.find((f) => f.outcome.type === "e1rm");
     expect(e1rm).toBeDefined();
+    expect(e1rm?.pctDiff).toBeGreaterThan(5);
+    expect(e1rm?.confidence).toBe("medium");
+    expect(e1rm?.n).toEqual({ high: 10, low: 10 });
+    expect(Math.abs(e1rm?.effectSize ?? 0)).toBeGreaterThanOrEqual(0.8);
+    expect(e1rm?.caveat).toBe("correlation_not_causation");
+    expect(e1rm?.q).toBeLessThanOrEqual(0.1);
+    // Tonnage is no longer an outcome.
+    expect(findings.some((f) => (f.outcome.type as string) === "tonnage")).toBe(
+      false,
+    );
   });
 
-  it("stays silent when the effect is below the 3% floor", () => {
+  it("stays silent when the effect is below the 5% floor", () => {
     const sessions = Array.from({ length: 20 }, (_, i) => {
       const wellSlept = i % 2 === 0;
-      return session(i, wellSlept ? 100.5 : 100, {
+      return session(i, wellSlept ? 103 : 100, {
         [SLEEP.id]: wellSlept ? 8 : 6,
       });
     });
     expect(conditionFindings(sessions, [SLEEP])).toEqual([]);
   });
 
-  it("stays silent below the per-bucket minimum n", () => {
-    const sessions = Array.from({ length: 8 }, (_, i) => {
+  it("stays silent below the per-bucket minimum n (6)", () => {
+    const sessions = Array.from({ length: 10 }, (_, i) => {
       const wellSlept = i % 2 === 0;
       return session(i, wellSlept ? 120 : 90, {
         [SLEEP.id]: wellSlept ? 8 : 6,
@@ -127,7 +194,7 @@ describe("conditionFindings", () => {
   });
 
   it("ignores sessions without a numeric value for the condition", () => {
-    const sessions = Array.from({ length: 20 }, (_, i) => {
+    const sessions = Array.from({ length: 24 }, (_, i) => {
       const wellSlept = i % 2 === 0;
       return session(
         i,
@@ -136,7 +203,40 @@ describe("conditionFindings", () => {
       );
     });
     const findings = conditionFindings(sessions, [SLEEP]);
-    const tonnage = findings.find((f) => f.outcome.type === "tonnage");
-    expect(tonnage?.n).toEqual({ high: 8, low: 8 });
+    expect(findings[0]?.n).toEqual({ high: 10, low: 10 });
+  });
+
+  it("null-hypothesis guard: seeded 3% noise over many tests emits <= 1 finding", () => {
+    let seed = 12345;
+    const rand = () => {
+      seed = (seed * 1664525 + 1013904223) % 4294967296;
+      return seed / 4294967296;
+    };
+    const metrics = Array.from({ length: 4 }, (_, k) => ({
+      id: `m${k}`,
+      name: `M${k}`,
+    }));
+    const sessions: FindingsSessionInput[] = Array.from(
+      { length: 30 },
+      (_, i) => {
+        const cv: Record<string, unknown> = {};
+        for (const m of metrics) cv[m.id] = Math.round(rand() * 10);
+        const sets: FindingsSessionInput["sets"] = [];
+        for (let e = 0; e < 6; e++)
+          sets.push({
+            exerciseId: `ex${e}`,
+            exerciseName: `Ex${e}`,
+            weightKg: 100 * (1 + (rand() - 0.5) * 0.1),
+            reps: 5,
+          });
+        return {
+          sessionId: `s${i}`,
+          startedAt: i * 3 * DAY_MS,
+          conditionValues: cv,
+          sets,
+        };
+      },
+    );
+    expect(conditionFindings(sessions, metrics).length).toBeLessThanOrEqual(1);
   });
 });

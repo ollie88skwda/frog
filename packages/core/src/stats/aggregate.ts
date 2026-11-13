@@ -5,8 +5,9 @@
 // client-side like findings and records.
 
 import type { MuscleRegion, MuscleTarget } from "../domain/anatomy";
-import { regionOf, roleAt } from "../domain/anatomy";
+import { regionOf } from "../domain/anatomy";
 import type { ExerciseType } from "../domain/exercise-types";
+import { creditsFor, fractionalHardSets } from "../domain/hard-sets";
 import { weekStart } from "../domain/streak";
 import { countSets, countsForStats, setVolumeKg } from "../domain/volume";
 import type { RecordsSessionInput, RecordsSetInput } from "../records/types";
@@ -36,21 +37,16 @@ export function rangeStart(range: StatsRange, now: number): number {
 }
 
 /**
- * Set credit per muscle for one set: primary muscle 1.0, secondaries 0.5
- * (matches Hevy's fractional per-muscle set counts, e.g. "Shoulders 4.5").
+ * Set credit per muscle for one set: primary muscle 1.0, every other target
+ * 0.5 (R7). One definition for the whole app: domain/hard-sets.ts `creditsFor`.
  * A unilateral set is two rows sharing one set_no (see countSets); credit is
  * applied once per physical set by the caller, so no per-row multiplier is
- * needed here — 3 unilateral sets give the primary muscle 3.0 credit, same
- * as 3 bilateral sets.
+ * needed here.
  */
 export function muscleCredits(
   targets: MuscleTarget[] | null | undefined,
 ): Array<{ muscle: string; credit: number }> {
-  if (!targets?.length) return [];
-  return targets.map((t, i) => ({
-    muscle: t.muscle,
-    credit: roleAt(targets, i) === "primary" ? 1 : 0.5,
-  }));
+  return creditsFor(targets).map(({ muscle, credit }) => ({ muscle, credit }));
 }
 
 export type MuscleInfo = {
@@ -62,6 +58,15 @@ export type SetsPerMuscleBucket = {
   start: number; // bucket start ms
   counts: Record<string, number>; // muscleKey → fractional set count
 };
+
+function sessionHardSets(s: RecordsSessionInput, muscles: MuscleByExercise) {
+  return fractionalHardSets(
+    s.exercises.map((ex) => ({
+      targets: muscles.get(ex.exerciseId)?.targets,
+      sets: ex.sets,
+    })),
+  );
+}
 
 /** Bucket start for a timestamp at the requested granularity. */
 export function bucketStart(
@@ -94,15 +99,10 @@ export function setsPerMuscle(
       bucket = {};
       buckets.set(b, bucket);
     }
-    for (const ex of s.exercises) {
-      const info = muscles.get(ex.exerciseId);
-      const credits = muscleCredits(info?.targets);
-      if (!credits.length) continue;
-      const n = countSets(ex.sets, opts);
-      if (n === 0) continue;
-      for (const { muscle, credit } of credits) {
-        bucket[muscle] = (bucket[muscle] ?? 0) + n * credit;
-      }
+    // R6/R17b: weekly muscle volume counts HARD sets only (warm-ups never,
+    // RIR above the cap never), whatever the tonnage warm-up toggle says.
+    for (const m of sessionHardSets(s, muscles).muscles) {
+      bucket[m.muscle] = (bucket[m.muscle] ?? 0) + m.total;
     }
   }
   return [...buckets.entries()]
@@ -161,20 +161,19 @@ function distributionWindow(
         0,
         s.endedAt - s.startedAt - (s.pausedMs ?? 0),
       );
+    // Per-muscle credit counts hard sets only (R6/R17b, hard-sets.ts).
+    for (const m of sessionHardSets(s, muscles).muscles) {
+      muscleSets[m.muscle] = (muscleSets[m.muscle] ?? 0) + m.total;
+      const region = regionOf(m.muscle);
+      if (region) regionSets[region] += m.total;
+    }
     for (const ex of s.exercises) {
       const info = muscles.get(ex.exerciseId);
       const credits = muscleCredits(info?.targets);
-      // A unilateral pair (two rows sharing set_no) counts and credits once,
-      // via countSets — the sibling row still contributes its own volume
-      // below, since that tonnage was actually lifted.
-      const n = countSets(ex.sets, opts);
-      totals.sets += n;
-      if (n)
-        for (const { muscle, credit } of credits) {
-          muscleSets[muscle] = (muscleSets[muscle] ?? 0) + n * credit;
-          const region = regionOf(muscle);
-          if (region) regionSets[region] += n * credit;
-        }
+      // A unilateral pair (two rows sharing set_no) counts once — the sibling
+      // row still contributes its own volume below, since that tonnage was
+      // actually lifted. `totals.sets` follows the warm-up toggle.
+      totals.sets += countSets(ex.sets, opts);
       for (const set of ex.sets) {
         if (!countsForStats(set, opts)) continue;
         const vol = setVolumeKg(

@@ -47,26 +47,6 @@ function trendFor(sessions: FindingsSessionInput[]) {
   return trends[0];
 }
 
-// e1RM ≈ 116.7 flat (PLATEAU) across these weight/reps pairs, volume rising.
-const PLATEAU_RISING_PAIRS: Array<[number, number]> = [
-  [100, 5],
-  [95, 7],
-  [90, 9],
-  [85, 11],
-  [81, 13],
-  [78, 15],
-];
-
-// e1RM ≈ 116.7 flat while volume falls (500 → 115).
-const PLATEAU_FALLING_PAIRS: Array<[number, number]> = [
-  [100, 5],
-  [103, 4],
-  [106, 3],
-  [110, 2],
-  [115, 1],
-  [115, 1],
-];
-
 describe("recommendationsForExercise", () => {
   it("keep-going on PROGRESSING, with RIR context when logged", () => {
     const sessions = Array.from({ length: 8 }, (_, i) =>
@@ -113,10 +93,20 @@ describe("recommendationsForExercise", () => {
     expect(vol?.stats.volumePct).toBeCloseTo(0);
   });
 
-  it("PLATEAU with falling volume → change-volume with negative pct", () => {
-    const sessions = PLATEAU_FALLING_PAIRS.map(([w, r], i) =>
-      session(i, [lift(w, r)]),
-    );
+  it("PLATEAU with falling volume → change-volume with negative pct (confirmed stall)", () => {
+    // Brzycki, flat e1RM 100 x 5 @0 = 112.5, volume falling; 8 sessions so the
+    // 7-session stall is confirmed (C2c-stall).
+    const pairs: Array<[number, number]> = [
+      [100, 5],
+      [103, 4],
+      [106, 3],
+      [109, 2],
+      [112, 1],
+      [100, 5],
+      [103, 4],
+      [112, 1],
+    ];
+    const sessions = pairs.map(([w, r], i) => session(i, [lift(w, r)]));
     const recs = recommendationsForExercise(
       "ex1",
       sessions,
@@ -128,9 +118,19 @@ describe("recommendationsForExercise", () => {
   });
 
   it("PLATEAU with rising volume → no change-volume, but rir-gap stays", () => {
-    const sessions = PLATEAU_RISING_PAIRS.map(([w, r], i) =>
-      session(i, [lift(w, r)]),
-    );
+    // Over-10-rep sets are refused by e1RM, so keep the rising-volume series
+    // inside 10 reps: flat Brzycki e1RM 112.5, volume rising.
+    const pairs: Array<[number, number]> = [
+      [112.5, 1],
+      [109.375, 2],
+      [106.25, 3],
+      [103.125, 4],
+      [100, 5],
+      [96.875, 6],
+      [93.75, 7],
+      [90.625, 8],
+    ];
+    const sessions = pairs.map(([w, r], i) => session(i, [lift(w, r)]));
     const recs = recommendationsForExercise(
       "ex1",
       sessions,
@@ -143,10 +143,16 @@ describe("recommendationsForExercise", () => {
     expect(recs.find((r) => r.kind === "rir-gap")).toBeDefined();
   });
 
-  it("PLATEAU with only warmup tonnage → no change-volume", () => {
-    // Warm-ups feed the trend baseline (unchanged) but not the volume lever.
+  it("warm-ups feed neither the trend nor the volume lever (R17b)", () => {
     const sessions = Array.from({ length: 8 }, (_, i) =>
       session(i, [lift(100, 5, { setType: "warmup" })]),
+    );
+    expect(progressionFindings(sessions).trends).toEqual([]);
+  });
+
+  it("no change-volume before a confirmed 7-session stall (C2)", () => {
+    const sessions = Array.from({ length: 5 }, (_, i) =>
+      session(i, [lift(100), lift(100)]),
     );
     const recs = recommendationsForExercise(
       "ex1",
@@ -187,6 +193,7 @@ describe("recommendationsForExercise", () => {
     const sessions = Array.from({ length: 8 }, (_, i) =>
       session(i, [lift(150 - i * 10)]),
     );
+    expect(trendFor(sessions).verdict).toBe("REGRESSING");
     const recs = recommendationsForExercise(
       "ex1",
       sessions,

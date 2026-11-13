@@ -7,6 +7,7 @@
 import type { MuscleRegion } from "../domain/anatomy";
 import { MUSCLE_REGION_LABELS } from "../domain/anatomy";
 import type { ExerciseType } from "../domain/exercise-types";
+import { fractionalHardSets } from "../domain/hard-sets";
 import {
   formatVolume,
   formatVolumeNumber,
@@ -18,7 +19,6 @@ import { countSets, countsForStats, setVolumeKg } from "../domain/volume";
 import { hasSetRecords, TOP_RECORD_PR_TYPE } from "../records/records";
 import type { ExerciseRecords, PrEvent, PrType } from "../records/types";
 import type { MuscleByExercise } from "../stats/aggregate";
-import { muscleCredits } from "../stats/aggregate";
 import type { MonthlyReport } from "../stats/monthly-report";
 import type { YearReview } from "../stats/year-review";
 import { formatHM, formatSetMMSS } from "./format";
@@ -43,22 +43,21 @@ type DistUnit = "km" | "mi";
 
 // ── Session (Type 1) ────────────────────────────────────────────────────────
 
-/** Per-session muscle set credit (primary 1.0 / secondary 0.5), for the
- * session card's body heat map graphic. */
+/** Per-session muscle set credit (primary 1.0 / indirect 0.5, hard sets only),
+ * for the session card's body heat map graphic. The credit loop lives in
+ * domain/hard-sets.ts (R6/R7/R17b); this only reshapes its result. */
 export function sessionMuscleSets(
   blocks: SessionCardBlock[],
   muscles: MuscleByExercise,
 ): Record<string, number> {
+  const { byMuscle } = fractionalHardSets(
+    blocks.map((b) => ({
+      targets: muscles.get(b.exerciseId)?.targets,
+      sets: b.sets,
+    })),
+  );
   const out: Record<string, number> = {};
-  for (const b of blocks) {
-    const info = muscles.get(b.exerciseId);
-    const credits = muscleCredits(info?.targets);
-    const n = countSets(b.sets);
-    if (!credits.length || n === 0) continue;
-    for (const { muscle, credit } of credits) {
-      out[muscle] = (out[muscle] ?? 0) + n * credit;
-    }
-  }
+  for (const [muscle, m] of Object.entries(byMuscle)) out[muscle] = m.total;
   return out;
 }
 
@@ -186,7 +185,10 @@ export function buildSessionCard(input: {
       ),
     0,
   );
-  const setCount = countedBlocks.reduce((n, b) => n + countSets(b.sets), 0);
+  const setCount = countedBlocks.reduce(
+    (n, b) => n + countSets(b.sets, { includeWarmups }),
+    0,
+  );
 
   const picked = input.heroSet ? findHeroSet(blocks, input.heroSet) : null;
   const auto = picked ?? pickAutoHeroSet(blocks);
