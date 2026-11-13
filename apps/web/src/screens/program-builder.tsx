@@ -712,7 +712,9 @@ function Review(p: ReviewProps) {
                             {prescriptionText(slot.rx)}
                           </p>
                         </div>
-                        <DropdownMenu>
+                        {/* Non-modal: items open a Dialog, and a modal menu's
+                            body pointer-events lock outlives it (page freezes). */}
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <IconButton
                               title="Slot options"

@@ -4,6 +4,7 @@
 
 import {
   type BuilderAnswers,
+  DEFAULT_ANSWERS,
   type EquipmentKind,
   type GeneratorConfig,
   jointActionLabel,
@@ -136,16 +137,7 @@ export const STATUS_OPTIONS: readonly {
 
 export const MINUTE_OPTIONS = [30, 45, 60, 75, 90] as const;
 
-const ALL_GYM: EquipmentKind[] = [
-  "barbell",
-  "ez_bar",
-  "dumbbell",
-  "machine",
-  "cable",
-  "bodyweight",
-  "plate",
-  "other",
-];
+const ALL_GYM: EquipmentKind[] = DEFAULT_ANSWERS.equipment;
 
 export const EQUIPMENT_PRESETS: readonly {
   id: string;

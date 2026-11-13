@@ -1,4 +1,9 @@
-import { PROGRAM_TEMPLATES, validateProgram, viewOf } from "@frog/core";
+import {
+  DEFAULT_ANSWERS,
+  PROGRAM_TEMPLATES,
+  validateProgram,
+  viewOf,
+} from "@frog/core";
 import { describe, expect, it } from "vitest";
 import {
   applyPatch,
@@ -79,6 +84,22 @@ describe("presets and text", () => {
   it("detects equipment presets", () => {
     expect(equipmentPresetId(["bodyweight"])).toBe("bodyweight");
     expect(equipmentPresetId(["cable"])).toBe("custom");
+  });
+  it("the default answers preselect Full gym, not Custom", () => {
+    // Spec: defaults are preselected and the default lifter has a full gym.
+    expect(equipmentPresetId(DEFAULT_ANSWERS.equipment)).toBe("gym");
+    expect(
+      equipmentPresetId([
+        "barbell",
+        "ez_bar",
+        "dumbbell",
+        "machine",
+        "cable",
+        "bodyweight",
+        "plate",
+        "other",
+      ]),
+    ).toBe("gym");
   });
 });
 
