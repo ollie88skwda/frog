@@ -80,8 +80,15 @@ export default function HistoryScreen() {
                       state={s.endedAt != null ? "done" : "partial"}
                       progress={0.5}
                     />
-                    <span className="truncate text-sm">
-                      {s.title ?? formatDate(s.startedAt)}
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm">
+                        {s.title ?? formatDate(s.startedAt)}
+                      </span>
+                      {s.title != null && (
+                        <span className="num truncate text-xs text-faint">
+                          {formatDate(s.startedAt)}
+                        </span>
+                      )}
                     </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
@@ -108,9 +115,6 @@ export default function HistoryScreen() {
                         )}
                       </span>
                     )}
-                    <span className="num text-xs text-faint">
-                      {formatDate(s.startedAt)}
-                    </span>
                     <CaretRight
                       aria-hidden="true"
                       className="size-4 text-faint"
