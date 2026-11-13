@@ -140,6 +140,11 @@
   --color-success-solid:#016869;
   --color-success-text:#036262;
   --color-success-text-on-solid:#fcf9f4;
+  /* Attention (D5): over band, stalled, cautions. Never errors (that is danger). */
+  --color-attn-bg-subtle:#fff3d6;
+  --color-attn-text:#7a4b00;
+  /* Data marks: Fern 8/9 fail 3:1 on surface, green-11 is 7.11:1 (F12). */
+  --chart-mark:#386134;
   --shadow-1:0 1px 2px rgb(59 41 33 / 0.06), 0 1px 1px rgb(59 41 33 / 0.04);
   --shadow-2:0 2px 6px rgb(59 41 33 / 0.06), 0 8px 24px rgb(59 41 33 / 0.08);
   --shadow-3:0 2px 6px rgb(59 41 33 / 0.06), 0 16px 40px -8px rgb(59 41 33 / 0.18);
@@ -186,6 +191,9 @@
   --color-success-solid:#6bcac9;
   --color-success-text:#77cfcf;
   --color-success-text-on-solid:#191513;
+  --color-attn-bg-subtle:#3a2c12;
+  --color-attn-text:#f0c46a;
+  --chart-mark:#99c195;
   --shadow-1:0 1px 2px rgb(0 0 0 / 0.30);
   --shadow-2:0 2px 6px rgb(0 0 0 / 0.30), 0 8px 24px rgb(0 0 0 / 0.36);
   --shadow-3:0 2px 6px rgb(0 0 0 / 0.32), 0 16px 40px -8px rgb(0 0 0 / 0.55);
@@ -280,7 +288,10 @@
 
   --color-pos: var(--color-success-text);
   --color-neg: var(--color-danger-text);
-  --color-warn: var(--color-text-primary);
+  --color-warn: var(--color-attn-text);
+  --color-attn: var(--color-attn-text);
+  --color-attn-soft: var(--color-attn-bg-subtle);
+  --color-chart-mark: var(--chart-mark);
   --color-danger: var(--color-danger-text);
   --color-danger-soft: var(--color-danger-bg-subtle);
   --color-on-danger: var(--color-danger-text-on-solid);
@@ -520,6 +531,16 @@
   100% { box-shadow: inset 0 0 0 2px transparent; }
 }
 @utility commit-flash { animation: commit-flash 480ms var(--ease-out-quad); }
+
+/* MuscleMeter fill grows on mount (100-150 ms CSS only; reduced motion = instant). */
+@keyframes meter-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@utility meter-grow {
+  transform-origin: left center;
+  animation: meter-grow 150ms var(--ease-out-quad);
+}
 
 /* Floating-layer entrance: fade + 2px rise, 160ms out-quad. */
 @keyframes float-in {
