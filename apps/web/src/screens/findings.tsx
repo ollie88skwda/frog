@@ -59,6 +59,7 @@ export default function FindingsScreen() {
   const {
     trends,
     countdowns,
+    notEstimable,
     conditions,
     conditionCountdowns,
     recommendations,
@@ -108,6 +109,27 @@ export default function FindingsScreen() {
                     trend={trend}
                     onOpen={() => setOpenTrend(trend)}
                   />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {notEstimable.length > 0 && (
+            <section>
+              <SectionLabel>No strength estimate</SectionLabel>
+              <div className="mt-2 [&>*+*]:mt-0.5 overflow-hidden rounded-md bg-surface">
+                {notEstimable.map((n) => (
+                  <div
+                    key={n.exerciseId}
+                    className="px-4 py-2 text-sm"
+                    data-testid={`not-estimable-${n.exerciseName}`}
+                  >
+                    <p>{n.exerciseName}</p>
+                    <p className="text-2xs text-soft">
+                      strength estimate needs 10 or fewer total reps ·{" "}
+                      <span className="num">n={n.sessionsLogged}</span>
+                    </p>
+                  </div>
                 ))}
               </div>
             </section>

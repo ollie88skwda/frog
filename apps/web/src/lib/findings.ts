@@ -6,6 +6,7 @@ import {
   conditionFindings,
   type FindingsSessionInput,
   type Metric,
+  type NotEstimableFinding,
   progressionFindings,
   type Recommendation,
   recommendationsForExercise,
@@ -15,6 +16,8 @@ import {
 export type ComputedFindings = {
   trends: TrendFinding[];
   countdowns: CountdownFinding[];
+  /** Lifts logged only above 10 total reps: kept visible, no estimate (C2c-e1rm). */
+  notEstimable: NotEstimableFinding[];
   conditions: ConditionFinding[];
   conditionCountdowns: ConditionCountdown[];
   /** Recommendations per trend-bearing exercise (note 12). */
@@ -26,7 +29,7 @@ export function computeFindings(
   sessions: FindingsSessionInput[],
   metrics: Metric[],
 ): ComputedFindings {
-  const { trends, countdowns } = progressionFindings(sessions);
+  const { trends, countdowns, notEstimable } = progressionFindings(sessions);
   const numericConditions = metrics
     .filter(
       (m) =>
@@ -49,6 +52,7 @@ export function computeFindings(
     countdowns: [...countdowns].sort(
       (a, b) => a.sessionsNeeded - b.sessionsNeeded,
     ),
+    notEstimable,
     conditions,
     conditionCountdowns: conditionCountdowns(
       sessions,
