@@ -6,12 +6,16 @@
 //
 // --generate replays supabase/migrations (where those rows were defined)
 // into PGlite and dumps the null-owner rows — so the Convex seed is derived
-// from, and byte-for-byte consistent with, what Supabase had. The JSON is
-// generated output; never hand-edit it. Upserting is idempotent on each
+// from, and byte-for-byte consistent with, what Supabase had, plus the
+// exercise classification merged from scripts/classify-exercises/
+// classification.json. The JSON is generated output; never hand-edit it. Upserting is idempotent on each
 // row's uuid (admin:upsertGlobal), so re-running after a seed change
 // updates rows in place. Target: see scripts/convex/admin-client.ts.
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { applyClassification } from "./classify-exercises/classify-lib";
+import { CLASSIFICATION_PATH } from "./classify-exercises/paths";
+import type { ClassificationFile } from "./classify-exercises/types";
 import { adminClient } from "./convex/admin-client";
 import { chunks, toConvex } from "./convex-rows-lib";
 
@@ -28,6 +32,12 @@ async function generate(): Promise<void> {
   const replayStart = Date.now();
   const db = await replayMigrations(ROOT);
   const seed = {} as Seed;
+  // The frozen-SQL replay cannot write new exercise fields (mechanic,
+  // muscleTargets role/weight, ...), so the classification backfill (plan
+  // §9.7, scripts/classify-exercises/) is merged over the dumped rows here.
+  const classification = JSON.parse(
+    readFileSync(CLASSIFICATION_PATH, "utf8"),
+  ) as ClassificationFile;
   for (const t of SEED_TABLES) {
     const res = await db.query<Record<string, unknown>>(
       `select * from ${t} where owner_id is null order by id`,
@@ -38,6 +48,9 @@ async function generate(): Promise<void> {
         if (typeof row[k] === "number" && row[k] >= replayStart) {
           row[k] = SEED_EPOCH;
         }
+      }
+      if (t === "exercises") {
+        applyClassification(row, classification.byId[row.id as string]);
       }
       return row;
     });
