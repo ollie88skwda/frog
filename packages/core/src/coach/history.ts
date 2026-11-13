@@ -10,6 +10,7 @@ import {
   MIN_DROP_PRIOR,
   MIN_STALL_SESSIONS,
   NOISE_BAND,
+  SHORT_SLEEP_H,
   STALL_WINDOW,
 } from "./constants";
 import { brzycki, median, round05 } from "./e1rm";
@@ -216,9 +217,10 @@ export function windowFor(
       hist[j + 1].startedAt - s.startedAt >= BREAK_DAYS * DAY_MS
     )
       break;
+    if (s.isDeload) continue;
     const key = plannedKey(s.planned);
     if (targetKey != null && key != null && key !== targetKey) break;
-    if (s.isDeload || (requireE1rm && s.e1rm == null)) continue;
+    if (requireE1rm && s.e1rm == null) continue;
     if (s.effortOk === false) continue;
     picked.push(s);
   }
@@ -230,9 +232,9 @@ export function windowFor(
  * does not count toward a stall. Applied to the stall window only. */
 export function stallWindow(win: ExSession[]): ExSession[] {
   return win.filter((s, i) => {
-    if (i < 1 || s.sleepH == null || s.sleepH >= 6) return true;
+    if (i < 1 || s.sleepH == null || s.sleepH >= SHORT_SLEEP_H) return true;
     const prev = win[i - 1];
-    if (prev.sleepH == null || prev.sleepH >= 6) return true;
+    if (prev.sleepH == null || prev.sleepH >= SHORT_SLEEP_H) return true;
     const base = baselineOf(win, i);
     return base == null || (s.e1rm as number) >= base;
   });
@@ -369,7 +371,7 @@ export function pendingAddLoad(
     const overridden = hist.some(
       (x) =>
         x.startedAt > s.startedAt &&
-        (x.sleepH == null || x.sleepH >= 6) &&
+        (x.sleepH == null || x.sleepH >= SHORT_SLEEP_H) &&
         x.heaviestKg <= s.heaviestKg,
     );
     return {

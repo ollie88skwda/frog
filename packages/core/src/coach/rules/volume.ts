@@ -3,10 +3,10 @@
 // flagged), R7 (indirect 0.5). TODO(J1): swap the credit loop for
 // domain/hard-sets.ts `fractionalHardSets` once J1 merges.
 
-import { FIRST_WEEKDAY } from "../../config";
 import { muscleLabel, roleAt } from "../../domain/anatomy";
 import {
   C19_MIN_PATTERN,
+  COACH_WEEK_START,
   HARD_SET_RIR_MAX,
   INDIRECT_CREDIT,
   MAX_DIRECT_SETS_PER_SESSION,
@@ -64,7 +64,7 @@ export function weeklyMuscleSets(
 
 const WEEK_MS = 7 * 86_400_000;
 
-/** C11 add / C12 trim. Uses the app week (FIRST_WEEKDAY) for weekly buckets. */
+/** C11 add / C12 trim. Uses the coach week (COACH_WEEK_START, Monday) for weekly buckets. */
 export function volume(
   input: CoachInput,
   asOf: number,
@@ -73,7 +73,8 @@ export function volume(
   lastSessionRirOk: (muscle: string) => boolean,
 ): RuleOutput {
   const out = empty();
-  const thisWeek = weekKey(asOf, tz, FIRST_WEEKDAY) * 86_400_000 - tz * 60_000;
+  const thisWeek =
+    weekKey(asOf, tz, COACH_WEEK_START) * 86_400_000 - tz * 60_000;
   const w1 = weeklyMuscleSets(input, thisWeek - WEEK_MS, thisWeek);
   const w2 = weeklyMuscleSets(
     input,

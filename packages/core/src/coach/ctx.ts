@@ -51,7 +51,7 @@ export type ExerciseCtx = {
   deloadActive: { until: number } | null;
   /** Pending add-load (overshoot / two-session), survives holds and gaps in sleep. */
   pending: AddLoadTrigger | null;
-  /** Load the plan is anchored on: heaviest of the last 3 comparable sessions. */
+  /** Load the plan is anchored on: median heaviest load of the last 3 comparable sessions. */
   baseLoadKg: number;
   /** Gap since the previous session reached the restart threshold (C15). */
   restart: boolean;

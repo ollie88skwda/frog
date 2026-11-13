@@ -399,3 +399,130 @@ describe("weekly volume (C11/C12)", () => {
     expect(find(r, "C11")).toBeUndefined();
   });
 });
+
+describe("deloads and the comparable window", () => {
+  const deload = (md: string, specs: string[], o = {}) =>
+    S(md, "18:00", specs, {
+      planned: P(5, 8, 3, 4, 1, { isDeload: true }),
+      ...o,
+    });
+  const c9Sessions = c9.points[0].input.sessions;
+
+  it("a deload session is skipped, not a window break (C2c-reset)", () => {
+    const r = evaluateCoach(
+      input([
+        ...c9Sessions,
+        deload("11-02", ["95x5@3"]),
+        S("11-05", "18:00", ["95x5@2"]),
+      ]),
+    );
+    expect(r.perExercise.get("squat")?.comparableSessions).toBe(8);
+  });
+  it("a deload as the latest session keeps the earlier window", () => {
+    const r = evaluateCoach(
+      input([...c9Sessions, deload("11-02", ["95x5@3"])]),
+    );
+    expect(r.perExercise.get("squat")?.comparableSessions).toBe(7);
+  });
+  it("C10 does not fire again during the deload week", () => {
+    const r = evaluateCoach(
+      input([
+        S("10-19", "18:00", ["100x6@2"]),
+        S("10-22", "18:00", ["100x6@2"], { sleep: 5 }),
+        S("10-26", "18:00", ["95x5@2"], { sleep: 5 }),
+        S("10-29", "18:00", ["95x5@2"], { sleep: 5 }),
+        S("11-02", "18:00", ["90x5@2"], { sleep: 5 }),
+        deload("11-04", ["90x5@3"], { sleep: 5 }),
+      ]),
+    );
+    expect(r.suggestions.some((s) => s.action.kind === "deload")).toBe(false);
+  });
+  it("deload targets do not carry into the next normal prescription", () => {
+    const r = evaluateCoach(
+      input([
+        ...c9Sessions,
+        deload("11-02", ["95x5@3"]),
+        S("11-09", "18:00", ["60x8@2"], { exerciseId: "bench" }),
+      ]),
+    );
+    const p = r.perExercise.get("squat")?.prescription;
+    expect(p?.rir).toEqual([2, 2]);
+    expect(p?.delta).not.toBe("deload");
+  });
+});
+
+describe("drift reaches the prescription", () => {
+  it("a winning C4 sets the next-session target RIR", () => {
+    const o = { planned: P(5, 8, 2, 2, 3), exerciseId: "bench" };
+    const sess = ["11-07", "11-09", "11-11"].map((d) =>
+      S(d, "18:00", ["80x6@2", "80x6@0", "80x6@0"], o),
+    );
+    const r = evaluateCoach(input(sess, { exercises: [EX.bench] }));
+    expect(r.perExercise.get("bench")?.prescription).toMatchObject({
+      rir: [3, 3],
+      ruleId: "C4",
+    });
+  });
+  it("the drift pool covers 7 days: a session 7 days back is out", () => {
+    const o = { planned: P(5, 8, 2, 2, 3), exerciseId: "bench" };
+    const sess = ["11-04", "11-07", "11-11"].map((d) =>
+      S(d, "18:00", ["80x6@2", "80x6@0", "80x6@0"], o),
+    );
+    const r = evaluateCoach(input(sess, { exercises: [EX.bench] }));
+    expect(find(r, "C4")).toBeUndefined();
+  });
+});
+
+describe("dismissed suggestions never suppress others", () => {
+  it("dismissing C14 for the exercise lets the stall response show", () => {
+    const base = c9.points[0].input;
+    const r = evaluateCoach({
+      ...base,
+      prefs: {
+        dismissed: [
+          {
+            ruleId: "C14",
+            exerciseId: "squat",
+            scope: "exercise_4w",
+            at: base.asOf,
+          },
+        ],
+      },
+    });
+    expect(find(r, "C14")).toBeUndefined();
+    expect(find(r, "C2c-stall", "squat")).toBeDefined();
+    expect(r.suppressed.find((s) => s.ruleId === "C14")?.suppressedBy).toBe(
+      "dismissed",
+    );
+    expect(r.perExercise.get("squat")?.prescription?.delta).not.toBe("deload");
+  });
+});
+
+describe("weekly volume uses Monday-Sunday weeks", () => {
+  it("a Sunday session counts toward last week's C12 total", () => {
+    const week = (md: string, n: number) =>
+      S(
+        md,
+        "18:00",
+        Array.from({ length: n }, () => "100x5@2"),
+        { planned: P(5, 8, 2, 2, n) },
+      );
+    const sessions = [
+      week("10-05", 2),
+      week("10-08", 2),
+      week("10-12", 2),
+      week("10-15", 2),
+      week("10-19", 2),
+      week("10-22", 2),
+      week("11-04", 11),
+      week("11-08", 11),
+    ];
+    const r = evaluateCoach(
+      input(sessions, {
+        asOf: Date.parse("2026-11-09T12:00:00Z"),
+        currentSessionId: undefined,
+      }),
+    );
+    expect(find(r, "C12")).toBeDefined();
+  });
+});

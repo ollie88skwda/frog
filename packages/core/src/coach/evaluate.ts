@@ -2,7 +2,6 @@
 // Folds `generator/overload.ts nextPrescription` and
 // `findings/recommendations.ts` behind one engine; callers stop using those.
 
-import { FIRST_WEEKDAY } from "../config";
 import { roleAt } from "../domain/anatomy";
 import { bodyweightSummary } from "./bodyweight";
 import {
@@ -10,7 +9,9 @@ import {
   BREAK_DAYS,
   COACH_WEEK_START,
   DAY_MS,
+  HIGH_STRESS,
   MIN_RIR_COVERAGE,
+  SHORT_SLEEP_H,
 } from "./constants";
 import type { ExerciseCtx, Readiness } from "./ctx";
 import { dormantNotEvaluated } from "./dormant";
@@ -52,8 +53,8 @@ function readinessOf(
     .filter((s) => s.id !== session.id && s.startedAt < session.startedAt)
     .sort((a, b) => a.startedAt - b.startedAt);
   const prev = earlier[earlier.length - 1];
-  const short = session.sleepH != null && session.sleepH < 6;
-  const highStress = session.stress != null && session.stress >= 8;
+  const short = session.sleepH != null && session.sleepH < SHORT_SLEEP_H;
+  const highStress = session.stress != null && session.stress >= HIGH_STRESS;
   return {
     sessionId: session.id,
     sleepH: session.sleepH,
@@ -61,7 +62,8 @@ function readinessOf(
     shortSleep: short,
     highStress,
     bad: short || highStress,
-    backToBackShort: short && prev?.sleepH != null && prev.sleepH < 6,
+    backToBackShort:
+      short && prev?.sleepH != null && prev.sleepH < SHORT_SLEEP_H,
   };
 }
 
@@ -139,10 +141,11 @@ export function evaluateExercise(
     : histAll;
   const latest = hist[hist.length - 1] ?? histAll[histAll.length - 1];
 
-  const planned = planSlot ?? latest.planned;
+  const target = [...hist].reverse().find((s) => !s.isDeload) ?? latest;
+  const planned = planSlot ?? target.planned;
   const coverage = rirCoverage(histAll);
   const lowRir = coverage != null && coverage < MIN_RIR_COVERAGE;
-  const key = plannedKey(latest.planned);
+  const key = plannedKey(target.planned);
   const endIdx = hist.length - 1;
   const win = endIdx >= 0 ? windowFor(hist, endIdx, key) : [];
   const progWin = endIdx >= 0 ? windowFor(hist, endIdx, key, false) : [];
@@ -362,7 +365,7 @@ export function evaluateCoach(input: CoachInput): CoachResult {
     stalled.set(id, r.stalled);
   }
 
-  // Weekly volume (C11 / C12) over the app week.
+  // Weekly volume (C11 / C12) over the coach week (COACH_WEEK_START).
   const tz = input.prefs?.tzOffsetMin ?? 0;
   const lastTwoWeeksRirOk = (muscle: string): boolean => {
     const since = input.asOf - 14 * DAY_MS;
@@ -397,7 +400,8 @@ export function evaluateCoach(input: CoachInput): CoachResult {
     : undefined;
   const bad =
     !!readinessSession &&
-    ((readinessSession.sleepH ?? 9) < 6 || (readinessSession.stress ?? 0) >= 8);
+    ((readinessSession.sleepH ?? SHORT_SLEEP_H) < SHORT_SLEEP_H ||
+      (readinessSession.stress ?? 0) >= HIGH_STRESS);
   const resolved = resolve(all, {
     exercises: input.exercises,
     dismissed: input.prefs?.dismissed ?? [],
@@ -413,8 +417,12 @@ export function evaluateCoach(input: CoachInput): CoachResult {
       input.plan?.find((p) => p.exerciseId === id)?.planned ?? null;
     const lastPlanned =
       input.sessions
+        .filter((s) => s.startedAt <= input.asOf)
+        .sort((a, b) => a.startedAt - b.startedAt)
         .flatMap((s) =>
-          s.exercises.filter((e) => e.exerciseId === id && e.planned),
+          s.exercises.filter(
+            (e) => e.exerciseId === id && e.planned && !e.planned.isDeload,
+          ),
         )
         .map((e) => e.planned as PlannedTarget)
         .pop() ?? null;
@@ -457,5 +465,3 @@ function baseLoadFor(input: CoachInput, exerciseId: string): number | null {
   const last3 = h.slice(-3).map((s) => s.heaviestKg);
   return last3.length ? median(last3) : null;
 }
-
-export { FIRST_WEEKDAY };

@@ -32,7 +32,7 @@ export function driftPool(ctx: ExerciseCtx): Pooled[] {
   const today = localDayIndex(ctx.asOf, ctx.tz);
   const recent = ctx.hist.filter((s) => {
     const d = localDayIndex(s.startedAt, ctx.tz);
-    return d >= today - DRIFT_WINDOW_DAYS && d <= today;
+    return d > today - DRIFT_WINDOW_DAYS && d <= today;
   });
   const pool = take(2, recent);
   if (pool.length >= DRIFT_MIN_SETS) return pool;
@@ -84,7 +84,7 @@ export function drift(ctx: ExerciseCtx): RuleOutput {
         exerciseId: id,
         anchor,
         severity: "suggest",
-        surfaces: ["in_set", "weekly", "post_session"],
+        surfaces: ["in_set", "prescription", "weekly", "post_session"],
         message: `last ${name} sets ended with about ${Math.round(mean)} reps left, not the ${p.rirMax} planned. next week aim for about ${next[1]} left. it's a gut feel, so just a suggestion.`,
         why: inputs("C5", above),
         tier: "T5",
@@ -105,7 +105,7 @@ export function drift(ctx: ExerciseCtx): RuleOutput {
         exerciseId: id,
         anchor,
         severity: "suggest",
-        surfaces: ["in_set", "weekly", "post_session"],
+        surfaces: ["in_set", "prescription", "weekly", "post_session"],
         message: `last ${name} sets ended with about ${Math.round(mean)} reps left, under the ${p.rirMin} planned. aim for about ${next[1]} left for a week.`,
         why: inputs("C4", below),
         tier: "T5",
