@@ -1,0 +1,36 @@
+# rule: {tier, parameters..., src}
+R4: {tier: T1, sessions_per_muscle_min: 2, src: "at least two sessions per muscle"}
+R7: {tier: T4, indirect_set_weight: 0.5, src: "Count indirect sets at 0.5"}
+R7b: {tier: T5, direct_sets_per_session: [2,5], src: "keep direct hard sets for one muscle at about 2-5 per session"}
+C11: {tier: T5, weekly_hard_sets: [10,20], add_set_min_rir: 2, add_set_consecutive_weeks: 2, add_set_only_if_direct_sets_below: 5, src: "practical 10-20 range | last two weeks hit target reps with 2+ RIR left | fewer than 5 direct sets (so 5 or fewer including the added set)"}
+C12: {tier: T5, weekly_cap_sets: 20, trim_sets: [1,2], trim_requires: "C2c stall", src: "20 or more weekly hard sets | stalled under C2c | trimming 1-2 sets"}
+R8b: {tier: T5, reps_main_compound: [3,9], reps_main_most_sets: [4,8], reps_heaviest_main: [4,7], reps_isolation: [10,15], src: "Work in 3-9 reps for main and compound lifts | Use 4-8 for most working sets | 4-7 for the heaviest main lift | Isolation slots may use 10-15"}
+R10: {tier: T5, rir_default: [1,3], rir_last_isolation_set: [0,1], src: "Train to about 1-3 RIR | on the last set of an isolation exercise, 0-1 RIR is fine"}
+C4: {tier: T5, rir_window_sets: 2, rir_pool_sets_if_one_set_per_session: 6, rir_raise_step: 1, rir_drift_share_pct: 80, rir_drift_min_sets: 6, rir_window_days: 7, src: "counting the last 2 working sets | pool the last 6 working sets across sessions"}
+C5: {tier: T5, rir_floor_compound: 1, rir_drift_share_pct: 80, rir_drift_min_sets: 6, src: "keep compound and strength work at 1 RIR or more | on at least 80% of the last 2 working sets per exercise over 7 days, minimum 6 sets"}
+R15: {tier: T4, rest_accessory_isolation_s: [60,90], rest_heavy_multijoint_min: [2,3], src: "Rest 60-90 s on accessory and isolation sets | rest 2-3 min"}
+R15d: {tier: T4, rest_short_matched_s: 60, src: "Short rest (about 60 s)"}
+R17: {tier: T5, deload_set_fraction: 0.5, deload_set_rule: "half rounded down, minimum 1 per exercise; keep the heaviest working sets", deload_rir: [3,4], deload_interval_weeks: [4,6], deload_after_drop_pct: 2.5, deload_after_drop_weeks: 2, src: "half the normal sets, rounded down, minimum 1 per exercise | 3-4 RIR | about every 4-6 weeks | after a performance drop across 2+ weeks"}
+R17b: {tier: T5, warmup_first_lift_steps: [{pct: 40, reps: 6}, {pct: 80, reps: 3}], warmup_later_lift_pct: [60,70], warmup_later_lift_sets: 1, warmup_counts_toward_volume: false, src: "about 40% of working load x 6 then about 80% x 3 | 1 ramp set at about 60-70% | Warm-up sets do not count toward weekly volume"}
+R18: {tier: T4, size_loss_not_sig_weeks_older: [12,24], size_loss_sig_weeks_older: [31,52], src: "not significant at 12-24 weeks but was at 31-52 weeks"}
+R18b: {tier: T4, group_mean_share_of_sets: 0.33, group_means_only: true, src: "roughly one third of normal weekly sets"}
+R19: {tier: T4, protein_target_g_kg: 1.6, protein_upper_g_kg: 2.2, morton_breakpoint_g_kg: 1.62, morton_ci_g_kg: [1.03,2.20], tagawa_threshold_g_kg: 1.3, src: "Aim for about 1.6 g/kg/day | the 2.2 g/kg/day upper target | puts the breakpoint at 1.62 g/kg/day | (1.03-2.20) | above 1.3 g/kg/day"}
+R21: {tier: T4, protein_cut_min_g_kg: 1.6, cut_deficit_kcal: 500, cut_rate_pct_bw_week: 0.7, src: "Keep protein at or above about 1.6 g/kg/day during a cut | Deficits around 500 kcal/day | about 0.7% body weight per week"}
+R23: {tier: T4, creatine_g_day: [3,5], creatine_lean_gain_kg: [1,1.4], src: "Creatine monohydrate 3-5 g/day | roughly 1-1.4 kg extra lean mass"}
+R23b: {tier: T4, caffeine_mg_kg: [3,6], caffeine_lead_min: 60, src: "3-6 mg/kg about 60 min pre-session"}
+R25: {tier: T5, deload_trigger_e1rm_drop_pct: 2.5, deload_trigger_consecutive_weeks: 2, src: "falls more than 2.5% in two consecutive Monday-Sunday weeks"}
+C2: {tier: T5, rep_shift_top: -2, rep_shift_bottom: -1, rep_floor_main: 3, rep_floor_isolation: 10, src: "lowering the top by 2 and the bottom by 1 | within 3-9 for main and compound, 10-15 for isolation"}
+C2c: {tier: T5, load_increment_compound_pct: 2.5, load_increment_machine_pct: 5, load_increment_range_pct: [2,10], top_reached_sessions_in_row: 2, add_load_rir_within: 1, overshoot_reps: 2, src: "about 2.5% for compounds | about 5% for small machines | allowed range 2-10% | for two sessions in a row | overshoots the top by 2 or more reps"}
+C2c-stall: {tier: T5, min_comparable_sessions: 7, no_new_best_window_sessions: 6, comparable_effort_rir_tolerance: 1, src: "7 or more comparable sessions | no confirmed new best in the last 6 | fewer than 7 comparable sessions in total"}
+C2c-drop: {tier: T5, drop_pct: 10, baseline_window_sessions: 6, min_prior_sessions: 3, src: "beyond 10% vs the previous-6 median | median of the previous 6 comparable sessions | skip with fewer than 3"}
+C2c-noise: {tier: T5, noise_band_pct: 10, src: "within about 10% of the median"}
+C2c-e1rm: {tier: T5, brzycki_numerator: 36, brzycki_offset: 37, max_total_reps: 10, display_kg: 0.5, src: "e1RM = load x 36 / (37 - total reps) | 10 or fewer total reps | display e1RM to 0.5 kg"}
+C2c-reset: {tier: T5, break_reset_days: 14, src: "a gap of 14+ days"}
+C7: {tier: T5, short_sleep_h: 6, high_stress_score: 8, stress_scale_max: 10, src: "less than about 6 hours of sleep | a stress score of 8 or more out of 10"}
+C9b: {tier: T5, early_session_before: "10:00", light_set_max_pct_baseline: 25, src: "a session starting before 10:00 local | at or under 25% of baseline e1RM"}  # tier here = the app thresholds (T5 defaults); the C9b bullet [T3] grades the cited evidence
+C9c: {tier: T4, dormant: true, late_caffeine_cutoff_h: [8.8,13.2], src: "model-estimated cutoffs 8.8 h and 13.2 h"}
+C10: {tier: T5, short_sleep_weeks: 2, short_sleep_share_pct_over: 50, short_sleep_window_days: 14, falling_weeks: 2, falling_metric: "weekly best e1RM", falling_counts_current_week: true, src: "Two or more weeks of short sleep"}
+C14: {tier: T5, deload_set_rule: "half rounded down, minimum 1 per exercise", deload_trigger_e1rm_drop_pct: 2.5, deload_trigger_consecutive_weeks: 2, src: "half the normal sets rounded down, minimum 1 per exercise"}
+C15: {tier: T5, off_weeks_trigger: 2, restart_load_pct: [80,90], src: "After 2+ weeks off | restart near 80-90% of previous loads"}
+C17: {tier: T5, dormant: true, cut_fast_flag_pct_bw_week: 1, bulk_fast_flag_pct_bw_week: 0.5, bulk_target_pct_bw_week: [0.25,0.5], bodyweight_min_entries: 4, src: "if faster than about 1% | faster than about 0.5% per week | toward 0.25-0.5% | used only if there are 4 or more entries"}
+C19: {tier: T5, repeated_pattern_sessions: 3, src: "3 or more sessions showing the same carb-performance link"}

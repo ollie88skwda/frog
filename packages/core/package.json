@@ -15,8 +15,9 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
+    "convex": "1.49.0",
     "vitest": "^4.1.9",
-    "convex": "1.49.0"
+    "yaml": "^2.9.1"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2"
