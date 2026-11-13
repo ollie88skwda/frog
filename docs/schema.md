@@ -70,7 +70,7 @@ machine picker has its uuid stored in `machines.catalog_key`. See AGENTS.md's
 | is_custom | boolean | false = seed row |
 | machine_id | uuid? | FK → machines |
 | joint_actions | jsonb | string[], display labels |
-| muscle_targets | jsonb | `{muscle, tier, role?}[]`; `role` is `"primary" \| "secondary"` — absent role means index 0 is primary, everything after is secondary (back-compat, `roleAt()`). An exercise can declare two primaries. First target still decides library grouping regardless of role. |
+| muscle_targets | jsonb | `{muscle, tier, role?}[]`; `role` is `"primary" \| "secondary"` — absent role means index 0 is primary, everything after is secondary (back-compat, `roleAt()`). An exercise can declare two primaries. First target still decides library grouping regardless of role. Optional redesign §9.7 keys per entry: `weight` (explicit fractional credit), `lengthened` (boolean), `region` (R12b region cell); absent on older rows. |
 | image_url | text? | reference diagram (seed rows only) |
 | image_attribution | text? | image credit |
 | exercise_type | text | measurement type (`domain/exercise-types.ts`); immutable once sets exist |
@@ -87,6 +87,7 @@ machine picker has its uuid stored in `machines.catalog_key`. See AGENTS.md's
 | created_by | text? | publisher's JWT `sub` on community-shared rows (`owner_id null`, `is_custom true`); null on migration seeds — set only by the `publish_exercise` RPC (`20260808062400_publish_exercise_rpc.sql`), never by a plain insert |
 | media_path | text? | storage path in the private `exercise-media` bucket (user-uploaded demo image/video, resized client-side); null = no media |
 | media_type | text? | `image` \| `video`; null when `media_path` is null |
+| stability | text? | explicit stability rank override (redesign §9.7); null/absent = derived from the static equipment map |
 | owner_id | uuid? | null = global seed |
 | created_at / updated_at / deleted_at | bigint ms | |
 
@@ -166,6 +167,7 @@ One exercise performed within one session, ordered.
 | reps | integer? | |
 | rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null. Session logging leaves it null now (it writes the range pair instead); the Strong/Hevy CSV importers are the only remaining writers |
 | rir_min / rir_max | integer? | logged RIR range; the session screen's `Spotlight` component (`session.tsx`) writes it from a segmented 0/1/2/3/4+ pick (`min === max`, or `max` empty for "4+") — see DECISIONS.md 2026-08-12 |
+| planned_rir_min / planned_rir_max | integer? | planned RIR of the seeded set this row was committed from (redesign §9.1/§9.7); absent on older rows |
 | rpe | real? | 1–10 perceived exertion (halves allowed) |
 | rest_sec | integer? | seconds rested before this set (null = first/unknown). On a unilateral pair, only the left row carries it — one commit, one rest stopwatch. |
 | note | text? | |
@@ -213,6 +215,7 @@ Reusable workout templates. Starting one pre-fills a live session.
 | superset_group | integer? | same int = same superset; null = none |
 | rest_sec | integer? | per-exercise rest seconds; null = unset, 0 = off. No longer a timer target (rest is an untargeted stopwatch). The routine builder has no field for it but still writes it — a newly added exercise seeds from `exercises.default_rest_sec` (the exercise editor's "Rest — seconds" field) and an existing value round-trips through every save; also written by the generator. Read by the Trainer's duration estimate |
 | note | text? | persistent template note (re-renders every session) |
+| rep_class | text? | `main` \| `compound` \| `isolation`; rep-range class driving presets (redesign §9.7) |
 | owner_id | text | |
 
 ### routine_sets
