@@ -103,7 +103,7 @@ export default function StatsScreen() {
   const opts: StatsOptions = useMemo(
     () => ({
       now: Date.now(),
-      includeWarmups: recordsData?.includeWarmups ?? true,
+      includeWarmups: recordsData?.includeWarmups ?? false,
       firstWeekday: FIRST_WEEKDAY,
     }),
     [recordsData?.includeWarmups],

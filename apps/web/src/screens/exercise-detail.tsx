@@ -6,7 +6,7 @@ import {
   type Exercise,
   type ExerciseRecords,
   type ExerciseType,
-  epley,
+  e1rmOfSet,
   formatDistance,
   formatWeight,
   hasSetRecords,
@@ -41,6 +41,7 @@ import {
 } from "recharts";
 import { ExerciseThumb, TierBadge } from "@/components/anatomy-ui";
 import { ExerciseEditor } from "@/components/exercise-editor";
+import { LiftHeader } from "@/components/progress/lift-header";
 import { ShareButton } from "@/components/share-sheet";
 import { BackButton } from "@/components/ui/back-button";
 import {
@@ -162,6 +163,13 @@ export default function ExerciseDetailScreen() {
         <MoreMenu exercise={exercise} partial={isPlaceholderData} />
       </div>
 
+      {type === "weight_reps" && (
+        <LiftHeader
+          exerciseId={exercise.id}
+          history={recordsData?.history ?? []}
+        />
+      )}
+
       <div
         role="tablist"
         aria-label="Exercise sections"
@@ -236,7 +244,7 @@ function SummaryTab({
   const metric = metrics.find((m) => m.key === metricKey) ?? metrics[0];
 
   const sessions = data?.history ?? [];
-  const includeWarmups = data?.includeWarmups ?? true;
+  const includeWarmups = data?.includeWarmups ?? false;
   const records = data?.records.byExercise.get(exercise.id);
 
   // Per-session scalar for the active metric, over sessions in the range that
@@ -915,10 +923,10 @@ const M_E1RM: ChartMetric = {
   label: "Best 1RM (est.)",
   kind: "weight",
   compute: (s) =>
-    maxVal(s, (x) =>
-      x.weightKg != null && x.weightKg > 0 && x.reps != null && x.reps >= 1
-        ? epley(x.weightKg, x.reps)
-        : null,
+    // C2c-e1rm: Brzycki with RIR, working sets only; over 10 total reps -> null.
+    maxVal(
+      s.filter((x) => x.setType !== "warmup"),
+      (x) => e1rmOfSet(x).value,
     ),
 };
 const M_SET_VOL: ChartMetric = {
@@ -1115,8 +1123,8 @@ function sparklineSetValue(
   set: RecordsSetInput,
 ): number | null {
   if (hasSetRecords(type)) {
-    if (set.weightKg == null || set.reps == null || set.reps < 1) return null;
-    return epley(set.weightKg, set.reps);
+    if (set.setType === "warmup") return null;
+    return e1rmOfSet(set).value;
   }
   return topRecordValue(type, set);
 }
