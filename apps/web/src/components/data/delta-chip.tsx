@@ -10,8 +10,8 @@ const TONE: Record<DeltaState, string> = {
 };
 
 /**
- * Noise-aware delta (C2c). Inside the noise band it renders neutral with a
- * dash and "within normal swing" in the label; color appears only outside it.
+ * Noise-aware delta (C2c). Inside the noise band it renders neutral (direction
+ * arrow kept) with "within normal swing" in the label; color appears only outside it.
  * `basis` is always in the aria-label ("vs last 12 wk").
  */
 export function DeltaChip({
@@ -33,12 +33,7 @@ export function DeltaChip({
   className?: string;
 }) {
   const state = deltaState(delta, noise, goodDirection);
-  const Icon =
-    state === "noise" || state === "none"
-      ? Minus
-      : delta > 0
-        ? ArrowUp
-        : ArrowDown;
+  const Icon = delta > 0 ? ArrowUp : delta < 0 ? ArrowDown : Minus;
   const abs = Math.abs(delta);
   const text = Number.isFinite(delta)
     ? (format?.(abs) ?? `${Math.round(abs * 10) / 10}`)
@@ -47,7 +42,11 @@ export function DeltaChip({
   return (
     <span
       role="img"
-      aria-label={`${delta > 0 ? "up" : delta < 0 ? "down" : "no change"} ${text}${unit ?? ""} ${basis}${swing}`}
+      aria-label={
+        state === "none"
+          ? `no data ${basis}`
+          : `${delta > 0 ? "up" : delta < 0 ? "down" : "no change"} ${text}${unit ?? ""} ${basis}${swing}`
+      }
       className={cn(
         "num inline-flex h-5 items-center gap-0.5 rounded-xs px-1 text-2xs font-semibold whitespace-nowrap",
         TONE[state],

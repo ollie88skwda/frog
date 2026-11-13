@@ -20,7 +20,7 @@ export function deltaState(
   goodDirection: "up" | "down" | "none" = "up",
 ): DeltaState {
   if (!Number.isFinite(delta)) return "none";
-  if (Math.abs(delta) < noise) return "noise";
+  if (delta === 0 || Math.abs(delta) < noise) return "noise";
   if (goodDirection === "none") return "noise";
   const up = delta > 0;
   return up === (goodDirection === "up") ? "good" : "attn";
@@ -124,6 +124,8 @@ export function sparkGeometry(
   const y = (v: number) =>
     height - pad - ((v - lo) * (height - 2 * pad)) / (hi - lo);
   const r = (v: number) => Math.round(v * 10) / 10;
+  const seg = (c: string[]) =>
+    `M${c.length === 1 ? `${c[0]}L${c[0]}` : c.join("L")}`;
   const segments: string[] = [];
   const bridges: string[] = [];
   let cur: string[] = [];
@@ -136,16 +138,16 @@ export function sparkGeometry(
       // single gap: close nothing, bridge dashed from previous point
       const prev = cur[cur.length - 1];
       bridges.push(`M${prev}L${pt}`);
-      segments.push(`M${cur.join("L")}`);
+      segments.push(seg(cur));
       cur = [pt];
     } else if (cur.length && i - lastIdx > 2) {
-      segments.push(`M${cur.join("L")}`);
+      segments.push(seg(cur));
       cur = [pt];
     } else cur.push(pt);
     lastIdx = i;
     last = { x: r(x(i)), y: r(y(p)) };
   });
-  if (cur.length) segments.push(`M${cur.join("L")}`);
+  if (cur.length) segments.push(seg(cur));
   return {
     segments,
     bridges,

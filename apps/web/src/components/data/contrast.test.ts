@@ -9,13 +9,9 @@ const css = readFileSync(
   "utf8",
 );
 
-function block(mode: "day" | "night") {
-  const m = css.match(
-    new RegExp(
-      `\\[data-theme="green"\\]\\[data-mode="${mode}"\\]\\s*\\{([^}]*)\\}`,
-    ),
-  );
-  if (!m) throw new Error(`no ${mode} block`);
+function vars(selector: string) {
+  const m = css.match(new RegExp(`${selector}\\s*\\{([^}]*)\\}`));
+  if (!m) throw new Error(`no ${selector} block`);
   return Object.fromEntries(
     [...m[1].matchAll(/(--[\w-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)].map((x) => [
       x[1],
@@ -35,6 +31,10 @@ function ratio(a: string, b: string) {
   const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
+
+const block = (mode: "day" | "night") =>
+  vars(`\\[data-theme="green"\\]\\[data-mode="${mode}"\\]`);
+const fern = vars(":root");
 
 describe.each(["day", "night"] as const)("%s contrast", (mode) => {
   const t = block(mode);
@@ -58,9 +58,11 @@ describe.each(["day", "night"] as const)("%s contrast", (mode) => {
       ratio(t["--color-accent-text"], t["--color-accent-bg-subtle"]),
     ).toBeGreaterThanOrEqual(4.5);
   });
-});
-
-it("Fern 8/9 are never data marks: day Fern 9 fails 3:1 on surface", () => {
-  expect(ratio("#afcfab", "#fffefb")).toBeLessThan(3);
-  expect(ratio("#79a274", "#fffefb")).toBeLessThan(3.5);
+  it("--chart-mark is never Fern 8/9", () => {
+    expect(fern["--green-day-8"]).toBeDefined();
+    expect(fern["--green-day-9"]).toBeDefined();
+    expect([fern["--green-day-8"], fern["--green-day-9"]]).not.toContain(
+      t["--chart-mark"],
+    );
+  });
 });

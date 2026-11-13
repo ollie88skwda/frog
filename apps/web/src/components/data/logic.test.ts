@@ -12,6 +12,10 @@ describe("deltaState (C2c noise band)", () => {
     expect(deltaState(0.04, 0.1)).toBe("noise");
     expect(deltaState(-0.099, 0.1)).toBe("noise");
   });
+  it("no movement is never colored, even with no noise band", () => {
+    expect(deltaState(0, 0)).toBe("noise");
+    expect(deltaState(0, 0, "down")).toBe("noise");
+  });
   it("outside the band follows the good direction; bad is amber not red", () => {
     expect(deltaState(0.12, 0.1)).toBe("good");
     expect(deltaState(-0.12, 0.1)).toBe("attn");
@@ -67,6 +71,12 @@ describe("sparkGeometry", () => {
     const g = sparkGeometry([1, 2, null, 3, null, null, 4], 64, 24);
     expect(g.bridges).toHaveLength(1);
     expect(g.segments).toHaveLength(3);
+  });
+  it("draws isolated points (a moveto-only subpath renders nothing in SVG)", () => {
+    const g = sparkGeometry([100, null, null, 104, null, null, 108], 64, 24);
+    expect(g.segments).toHaveLength(3);
+    for (const d of g.segments) expect(d).toMatch(/^M[^L]+L/);
+    expect(sparkGeometry([5], 64, 24).segments[0]).toMatch(/^M[^L]+L/);
   });
   it("band rect sits inside the box", () => {
     const g = sparkGeometry([10, 12, 11], 64, 24, [10, 12]);
