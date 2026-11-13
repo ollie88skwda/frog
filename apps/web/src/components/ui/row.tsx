@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-type RowVariants = { interactive?: boolean };
+type RowVariants = { interactive?: boolean; dense?: boolean };
 
 /**
  * The app's one fixed-height list-row template (history's original shape):
@@ -14,10 +14,14 @@ type RowVariants = { interactive?: boolean };
  */
 export function rowClass({
   interactive = true,
+  dense = false,
   className,
 }: RowVariants & { className?: string } = {}) {
   return cn(
-    "flex h-11 items-center justify-between gap-2 px-4 md:h-8",
+    "flex items-center justify-between gap-2 px-4",
+    // dense = the 48px data row (sparkline + number + delta); same height on
+    // touch and desktop so inline marks never get squeezed.
+    dense ? "h-12" : "h-11 md:h-8",
     interactive &&
       "transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover",
     className,
@@ -26,8 +30,11 @@ export function rowClass({
 
 export function Row({
   interactive,
+  dense,
   className,
   ...props
 }: HTMLAttributes<HTMLDivElement> & RowVariants) {
-  return <div className={rowClass({ interactive, className })} {...props} />;
+  return (
+    <div className={rowClass({ interactive, dense, className })} {...props} />
+  );
 }

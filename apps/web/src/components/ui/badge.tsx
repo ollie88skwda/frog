@@ -6,7 +6,7 @@ type Tone = "neutral" | "accent" | "warn" | "danger";
 const TONE: Record<Tone, string> = {
   neutral: "bg-hover text-ink",
   accent: "bg-accent-soft text-accent-ink",
-  warn: "bg-secondary text-ink",
+  warn: "bg-attn-soft text-attn",
   danger: "bg-danger-soft text-danger",
 };
 
