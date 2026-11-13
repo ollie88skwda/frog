@@ -77,17 +77,21 @@ export function parseTargetSpec(
       });
     }
   }
-  return orderLikeSeed([...out.values()], seedTargets);
+  const idx = new Map(seedTargets.map((s, i) => [s.muscle, i]));
+  return primariesFirst(
+    [...out.values()].sort(
+      (a, b) => (idx.get(a.muscle) ?? 99) - (idx.get(b.muscle) ?? 99),
+    ),
+  );
 }
 
-/** Keep the seed's muscle order: library grouping keys off the first target. */
-function orderLikeSeed(
-  targets: ClassifiedTarget[],
-  seed: { muscle: string }[],
-): ClassifiedTarget[] {
-  const idx = new Map(seed.map((s, i) => [s.muscle, i]));
+/**
+ * Primaries first, otherwise seed order (stable): library grouping keys off
+ * muscleTargets[0], which must be a primary (anatomy.groupByPrimaryMuscle).
+ */
+function primariesFirst(targets: ClassifiedTarget[]): ClassifiedTarget[] {
   return [...targets].sort(
-    (a, b) => (idx.get(a.muscle) ?? 99) - (idx.get(b.muscle) ?? 99),
+    (a, b) => Number(b.role === "primary") - Number(a.role === "primary"),
   );
 }
 
@@ -338,22 +342,24 @@ export function fromModelItem(ex: SeedExercise, raw: unknown): Classification {
     : [];
   const seedMuscles = ex.muscleTargets ?? [];
   const pm = typeof r.primaryMuscle === "string" ? r.primaryMuscle : null;
-  const muscleTargets = seedMuscles.map((t, i) => {
-    const role =
-      pm && seedMuscles.some((s) => s.muscle === pm)
-        ? t.muscle === pm
-          ? "primary"
-          : "secondary"
-        : i === 0
-          ? "primary"
-          : "secondary";
-    return {
-      muscle: t.muscle,
-      tier: t.tier,
-      role,
-      weight: defaultCredit(role, t.tier),
-    } as ClassifiedTarget;
-  });
+  const muscleTargets = primariesFirst(
+    seedMuscles.map((t, i) => {
+      const role =
+        pm && seedMuscles.some((s) => s.muscle === pm)
+          ? t.muscle === pm
+            ? "primary"
+            : "secondary"
+          : i === 0
+            ? "primary"
+            : "secondary";
+      return {
+        muscle: t.muscle,
+        tier: t.tier,
+        role,
+        weight: defaultCredit(role, t.tier),
+      } as ClassifiedTarget;
+    }),
+  );
   return {
     name: ex.name,
     source: "model",

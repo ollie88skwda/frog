@@ -4,20 +4,18 @@
 // with --dry-run, deterministic mock mode (curated Tier 1 + name/muscle rules).
 //
 //   bun scripts/classify-exercises/classify.ts [--dry-run]
-import { readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
+import { loadBaseExercises } from "./base-seed";
 import {
   callModel,
   classifyAll,
   parseModelBatch,
   readModelConfig,
 } from "./classify-lib";
-import { CLASSIFICATION_PATH, SEED_PATH } from "./paths";
-import type { SeedExercise } from "./types";
+import { CLASSIFICATION_PATH } from "./paths";
 
 async function main() {
-  const seed = (
-    JSON.parse(readFileSync(SEED_PATH, "utf8")) as { exercises: SeedExercise[] }
-  ).exercises;
+  const seed = await loadBaseExercises();
   const cfg = process.argv.includes("--dry-run") ? null : readModelConfig();
   const file = await classifyAll(seed, {
     model: cfg

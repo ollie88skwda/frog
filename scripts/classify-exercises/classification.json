@@ -609,16 +609,16 @@
           "weight": 1
         },
         {
-          "muscle": "biceps",
-          "tier": null,
-          "role": "secondary",
-          "weight": 0.5
-        },
-        {
           "muscle": "lats",
           "tier": null,
           "role": "primary",
           "weight": 1
+        },
+        {
+          "muscle": "biceps",
+          "tier": null,
+          "role": "secondary",
+          "weight": 0.5
         },
         {
           "muscle": "front-delts",
@@ -652,16 +652,16 @@
           "weight": 1
         },
         {
-          "muscle": "biceps",
-          "tier": null,
-          "role": "secondary",
-          "weight": 0.5
-        },
-        {
           "muscle": "lats",
           "tier": null,
           "role": "primary",
           "weight": 1
+        },
+        {
+          "muscle": "biceps",
+          "tier": null,
+          "role": "secondary",
+          "weight": 0.5
         },
         {
           "muscle": "front-delts",
@@ -702,16 +702,16 @@
       "jointActions": ["shoulder-abduction"],
       "muscleTargets": [
         {
-          "muscle": "front-delts",
-          "tier": null,
-          "role": "secondary",
-          "weight": 0
-        },
-        {
           "muscle": "side-delts",
           "tier": null,
           "role": "primary",
           "weight": 1
+        },
+        {
+          "muscle": "front-delts",
+          "tier": null,
+          "role": "secondary",
+          "weight": 0
         }
       ]
     },
@@ -1356,16 +1356,16 @@
           "weight": 1
         },
         {
-          "muscle": "biceps",
-          "tier": null,
-          "role": "secondary",
-          "weight": 0.5
-        },
-        {
           "muscle": "lats",
           "tier": null,
           "role": "primary",
           "weight": 1
+        },
+        {
+          "muscle": "biceps",
+          "tier": null,
+          "role": "secondary",
+          "weight": 0.5
         },
         {
           "muscle": "front-delts",
@@ -1404,16 +1404,16 @@
       "jointActions": ["shoulder-horizontal-abduction"],
       "muscleTargets": [
         {
-          "muscle": "front-delts",
-          "tier": null,
-          "role": "secondary",
-          "weight": 0
-        },
-        {
           "muscle": "rear-delts",
           "tier": null,
           "role": "primary",
           "weight": 1
+        },
+        {
+          "muscle": "front-delts",
+          "tier": null,
+          "role": "secondary",
+          "weight": 0
         }
       ]
     },
@@ -1648,16 +1648,16 @@
           "weight": 1
         },
         {
-          "muscle": "biceps",
-          "tier": null,
-          "role": "secondary",
-          "weight": 0.5
-        },
-        {
           "muscle": "lats",
           "tier": null,
           "role": "primary",
           "weight": 1
+        },
+        {
+          "muscle": "biceps",
+          "tier": null,
+          "role": "secondary",
+          "weight": 0.5
         },
         {
           "muscle": "rear-delts",

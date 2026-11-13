@@ -8,6 +8,7 @@ import {
   roleAt,
 } from "../../packages/core/src/domain/anatomy";
 import { MOVEMENT_PATTERNS } from "../../packages/core/src/domain/exercise-types";
+import { loadBaseExercises } from "./base-seed";
 import {
   applyClassification,
   classifyAll,
@@ -16,14 +17,11 @@ import {
   parseTargetSpec,
 } from "./classify-lib";
 import { CURATED } from "./curated";
-import { SEED_PATH } from "./paths";
-import type { ClassificationFile, SeedExercise } from "./types";
+import { CLASSIFICATION_PATH, SEED_PATH } from "./paths";
+import type { ClassificationFile } from "./types";
 
-const seed = (
-  JSON.parse(readFileSync(SEED_PATH, "utf8")) as {
-    exercises: (SeedExercise & Record<string, unknown>)[];
-  }
-).exercises;
+// Pre-merge rows (frozen-SQL replay), the classifier's real input.
+const seed = await loadBaseExercises();
 const byName = new Map(seed.map((e) => [e.name, e]));
 
 describe("curated table", () => {
@@ -45,7 +43,7 @@ describe("curated table", () => {
 describe("merged seed", () => {
   const merged = seed.map((e) => ({ ...e }));
   const file: ClassificationFile = JSON.parse(
-    readFileSync(new URL("./classification.json", import.meta.url), "utf8"),
+    readFileSync(CLASSIFICATION_PATH, "utf8"),
   );
   for (const r of merged) applyClassification(r, file.byId[r.id]);
 
@@ -73,10 +71,37 @@ describe("merged seed", () => {
       }
     }
   });
-  test("muscle order is preserved (library grouping keys off the first target)", () => {
+  test("first target is a primary (library grouping keys off index 0)", () => {
     for (const r of merged) {
-      const o = byName.get(r.name)!;
-      expect(r.muscleTargets?.[0]?.muscle).toBe(o.muscleTargets?.[0]?.muscle);
+      if (!r.muscleTargets?.length) continue;
+      expect(roleAt(r.muscleTargets, 0)).toBe("primary");
+    }
+  });
+  test("merge never drops a seed muscle", () => {
+    for (const r of merged) {
+      const got = new Set(r.muscleTargets?.map((t) => t.muscle));
+      for (const t of byName.get(r.name)!.muscleTargets ?? [])
+        expect(got.has(t.muscle)).toBe(true);
+    }
+  });
+  test("committed global-seed.json matches merging classification.json over the replayed rows", () => {
+    const committed = new Map(
+      (
+        JSON.parse(readFileSync(SEED_PATH, "utf8")) as {
+          exercises: Record<string, unknown>[];
+        }
+      ).exercises.map((e) => [e.id, e]),
+    );
+    expect(committed.size).toBe(merged.length);
+    for (const r of merged) {
+      const c = committed.get(r.id)!;
+      for (const k of [
+        "mechanic",
+        "movementPattern",
+        "jointActions",
+        "muscleTargets",
+      ])
+        expect([r.id, k, c[k]]).toEqual([r.id, k, r[k]]);
     }
   });
 
@@ -144,5 +169,32 @@ describe("rules + model fallbacks", () => {
     expect(c.mechanic).toBe("isolation");
     expect(c.jointActions).toEqual(["elbow-flexion"]);
     expect(c.muscleTargets[0].role).toBe("primary");
+  });
+  test("a model primary that is not the first seed muscle moves to index 0", () => {
+    const ex = {
+      id: "x",
+      name: "X",
+      equipment: null,
+      exerciseType: null,
+      laterality: null,
+      muscleTargets: [
+        { muscle: "front-delts", tier: null },
+        { muscle: "side-delts", tier: null },
+      ],
+    };
+    const c = fromModelItem(ex, { primaryMuscle: "side-delts" });
+    expect(c.muscleTargets.map((t) => [t.muscle, t.role])).toEqual([
+      ["side-delts", "primary"],
+      ["front-delts", "secondary"],
+    ]);
+  });
+  test("a curated primary missing from the seed goes first", () => {
+    const t = parseTargetSpec("side-delts 1 p", [
+      { muscle: "front-delts", tier: null },
+    ]);
+    expect(t.map((x) => [x.muscle, x.role, x.weight])).toEqual([
+      ["side-delts", "primary", 1],
+      ["front-delts", "secondary", 0],
+    ]);
   });
 });
