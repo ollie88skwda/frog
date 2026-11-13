@@ -412,8 +412,9 @@ const snapshotOverride = v.object({
 /**
  * Live session from a routine template (blocks copy the prescription) and a
  * target snapshot per block (§9.1): routine working-set targets, overridden
- * field by field by the caller's coach `prescriptions`. Idempotent on `id`
- * like every start (insertRow upserts), so a retry rewrites the same rows.
+ * field by field by the caller's coach `prescriptions`. Only the session row
+ * is keyed on `id`; blocks get fresh ids, so replaying the same `id` adds a
+ * second set of blocks (callers mint a new session id per start).
  */
 export const startFromRoutine = mutation({
   args: {

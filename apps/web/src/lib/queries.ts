@@ -993,8 +993,9 @@ export function useRecordCoachEvent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: NewCoachEventInput & { id?: string }) => {
+      input.id ??= newId();
       const { id, ...event } = input;
-      return repo.recordCoachEvent(event, id ?? newId());
+      return repo.recordCoachEvent(event, id);
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ["coach-events"] }),
   });

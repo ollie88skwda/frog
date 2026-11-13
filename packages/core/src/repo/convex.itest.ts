@@ -1178,6 +1178,16 @@ describe("ConvexRepo (integration, local convex)", () => {
     await expect(
       repoA.recordCoachEvent({ ...input, state: "dismissed" }, eventId),
     ).rejects.toThrow();
+    await expect(
+      repoA.recordCoachEvent({ ...input, payload: { loadKg: 105 } }, eventId),
+    ).rejects.toThrow();
+    await expect(
+      repoA.recordCoachEvent({ ...input, scope: "rule" }, eventId),
+    ).rejects.toThrow();
+    const after = await repoA.listCoachEvents({ ruleId: "C2c-progress" });
+    expect(after.find((e) => e.id === eventId)?.payload).toEqual({
+      loadKg: 102.5,
+    });
     // Another user cannot see it, or take its id.
     expect(await repoB.listCoachEvents({ ruleId: "C2c-progress" })).toEqual([]);
     await expect(repoB.recordCoachEvent(input, eventId)).rejects.toThrow();

@@ -20,6 +20,19 @@ const scope = v.union(
   v.literal("rule"),
 );
 
+/** Key-order-independent JSON, so a stored payload compares to a retried one. */
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, v) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(
+          Object.keys(v)
+            .sort()
+            .map((k) => [k, (v as Record<string, unknown>)[k]]),
+        )
+      : v,
+  );
+}
+
 export const record = mutation({
   args: {
     id: v.string(),
@@ -37,22 +50,22 @@ export const record = mutation({
       fail("coach_events: suggestionId and ruleId are required");
     }
     // Append-only: a retry of the same id with the SAME content is fine (the
-    // upsert is a no-op rewrite); an existing id may not change state/rule.
+    // upsert is a no-op rewrite); an existing id may not change any field.
     const prior = await owned(ctx, "coach_events", args.id, me);
+    const payload = args.payload ?? null;
     if (
       prior &&
       (prior.ruleId !== args.ruleId ||
         prior.state !== args.state ||
-        prior.suggestionId !== args.suggestionId)
+        prior.suggestionId !== args.suggestionId ||
+        prior.exerciseId !== args.exerciseId ||
+        prior.sessionId !== args.sessionId ||
+        prior.scope !== args.scope ||
+        canonical(prior.payload ?? null) !== canonical(payload))
     ) {
       fail("coach_events is append-only: id already used by a different event");
     }
-    return out(
-      await insertRow(ctx, "coach_events", me, {
-        ...args,
-        payload: args.payload ?? null,
-      }),
-    );
+    return out(await insertRow(ctx, "coach_events", me, { ...args, payload }));
   },
 });
 
