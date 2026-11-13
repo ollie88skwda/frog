@@ -14,7 +14,6 @@ import {
   type LiftStatus,
   liftStatus,
   type MuscleByExercise,
-  median,
   type RecordsSessionInput,
   type RecordsSetInput,
   rirMidpoint,
@@ -149,14 +148,12 @@ export function verdictWord(v: LiftVerdict): string {
   return STATE_WORD[v.status.state];
 }
 
-/** Last-6 vs the median band for the BandChart (C2c-noise 10%). */
+/** C2c-noise 10% band around the status baseline median (same window as deltaPct). */
 export function noiseBand(
-  points: ComparableSession[],
+  baselineMedian: number | null,
 ): { lo: number; hi: number } | null {
-  if (points.length < 3) return null;
-  const m = median(points.slice(-7, -1).map((p) => p.e1rm));
-  if (m == null) return null;
-  return { lo: m * 0.9, hi: m * 1.1 };
+  if (baselineMedian == null) return null;
+  return { lo: baselineMedian * 0.9, hi: baselineMedian * 1.1 };
 }
 
 /** Self-percentile of the latest top set against the last 52 weeks; needs 20 sessions. */
@@ -307,7 +304,7 @@ export function rirCoverage(sessions: RecordsSessionInput[]): {
   return { coverage: n ? logged / n : null, n };
 }
 
-/** Per lift: RIR of the last two working sets of the latest session vs the one before. */
+/** Per lift: the last logged RIR of each session, oldest to newest, for up to `take` sessions. */
 export function lastRirs(
   history: RecordsSessionInput[],
   exerciseId: string,
@@ -371,6 +368,7 @@ export function summarizeSessions(
         const m = rirMidpoint(x);
         if (m != null) mids.push(m);
       }
+      if (b.exerciseType !== "weight_reps") continue;
       const top = sessionE1rm(work.map((x) => e1rmOfSet(x)));
       if (top == null) continue;
       const before = prev.get(b.exerciseId);

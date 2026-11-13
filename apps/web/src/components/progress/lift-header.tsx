@@ -56,13 +56,13 @@ export function LiftHeader({
     [history, exerciseId],
   );
   const verdict = liftVerdict(series);
-  const band = noiseBand(series.points);
+  const st = verdict.kind === "status" ? verdict.status : null;
+  const band = noiseBand(st?.baselineMedian ?? null);
   const pct = selfPercentile(series.points, now);
   const last = series.points[series.points.length - 1];
   const best = series.points.reduce((m, p) => Math.max(m, p.e1rm), 0);
   const data = series.points.map((p) => ({ x: p.at, y: displayE1rm(p.e1rm) }));
   const w = (kg: number) => toDisplayWeight(kg, unit);
-  const st = verdict.kind === "status" ? verdict.status : null;
 
   return (
     <div className="mt-4" data-testid="lift-header">
@@ -90,7 +90,7 @@ export function LiftHeader({
           value={<span className="text-lg">{verdictWord(verdict)}</span>}
           basis={
             verdict.kind === "status" && verdict.rough
-              ? `rough: ${series.points.length} of 7 sessions`
+              ? `rough: ${verdict.status.n} of 7 sessions`
               : verdict.kind === "status"
                 ? "7+ comparable sessions · beta"
                 : verdict.kind === "not_estimable"

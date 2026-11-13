@@ -236,6 +236,11 @@ export default function HistoryDetailScreen() {
   const session = sessionQ.data;
   const blocks = blocksQ.data ?? [];
   const { data: metrics = [] } = useMetrics();
+  const { data: exercises = [] } = useExercises();
+  const exerciseTypeById = useMemo(
+    () => new Map(exercises.map((e) => [e.id, e.exerciseType])),
+    [exercises],
+  );
   const updateStartedAt = useUpdateSessionStartedAt(id);
   const createRoutine = useCreateRoutine();
 
@@ -573,7 +578,10 @@ export default function HistoryDetailScreen() {
                 <span className="num text-sm">{set.reps ?? "—"}</span>
                 <span className="num text-2xs text-faint">
                   {effortReadout(set)}
-                  {set.setType !== "warmup" && e1rmOfSet(set).value != null
+                  {set.setType !== "warmup" &&
+                  (exerciseTypeById.get(block.exerciseId) ?? "weight_reps") ===
+                    "weight_reps" &&
+                  e1rmOfSet(set).value != null
                     ? ` · e1RM ${toDisplayWeight(Math.round((e1rmOfSet(set).value as number) * 2) / 2, unit)}`
                     : ""}
                 </span>

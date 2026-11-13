@@ -53,11 +53,15 @@ function Block({ children }: { children: React.ReactNode }) {
 }
 
 /** Lifts ordered by how often they were logged in the scope (the pinned main lifts). */
-function mainLifts(d: ProgressData, scope: ProgressScope, now: number) {
+function mainLifts(
+  history: ProgressData["history"],
+  scope: ProgressScope,
+  now: number,
+) {
   const counts = new Map<string, number>();
-  for (const s of scopeSessions(d.history, scope, now))
+  for (const s of scopeSessions(history, scope, now))
     for (const b of s.exercises)
-      if (b.exerciseType === "weight_reps" || b.exerciseType.includes("weight"))
+      if (b.exerciseType === "weight_reps")
         if (b.sets.some((x) => x.setType !== "warmup"))
           counts.set(b.exerciseId, (counts.get(b.exerciseId) ?? 0) + 1);
   return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([id]) => id);
@@ -87,7 +91,7 @@ export function OverviewTiles({
   const sessions7 = sessionCount(d.history, now - 7 * DAY, now + 1);
   const sessionsPrev = sessionCount(d.history, now - 14 * DAY, now - 7 * DAY);
   const lifts = useMemo(() => {
-    const ids = mainLifts(d, "all", now).slice(0, 8);
+    const ids = mainLifts(d.history, "all", now).slice(0, 8);
     let progressing = 0;
     let judged = 0;
     for (const id of ids) {
@@ -98,7 +102,7 @@ export function OverviewTiles({
       }
     }
     return { progressing, judged, total: ids.length };
-  }, [d, now]);
+  }, [d.history, now]);
   const cov = rirCoverage(scopeSessions(d.history, scope, now));
   const bw = bodyweightEntries(d.measurements);
   const avg = bodyweightAverage7d(bw, now);
@@ -207,11 +211,17 @@ export function StrengthSection({
 }) {
   const navigate = useNavigate();
   const { unit } = useUnit();
-  const ids = useMemo(
-    () => mainLifts(d, scope, now).slice(0, 12),
-    [d, scope, now],
+  const lifts = useMemo(
+    () =>
+      mainLifts(d.history, scope, now)
+        .slice(0, 12)
+        .map((id) => {
+          const s = liftSeries(d.history, id);
+          return { id, s, v: liftVerdict(s) };
+        }),
+    [d.history, scope, now],
   );
-  if (!ids.length)
+  if (!lifts.length)
     return (
       <EmptyState
         title="No lifts in this scope"
@@ -222,9 +232,7 @@ export function StrengthSection({
   return (
     <>
       <Block>
-        {ids.map((id) => {
-          const s = liftSeries(d.history, id);
-          const v = liftVerdict(s);
+        {lifts.map(({ id, s, v }) => {
           const pts = s.points.filter((p) => p.at >= minAt).map((p) => p.e1rm);
           const name = d.names.get(id) ?? "Exercise";
           if (v.kind !== "status")
@@ -245,7 +253,7 @@ export function StrengthSection({
             <SparkRow
               key={id}
               title={name}
-              sub={`${verdictWord(v)} · n=${st.n}${v.rough ? " · rough" : ""}`}
+              sub={v.rough ? verdictWord(v) : `${verdictWord(v)} · n=${st.n}`}
               points={pts}
               confidence={v.rough ? "low" : "ok"}
               value={
@@ -385,7 +393,10 @@ export function EffortSection({
   now: number;
 }) {
   const cov = rirCoverage(scopeSessions(d.history, scope, now));
-  const ids = mainLifts(d, scope, now).slice(0, 10);
+  const ids = useMemo(
+    () => mainLifts(d.history, scope, now).slice(0, 10),
+    [d.history, scope, now],
+  );
   return (
     <>
       <div className="px-4 pb-2 text-xs text-soft">
@@ -578,9 +589,10 @@ export function LabSection() {
           {open && (
             <div className="flex flex-col gap-2 text-sm">
               <p>
-                High-day median-split mean {Math.round(open.highMean * 10) / 10}{" "}
-                vs low {Math.round(open.lowMean * 10) / 10} kg ({unit} display
-                in lists).
+                High-day median-split mean{" "}
+                {toDisplayWeight(Math.round(open.highMean * 2) / 2, unit)} vs
+                low {toDisplayWeight(Math.round(open.lowMean * 2) / 2, unit)}{" "}
+                {unitLabel(unit)}.
               </p>
               <p className="num text-xs text-soft">
                 n = {open.n.high} / {open.n.low} · effect size d=

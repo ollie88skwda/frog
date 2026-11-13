@@ -4,7 +4,7 @@ import {
   bodyweightEntries,
   liftSeries,
   liftVerdict,
-  NOT_ESTIMABLE_NOTE,
+  noiseBand,
   scopeSessions,
   summarizeSessions,
   verdictWord,
@@ -65,7 +65,26 @@ describe("liftSeries / liftVerdict (C2c-e1rm)", () => {
     const v = liftVerdict(s);
     expect(v.kind).toBe("not_estimable");
     expect(verdictWord(v)).toBe("No estimate");
-    expect(NOT_ESTIMABLE_NOTE).toMatch(/10 or fewer total reps/);
+    expect(v.kind === "not_estimable" && v.note).toBe(
+      "strength estimate needs 10 or fewer total reps",
+    );
+  });
+  it("bases the noise band on the post-break baseline, not older sessions", () => {
+    const before = [1, 2, 3, 4, 5, 6].map((i) =>
+      sess(`o${i}`, 80 - i, "sq", [set(200, 5, 2)]),
+    );
+    const after = [1, 2, 3, 4].map((i) =>
+      sess(`n${i}`, 10 - i, "sq", [set(100, 5, 2)]),
+    );
+    const v = liftVerdict(liftSeries([...before, ...after], "sq"));
+    expect(v.kind).toBe("status");
+    if (v.kind !== "status") return;
+    expect(v.status.n).toBe(4);
+    expect(verdictWord(v)).toBe("Rough: 4 of 7");
+    const band = noiseBand(v.status.baselineMedian);
+    // 100 kg x5 @2 RIR -> Brzycki 100*36/(37-7) = 120
+    expect(band?.lo).toBeCloseTo(108, 1);
+    expect(band?.hi).toBeCloseTo(132, 1);
   });
   it("reads as rough before 7 comparable sessions", () => {
     const h = [1, 2, 3].map((i) =>
@@ -123,6 +142,20 @@ describe("scope + summaries + body", () => {
     expect(m.get("b")?.hardSets).toBe(1);
     expect(m.get("b")?.headline?.deltaPct).toBeGreaterThan(0);
     expect(m.get("a")?.headline?.deltaPct).toBeNull();
+  });
+  it("never headlines an assisted lift with an e1RM", () => {
+    const assisted: RecordsSessionInput = {
+      sessionId: "c",
+      startedAt: NOW - DAY,
+      exercises: [
+        {
+          exerciseId: "pullup",
+          exerciseType: "assisted_bodyweight",
+          sets: [set(30, 8, 2), set(30, 8, 2)],
+        },
+      ],
+    };
+    expect(summarizeSessions([assisted]).get("c")?.headline).toBeNull();
   });
   it("bodyweight entries sorted, nulls dropped", () => {
     const e = bodyweightEntries([
