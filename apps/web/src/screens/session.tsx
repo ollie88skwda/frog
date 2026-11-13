@@ -20,6 +20,7 @@ import {
   checkSetForPR,
   computeRecords,
   countSets,
+  creditsFor,
   type Exercise,
   type ExercisePatch,
   type ExercisePref,
@@ -3144,8 +3145,9 @@ function ExerciseSpotlight({
       .map((g) => g[0].rirMin ?? g[0].rir ?? null);
     return driftNudge(rirs, plan);
   })();
-  const directThis = (exercise?.muscleTargets ?? [])
-    .map((t) => sessionMuscles[t.muscle])
+  const directThis = creditsFor(exercise?.muscleTargets)
+    .filter((c) => c.kind === "direct")
+    .map((c) => sessionMuscles[c.muscle])
     .find((m) => m != null && sessionDirectCheck(m.direct) === "high");
   const totalMarks = Math.max(committedGroups.length + 1, seedSets.length + 1);
   const marks: Mark[] = [];
