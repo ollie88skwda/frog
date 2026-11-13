@@ -70,7 +70,7 @@ export function ProgramMeterRail({
           <WeeklyMeter validation={validation} />
           <SessionStrip sessions={validation.perSession} />
           <FindingsList
-            findings={validation.findings.filter((f) => !f.fix)}
+            findings={validation.findings}
             onWhy={(f) =>
               setWhy({
                 rule: f.rule,
@@ -78,7 +78,6 @@ export function ProgramMeterRail({
                 saw: f.message,
               })
             }
-            onFix={() => {}}
           />
         </div>
       )}

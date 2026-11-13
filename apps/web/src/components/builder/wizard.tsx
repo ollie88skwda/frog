@@ -5,7 +5,7 @@ import {
   type EquipmentKind,
 } from "@frog/core";
 import { Check } from "@phosphor-icons/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import { ToggleChip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
 import {
@@ -94,8 +94,14 @@ export function WizardStep({
   answers: BuilderAnswers;
   onChange: (next: BuilderAnswers) => void;
 }) {
+  const [customDays, setCustomDays] = useState(
+    () => scheduleOptionId(answers.schedule) === "custom",
+  );
+  const [customEquip, setCustomEquip] = useState(
+    () => equipmentPresetId(answers.equipment) === "custom",
+  );
   if (step === 0) {
-    const sel = scheduleOptionId(answers.schedule);
+    const sel = customDays ? "custom" : scheduleOptionId(answers.schedule);
     return (
       <Question
         title="How do you want to space training?"
@@ -108,7 +114,17 @@ export function WizardStep({
             label={o.label}
             hint={o.hint}
             testId={`wizard-schedule-${o.id}`}
-            onClick={() => onChange({ ...answers, schedule: o.schedule })}
+            onClick={() => {
+              const custom = o.id === "custom";
+              setCustomDays(custom);
+              onChange({
+                ...answers,
+                schedule:
+                  custom && answers.schedule.kind === "weekdays"
+                    ? answers.schedule
+                    : o.schedule,
+              });
+            }}
           />
         ))}
         {sel === "custom" && (
@@ -180,7 +196,7 @@ export function WizardStep({
     );
   }
   if (step === 3) {
-    const sel = equipmentPresetId(answers.equipment);
+    const sel = customEquip ? "custom" : equipmentPresetId(answers.equipment);
     return (
       <Question title="What do you have?">
         {EQUIPMENT_PRESETS.map((p) => (
@@ -190,21 +206,25 @@ export function WizardStep({
             label={p.label}
             hint={p.hint}
             testId={`wizard-equip-${p.id}`}
-            onClick={() => onChange({ ...answers, equipment: p.equipment })}
+            onClick={() => {
+              setCustomEquip(false);
+              onChange({ ...answers, equipment: p.equipment });
+            }}
           />
         ))}
         <Option
           selected={sel === "custom"}
           label="Custom"
           hint="Pick the kinds you use"
-          onClick={() =>
+          onClick={() => {
+            setCustomEquip(true);
             onChange({
               ...answers,
               equipment: answers.equipment.length
                 ? answers.equipment
                 : (["dumbbell"] as EquipmentKind[]),
-            })
-          }
+            });
+          }}
         />
         {sel === "custom" && (
           <fieldset className="min-w-0 border-0 p-0 flex flex-wrap gap-1 pt-1">

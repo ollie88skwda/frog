@@ -69,7 +69,7 @@ import {
   builderLibraryKey,
   useActiveBuilderConfig,
   useMaterializeProgram,
-  useRebuildBuilderProgram,
+  useRegenerateProgram,
 } from "@/lib/program-queries";
 import { useExercisePrefs, useExercises } from "@/lib/queries";
 import { useRecordsData } from "@/lib/records-queries";
@@ -94,7 +94,7 @@ export default function ProgramBuilderScreen() {
   const active = useActiveBuilderConfig();
   const records = useRecordsData();
   const materialize = useMaterializeProgram();
-  const rebuild = useRebuildBuilderProgram();
+  const rebuild = useRegenerateProgram();
 
   const [answers, setAnswers] = useState<BuilderAnswers | null>(null);
   const [step, setStep] = useState(0);
@@ -247,11 +247,12 @@ export default function ProgramBuilderScreen() {
       saving={materialize.isPending || rebuild.isPending}
       error={error}
       loading={exercisesQ.isPending}
-      editing={editing && active.program != null}
+      editing={editing && active.config != null}
+      startedAt={active.config?.block.startedAt ?? null}
       onSave={async (program, config, extras) => {
         setError(null);
         try {
-          if (editing && active.program) {
+          if (editing && active.config) {
             setConfirmRebuild(true);
             return;
           }
@@ -272,7 +273,7 @@ export default function ProgramBuilderScreen() {
       confirmRebuild={confirmRebuild}
       setConfirmRebuild={setConfirmRebuild}
       onRebuild={async (program, config) => {
-        if (!active.program) return;
+        if (!active.program || !active.config) return;
         try {
           await rebuild.mutateAsync({
             programId: active.program.id,
@@ -393,6 +394,7 @@ type ReviewProps = {
   error: string | null;
   loading: boolean;
   editing: boolean;
+  startedAt: number | null;
   onSave: (
     program: ReturnType<typeof resolveTemplate>["program"],
     config: ReturnType<typeof buildSavedConfig>,
@@ -935,7 +937,7 @@ function Review(p: ReviewProps) {
           const config = buildSavedConfig(template, answers, {
             philosophy,
             overrides,
-            startedAt: Date.now(),
+            startedAt: p.startedAt ?? Date.now(),
             everyWeeks: p.everyWeeks,
           });
           void p.onRebuild(resolved.program, config);

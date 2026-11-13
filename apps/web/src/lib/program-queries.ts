@@ -98,7 +98,7 @@ export function useMaterializeProgram() {
   });
 }
 
-// Program Settings → change config → rebuild the folder's routines in place.
+// Program Settings / builder edit → rebuild the folder's routines in place.
 // Destructive (old routines are soft-deleted and their history detaches from
 // the routine); the caller confirms first.
 export function useRegenerateProgram() {
@@ -114,7 +114,7 @@ export function useRegenerateProgram() {
       programId: string;
       folderId: string;
       program: GeneratedProgram;
-      config: GeneratorConfig;
+      config: GeneratorConfig | SavedProgramConfig;
     }) => {
       const existing = (await repo.listRoutines()).filter(
         (r) => r.folderId === folderId,
@@ -165,42 +165,4 @@ export function useSetGeneratorExcluded() {
 // parseSavedProgramConfig (useActiveBuilderConfig).
 export function builderLibraryKey(templateId: string) {
   return `builder:${templateId}`;
-}
-
-// Edit / rebuild an existing builder program in place: the folder's routines
-// are replaced (soft-deleted, then recreated) and the saved config updated.
-// Destructive for routine history links, so the caller confirms first.
-export function useRebuildBuilderProgram() {
-  const repo = useRepo();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      programId,
-      folderId,
-      program,
-      config,
-    }: {
-      programId: string;
-      folderId: string;
-      program: GeneratedProgram;
-      config: SavedProgramConfig;
-    }) => {
-      const existing = (await repo.listRoutines()).filter(
-        (r) => r.folderId === folderId,
-      );
-      for (const r of existing) await repo.deleteRoutine(r.id);
-      for (const r of program.routines) {
-        await repo.createRoutine({
-          name: r.name,
-          folderId,
-          exercises: r.exercises,
-        });
-      }
-      await repo.updateProgramConfig(
-        programId,
-        config as unknown as Record<string, unknown>,
-      );
-    },
-    onSettled: () => invalidatePrograms(qc),
-  });
 }

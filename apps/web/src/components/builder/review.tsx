@@ -93,7 +93,7 @@ export function FindingsList({
 }: {
   findings: ProgramFinding[];
   onWhy: (f: ProgramFinding) => void;
-  onFix: (f: ProgramFinding) => void;
+  onFix?: (f: ProgramFinding) => void;
 }) {
   if (findings.length === 0) {
     return (
@@ -132,7 +132,7 @@ export function FindingsList({
             <Button size="sm" variant="ghost" onClick={() => onWhy(f)}>
               Why?
             </Button>
-            {f.fix && (
+            {f.fix && onFix && (
               <Button
                 size="sm"
                 variant="accent"

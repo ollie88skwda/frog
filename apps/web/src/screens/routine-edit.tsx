@@ -15,10 +15,13 @@ import {
   type ParsedExercise,
   PROGRAM_RULES,
   parseRoutineText,
+  primaryMuscles,
   type RoutineExerciseInput,
   type SetType,
   type SwapCandidate,
   sameExerciseName,
+  secondaryMuscles,
+  sessionsPerWeek,
   TYPE_FIELDS,
   toDisplayWeight,
   unitLabel,
@@ -409,6 +412,10 @@ export default function RoutineEditScreen() {
     folderId === undefined ? detail?.routine.folderId : folderId;
   const siblings = useFolderRoutineInputs(effectiveFolder, id ?? null);
   const activeProgram = useActiveBuilderConfig();
+  const programConfig =
+    effectiveFolder && effectiveFolder === activeProgram.program?.folderId
+      ? activeProgram.config
+      : null;
   const [swapFor, setSwapFor] = useState<number | null>(null);
   const meterView = useMemo(() => {
     if (!effectiveFolder || list.length === 0) return null;
@@ -432,18 +439,14 @@ export default function RoutineEditScreen() {
       })),
     };
     return viewFromRoutines([...siblings, draftRoutine], byId as never, {
-      schedule: activeProgram.config?.answers.schedule,
-      goal: activeProgram.config?.answers.goal,
+      schedule: programConfig?.answers.schedule,
+      goal: programConfig?.answers.goal,
     });
-  }, [
-    effectiveFolder,
-    list,
-    siblings,
-    id,
-    routineName,
-    byId,
-    activeProgram.config,
-  ]);
+  }, [effectiveFolder, list, siblings, id, routineName, byId, programConfig]);
+  const swapPerWeek = meterView
+    ? sessionsPerWeek(meterView.schedule) /
+      Math.max(1, meterView.sessions.length)
+    : 1;
   const folderName =
     folders.find((f) => f.id === effectiveFolder)?.name ?? null;
 
@@ -1551,7 +1554,14 @@ export default function RoutineEditScreen() {
             slot={{
               slot: `ex-${swapFor}`,
               role: "isolation",
-              credits: { direct: [], indirect: [] },
+              credits: {
+                direct: primaryMuscles(
+                  byId.get(list[swapFor].exerciseId)?.muscleTargets as never,
+                ),
+                indirect: secondaryMuscles(
+                  byId.get(list[swapFor].exerciseId)?.muscleTargets as never,
+                ),
+              },
               rx: {
                 sets: list[swapFor].sets.filter((s) => s.setType !== "warmup")
                   .length,
@@ -1561,12 +1571,16 @@ export default function RoutineEditScreen() {
             }}
             currentRegion={null}
             regionOf={() => null}
-            perWeek={1}
+            perWeek={swapPerWeek}
             excludeIds={new Set(list.map((d) => d.exerciseId))}
             onPick={(e) => {
               const ex = byId.get(e.id);
               if (ex)
-                patchExercise(swapFor, { exerciseId: ex.id, name: ex.name });
+                patchExercise(swapFor, {
+                  exerciseId: ex.id,
+                  name: ex.name,
+                  exerciseType: exerciseTypeOf(ex),
+                });
               setSwapFor(null);
             }}
           />

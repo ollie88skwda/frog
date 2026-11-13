@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { PROGRAM_TEMPLATES } from "../program/templates";
 import { validateProgram } from "../program/validate";
-import { viewFromRoutines } from "./routine-view";
+import { viewOf } from "../program/view";
+import { type ViewExercise, viewFromRoutines } from "./routine-view";
 import { rankSwaps, type SwapCandidate } from "./swap";
 
 const lookup = new Map([
@@ -77,9 +78,47 @@ describe("viewFromRoutines (R6/R7 meter for any program)", () => {
     expect(v.sessions[0].slots).toHaveLength(0);
   });
 
-  it("agrees with a template view for the Frog default's session count", () => {
-    const t = PROGRAM_TEMPLATES[0];
-    expect(t.sessions.length).toBeGreaterThan(0);
+  it("routines written from a template read back the template's weekly sets", () => {
+    const tv = viewOf(PROGRAM_TEMPLATES[0]);
+    const exLookup = new Map<string, ViewExercise>();
+    const routines = tv.sessions.map((s) => ({
+      id: s.id,
+      name: s.name,
+      exercises: s.slots.map((slot) => {
+        const exerciseId = `${s.id}|${slot.slot}`;
+        exLookup.set(exerciseId, {
+          mechanic: slot.role === "isolation" ? "isolation" : "compound",
+          muscleTargets: [
+            ...slot.credits.direct.map((muscle) => ({
+              muscle,
+              tier: null,
+              role: "primary" as const,
+            })),
+            ...slot.credits.indirect.map((muscle) => ({
+              muscle,
+              tier: null,
+              role: "secondary" as const,
+            })),
+          ],
+        });
+        return {
+          exerciseId,
+          sets: [
+            set("warmup"),
+            ...Array.from({ length: slot.rx.sets }, () => set()),
+          ],
+        };
+      }),
+    }));
+    const expected = validateProgram(tv).weekly;
+    const got = validateProgram(
+      viewFromRoutines(routines, exLookup, { schedule: tv.schedule }),
+    ).weekly;
+    expect(Object.keys(got).sort()).toEqual(Object.keys(expected).sort());
+    for (const [muscle, w] of Object.entries(expected)) {
+      expect(got[muscle].direct).toBeCloseTo(w.direct);
+      expect(got[muscle].indirect).toBeCloseTo(w.indirect);
+    }
   });
 });
 
