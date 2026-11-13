@@ -60,6 +60,33 @@ export function sessionTopsByExercise(
   return byExercise;
 }
 
+/** Exercises with at least one working set refused for exceeding 10 total reps,
+ * with the number of sessions that had a working set of them. Callers drop the
+ * ones that still have an e1RM series. */
+export function overRepCapExercises(
+  sessions: FindingsSessionInput[],
+): Map<string, { name: string; sessionsLogged: number }> {
+  const out = new Map<string, { name: string; sessionsLogged: number }>();
+  const logged = new Map<string, number>();
+  for (const session of sessions) {
+    const seen = new Set<string>();
+    for (const set of session.sets) {
+      if (set.setType === "warmup") continue;
+      if (!seen.has(set.exerciseId)) {
+        seen.add(set.exerciseId);
+        logged.set(set.exerciseId, (logged.get(set.exerciseId) ?? 0) + 1);
+      }
+      if (
+        e1rmSet(set.weightKg, set.reps, set).flagged &&
+        !out.has(set.exerciseId)
+      )
+        out.set(set.exerciseId, { name: set.exerciseName, sessionsLogged: 0 });
+    }
+  }
+  for (const [id, entry] of out) entry.sessionsLogged = logged.get(id) ?? 0;
+  return out;
+}
+
 export type VolumePoint = { day: number; kg: number };
 
 /** Per-session total volume (Σ weight×reps) per exercise, warm-up sets

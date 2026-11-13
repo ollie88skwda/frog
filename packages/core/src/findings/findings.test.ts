@@ -51,6 +51,58 @@ describe("progressionFindings", () => {
     expect(trends[0].roughVerdict).toBe(false);
   });
 
+  it("an early drop before 7 comparable sessions keeps the fitted, rough verdict (C2c)", () => {
+    const sessions = [100, 100, 100, 100, 85].map((w, i) => session(i, w));
+    const { trends } = progressionFindings(sessions);
+    expect(trends[0].status.state).toBe("dropped");
+    expect(trends[0].status.drop.kind).toBe("drop");
+    expect(trends[0].roughVerdict).toBe(true);
+  });
+
+  it("keeps a high-rep-only exercise visible as not estimable (over 10 total reps)", () => {
+    const sessions = Array.from({ length: 3 }, (_, i) => {
+      const s = session(i, 100 + i * 5);
+      s.sets.push(
+        ...[1, 2, 3].map(() => ({
+          exerciseId: "ex2",
+          exerciseName: "Lateral raise",
+          weightKg: 10,
+          reps: 15,
+        })),
+      );
+      return s;
+    });
+    const { trends, countdowns, notEstimable } = progressionFindings(sessions);
+    expect(notEstimable).toEqual([
+      {
+        kind: "not_estimable",
+        exerciseId: "ex2",
+        exerciseName: "Lateral raise",
+        sessionsLogged: 3,
+        reason: "over_10_total_reps",
+      },
+    ]);
+    expect(trends.map((t) => t.exerciseId)).toEqual(["ex1"]);
+    expect(trends[0].n).toBe(3);
+    expect(countdowns).toEqual([]);
+  });
+
+  it("does not mark an exercise not estimable when some sets still estimate", () => {
+    const sessions = Array.from({ length: 3 }, (_, i) => {
+      const s = session(i, 100 + i * 5);
+      s.sets.push({
+        exerciseId: "ex1",
+        exerciseName: "Squat",
+        weightKg: 60,
+        reps: 15,
+      });
+      return s;
+    });
+    const { trends, notEstimable } = progressionFindings(sessions);
+    expect(notEstimable).toEqual([]);
+    expect(trends).toHaveLength(1);
+  });
+
   it("emits an honest countdown below the session minimum", () => {
     const sessions = Array.from({ length: 1 }, (_, i) => session(i, 100));
     const { trends, countdowns } = progressionFindings(sessions);

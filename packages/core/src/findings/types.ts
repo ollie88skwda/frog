@@ -49,6 +49,18 @@ export type CountdownFinding = {
   sessionsNeeded: number; // remaining until a trend can be called
 };
 
+/** An exercise with logged working sets but no e1RM in any session because every
+ * set was over 10 total reps (C2c-e1rm). No alternate metric, trend or stall.
+ * J8 UI copy: "strength estimate needs 10 or fewer total reps". */
+export type NotEstimableFinding = {
+  kind: "not_estimable";
+  exerciseId: string;
+  exerciseName: string;
+  /** Sessions with at least one working set of this exercise. */
+  sessionsLogged: number;
+  reason: "over_10_total_reps";
+};
+
 export type ConditionFinding = {
   kind: "condition";
   conditionId: string;
@@ -77,4 +89,8 @@ export type ConditionFinding = {
   caveat: "correlation_not_causation";
 };
 
-export type Finding = TrendFinding | CountdownFinding | ConditionFinding;
+export type Finding =
+  | TrendFinding
+  | CountdownFinding
+  | NotEstimableFinding
+  | ConditionFinding;
