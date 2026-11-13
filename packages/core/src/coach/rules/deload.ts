@@ -51,7 +51,7 @@ export function deloadAction(
  * Mon-Sun weeks, at planned effort; evaluated every session. */
 export function c14(ctx: ExerciseCtx): RuleOutput {
   const out = empty();
-  if (ctx.restart || ctx.deloadActive) return out;
+  if (ctx.restart) return out;
   const wk = weeklyBests(ctx);
   if (wk.length < 3) return out;
   const [a, b, c] = wk.slice(-3);

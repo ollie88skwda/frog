@@ -45,7 +45,7 @@ export function drift(ctx: ExerciseCtx): RuleOutput {
   const out = empty();
   const id = ctx.exercise.id;
   const p = ctx.planned;
-  if (!p || ctx.deloadActive) return out;
+  if (!p) return out;
   const pool = driftPool(ctx);
   if (pool.length < DRIFT_MIN_SETS) {
     out.notEvaluated.push({

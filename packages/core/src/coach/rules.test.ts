@@ -437,6 +437,23 @@ describe("deloads and the comparable window", () => {
     );
     expect(r.suggestions.some((s) => s.action.kind === "deload")).toBe(false);
   });
+  it("inside the deload week the plan stays the deload", () => {
+    const r = evaluateCoach(
+      input([...c9Sessions, deload("11-02", ["95x5@3"])], {
+        asOf: Date.parse("2026-11-04T12:00:00Z"),
+        currentSessionId: undefined,
+      }),
+    );
+    expect(
+      r.suggestions.filter(
+        (s) => s.exerciseId === "squat" && s.action.kind !== "text_only",
+      ),
+    ).toEqual([]);
+    expect(r.perExercise.get("squat")?.prescription).toMatchObject({
+      rir: [3, 4],
+      sets: 1,
+    });
+  });
   it("deload targets do not carry into the next normal prescription", () => {
     const r = evaluateCoach(
       input([

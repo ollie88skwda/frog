@@ -221,11 +221,13 @@ export function evaluateExercise(
       if (win.length && win[win.length - 1].sessionId === latest.sessionId)
         run(c7(ctx));
     }
-    run(addLoad(ctx));
-    run(stall(ctx));
-    run(drift(ctx));
-    run(c14(ctx));
-    run(c10(ctx));
+    if (!deloadActive) {
+      run(addLoad(ctx));
+      run(stall(ctx));
+      run(drift(ctx));
+      run(c14(ctx));
+      run(c10(ctx));
+    }
   }
 
   // C19 carbs: display only; a comment appears after ≥3 sessions of the same link.
@@ -415,19 +417,27 @@ export function evaluateCoach(input: CoachInput): CoachResult {
     const mine = resolved.suggestions.filter((s) => s.exerciseId === id);
     const planSlot =
       input.plan?.find((p) => p.exerciseId === id)?.planned ?? null;
+    const deloadOn = st.deloadActive != null;
     const lastPlanned =
       input.sessions
         .filter((s) => s.startedAt <= input.asOf)
         .sort((a, b) => a.startedAt - b.startedAt)
         .flatMap((s) =>
           s.exercises.filter(
-            (e) => e.exerciseId === id && e.planned && !e.planned.isDeload,
+            (e) =>
+              e.exerciseId === id &&
+              e.planned &&
+              (deloadOn || !e.planned.isDeload),
           ),
         )
         .map((e) => e.planned as PlannedTarget)
         .pop() ?? null;
     const load = baseLoadFor(input, id);
-    st.prescription = prescriptionFor(planSlot ?? lastPlanned, load, mine);
+    st.prescription = prescriptionFor(
+      deloadOn ? (lastPlanned ?? planSlot) : (planSlot ?? lastPlanned),
+      load,
+      mine,
+    );
   }
 
   const bannerRank = (s: CoachSuggestion) =>
