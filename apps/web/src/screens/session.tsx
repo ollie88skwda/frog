@@ -1519,14 +1519,18 @@ export default function SessionScreen() {
         >
           {live.total} hard {live.total === 1 ? "set" : "sets"}
         </p>
-        {live.muscles.slice(0, 8).map((m) => (
-          <span
-            key={m.muscle}
-            className="num shrink-0 rounded-xs bg-surface-2 px-1.5 py-0.5 text-2xs text-soft"
-          >
-            {muscleLabel(m.muscle).toLowerCase()} {Math.round(m.sets * 10) / 10}
-          </span>
-        ))}
+        {live.muscles
+          .filter((m) => m.sets > 0)
+          .slice(0, 8)
+          .map((m) => (
+            <span
+              key={m.muscle}
+              className="num shrink-0 rounded-xs bg-surface-2 px-1.5 py-0.5 text-2xs text-soft"
+            >
+              {muscleLabel(m.muscle).toLowerCase()}{" "}
+              {Math.round(m.sets * 10) / 10}
+            </span>
+          ))}
         {live.noRir > 0 && (
           <span className="shrink-0 text-2xs text-faint">
             {live.noRir} without RIR
@@ -1652,6 +1656,7 @@ export default function SessionScreen() {
           isRoutine={session.routineId != null}
           structuralChange={structuralChange}
           failedSetCount={failedSetCount}
+          unsavedSetCount={Object.keys(queuedSets).length}
           onRetryFailed={retryFailedSets}
           onFinish={handleFinish}
           onDiscard={handleDiscard}
@@ -1677,12 +1682,14 @@ function FinishOverlay({
   isRoutine,
   structuralChange,
   failedSetCount,
+  unsavedSetCount,
   onRetryFailed,
   onFinish,
   onDiscard,
 }: {
   /** F15: Save is blocked while any set is unsaved. */
   failedSetCount: number;
+  unsavedSetCount: number;
   onRetryFailed: () => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -1869,6 +1876,12 @@ function FinishOverlay({
               </Button>
             </div>
           )}
+          {unsavedSetCount > failedSetCount && (
+            <p className="text-xs text-soft" data-testid="finish-saving">
+              Saving {unsavedSetCount - failedSetCount} set
+              {unsavedSetCount - failedSetCount === 1 ? "" : "s"}…
+            </p>
+          )}
 
           <div className="flex items-center justify-between pt-3">
             {confirmDiscard ? (
@@ -1895,7 +1908,7 @@ function FinishOverlay({
             <Button
               variant="primary"
               size="sm"
-              disabled={saving || failedSetCount > 0}
+              disabled={saving || unsavedSetCount > 0}
               onClick={() => void save()}
               data-testid="finish-save"
             >
@@ -3278,7 +3291,13 @@ function ExerciseSpotlight({
           <TargetLine
             plan={plan}
             unit={blockUnit}
-            ghostKg={ghost[0]?.weightKg ?? null}
+            ghostKg={ghost.reduce<number | null>(
+              (max, g) =>
+                g.weightKg != null && (max == null || g.weightKg > max)
+                  ? g.weightKg
+                  : max,
+              null,
+            )}
             onWhy={() => setEvidenceOpen(true)}
           />
         )}
