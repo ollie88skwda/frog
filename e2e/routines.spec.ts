@@ -388,21 +388,19 @@ test("routines-page routine menu flips upward when it would render below the fol
   await expect(
     page.locator('button[data-testid^="routine-menu-"]').last(),
   ).toBeVisible();
-  // The scroll container reserves a fixed chunk of trailing space below its
-  // content (room for the mobile tab bar), so scrolling to its absolute max
-  // still leaves the last card with slack underneath — not the tight-margin
-  // case this bug needs. Stop just short of max instead, which is exactly
-  // what a real scroll gesture that doesn't snap to the very bottom looks
-  // like, and reliably leaves less than POPUP_HEIGHT of room below the last
-  // card's menu button.
+  // The scroll container reserves trailing space below its content (room for
+  // the mobile tab bar), so scrolling to its max still leaves the last card
+  // with slack underneath — not the tight-margin case this bug needs. Aim the
+  // last menu button ~60px above the viewport bottom instead, which leaves
+  // less than POPUP_HEIGHT of room below it.
   const btnBox = await page.evaluate(() => {
     const main = document.querySelector("main") as HTMLElement;
-    const max = main.scrollHeight - main.clientHeight;
-    main.scrollTop = max - 100;
     const buttons = document.querySelectorAll(
       'button[data-testid^="routine-menu-"]',
     );
     const last = buttons[buttons.length - 1] as HTMLElement;
+    const before = last.getBoundingClientRect();
+    main.scrollTop += before.bottom - (window.innerHeight - 60);
     const r = last.getBoundingClientRect();
     return { x: r.x, y: r.y, width: r.width, height: r.height };
   });

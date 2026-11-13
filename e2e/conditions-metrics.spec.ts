@@ -165,7 +165,16 @@ test("stop tracking a default hides it from future sessions", async ({
   await expect(page.getByTestId(`condition-input-${SLEEP_ID}`)).toHaveCount(0);
   await waitForConditionUntracked(page, SLEEP_ID);
 
-  // A brand-new session no longer pre-loads Sleep, but keeps Stress.
+  // A brand-new session no longer pre-loads Sleep, but keeps Stress. Today
+  // only offers a fresh start once the live session is closed.
+  await page.evaluate(async () => {
+    const now = Date.now();
+    const { error } = await window.__frog.db
+      .from("sessions")
+      .update({ ended_at: now, updated_at: now })
+      .is("ended_at", null);
+    if (error) throw new Error(error.message);
+  });
   await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
