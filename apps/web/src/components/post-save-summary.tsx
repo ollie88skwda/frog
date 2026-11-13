@@ -5,6 +5,7 @@ import {
   computeStreak,
   type ExerciseType,
   FIRST_WEEKDAY,
+  fractionalHardSets,
   groupSetsBySetNo,
   muscleLabel,
   PR_TYPE_LABELS,
@@ -28,7 +29,6 @@ import {
   planFromSnapshot,
   rangeState,
   reportE1rm,
-  sessionHardSets,
 } from "@/components/session/prescription";
 import { ShareButton, type ShareSource } from "@/components/share-sheet";
 import { formatDate } from "@/lib/format";
@@ -382,9 +382,11 @@ export function PostSaveSummary({
         : null;
       return { b, plan, best, state, e1rm, planned: plan != null };
     });
-    const credited = sessionHardSets(
-      blocks.map((b) => ({ exerciseId: b.exerciseId, sets: b.sets })),
-      (id) => byId.get(id)?.muscleTargets,
+    const credited = fractionalHardSets(
+      blocks.map((b) => ({
+        targets: byId.get(b.exerciseId)?.muscleTargets,
+        sets: b.sets,
+      })),
     );
     return { rows, credited };
   }, [blocks, exercises]);
@@ -481,24 +483,24 @@ export function PostSaveSummary({
         <div className="flex flex-col">
           <div className="flex items-baseline justify-between px-4">
             <span className="text-sm font-semibold">Sets credited</span>
-            <Num value={report.credited.total} unit="hard sets" size="sm" />
+            <Num value={report.credited.hardSets} unit="hard sets" size="sm" />
           </div>
           {report.credited.muscles
-            .filter((m) => m.sets > 0)
+            .filter((m) => m.total > 0)
             .slice(0, 6)
             .map((m) => (
               <MuscleMeter
                 key={m.muscle}
                 label={muscleLabel(m.muscle)}
-                sets={m.sets}
+                sets={m.total}
                 max={24}
               />
             ))}
-          {report.credited.noRir > 0 && (
+          {report.credited.noRirSets > 0 && (
             <p className="px-4 pt-1 text-2xs text-faint">
-              {report.credited.noRir} set
-              {report.credited.noRir === 1 ? "" : "s"} without RIR counted as
-              hard. Log RIR to sharpen this.
+              {report.credited.noRirSets} set
+              {report.credited.noRirSets === 1 ? "" : "s"} without RIR counted
+              as hard. Log RIR to sharpen this.
             </p>
           )}
         </div>

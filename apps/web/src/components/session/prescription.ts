@@ -2,17 +2,10 @@
 // the finish report (F9). No React, no DOM: unit-tested in prescription.test.ts.
 //
 // Rule IDs: R8b [T5] rep bands, R10 [T5] 1-3 RIR (last isolation set 0-1),
-// R11 [T3] early-set RIR is the least reliable, R17b warm-ups are not hard
-// sets, R6 hard set = non-warm-up with RIR <= 4 (blank RIR counts, flagged),
-// R7 indirect credit 0.5, C2c overshoot (>= 2 reps over the top of the range
-// with RIR within 1 of plan counts as "top reached"), C4/C5 RIR drift.
-import {
-  e1rmSet,
-  groupSetsBySetNo,
-  type MuscleTarget,
-  muscleCredits,
-  roundE1rmDisplay,
-} from "@frog/core";
+// R11 [T3] early-set RIR is the least reliable, C2c overshoot (>= 2 reps over
+// the top of the range with RIR within 1 of plan counts as "top reached"),
+// C4/C5 RIR drift. Hard sets (R6/R7) come from @frog/core's fractionalHardSets.
+import { e1rmSet, roundE1rmDisplay } from "@frog/core";
 
 /** The plan for one exercise: the §9.1 snapshot, or the routine seed's own targets. */
 export type PlanTarget = {
@@ -184,74 +177,6 @@ export function driftNudge(
     return `last two sets ~${Math.min(a, b)} left, plan is ${formatRange(planned.rirMin, planned.rirMax)}`;
   return null;
 }
-
-// ── Hard sets (live strip + report) ─────────────────────────────────────────
-
-export type HardSetInput = {
-  setNo: number;
-  setType: string;
-  side?: "left" | "right" | null;
-  rirMin?: number | null;
-  rir?: number | null;
-};
-
-/** R6: non-warm-up, RIR <= 4. A blank RIR counts as hard (flagged elsewhere). */
-export function isHardSet(s: {
-  setType: string;
-  rirMin?: number | null;
-  rir?: number | null;
-}): boolean {
-  if (s.setType === "warmup") return false;
-  const r = s.rirMin ?? s.rir ?? null;
-  return r == null || r <= 4;
-}
-
-export type MuscleSets = {
-  muscle: string;
-  /** Fractional credit (direct 1, indirect 0.5). */
-  sets: number;
-  /** Whole direct sets (primary role), for the R7b per-session heads-up. */
-  direct: number;
-};
-
-export type SessionHardSets = {
-  /** Physical hard sets (a unilateral pair is one set). */
-  total: number;
-  /** Hard sets logged with no RIR (counted as hard, flagged). */
-  noRir: number;
-  /** Fractional credit per muscle (1 direct, 0.5 indirect), biggest first. */
-  muscles: MuscleSets[];
-};
-
-export function sessionHardSets(
-  blocks: ReadonlyArray<{ exerciseId: string; sets: HardSetInput[] }>,
-  targetsFor: (exerciseId: string) => MuscleTarget[] | null | undefined,
-): SessionHardSets {
-  let total = 0;
-  let noRir = 0;
-  const byMuscle = new Map<string, { sets: number; direct: number }>();
-  for (const b of blocks) {
-    const groups = groupSetsBySetNo(b.sets.filter(isHardSet));
-    total += groups.length;
-    noRir += groups.filter(
-      (g) => g[0].rirMin == null && g[0].rir == null,
-    ).length;
-    const credits = muscleCredits(targetsFor(b.exerciseId));
-    for (const { muscle, credit } of credits) {
-      const cur = byMuscle.get(muscle) ?? { sets: 0, direct: 0 };
-      cur.sets += credit * groups.length;
-      if (credit === 1) cur.direct += groups.length;
-      byMuscle.set(muscle, cur);
-    }
-  }
-  const muscles = [...byMuscle.entries()]
-    .map(([muscle, v]) => ({ muscle, ...v }))
-    .sort((a, b) => b.sets - a.sets || a.muscle.localeCompare(b.muscle));
-  return { total, noRir, muscles };
-}
-
-/** R7b: a planning heads-up (never blocking) above 5 direct sets for one muscle in a session. */
-export const DIRECT_SETS_HEADS_UP = 5;
 
 // ── e1RM for the report ─────────────────────────────────────────────────────
 

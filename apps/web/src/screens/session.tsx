@@ -26,6 +26,7 @@ import {
   type ExerciseRecords,
   type ExerciseType,
   formatWeight,
+  fractionalHardSets,
   type GhostSet,
   ghostFor,
   groupByPrimaryMuscle,
@@ -42,6 +43,7 @@ import {
   type Machine,
   type MatchCandidate,
   type Metric,
+  type MuscleHardSets,
   matchExerciseName,
   miToM,
   muscleLabel,
@@ -57,6 +59,7 @@ import {
   type RoutineDetail,
   type Session,
   type SetType,
+  sessionDirectCheck,
   shouldStartRest,
   startRest,
   supportsEffort,
@@ -113,7 +116,6 @@ import { MachineChip } from "@/components/session/machine-chip";
 import { PlateSheet } from "@/components/session/plate-sheet";
 import { PrBanner, type PrBannerData } from "@/components/session/pr-banner";
 import {
-  DIRECT_SETS_HEADS_UP,
   driftNudge,
   formatRange,
   type PlanTarget,
@@ -122,7 +124,6 @@ import {
   rangeState,
   reportE1rm,
   rirPreselect,
-  sessionHardSets,
 } from "@/components/session/prescription";
 import { RestStopwatch } from "@/components/session/rest-stopwatch";
 import {
@@ -1384,9 +1385,11 @@ export default function SessionScreen() {
     ),
   );
   const exById = new Map(exercises.map((e) => [e.id, e]));
-  const live = sessionHardSets(
-    blocks.map((b) => ({ exerciseId: b.exerciseId, sets: b.committed })),
-    (id) => exById.get(id)?.muscleTargets,
+  const live = fractionalHardSets(
+    blocks.map((b) => ({
+      targets: exById.get(b.exerciseId)?.muscleTargets,
+      sets: b.committed,
+    })),
   );
   const activeIdx = Math.max(
     0,
@@ -1518,10 +1521,10 @@ export default function SessionScreen() {
           className="num shrink-0 text-xs font-semibold text-ink"
           data-testid="session-stats"
         >
-          {live.total} hard {live.total === 1 ? "set" : "sets"}
+          {live.hardSets} hard {live.hardSets === 1 ? "set" : "sets"}
         </p>
         {live.muscles
-          .filter((m) => m.sets > 0)
+          .filter((m) => m.total > 0)
           .slice(0, 8)
           .map((m) => (
             <span
@@ -1529,12 +1532,12 @@ export default function SessionScreen() {
               className="num shrink-0 rounded-xs bg-surface-2 px-1.5 py-0.5 text-2xs text-soft"
             >
               {muscleLabel(m.muscle).toLowerCase()}{" "}
-              {Math.round(m.sets * 10) / 10}
+              {Math.round(m.total * 10) / 10}
             </span>
           ))}
-        {live.noRir > 0 && (
+        {live.noRirSets > 0 && (
           <span className="shrink-0 text-2xs text-faint">
-            {live.noRir} without RIR
+            {live.noRirSets} without RIR
           </span>
         )}
       </div>
@@ -1544,6 +1547,7 @@ export default function SessionScreen() {
           <ExerciseSpotlight
             key={activeBlock.seId}
             block={activeBlock}
+            sessionMuscles={live.byMuscle}
             position={activeIdx + 1}
             total={blocks.length}
             unit={unit}
@@ -2788,6 +2792,7 @@ function TargetLine({
 
 function ExerciseSpotlight({
   block,
+  sessionMuscles,
   position,
   total,
   unit,
@@ -2818,6 +2823,7 @@ function ExerciseSpotlight({
   onRetrySets,
 }: {
   block: BlockState;
+  sessionMuscles: Record<string, MuscleHardSets>;
   /** F15: per-set save state from the screen's write queue. */
   saveStateOf: (setId: string) => SaveState;
   onRetrySets: () => void;
@@ -3138,10 +3144,9 @@ function ExerciseSpotlight({
       .map((g) => g[0].rirMin ?? g[0].rir ?? null);
     return driftNudge(rirs, plan);
   })();
-  const directThis = sessionHardSets(
-    [{ exerciseId: block.exerciseId, sets: block.committed }],
-    () => exercise?.muscleTargets,
-  ).muscles.find((m) => m.direct > DIRECT_SETS_HEADS_UP);
+  const directThis = (exercise?.muscleTargets ?? [])
+    .map((t) => sessionMuscles[t.muscle])
+    .find((m) => m != null && sessionDirectCheck(m.direct) === "high");
   const totalMarks = Math.max(committedGroups.length + 1, seedSets.length + 1);
   const marks: Mark[] = [];
   for (let i = 0; i < totalMarks; i++) {

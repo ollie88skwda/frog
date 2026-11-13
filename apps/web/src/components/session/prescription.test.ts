@@ -2,13 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   driftNudge,
   formatRange,
-  isHardSet,
   planFromSeed,
   planFromSnapshot,
   rangeState,
   reportE1rm,
   rirPreselect,
-  sessionHardSets,
 } from "./prescription";
 
 describe("rangeState (R8b, C2c overshoot)", () => {
@@ -119,44 +117,6 @@ describe("driftNudge (C4/C5, R11)", () => {
   it("does not fire on a single high set or blank RIR", () => {
     expect(driftNudge([1, 5], planned)).toBeNull();
     expect(driftNudge([5, null], planned)).toBeNull();
-  });
-});
-
-describe("hard sets (R6, R7, R17b)", () => {
-  it("excludes warm-ups and RIR above 4", () => {
-    expect(isHardSet({ setType: "warmup", rirMin: 1 })).toBe(false);
-    expect(isHardSet({ setType: "normal", rirMin: 5 })).toBe(false);
-    expect(isHardSet({ setType: "normal", rirMin: 4 })).toBe(true);
-    expect(isHardSet({ setType: "normal" })).toBe(true); // blank counts
-  });
-  it("credits direct 1 / indirect 0.5 and counts a unilateral pair once", () => {
-    const targets = {
-      press: [
-        { muscle: "chest", tier: null, role: "primary" as const },
-        { muscle: "triceps", tier: null, role: "secondary" as const },
-      ],
-    };
-    const r = sessionHardSets(
-      [
-        {
-          exerciseId: "press",
-          sets: [
-            { setNo: 0, setType: "warmup", rirMin: 3 },
-            { setNo: 1, setType: "normal", rirMin: 2 },
-            { setNo: 2, setType: "normal", side: "left", rirMin: 2 },
-            { setNo: 2, setType: "normal", side: "right", rirMin: 2 },
-            { setNo: 3, setType: "normal" },
-          ],
-        },
-      ],
-      (id) => targets[id as "press"],
-    );
-    expect(r.total).toBe(3);
-    expect(r.noRir).toBe(1);
-    expect(r.muscles).toEqual([
-      { muscle: "chest", sets: 3, direct: 3 },
-      { muscle: "triceps", sets: 1.5, direct: 0 },
-    ]);
   });
 });
 
