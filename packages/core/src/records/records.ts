@@ -4,7 +4,7 @@
 // include-warmups stat toggle is off (toggling = cache invalidation +
 // recompute, never a server job).
 
-import { epley } from "../domain/e1rm";
+import { e1rmSet } from "../domain/e1rm";
 import type {
   ExerciseRecords,
   PrEvent,
@@ -83,7 +83,10 @@ export function setPrCandidates(
         break;
       case "best_e1rm":
         if (w != null && w > 0 && reps != null && reps >= 1) {
-          const e = epley(w, reps);
+          // C2c-e1rm: Brzycki with RIR, working sets only, over-10-total-rep
+          // sets refused (null value) so a 100x12 never outranks a 120x5.
+          if (set.setType === "warmup") break;
+          const e = e1rmSet(w, reps, set).value;
           if (e != null) out[t] = e;
         }
         break;
@@ -136,7 +139,7 @@ function countsForRecords(set: RecordsSetInput, opts: RecordsOptions): boolean {
  */
 export function computeRecords(
   history: RecordsSessionInput[],
-  opts: RecordsOptions = { includeWarmups: true },
+  opts: RecordsOptions = { includeWarmups: false },
 ): RecordsResult {
   const sorted = [...history].sort((a, b) => a.startedAt - b.startedAt);
   const byExercise = new Map<string, ExerciseRecords>();
@@ -163,8 +166,9 @@ export function computeRecords(
       for (const s of sets) {
         const cand = setPrCandidates(block.exerciseType, s);
         for (const [t, v] of Object.entries(cand) as [PrType, number][]) {
-          if (sessionBest[t] === undefined || v > (sessionBest[t] as number))
+          if (sessionBest[t] === undefined || v > (sessionBest[t] as number)) {
             sessionBest[t] = v;
+          }
         }
         // Set-records table: heaviest weight per exact rep count.
         if (

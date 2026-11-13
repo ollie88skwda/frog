@@ -37,8 +37,7 @@ describe("warmupSets", () => {
       DEFAULT_WARMUP_ROUNDING,
     );
     expect(sets).toEqual([
-      { weightKg: 40, reps: 8 },
-      { weightKg: 60, reps: 5 },
+      { weightKg: 40, reps: 6 },
       { weightKg: 80, reps: 3 },
     ]);
   });

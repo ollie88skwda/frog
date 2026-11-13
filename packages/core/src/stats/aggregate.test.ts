@@ -285,3 +285,40 @@ describe("bucketStart", () => {
     expect(bucketStart(NOW, "year", 1)).toBe(new Date(2026, 0, 1).getTime());
   });
 });
+
+describe("weekly muscle volume counts hard sets only (R6/R17b)", () => {
+  it("warm-ups and RIR>4 sets earn no credit, whatever the tonnage toggle says", () => {
+    const h: RecordsSessionInput[] = [
+      {
+        sessionId: "s",
+        startedAt: NOW - DAY,
+        endedAt: NOW - DAY + 3600_000,
+        pausedMs: 0,
+        exercises: [
+          {
+            exerciseId: "bench",
+            exerciseType: "weight_reps",
+            sets: [
+              { setType: "warmup", weightKg: 40, reps: 6, rir: 5 },
+              { setType: "normal", weightKg: 100, reps: 5, rir: 2 },
+              { setType: "normal", weightKg: 100, reps: 5, rir: 6 },
+              { setType: "normal", weightKg: 100, reps: 5 },
+            ].map((x, i) => ({
+              durationSec: null,
+              distanceM: null,
+              setNo: i,
+              side: null,
+              ...x,
+            })),
+          },
+        ],
+      },
+    ];
+    const seven = sevenDayMuscleSets(h, MUSCLES, {
+      ...OPTS,
+      includeWarmups: true,
+    });
+    expect(seven.pecs).toBe(2); // RIR 2 + blank RIR; warm-up and RIR 6 excluded
+    expect(seven["front-delts"]).toBe(1);
+  });
+});

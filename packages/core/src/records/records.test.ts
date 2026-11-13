@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { checkSetForPR } from "./live";
-import { computeRecords } from "./records";
+import { computeRecords, setPrCandidates } from "./records";
 import type { RecordsSessionInput } from "./types";
 
 const set = (
@@ -218,5 +218,32 @@ describe("checkSetForPR", () => {
     expect(hits.find((h) => h.prType === "heaviest_weight")?.previous).toBe(
       100,
     );
+  });
+});
+
+describe("best_e1rm (C2c-e1rm Brzycki + RIR)", () => {
+  const set = (weightKg: number, reps: number, extra: object = {}) => ({
+    setType: "normal",
+    weightKg,
+    reps,
+    durationSec: null,
+    distanceM: null,
+    setNo: 0,
+    side: null as null,
+    ...extra,
+  });
+  it("a 100x12 (over 10 total reps) never outranks 120x5@1", () => {
+    expect(
+      setPrCandidates("weight_reps", set(100, 12, { rir: 0 })).best_e1rm,
+    ).toBeUndefined();
+    expect(
+      setPrCandidates("weight_reps", set(120, 5, { rir: 1 })).best_e1rm,
+    ).toBeCloseTo(139.35, 1);
+  });
+  it("warm-ups never set an e1RM", () => {
+    expect(
+      setPrCandidates("weight_reps", set(100, 3, { setType: "warmup" }))
+        .best_e1rm,
+    ).toBeUndefined();
   });
 });

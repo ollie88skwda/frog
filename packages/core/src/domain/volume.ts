@@ -42,7 +42,10 @@ export function setVolumeKg(
 
 export type VolumeOptions = {
   // Settings > Workouts > "Warm Up Sets" toggle: when false, warm-up sets are
-  // excluded from totals (and records — handled in records/).
+  // excluded from totals (and records — handled in records/). sessionVolumeKg
+  // defaults to false (R6/R17b, redesign F2): warm-ups are not working volume.
+  // countSets/sessionSetCount keep true: the session screen reads countSets as
+  // the live set position, and every logged row (warm-up or not) holds one.
   includeWarmups: boolean;
 };
 
@@ -61,7 +64,7 @@ export function sessionVolumeKg(
     sets: Array<VolumeSet & { completed?: boolean }>;
   }>,
   bodyweightKg: number | null | undefined,
-  opts: VolumeOptions = { includeWarmups: true },
+  opts: VolumeOptions = { includeWarmups: false },
 ): number {
   let total = 0;
   for (const b of blocks) {
