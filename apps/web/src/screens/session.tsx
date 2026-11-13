@@ -95,7 +95,6 @@ import {
   useState,
 } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
 import { ExerciseRibbon, ExerciseThumb } from "@/components/anatomy-ui";
 import { ConditionsChip } from "@/components/conditions";
 import {
@@ -103,7 +102,6 @@ import {
   EvidenceSheet,
   SaveDot,
   type SaveState,
-  saveStateFrom,
 } from "@/components/data";
 import { ExerciseEditor } from "@/components/exercise-editor";
 import {
@@ -118,7 +116,6 @@ import {
   DIRECT_SETS_HEADS_UP,
   driftNudge,
   formatRange,
-  isHardSet,
   type PlanTarget,
   planFromSeed,
   planFromSnapshot,
@@ -251,13 +248,15 @@ export type SeedSet = {
   rirMax?: number | null;
 };
 
-function totalVolumeKg(blocks: BlockState[]): number {
+function totalVolumeKg(blocks: BlockState[], includeWarmups: boolean): number {
   return blocks.reduce(
     (sum, b) =>
       sum +
       b.committed.reduce(
         (s, x) =>
-          x.setType === "warmup" ? s : s + (x.weightKg ?? 0) * (x.reps ?? 0),
+          !includeWarmups && x.setType === "warmup"
+            ? s
+            : s + (x.weightKg ?? 0) * (x.reps ?? 0),
         0,
       ),
     0,
@@ -1380,7 +1379,9 @@ export default function SessionScreen() {
 
   const setCount = blocks.reduce((n, b) => n + countSets(b.committed), 0);
   const volume = Math.round(
-    unit === "lb" ? kgToLb(totalVolumeKg(blocks)) : totalVolumeKg(blocks),
+    (unit === "lb" ? kgToLb : (kg: number) => kg)(
+      totalVolumeKg(blocks, userPrefs?.includeWarmupsInStats ?? false),
+    ),
   );
   const exById = new Map(exercises.map((e) => [e.id, e]));
   const live = sessionHardSets(
@@ -1542,7 +1543,6 @@ export default function SessionScreen() {
         {activeBlock ? (
           <ExerciseSpotlight
             key={activeBlock.seId}
-            sessionId={sessionId}
             block={activeBlock}
             position={activeIdx + 1}
             total={blocks.length}
@@ -1564,7 +1564,6 @@ export default function SessionScreen() {
             onSwipe={gotoOffset}
             prSetIds={prSetIds}
             prSnapshot={prSnapshot}
-            history={history}
             voiceFill={voiceFill?.seId === activeBlock.seId ? voiceFill : null}
             onVoiceFillConsumed={clearVoiceFill}
             timerRunning={timer?.seId === activeBlock.seId}
@@ -2401,13 +2400,6 @@ function WarmupDialog({
   );
 }
 
-function formatDayShort(ms: number): string {
-  return new Date(ms).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-  });
-}
-
 type MarkState = "done" | "warmup" | "current" | "todo";
 type Mark = {
   kind: MarkState;
@@ -2796,7 +2788,6 @@ function TargetLine({
 
 function ExerciseSpotlight({
   block,
-  sessionId,
   position,
   total,
   unit,
@@ -2813,7 +2804,6 @@ function ExerciseSpotlight({
   onSwipe,
   prSetIds,
   prSnapshot,
-  history,
   voiceFill,
   onVoiceFillConsumed,
   timerRunning,
@@ -2831,10 +2821,6 @@ function ExerciseSpotlight({
   /** F15: per-set save state from the screen's write queue. */
   saveStateOf: (setId: string) => SaveState;
   onRetrySets: () => void;
-  /** The training session, not the exercise — scopes the GROWTH-toggle
-   * open state so it persists across exercises within one session but
-   * resets when a new session starts (spotlight-stats.spec.ts). */
-  sessionId: string;
   position: number;
   total: number;
   unit: Unit;
@@ -2851,7 +2837,6 @@ function ExerciseSpotlight({
   onSwipe: (delta: -1 | 1) => void;
   prSetIds: Set<string>;
   prSnapshot: Map<string, ExerciseRecords> | null;
-  history: RecordsSessionInput[] | null;
   voiceFill: { weightKg: number | null; reps: number | null } | null;
   onVoiceFillConsumed: () => void;
   timerRunning: boolean;
@@ -3180,16 +3165,6 @@ function ExerciseSpotlight({
     }
   }
 
-  const liveTopKg = block.committed.reduce(
-    (max: number | null, s) =>
-      s.setType !== "warmup" &&
-      s.weightKg != null &&
-      (max == null || s.weightKg > max)
-        ? s.weightKg
-        : max,
-    null,
-  );
-
   function onTouchStart(e: ReactTouchEvent) {
     const t = e.touches[0];
     touchRef.current = { x: t.clientX, y: t.clientY };
@@ -3354,7 +3329,6 @@ function ExerciseSpotlight({
             committedGroups[focusedIndex]?.map((r) => r.id).join(",") ?? "live"
           }`}
           seId={block.seId}
-          sessionId={sessionId}
           index={focusedIndex}
           unit={blockUnit}
           distUnit={distUnit}
@@ -3401,8 +3375,6 @@ function ExerciseSpotlight({
             if (group) onSetLaterality(block.seId, type, group[0], unilateral);
           }}
           onFocusLive={focusLive}
-          history={history}
-          liveTopKg={liveTopKg}
           exerciseId={block.exerciseId}
           prSnapshot={prSnapshot}
           voiceFill={voiceFill}
@@ -3538,7 +3510,6 @@ function jumpsFor(key: FieldKey): { neg: number[]; pos: number[] } {
 
 function Spotlight({
   seId,
-  sessionId,
   index,
   unit,
   distUnit,
@@ -3566,8 +3537,6 @@ function Spotlight({
   onDeleteCommitted,
   onSetLaterality,
   onFocusLive,
-  history,
-  liveTopKg,
   exerciseId,
   prSnapshot,
   voiceFill,
@@ -3575,8 +3544,6 @@ function Spotlight({
   enabledMetrics,
 }: {
   seId: string;
-  /** Scopes the GROWTH-toggle's persisted open state — see ExerciseSpotlight. */
-  sessionId: string;
   index: number;
   unit: Unit;
   distUnit: DistanceUnit;
@@ -3608,8 +3575,6 @@ function Spotlight({
   onDeleteCommitted: () => void;
   onSetLaterality: (unilateral: boolean) => void;
   onFocusLive: () => void;
-  history: RecordsSessionInput[] | null;
-  liveTopKg: number | null;
   exerciseId: string;
   prSnapshot: Map<string, ExerciseRecords> | null;
   voiceFill: { weightKg: number | null; reps: number | null } | null;
@@ -3731,7 +3696,7 @@ function Spotlight({
       draft?.rirMax ??
       (left?.rirMax != null ? String(left.rirMax) : (preselect?.max ?? "")),
   );
-  const [rpe, setRpe] = useState(
+  const [rpe] = useState(
     () => draft?.rpe ?? (left?.rpe != null ? String(left.rpe) : ""),
   );
   const [setType, setSetType] = useState<SetType>(
@@ -3751,9 +3716,7 @@ function Spotlight({
   const [rirMax2, setRirMax2] = useState(() =>
     right?.rirMax != null ? String(right.rirMax) : (preselect?.max ?? ""),
   );
-  const [rpe2, setRpe2] = useState(() =>
-    right?.rpe != null ? String(right.rpe) : "",
-  );
+  const [rpe2] = useState(() => (right?.rpe != null ? String(right.rpe) : ""));
   // Weight-link (per-side mode): linked = one shared field (weight-field);
   // unlinked = weight-field-left/-right, its own jump rows each. Defaults to
   // whatever the stored pair actually is when editing an uneven set.
