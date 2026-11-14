@@ -8,7 +8,17 @@ export const DEFAULT_ANSWERS: BuilderAnswers = {
   schedule: { kind: "interval", everyDays: 2 },
   goal: "muscle",
   status: "intermediate",
-  equipment: ["barbell", "dumbbell", "machine", "cable", "bodyweight"],
+  // Full gym: the same kinds as the wizard's "Full gym" preset.
+  equipment: [
+    "barbell",
+    "ez_bar",
+    "dumbbell",
+    "machine",
+    "cable",
+    "bodyweight",
+    "plate",
+    "other",
+  ],
   minutes: 60,
 };
 

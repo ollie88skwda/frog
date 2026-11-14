@@ -19,8 +19,8 @@ test("save a catalog program creates a named folder + routines + program row", a
 }) => {
   await page.goto("/programs");
 
-  // Filter chips narrow the list.
-  await page.getByTestId("filter-level-beginner").click();
+  // The legacy catalog sits behind "More templates" (J9).
+  await page.getByTestId("more-templates").click();
   await expect(
     page.getByTestId("program-card-full-body-foundations"),
   ).toBeVisible();

@@ -1,5 +1,12 @@
-import type { GeneratedProgram, GeneratorConfig, Program } from "@frog/core";
+import {
+  type GeneratedProgram,
+  type GeneratorConfig,
+  type Program,
+  parseSavedProgramConfig,
+  type SavedProgramConfig,
+} from "@frog/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { useRepo } from "./repo";
 
 // Programs feature data seam (Hevy-parity M11). A program is a provenance row
@@ -15,6 +22,25 @@ export function useActiveProgram() {
     queryKey: ["active-program"],
     queryFn: () => repo.activeProgram(),
   });
+}
+
+/** The active program's builder config (F8/F11), or null for legacy/library rows. */
+export function useActiveBuilderConfig(): {
+  program: Program | null;
+  config: SavedProgramConfig | null;
+  isPending: boolean;
+} {
+  const q = useActiveProgram();
+  const program = q.data ?? null;
+  const config = useMemo(
+    () => (program ? parseSavedProgramConfig(program.config) : null),
+    [program],
+  );
+  return {
+    program,
+    config,
+    isPending: q.isPending,
+  };
 }
 
 export function usePrograms() {
@@ -37,7 +63,7 @@ export type MaterializeInput = {
   program: GeneratedProgram;
   source: "generated" | "library";
   /** Questionnaire answers for generated programs (null for catalog imports). */
-  config?: GeneratorConfig | null;
+  config?: GeneratorConfig | SavedProgramConfig | null;
   libraryKey?: string | null;
   /** Folder name override (catalog programs use their catalog name, not the
    *  generic generated "Goal · N×/week" label). Defaults to program.name. */
@@ -77,7 +103,7 @@ export function useMaterializeProgram() {
   });
 }
 
-// Program Settings → change config → rebuild the folder's routines in place.
+// Program Settings / builder edit → rebuild the folder's routines in place.
 // Destructive (old routines are soft-deleted and their history detaches from
 // the routine); the caller confirms first.
 export function useRegenerateProgram() {
@@ -93,7 +119,7 @@ export function useRegenerateProgram() {
       programId: string;
       folderId: string;
       program: GeneratedProgram;
-      config: GeneratorConfig;
+      config: GeneratorConfig | SavedProgramConfig;
     }) => {
       const existing = (await repo.listRoutines()).filter(
         (r) => r.folderId === folderId,
@@ -135,4 +161,13 @@ export function useSetGeneratorExcluded() {
     onSettled: () =>
       void qc.invalidateQueries({ queryKey: ["exercise-prefs"] }),
   });
+}
+
+// F8 builder save. The program row is stored as source "library" with a
+// `builder:<template>` key so the older Trainer screen (which reads a
+// "generated" row's config as a GeneratorConfig) leaves it alone; the typed
+// builder config lives in `programs.config` and is read through
+// parseSavedProgramConfig (useActiveBuilderConfig).
+export function builderLibraryKey(templateId: string) {
+  return `builder:${templateId}`;
 }

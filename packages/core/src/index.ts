@@ -43,6 +43,8 @@ export * from "./findings/types";
 export * from "./generator/generate";
 export * from "./generator/overload";
 export * from "./generator/parse-routine";
+export * from "./generator/routine-view";
+export * from "./generator/swap";
 export * from "./generator/types";
 export * from "./import/fitbit-sleep";
 export * from "./import/hevy";
