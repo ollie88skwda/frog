@@ -26,12 +26,19 @@ export default function YouScreen() {
       <Suspense fallback={null}>
         {segment === "profile" ? <ProfileScreen /> : <SettingsScreen />}
       </Suspense>
-      <div className="flex gap-2 px-4">
+      <div className="flex flex-wrap gap-2 px-4">
         <Link
           to="/you/rules"
           className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
         >
           How Frog decides
+        </Link>
+        <Link
+          to="/measures"
+          className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
+          data-testid="you-body-log"
+        >
+          Body log
         </Link>
         <Link
           to="/changelog"
