@@ -60,6 +60,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   useResolvedUserPrefs,
   useUpdateUserPrefs,
+  useUserPrefs,
 } from "@/lib/profile-queries";
 import {
   builderLibraryKey,
@@ -86,6 +87,7 @@ export default function ProgramBuilderScreen() {
   const exercisesQ = useExercises();
   const { data: ePrefs } = useExercisePrefs();
   const prefs = useResolvedUserPrefs();
+  const prefsPending = useUserPrefs().isPending;
   const updatePrefs = useUpdateUserPrefs();
   const active = useActiveBuilderConfig();
   const records = useRecordsData();
@@ -120,14 +122,25 @@ export default function ProgramBuilderScreen() {
         return;
       }
     }
-    const tpl = params.get("template");
+    if (prefsPending) return;
     const base = answersFromPrefs(DEFAULT_ANSWERS, prefs);
-    setAnswers(base);
-    if (tpl && templateById(tpl)) {
-      setTemplateId(tpl);
+    const tpl = templateById(params.get("template") ?? "");
+    if (tpl) {
+      setAnswers({ ...base, schedule: tpl.schedule });
+      setTemplateId(tpl.id);
       setStep(WIZARD_STEPS.length);
+      return;
     }
-  }, [seeded, editing, active.isPending, active.config, prefs, params]);
+    setAnswers(base);
+  }, [
+    seeded,
+    editing,
+    active.isPending,
+    active.config,
+    prefsPending,
+    prefs,
+    params,
+  ]);
 
   const library = useMemo(
     () => selectableFrom(exercisesQ.data ?? []),

@@ -6,6 +6,7 @@ import {
   type SavedProgramConfig,
 } from "@frog/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { useRepo } from "./repo";
 
 // Programs feature data seam (Hevy-parity M11). A program is a provenance row
@@ -31,9 +32,13 @@ export function useActiveBuilderConfig(): {
 } {
   const q = useActiveProgram();
   const program = q.data ?? null;
+  const config = useMemo(
+    () => (program ? parseSavedProgramConfig(program.config) : null),
+    [program],
+  );
   return {
     program,
-    config: program ? parseSavedProgramConfig(program.config) : null,
+    config,
     isPending: q.isPending,
   };
 }

@@ -1580,6 +1580,14 @@ export default function RoutineEditScreen() {
                   exerciseId: ex.id,
                   name: ex.name,
                   exerciseType: exerciseTypeOf(ex),
+                  sets: list[swapFor].sets.map((s) => ({
+                    ...s,
+                    weight: "",
+                    laterality:
+                      ex.laterality === "unilateral"
+                        ? "unilateral"
+                        : "bilateral",
+                  })),
                 });
               setSwapFor(null);
             }}

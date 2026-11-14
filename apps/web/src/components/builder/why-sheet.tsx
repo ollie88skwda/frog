@@ -44,9 +44,5 @@ export function RuleSheet({
   );
 }
 
-/** Copy for the "method, not evidence" notes (report §12 #11, principle 8). */
-export const METHOD_NOTE =
-  "Frog default: Oliver's method. Top set first, 4-8 reps, 1-3 RIR, every other day. Where this goes beyond the evidence, the Why sheet says so.";
-
 export const GROUPING_NOTE =
   "Joint action is the default lens. Muscle region is the other: trials of regional growth are small, so it shows as hints, never rules.";

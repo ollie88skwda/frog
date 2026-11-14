@@ -342,8 +342,6 @@ export function inBandCount(rows: readonly MeterRow[]): number {
 /** R7b: a one-time info chip shows once a session has this many direct sets. */
 export const CAP_CHIP_AT = R.directPerSession[1] + 1;
 
-export const WHY_RULE_TEXT = "Why?";
-
 /** Highest-direct-set muscle per session with the R7b chip decision. */
 export function sessionStrip(top: { muscle: string; sets: number } | null) {
   if (!top) return null;
