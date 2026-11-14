@@ -381,7 +381,7 @@ function WorkoutsSection() {
 
         <Row
           label="Exercise grouping"
-          hint="How the library is organised. Joint action is the Frog default."
+          hint={`How the library is organised. Joint action is the ${APP_NAME} default.`}
         >
           <Segmented
             options={[
@@ -992,7 +992,7 @@ function TokenRow({
 function LearnSection() {
   const { t } = useVoice();
   return (
-    <Section title="How Frog decides">
+    <Section title={`How ${APP_NAME} decides`}>
       <div className="mt-1 [&>*+*]:mt-0.5">
         <Row
           label="Rules and evidence"

@@ -1,3 +1,4 @@
+import { APP_NAME } from "@frog/core";
 import { Suspense } from "react";
 import { Link } from "react-router";
 import { SegmentBar, useSegment } from "@/components/segments";
@@ -31,7 +32,7 @@ export default function YouScreen() {
           to="/you/rules"
           className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
         >
-          How Frog decides
+          How {APP_NAME} decides
         </Link>
         <Link
           to="/measures"

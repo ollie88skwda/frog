@@ -1,4 +1,5 @@
 import {
+  APP_NAME,
   EVIDENCE_RULES,
   EVIDENCE_TIER_LABELS,
   type EvidenceRule,
@@ -62,7 +63,9 @@ function RuleLibrary() {
   const [open, setOpen] = useState<EvidenceRule | null>(null);
   return (
     <section className="mt-4" data-testid="rule-library">
-      <h2 className="text-xs font-semibold text-soft">How Frog decides</h2>
+      <h2 className="text-xs font-semibold text-soft">
+        How {APP_NAME} decides
+      </h2>
       <p className="mt-1 text-xs text-faint">
         Every suggestion follows a numbered rule. Tap a tier to see the evidence
         and sources.
