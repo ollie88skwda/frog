@@ -10,7 +10,14 @@ test.setTimeout(600_000);
 // `:program` are filled from the signed-in user's data below.
 const ROUTES: [string, string][] = [
   ["home", "/"],
-  ["train", "/train"],
+  ["plan", "/plan"],
+  ["plan-build", "/plan/build"],
+  ["progress", "/progress"],
+  ["progress-volume", "/progress?s=volume"],
+  ["progress-lab", "/progress?s=lab"],
+  ["you", "/you"],
+  ["you-settings", "/you?s=settings"],
+  ["you-rules", "/you/rules"],
   ["session", "/session/:session"],
   ["history-detail", "/history/:session"],
   ["routines", "/routines"],

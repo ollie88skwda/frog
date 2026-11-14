@@ -83,7 +83,15 @@ test("measures: failed load shows an error, not an editable empty day", async ({
 });
 
 test("icon-only buttons all carry an accessible name", async ({ page }) => {
-  for (const route of ["/", "/train", "/library", "/calendar", "/settings"]) {
+  for (const route of [
+    "/",
+    "/plan",
+    "/progress",
+    "/you",
+    "/library",
+    "/calendar",
+    "/settings",
+  ]) {
     await page.goto(route);
     await page.waitForTimeout(800);
     const unnamed = await page.evaluate(() =>
