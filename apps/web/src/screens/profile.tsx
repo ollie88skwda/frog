@@ -108,6 +108,7 @@ export default function ProfileScreen() {
         <Link
           to="/settings"
           title="Settings"
+          aria-label="Settings"
           className="rounded-sm flex size-10 items-center justify-center bg-surface-2 text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink md:size-8"
           data-testid="profile-settings"
         >
