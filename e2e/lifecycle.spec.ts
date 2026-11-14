@@ -33,7 +33,7 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   await waitForExercise(page, EX);
 
   // Start and log one set.
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   const sessionUrl = page.url();
@@ -51,9 +51,9 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   await expect.poll(() => rowCount(page, "set_logs")).toBe(before + 1);
 
   // Train shows resume; resuming lands on the same session with the set restored.
-  await page.goto("/train");
-  await expect(page.getByTestId("resume-session-btn")).toBeVisible();
-  await page.getByTestId("resume-session-btn").click();
+  await page.goto("/");
+  await expect(page.getByTestId("hero-resume-btn")).toBeVisible();
+  await page.getByTestId("hero-resume-btn").click();
   await expect(page).toHaveURL(sessionUrl);
   await page.getByTestId("set-mark-0").click();
   await expect(page.getByTestId("weight-field")).toHaveValue("100");
@@ -64,8 +64,8 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
   await page.getByTestId("finish-save").click();
   await expect(page).toHaveURL(/\/history\//);
   // Back on Train, resume is gone (no open session).
-  await page.goto("/train");
-  await expect(page.getByTestId("resume-session-btn")).not.toBeVisible();
+  await page.goto("/");
+  await expect(page.getByTestId("hero-resume-btn")).not.toBeVisible();
   const endedCount = await page.evaluate(async () => {
     const { count, error } = await window.__frog.db
       .from("sessions")

@@ -29,7 +29,17 @@ export async function signInAs(page: Page, token: string, email: string) {
 
 export async function signIn(page: Page) {
   await signInAs(page, PASSWORD, EMAIL);
-  await page.goto("/train");
+  // Today only offers "Start empty workout" when no session is live, and the
+  // suite shares one seeded user — close any session an earlier spec left open.
+  await page.evaluate(async () => {
+    const now = Date.now();
+    const { error } = await window.__frog.db
+      .from("sessions")
+      .update({ ended_at: now, updated_at: now })
+      .is("ended_at", null);
+    if (error) throw new Error(error.message);
+  });
+  await page.goto("/");
   await expect(page.getByTestId("start-session-btn")).toBeVisible();
 }
 

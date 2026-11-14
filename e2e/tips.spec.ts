@@ -42,7 +42,7 @@ test("/tips lists lessons and browsing clears the InfoTip dot", async ({
   await expect(item).toBeVisible();
   await shot(page, "2-palette-training-tips");
   await item.click();
-  await expect(page).toHaveURL(/\/tips$/);
+  await expect(page).toHaveURL(/\/you\/rules$/);
 
   // The browse screen renders the LESSONS entries generically.
   await expect(
@@ -73,13 +73,13 @@ test("/tips lists lessons and browsing clears the InfoTip dot", async ({
 test("/tips is reachable from Settings without a keyboard", async ({
   page,
 }) => {
-  await page.goto("/settings");
+  await page.goto("/you?s=settings");
   const link = page.getByTestId("tips-link");
   await link.scrollIntoViewIfNeeded();
   await expect(link).toBeVisible();
   await shot(page, "5-settings-learn-section");
   await link.click();
-  await expect(page).toHaveURL(/\/tips$/);
+  await expect(page).toHaveURL(/\/you\/rules$/);
   await expect(
     page.getByRole("heading", { name: "Training tips" }),
   ).toBeVisible();

@@ -80,7 +80,7 @@ async function logSession(
   field: "reps" | "duration",
   values: string[],
 ) {
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${name}`).click();
   const fieldTestId = field === "reps" ? "reps-field" : "duration-field";
@@ -213,7 +213,7 @@ test("one layout engine paints every frame × ground of a session card", async (
   await createExercise(page, EX);
   await waitForExercise(page, EX);
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   for (const [i, [w, r]] of [

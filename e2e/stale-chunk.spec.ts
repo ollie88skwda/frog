@@ -24,7 +24,7 @@ test("a chunk that no longer exists shows the reload card, not a blank screen", 
     }),
   );
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
 
   // Retry, then one guarded reload, then the card — never an empty <body>.
@@ -45,7 +45,7 @@ test("the guarded reload happens at most once per tab", async ({ page }) => {
     });
   });
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page.getByTestId("app-error-card")).toBeVisible({
     timeout: 20_000,

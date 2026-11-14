@@ -34,7 +34,7 @@ test("save a catalog program creates a named folder + routines + program row", a
   await save.click();
 
   // Lands on the Routines page with the program's folder.
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
   await expect(
     page.getByTestId("folder-Full Body Foundations").first(),
   ).toBeVisible();

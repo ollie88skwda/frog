@@ -99,7 +99,7 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   await page.getByTestId("routine-ex-0-set-1-reps").fill("8");
   await page.getByTestId("routine-ex-0-set-1-repsmax").fill("12");
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 
   // Start the routine → prefilled session.
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
@@ -176,7 +176,7 @@ test("start routine still prefills when the session row resolves after its exerc
   await page.getByTestId(`routine-pick-${EX}`).click();
   await page.getByTestId("routine-ex-0-set-0-reps").fill("5");
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 
   await page.route(/\/rest\/v1\/sessions\?/, async (route) => {
     if (route.request().method() !== "GET") return route.continue();
@@ -272,7 +272,7 @@ test("weight and reps adjust chips step the boxed target fields, and a typed wei
   await expect(reps).toHaveValue("6");
 
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 
   const routineId = await routineIdByName(page, ROUTINE);
   expect(routineId).not.toBe("");
@@ -388,21 +388,19 @@ test("routines-page routine menu flips upward when it would render below the fol
   await expect(
     page.locator('button[data-testid^="routine-menu-"]').last(),
   ).toBeVisible();
-  // The scroll container reserves a fixed chunk of trailing space below its
-  // content (room for the mobile tab bar), so scrolling to its absolute max
-  // still leaves the last card with slack underneath — not the tight-margin
-  // case this bug needs. Stop just short of max instead, which is exactly
-  // what a real scroll gesture that doesn't snap to the very bottom looks
-  // like, and reliably leaves less than POPUP_HEIGHT of room below the last
-  // card's menu button.
+  // The scroll container reserves trailing space below its content (room for
+  // the mobile tab bar), so scrolling to its max still leaves the last card
+  // with slack underneath — not the tight-margin case this bug needs. Aim the
+  // last menu button ~60px above the viewport bottom instead, which leaves
+  // less than POPUP_HEIGHT of room below it.
   const btnBox = await page.evaluate(() => {
     const main = document.querySelector("main") as HTMLElement;
-    const max = main.scrollHeight - main.clientHeight;
-    main.scrollTop = max - 100;
     const buttons = document.querySelectorAll(
       'button[data-testid^="routine-menu-"]',
     );
     const last = buttons[buttons.length - 1] as HTMLElement;
+    const before = last.getBoundingClientRect();
+    main.scrollTop += before.bottom - (window.innerHeight - 60);
     const r = last.getBoundingClientRect();
     return { x: r.x, y: r.y, width: r.width, height: r.height };
   });
@@ -464,7 +462,7 @@ test("start routine seeds every configured set's target with no duplication, one
     await page.getByTestId(`routine-ex-0-set-${i}-repsmax`).fill("8");
   }
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
@@ -547,7 +545,7 @@ test("exercise menu laterality/warm-up round-trip into the session", async ({
   await expect(page.getByTestId("routine-ex-0-set-0-type")).toHaveText("W");
   await page.getByTestId("routine-name-input").fill(ROUTINE);
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 
   const routineId = await routineIdByName(page, ROUTINE);
   expect(routineId).not.toBe("");
@@ -682,7 +680,7 @@ test("a unilateral set shows a shared weight row and a two-column ᴸ/ᴿ reps g
   await expect(right).toHaveValue("7");
 
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 });
 
 // Machine and default laterality (item 6) live on `exercises`, not the

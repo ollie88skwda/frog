@@ -81,7 +81,7 @@ test("parses a pasted routine into matched drafts and surfaces the unmatched lin
 
   // Nothing saved until Save routine is hit.
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 });
 
 test("caps an implausible set count into the unmatched list and resets the picker search after resolving", async ({

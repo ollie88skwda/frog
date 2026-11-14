@@ -1,9 +1,10 @@
 import { APP_NAME } from "@frog/core";
 import {
   Barbell,
-  House,
+  ChartLineUp,
+  ClipboardText,
   Moon,
-  Notebook,
+  Play,
   Sun,
   User,
 } from "@phosphor-icons/react";
@@ -22,11 +23,13 @@ const CommandPalette = lazy(() =>
   import("./command-palette").then((m) => ({ default: m.CommandPalette })),
 );
 
+// Four tabs (redesign §7). Labels are always visible; the workout is a
+// full-screen takeover with the tab bar hidden.
 const NAV = [
-  { to: "/", label: "Home", icon: House, end: true, key: null },
-  { to: "/train", label: "Training", icon: Barbell, key: null },
-  { to: "/routines", label: "Routines", icon: Notebook, key: null },
-  { to: "/profile", label: "Profile", icon: User, key: null },
+  { to: "/", label: "Today", icon: Barbell, end: true, key: null },
+  { to: "/plan", label: "Plan", icon: ClipboardText, key: null },
+  { to: "/progress", label: "Progress", icon: ChartLineUp, key: null },
+  { to: "/you", label: "You", icon: User, key: null },
 ];
 
 export function AppShell() {
@@ -37,23 +40,20 @@ export function AppShell() {
   // surfaces on the Profile nav item instead.
   const hasUnseenChangelog = useChangelogHasUnseen();
 
-  // The Training tab jumps straight into the live session when one exists, so
-  // you don't have to land on /train and click "Resume". It stays highlighted
-  // for both the training landing and any open session.
+  const inSession = pathname.startsWith("/session/");
+  // Resume pill: "jump into the live session" lives above the tab bar now.
+  // Today already carries a Resume button in its hero, so the pill skips it.
+  const showResume = active != null && !inSession && pathname !== "/";
   const nav = useMemo(
     () =>
-      NAV.map((item) => {
-        const badge = item.to === "/profile" && hasUnseenChangelog;
-        return item.to === "/train"
-          ? {
-              ...item,
-              to: active ? `/session/${active.id}` : "/train",
-              active: pathname === "/train" || pathname.startsWith("/session/"),
-              badge,
-            }
-          : { ...item, active: undefined as boolean | undefined, badge };
-      }),
-    [active, pathname, hasUnseenChangelog],
+      NAV.map((item) => ({
+        ...item,
+        // Changelog lives under You, so its unseen dot surfaces there.
+        badge: item.to === "/you" && hasUnseenChangelog,
+        // A live session keeps Today lit (it is Today's takeover).
+        active: item.to === "/" && inSession ? true : undefined,
+      })),
+    [inSession, hasUnseenChangelog],
   );
 
   return (
@@ -140,10 +140,23 @@ export function AppShell() {
 
       {/* Floating island tab bar on small screens (mobile-first logging).
           Centered, content-width — it doesn't span the viewport. Sits clear of
-          the iOS home indicator via safe-area margin. Active tab expands to
-          reveal its label (the "island" effect); square corners hold the
-          0px-radius design language. */}
-      <nav className="floating float-in fixed inset-x-0 bottom-0 z-40 mx-auto mb-[calc(0.75rem+env(safe-area-inset-bottom))] flex w-fit items-center gap-0.5 p-1.5 md:hidden">
+          the iOS home indicator via safe-area margin. Every tab shows its
+          label; square corners hold the 0px-radius design language. */}
+      {showResume && (
+        <NavLink
+          to={`/session/${active?.id}`}
+          data-testid="resume-pill"
+          className="floating fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex h-11 w-fit items-center gap-2 bg-accent px-4 text-sm font-semibold text-on-accent md:hidden"
+        >
+          <Play className="size-4" weight="fill" /> Resume workout
+        </NavLink>
+      )}
+      <nav
+        className={cn(
+          "floating float-in fixed inset-x-0 bottom-0 z-40 mx-auto mb-[calc(0.75rem+env(safe-area-inset-bottom))] flex w-fit items-center gap-0.5 p-1.5 md:hidden",
+          inSession && "hidden",
+        )}
+      >
         {nav.map(
           ({ to, label, icon: Icon, end, active: forceActive, badge }) => (
             <NavLink
@@ -153,29 +166,22 @@ export function AppShell() {
               title={label}
               className={({ isActive }) =>
                 cn(
-                  "flex h-11 items-center justify-center gap-1.5 px-3 text-2xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
+                  "flex h-11 min-w-[4.25rem] flex-col items-center justify-center gap-0.5 px-2 text-2xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
                   (forceActive ?? isActive)
                     ? "bg-accent-soft text-accent-ink"
                     : "text-soft active:text-ink",
                 )
               }
             >
-              {({ isActive }) => (
+              {() => (
                 <>
                   <span className="relative shrink-0">
-                    <Icon className="size-[22px]" />
+                    <Icon className="size-5" />
                     {badge && (
                       <span className="absolute top-0 right-0 size-1.5 bg-accent" />
                     )}
                   </span>
-                  <span
-                    className={cn(
-                      "overflow-hidden leading-none whitespace-nowrap transition-[max-width,opacity] duration-150 ease-(--ease-out-quad)",
-                      (forceActive ?? isActive)
-                        ? "max-w-24 opacity-100"
-                        : "max-w-0 opacity-0",
-                    )}
-                  >
+                  <span className="leading-none whitespace-nowrap">
                     {label}
                   </span>
                 </>

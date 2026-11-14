@@ -17,7 +17,7 @@ export async function makeExercise(page: Page, label: string): Promise<string> {
 
 /** Starts a new session and picks `exerciseName` as its first exercise. */
 export async function startSessionWith(page: Page, exerciseName: string) {
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await page.getByTestId(`pick-exercise-${exerciseName}`).click();

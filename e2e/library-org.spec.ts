@@ -82,7 +82,7 @@ test("recently logged exercises surface in the Recent band", async ({
   await waitForExercise(page, EX);
 
   // Log one set so the exercise appears in the 30-day window.
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   await page.getByTestId("weight-field").fill("100");

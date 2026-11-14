@@ -1,9 +1,8 @@
 // Dev-only gallery for the data kit (F12). Renders every component in day and
 // night (tokens are scoped by [data-mode], so a nested wrapper flips them).
-// Not shipped: app.tsx (J6) mounts it behind the same
+// Not shipped: app.tsx (J6) mounts it at /dev/data-kit inside the app router behind the same
 // `import.meta.env.DEV || VITE_E2E === "1"` dead-branch as the annotate overlay.
 import { useState } from "react";
-import { MemoryRouter } from "react-router";
 import {
   CoachCard,
   ConfidenceDots,
@@ -179,11 +178,9 @@ function Kit({ mode }: { mode: "day" | "night" }) {
 
 export default function DataKit() {
   return (
-    <MemoryRouter>
-      <div className="mx-auto max-w-[390px]">
-        <Kit mode="day" />
-        <Kit mode="night" />
-      </div>
-    </MemoryRouter>
+    <div className="mx-auto max-w-[390px]">
+      <Kit mode="day" />
+      <Kit mode="night" />
+    </div>
   );
 }

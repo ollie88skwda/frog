@@ -29,7 +29,7 @@ test("edit a committed set; delete a set; both survive reload", async ({
   // goto aborts the optimistic create's in-flight request.
   await waitForExercise(page, EX);
 
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   const before = await rowCount(page, "set_logs");
   await page.getByTestId(`pick-exercise-${EX}`).click();
@@ -130,7 +130,7 @@ test("delete a custom exercise removes it from the picker; tags round-trip", asy
 
   // Gone from the session picker too (the published shared original stays —
   // only the private copy was deleted).
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page.getByTestId("pick-exercise-Squat")).toBeVisible();
   await expect(page.getByTestId(`pick-exercise-${copy}`)).not.toBeVisible();

@@ -215,7 +215,7 @@ test("a routine's per-set laterality prescription re-syncs as the live set advan
   await page.getByTestId("routine-ex-0-set-2-reps-l").fill("8");
 
   await page.getByTestId("routine-save-btn").click();
-  await expect(page).toHaveURL(/\/routines$/);
+  await expect(page).toHaveURL(/\/plan\?s=routines$/);
 
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);

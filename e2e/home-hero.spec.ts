@@ -57,7 +57,7 @@ test("with no routines the hero offers to build one, and can still start empty",
   await expect(page.getByTestId("hero-build-btn")).toBeVisible();
 
   // The escape hatch survives — an unplanned session is still one tap away.
-  await page.getByTestId("home-start-btn").click();
+  await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   // A fresh empty session opens the exercise picker; dismiss it and bin the
   // session so the next spec inherits a clean slate.
@@ -96,7 +96,7 @@ test("the hero names today's routine, previews it, and starts it in one tap", as
     await page.getByTestId("routine-add-exercise-btn").click();
     await page.getByTestId(`routine-pick-${ex}`).click();
     await page.getByTestId("routine-save-btn").click();
-    await expect(page).toHaveURL(/\/routines$/);
+    await expect(page).toHaveURL(/\/plan\?s=routines$/);
   }
 
   await page.goto("/");

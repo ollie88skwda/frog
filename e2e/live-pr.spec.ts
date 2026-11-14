@@ -44,7 +44,7 @@ test("beating a prior session raises the PR banner + medal; first log never PRs"
   await waitForExercise(page, EX);
 
   // Session 1: first-ever log → no PR banner (baseline only).
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   await logFirstSet(page, "100", "5");
@@ -59,7 +59,7 @@ test("beating a prior session raises the PR banner + medal; first log never PRs"
   await expect(page).toHaveURL(/\/history\//);
 
   // Session 2: a heavier set beats the stored bests → banner + medal.
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await page.getByTestId(`pick-exercise-${EX}`).click();
   await logFirstSet(page, "120", "5");

@@ -35,7 +35,7 @@ test("library surfaces a seeded exercise with how-to steps and images", async ({
 test("session picker over the full library opens interactive under 2s", async ({
   page,
 }) => {
-  await page.goto("/train");
+  await page.goto("/");
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
 
