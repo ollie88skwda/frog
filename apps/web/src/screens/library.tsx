@@ -7,10 +7,13 @@ import {
   jointActionLabel,
   type Machine,
   type Metric,
+  MUSCLE_REGION_LABELS,
+  MUSCLE_REGIONS,
   type MuscleTarget,
   muscleLabel,
   type NewMetricInput,
   ratingsForMuscle,
+  regionOf,
   tierRank,
 } from "@frog/core";
 import {
@@ -54,6 +57,7 @@ import {
 } from "@/components/exercise-filter";
 import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
+import { ChipGroup, ChipItem } from "@/components/ui/chip";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { IconButton, IconLink } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -67,6 +71,10 @@ import {
   useBulkAddFailures,
 } from "@/lib/bulk-add-failures";
 import { usePendingExercises } from "@/lib/pending-exercises";
+import {
+  useResolvedUserPrefs,
+  useUpdateUserPrefs,
+} from "@/lib/profile-queries";
 import {
   copyExerciseOpts,
   useCreateExercise,
@@ -220,6 +228,9 @@ export default function LibraryScreen() {
     [exercises, query, filterMuscle, filterTier, filterEquipment, yoursOnly],
   );
   const groups = useMemo(() => groupByPrimaryMuscle(filtered), [filtered]);
+  // F14/R12: joint action (Frog default) or muscle region; persisted pref.
+  const { exerciseGrouping } = useResolvedUserPrefs();
+  const updatePrefs = useUpdateUserPrefs();
 
   // "Recent" band: exercises with a set logged in the last 30 days, most
   // recent first (Hevy-style recently-logged-first ordering). Empty until the
@@ -243,6 +254,11 @@ export default function LibraryScreen() {
       .filter((e): e is Exercise => e !== undefined);
     return { recent, favorites, rest };
   }, [filtered, recentIds, recentSet, favoriteIds]);
+
+  const restGroups = useMemo(
+    () => groupRest(bands.rest, exerciseGrouping),
+    [bands.rest, exerciseGrouping],
+  );
 
   // Stable identities keep the memoized rows out of the re-render that every
   // optimistic write triggers — a bulk run does one write per name.
@@ -331,6 +347,26 @@ export default function LibraryScreen() {
             </button>
           }
         />
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-2xs text-faint">Group by</span>
+          <ChipGroup
+            value={exerciseGrouping}
+            onValueChange={(v) =>
+              v &&
+              updatePrefs.mutate({
+                exerciseGrouping: v as typeof exerciseGrouping,
+              })
+            }
+            aria-label="Group exercises by"
+          >
+            <ChipItem value="joint_action" data-testid="group-joint-action">
+              Joint action
+            </ChipItem>
+            <ChipItem value="region" data-testid="group-region">
+              Region
+            </ChipItem>
+          </ChipGroup>
+        </div>
         <TierLegend
           className="mt-2"
           active={filterTier}
@@ -507,24 +543,36 @@ export default function LibraryScreen() {
                 </ul>
               </section>
             )}
-            <ul className="[&>*+*]:mt-0.5">
-              {bands.rest.map((ex) => (
-                <ExerciseRow
-                  key={ex.id}
-                  exercise={ex}
-                  groupMuscle={primaryMuscleKey(ex)}
-                  flat
-                  setMetrics={setMetrics}
-                  machines={machines}
-                  isFavorite={favoriteIds.has(ex.id)}
-                  onToggleFavorite={onToggleFavorite}
-                  pending={pendingExercises.has(ex.id)}
-                  expanded={expandedId === ex.id}
-                  onToggle={onToggleExpanded}
-                  onEdit={onEdit}
-                />
-              ))}
-            </ul>
+            {restGroups.map((g) => (
+              <section key={g.key} data-testid={`rest-group-${g.key}`}>
+                <header className="flex h-8 items-center gap-2 bg-surface-2 px-2">
+                  <span className="truncate text-2xs font-medium tracking-widest uppercase">
+                    {g.label}
+                  </span>
+                  <span className="num text-2xs text-faint">
+                    {g.items.length}
+                  </span>
+                </header>
+                <ul className="[&>*+*]:mt-0.5">
+                  {g.items.map((ex) => (
+                    <ExerciseRow
+                      key={ex.id}
+                      exercise={ex}
+                      groupMuscle={primaryMuscleKey(ex)}
+                      flat
+                      setMetrics={setMetrics}
+                      machines={machines}
+                      isFavorite={favoriteIds.has(ex.id)}
+                      onToggleFavorite={onToggleFavorite}
+                      pending={pendingExercises.has(ex.id)}
+                      expanded={expandedId === ex.id}
+                      onToggle={onToggleExpanded}
+                      onEdit={onEdit}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))}
           </>
         )}
       </div>
@@ -533,6 +581,47 @@ export default function LibraryScreen() {
       <MetricsSection metrics={metrics} />
     </div>
   );
+}
+
+// Default-browse grouping (F14, R12): by first joint action (Frog default) or
+// by muscle region of the primary muscle. Exercises with no data land in
+// "Other". Within a group the incoming name order is kept.
+function groupRest(
+  items: Exercise[],
+  mode: "joint_action" | "region",
+): { key: string; label: string; items: Exercise[] }[] {
+  const buckets = new Map<string, Exercise[]>();
+  const push = (k: string, ex: Exercise) => {
+    const b = buckets.get(k);
+    if (b) b.push(ex);
+    else buckets.set(k, [ex]);
+  };
+  for (const ex of items) {
+    if (mode === "joint_action") push(ex.jointActions?.[0] ?? "other", ex);
+    else {
+      const m = ex.muscleTargets?.[0]?.muscle;
+      push((m && regionOf(m)) || "other", ex);
+    }
+  }
+  const out: { key: string; label: string; items: Exercise[] }[] = [];
+  if (mode === "region") {
+    for (const r of MUSCLE_REGIONS) {
+      const b = buckets.get(r);
+      if (b) out.push({ key: r, label: MUSCLE_REGION_LABELS[r], items: b });
+    }
+  } else {
+    const keys = [...buckets.keys()].filter((k) => k !== "other");
+    keys.sort((a, b) => jointActionLabel(a).localeCompare(jointActionLabel(b)));
+    for (const k of keys)
+      out.push({
+        key: k,
+        label: jointActionLabel(k),
+        items: buckets.get(k) ?? [],
+      });
+  }
+  const other = buckets.get("other");
+  if (other) out.push({ key: "other", label: "Other", items: other });
+  return out;
 }
 
 // Owns its own draft state so typing a paste in here never re-renders the
@@ -1157,7 +1246,7 @@ function TagEditor({
                 patch: { tags: (exercise.tags ?? []).filter((x) => x !== t) },
               })
             }
-            className="flex size-6 items-center justify-center rounded-xs text-faint hover:text-neg"
+            className="flex size-6 items-center justify-center rounded-xs bg-surface-2 text-faint hover:text-neg"
           >
             <X className="size-3" />
           </button>
