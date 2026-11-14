@@ -14,7 +14,6 @@ import { type ReactNode, useRef, useState } from "react";
 import { Link } from "react-router";
 import { ImportCard } from "@/components/import-card";
 import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { QueryState } from "@/components/ui/query-state";
@@ -69,6 +68,15 @@ function download(filename: string, mime: string, content: string) {
 }
 
 // ── Shared building blocks ──────────────────────────────────────────────────
+
+function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mt-6">
+      <h2 className="text-xs font-semibold text-soft">{title}</h2>
+      {children}
+    </section>
+  );
+}
 
 function Section({
   title,
@@ -197,34 +205,42 @@ export default function SettingsScreen() {
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
       <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
 
-      {/* Groups follow redesign 8.10: Training, Coach, Data, Account. */}
-      <UnitsSection />
-      <WorkoutsSection />
-      <CoachSection />
-      <DisplaySection />
-      <VoiceSection />
-      <NotificationsSection />
-      <InstallSection />
-      <ExportSection />
-      <ImportCard />
-      <ApiTokensSection />
-      <LearnSection />
-      <ChangelogSection />
-      <ReportSection />
+      <Group title="Training">
+        <UnitsSection />
+        <WorkoutsSection />
+        <DisplaySection />
+        <VoiceSection />
+      </Group>
 
-      <Section title="Account">
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => void signOut()}
-            data-testid="sign-out-btn"
-          >
-            Sign out
-          </Button>
-        </div>
-        <DeleteAccount />
-      </Section>
+      <Group title="Coach">
+        <CoachSection />
+      </Group>
+
+      <Group title="Data">
+        <NotificationsSection />
+        <InstallSection />
+        <ExportSection />
+        <ImportCard />
+        <ApiTokensSection />
+      </Group>
+
+      <Group title="Account">
+        <LearnSection />
+        <ChangelogSection />
+        <ReportSection />
+        <Section title="Sign out">
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => void signOut()}
+              data-testid="sign-out-btn"
+            >
+              Sign out
+            </Button>
+          </div>
+        </Section>
+      </Group>
     </div>
   );
 }
@@ -1134,48 +1150,5 @@ function ReportSection() {
         </Row>
       </div>
     </Section>
-  );
-}
-
-// ── Delete account ──────────────────────────────────────────────────────────
-
-// Competitor lesson (report 3): no account-deletion path is a top complaint.
-// Verified 2026-11-13: the backend has NO user-data delete function (only the
-// test-only admin:purgeTestUser), so a self-serve wipe needs a Convex mutation
-// (J2's convex/user.ts, TODO in the PR). Until then this is an honest request
-// path, not a fake button that deletes nothing.
-function DeleteAccount() {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="mt-4">
-      <p className="text-xs font-medium">Delete account</p>
-      <p className="mt-0.5 text-2xs text-faint">
-        Deleting removes your sign-in and all training data. It is not
-        self-serve yet: export your data first, then send a deletion request.
-      </p>
-      <Button
-        size="sm"
-        variant="danger"
-        className="mt-2"
-        onClick={() => setOpen(true)}
-        data-testid="delete-account-btn"
-      >
-        Request account deletion
-      </Button>
-      <ConfirmDialog
-        open={open}
-        onOpenChange={setOpen}
-        title="Request account deletion?"
-        description={`This opens a ${APP_NAME} deletion request on GitHub. Export your data first; deletion removes it for good.`}
-        confirmLabel="Open request"
-        onConfirm={() =>
-          window.open(
-            `${ISSUES_URL}?title=${encodeURIComponent(`${APP_NAME}: account deletion request`)}&body=${encodeURIComponent("Please delete my account and all data. (Do not add personal data here; we will confirm by your sign-in email.)")}`,
-            "_blank",
-            "noreferrer",
-          )
-        }
-      />
-    </div>
   );
 }
