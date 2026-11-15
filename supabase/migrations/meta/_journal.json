@@ -1,0 +1,132 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1783862774476,
+      "tag": "20260712132614_majestic_champions",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783867394661,
+      "tag": "20260712144314_messy_champions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783867970350,
+      "tag": "20260712145250_watery_epoch",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783915807161,
+      "tag": "20260713041007_curly_mother_askani",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783929662159,
+      "tag": "20260713080102_yellow_ken_ellis",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783968668193,
+      "tag": "20260713185108_eminent_gamora",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783969733798,
+      "tag": "20260713190853_cooing_mongoose",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784092916008,
+      "tag": "20260715052156_puzzling_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1784093991221,
+      "tag": "20260715053951_parched_firedrake",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1785440079216,
+      "tag": "20260730193439_familiar_cardiac",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1785458089944,
+      "tag": "20260731003449_cynical_stick",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1785539460620,
+      "tag": "20260731231100_pink_brother_voodoo",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1785544340549,
+      "tag": "20260801003220_magenta_enchantress",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785546722334,
+      "tag": "20260801011202_complex_wallflower",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1786082934404,
+      "tag": "20260807060854_polite_gressill",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1786169120653,
+      "tag": "20260808060520_sturdy_kitty_pryde",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1786170214735,
+      "tag": "20260808062334_third_spot",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1786214673419,
+      "tag": "20260808184433_robust_wind_dancer",
+      "breakpoints": true
+    }
+  ]
+}

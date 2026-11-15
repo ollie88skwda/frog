@@ -1,0 +1,715 @@
+{
+ "master": {
+  "screens": [
+   {
+    "screen": "Home tab \u2014 social feed (Following)",
+    "purpose": "Default landing surface: a following-based feed of workout posts with social interactions, discovery entry points, and seasonal promo cards.",
+    "features": [
+     {
+      "name": "Following feed of workout posts",
+      "spec": "Vertical feed of workouts posted by followed users only. Each card shows: poster username/avatar, session name, optional user-written description, time since completion, duration, training volume, PR count, average heart rate (only for smartwatch-logged sessions), attached media in a swipeable carousel (video first if present, playable in-feed without opening the workout), like count, comment count. Tapping a card opens the full workout detail. Upward-arrow icon on each card opens the share/summary screen and generates an external shareable link. Media renders in the exact order the poster arranged it. With maximum privacy settings applied, the feed shows only the user's own workouts.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Discover feed",
+      "spec": "Second feed mode showing recent/popular workouts from users NOT followed. Toggle: tap the grey 'Home' selector at the top of the Home tab and switch to 'Discover'; switch back via the selector ('Home (Following)'). Cards match the Following-feed layout plus an inline '+ Follow' button (follow without opening the profile). Tapping a username opens the poster's profile. Same Save-as-Routine / Copy-Workout actions available on opened workouts. Ranking/selection algorithm is intentionally undisclosed (anti-spam). Discover cannot be disabled or removed by any setting.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Likes, comments & threads",
+      "spec": "Users can like workouts, like comments, comment on workouts, reply to specific comments (threaded), and @mention other users. Comments support clickable hyperlinks. Deletion: swipe-left on your own comment anywhere reveals a Delete button; on your own posts, swipe-left + three-dots on anyone's comment offers 'Delete Comment' (post-owner moderation). Comment icon on a card opens an 'Add a Comment' input.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Suggested athletes carousel",
+      "spec": "Horizontal recommendation carousel interleaved with feed posts and also shown on the search screen. Each card: Follow button, remove-from-suggestions (X), tap-through to profile. Recommendation algorithm undisclosed. Hidden entirely when Settings > Privacy & Social > 'Hide Suggested Users' is on.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "User search + contact sync",
+      "spec": "Magnifying-glass icon (top right, beside notifications) opens search: find users by username; a 'Contacts' segment sits directly below the search bar. Contact sync flow: 'Connect Contacts' > 'Open Settings' deep-link to grant OS contacts permission (all or selected contacts) > verify own phone number via SMS code (enter number > Continue > enter code > Continue). Matching is mutual \u2014 a contact appears only if they also enabled contact access and verified their number. Contacts > Settings dropdown allows changing or deleting the stored phone number; permission is revoked/edited in OS settings.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Invite a friend",
+      "spec": "'+ Invite a friend' entry above the suggested-athletes carousel and inside the search screen. Opens a share sheet targeting WhatsApp, Messenger, Facebook, X/Twitter, phone contacts, or a copyable invite link.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Notifications screen",
+      "spec": "Bell icon on Home opens the notifications list covering: new followers, likes on workouts, likes on comments, comments on workouts, comment replies, comment mentions, and workout discussions. Each row deep-links to the relevant post/profile. (Screen redesigned Dec 2025.) Every category is individually toggleable in Settings > Notifications.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Seasonal promo cards",
+      "spec": "Home surfaces a Monthly Report promo card with a blue 'View Report' button during each month (dismissible; report stays reachable via Profile > Statistics), and a Year in Review banner/dialog from the start of December (after dismissal it lives under Profile > Statistics).",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Workout tab \u2014 routines home",
+    "purpose": "Hub for reusable workout templates: routines list, folders, empty-workout start, Explore library, and the Trainer mode switcher.",
+    "features": [
+     {
+      "name": "Routines list & management",
+      "spec": "List of saved routines (cards) each with a 'Start Routine' button that launches a live logging session pre-filled from the template. Per-routine three-dots menu: Share Routine (external link/OS share), Duplicate Routine (opens create-routine screen prefilled, default title '<name> (copy)', duplicate carries NO history \u2014 this is the sanctioned 'reset routine data' path), Edit Routine, Delete Routine (two-step: menu action + confirmation popup). Tap-and-hold drag-and-drop reorders routines and moves them between folders. Routines are reusable indefinitely; starting one resets its sets each time. Free tier: max 4 routines; Pro unlimited. Downgrade is non-destructive: over-cap routines stay usable, only new creation is blocked.",
+      "platform_specific": "",
+      "pro_gated": "partial \u2014 4-routine cap on free, unlimited on Pro"
+     },
+     {
+      "name": "Routine folders",
+      "spec": "Folders group routines (by program/split/goal). Create via folder icon below '+ Start Empty Workout' (name it). Folder three-dots menu: Share Folder (link to hevy.com page or generated image rendering every routine with name, exercise thumbnails, and sets\u00d7reps or duration per exercise), reorder folders (drag-and-drop), Rename, Add new routine, Delete. Routines move between folders via tap-and-hold drag. If 2+ folders exist, creating a routine first prompts for the destination folder. No cap on routines per folder.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Start Empty Workout",
+      "spec": "'+ Start Empty Workout' button at the top of the tab starts a blank live session immediately (stopwatch running, zero exercises). Exercises are added ad hoc during the session. Also used for back-logging: log normally, then edit start date/time on the save screen.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Routine sharing (external)",
+      "spec": "Share Routine generates a public hevy.com link viewable by anyone including non-users, with a save-to-own-profile action for recipients. Shared routines include the exercise list but STRIP absolute target reps and weights; rep-range targets (if the routine uses Rep Range mode) ARE included. Folder sharing behaves identically, plus an image-export option.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Trainer mode switcher",
+      "spec": "Tapping the 'Workout' title at the top of the tab opens a dropdown to switch the tab between standard Routines mode and 'Trainer' (Hevy Trainer) mode.",
+      "platform_specific": "",
+      "pro_gated": "no (Trainer itself is Pro)"
+     }
+    ]
+   },
+   {
+    "screen": "Routine builder (overlay from Workout tab)",
+    "purpose": "Create/edit reusable workout templates encoding the full prescription.",
+    "features": [
+     {
+      "name": "Routine creation & editing",
+      "spec": "Flow: 'New Routine' > name it > blue '+ Add Exercise' (multi-select picker with search + equipment/muscle filters) > per exercise configure sets. Each set row: weight target (KG/LBS column per unit setting), reps target OR rep range (tap the REPS header to switch to Rep Range mode with min-max values), or TIME target for duration exercises (hyphen placeholder, tap and type). Tap set number to assign set type (Normal default / Warm-up / Failure / Drop) \u2014 types prefill into live sessions. '+ Add Set' appends rows (no per-exercise cap; 150-set routine cap applies). Swipe-left deletes a set. Per-exercise three-dots: reorder (drag-and-drop), Replace from library, + Add To Superset, Add Warm Up Sets (if calculator enabled), Remove. Per-exercise rest-timer control (scroll picker, off\u20135min). Per-exercise note field. RPE canNOT be programmed in routines (live-workout only). Previously performed exercises auto-prefill set count/weights/reps from last performance. Sources for creation: from scratch, from own completed workout (Save as Routine), from another user's workout, from Explore, or via HevyGPT import.",
+      "platform_specific": "",
+      "pro_gated": "partial \u2014 routine count capped at 4 on free"
+     },
+     {
+      "name": "Routine exercise notes (persistent)",
+      "spec": "Free-text note per exercise stored on the template; it re-renders under that exercise every time the routine is started. May contain a URL that is tappable in routine review and during live workouts. Notes/links are private \u2014 visible and clickable only to the owner, never written onto the logged workout, never shown to followers. Read-only during a live session (edited only via Edit Routine); a separate per-session note field appears below it.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Explore \u2014 program & routine library (Workout tab)",
+    "purpose": "Built-in catalog of pre-made programs and single routines to import and edit.",
+    "features": [
+     {
+      "name": "Program library",
+      "spec": "26 pre-made programs. Default view shows top 3 with a 'Show all 26 programs' expander. Filter chips: Level (beginner/intermediate/advanced), Goal (muscle gain/strength/weight loss), Equipment. Composition: 8 beginner (4 gym, 3 dumbbell-only, 1 equipment-free), 10 intermediate (5/3/2), 8 advanced (4/3/1). Program detail page: experience level, required equipment, objective, list of individual workouts; blue 'Save Program' imports the whole program as a new folder of routines; per-routine three-dots can share it externally or save just that routine. Programs ship with exercises (some with alternatives), set counts with rep ranges, built-in rest periods, and coaching notes. Everything imported is fully editable (replace/rearrange/remove/add exercises, sets, supersets, rest timers, set types, notes). Entire library is free.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Routine categories",
+      "spec": "7\u20138 themed categories below the programs (sources vary 7 vs 8): At home, Travel, Dumbbells Only, Band, Cardio & HIIT, Gym, Bodyweight, Suspension Band. Each category holds 4\u20138 routines with a blue 'Save Routine' button per routine. Blog-featured routines are NOT in Explore; blog posts carry a 'click here' deep link that opens the routine for saving.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Hevy Trainer (Workout tab mode)",
+    "purpose": "Algorithmic (explicitly non-AI) adaptive program generator with progressive-overload automation.",
+    "features": [
+     {
+      "name": "Trainer onboarding & program generation",
+      "spec": "Landing page with feature info + 'Start with Hevy Trainer' CTA. Onboarding questionnaire: top goal, training experience, gender, birthday, weight, height, available equipment, weekly frequency, desired workout length, optional focus muscle group. Mandatory health terms & policy acceptance screen before generation. Program is generated by a deterministic algorithm (research-backed, not AI). Only one routine is visible at a time; the next unlocks after completing the current one. Each generated workout shows exercise count, estimated duration, and a preview; each exercise carries prescribed sets, target rep ranges, automatic rest times, and a recommended starting weight (only for exercises the user has logged at least once in Hevy). Home programs require at least a dumbbell pair or barbell+plates.",
+      "platform_specific": "",
+      "pro_gated": "yes"
+     },
+     {
+      "name": "Trainer program editing & settings",
+      "spec": "Modify Next Workout via tapping the workout description or three-dots > Modify Next Workout. Per-exercise three-dots: Reorder (drag), Replace Exercise (4 recommended alternatives or 'See All Exercises' full library), Don't Recommend Again (managed under Program Settings > Exclude Exercises; three-dots > Remove from list to re-enable), Delete Exercise; grey '+ Add Exercise' at bottom. Program Settings (icon top-right of Trainer view): change equipment, new focus muscle group, workout duration, new goal, workout frequency, restart program, adjustable default rest timer. Live one-off edits during logging also allowed. Optional RPE per set if RPE Tracking is on. Full multi-week program view available (Jun\u2013Jul 2026).",
+      "platform_specific": "",
+      "pro_gated": "yes"
+     },
+     {
+      "name": "Progressive-overload rule & progress indicators",
+      "spec": "Working weight only increases after the user hits the TOP of the rep range on ALL prescribed sets at the current weight. A progress badge appears next to movements the user has progressed on; Trainer surfaces small workout tips and nudges when progression stalls.",
+      "platform_specific": "",
+      "pro_gated": "yes"
+     },
+     {
+      "name": "Trainer progress report",
+      "spec": "Dashboard at the top of the Trainer view (Trainer-exclusive): week-to-week consistency; time trained, volume load, sets completed; per-exercise progress list flagged progressing/maintaining (tap for in-depth breakdown); muscle distribution chart; sets-per-body-part chart with a highlighted recommended (green) range; week-to-week average body weight graph (populates only if body weight is logged in Hevy).",
+      "platform_specific": "",
+      "pro_gated": "yes"
+     }
+    ]
+   },
+   {
+    "screen": "Active workout \u2014 live logging (full-screen overlay)",
+    "purpose": "The core logging session: started from a routine, an empty workout, a copied workout, a Trainer workout, a Coach-assigned workout, or a widget.",
+    "features": [
+     {
+      "name": "Session header: stopwatch, counters, timer controls",
+      "spec": "Stopwatch top-left tracks elapsed duration; beside it live counters for volume load and completed sets. Tapping the stopwatch opens controls: Pause Workout Timer / Resume Workout Timer (two-state; watch app cannot pause), change session duration, change start date, change start time (enables retroactive logging mid-session). A clock icon at top also offers a general countdown Timer (arbitrary duration, plays the rest-timer alert sound at zero, does NOT auto-record into any set \u2014 manual entry afterward). 'Finish' button top-right; 'Discard Workout' at the bottom. Grey 'Settings' button at the bottom opens the workout-settings hub mid-session (changes take effect immediately).",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Set rows & completion",
+      "spec": "Per exercise, a set table with columns: SET (number/type), PREVIOUS (read-only reference), KG/LBS, REPS (or TIME for duration exercises), RPE (only if enabled), and a completion checkmark. Marking a set complete: plays the check-set sound, starts that exercise's rest timer, runs the PR check, and (with Smart Superset Scrolling) auto-advances within a superset. Only completed sets/exercises are saved at finish. Reps of 0 are rejected. Re-adding a previously performed exercise auto-prefills set count, weights, reps (all editable).",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "PREVIOUS column (previous workout values)",
+      "spec": "Left-hand column showing what the user did for that set index last time (format '45kg x 9', with RPE if logged: '50lbs x 10 @ 8.5 RPE'; duration for time-based exercises). Tap a previous value to autofill load+reps into the current set. Appears only in live workouts (never in the routine builder). Blank for never-logged exercises; per set index \u2014 a newly added 5th set is blank until logged once. Source controlled by Settings > Workouts > Previous Workout Values: 'Any workout' (last performance anywhere, default) or 'Same routine' (last performance within the current routine). The setting affects only this reference column, never the routine's stored values.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Set types",
+      "spec": "Tap the set-number cell to open the type menu: Normal (default), 'W - Warmup set', 'F - Failure set', 'D - Dropset' (blue D marker on the row); menu also offers Remove Set. Letter replaces the set number once assigned. Types are freely mixable per exercise and changeable any number of times; routine-template types prefill live sessions. Rules: the rest timer does NOT auto-start when the NEXT set is a Drop Set; failure sets log the last fully completed rep (failed on 14 \u2192 log 13); several consecutive Drop Sets represent multiple weight reductions.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Add/remove sets",
+      "spec": "Grey '+ Add Set' button under each exercise appends rows (unlimited per exercise within the 150-set workout cap). Remove via swipe-left (red Delete) or the set-number menu's Remove Set. Freely add/remove mid-session.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Exercise overflow menu (three-dots)",
+      "spec": "Per-exercise actions: Reorder exercises (drag-and-drop), Replace exercise (from library), + Add To Superset / Remove From Superset, Add Warm Up Sets (only when the warm-up calculator setting is on), Update Bodyweight (only on 100%-bodyweight exercises \u2014 opens a number entry, 'Log Bodyweight' saves today's weight into Measures history so volume math is current), Remove exercise. Tapping the exercise NAME opens its full detail screen (stats/instructions) without pausing or discarding the session. Tapping the KG/LBS column header opens the per-exercise weight-unit override.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Supersets & circuits",
+      "spec": "'+ Add To Superset' > pick another exercise already in the workout (needs \u22652 exercises). Extend by opening Add To Superset on a new exercise and tapping any member of the target group. 2 members = superset; 3+ = giant set/circuit \u2014 no cap on members or on number of supersets per workout, each superset gets a unique color coding. No dedicated circuit/interval mode exists: circuits are built as one superset containing all round exercises with a rest timer on the LAST exercise (rest fires after a full round); interval training approximated the same way. Rest timers remain individually adjustable (or off) per member. Removal is per-exercise via Remove From Superset.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Smart Superset Scrolling",
+      "spec": "Toggle (in workout settings, also reachable from the in-session Settings button). When on, completing a set inside a superset auto-scrolls the view to the next exercise in that superset, wrapping back to the first member after the last (bench \u2192 pulldown \u2192 face pull \u2192 bench). Only applies to superset-grouped exercises.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Automatic rest timer",
+      "spec": "Per-exercise (not per-set) countdown. Control sits under the exercise name/note: tap 'Rest Timer' > scroll picker from 5 seconds to 5 minutes, or scroll to 'off' > Done. Auto-starts when a set of that exercise is marked complete; the chosen duration applies to all sets of that exercise. During countdown: -15s/+15s adjustment buttons; notification + selectable sound at zero (rest timer can also fire as a push notification when backgrounded). Suppressed before Drop Sets. App-wide default duration (or default-off) in Settings > Workouts > Default Rest Timer \u2014 applies only to exercises added AFTER the setting is set, never retroactively to existing routines.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "RPE logging",
+      "spec": "Hidden until Settings > Workouts > RPE Tracking is on; then an RPE column appears right of REPS on rep-based exercises (not duration-only ones), live workouts only (not programmable in routines). Tapping a set's RPE cell opens 'Log Set RPE': scale 6\u201310 with half steps (6, 7, 7.5, 8, 8.5, 9, 9.5, 10), each value annotated with reps-in-reserve semantics (6 = 4+ RIR; 7 = 3; 7.5 = 2\u20133; 8 = 2; 8.5 = 1\u20132; 9 = 1; 9.5 = maybe 1; 10 = nothing left with proper form). Confirm with Done; entering RPE auto-checks the set complete (Jan 2026 behavior). Always optional per set. No separate RIR mode \u2014 RIR is conveyed via the descriptions. Values are stored with the set, echoed in the PREVIOUS column next time, and visible on saved/shared workouts.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Plate calculator",
+      "spec": "Enabled via Settings > Workouts > Plate Calculator (or in-session Settings). With a weight field focused on a barbell-type exercise (barbell, EZ bar, short bar only \u2014 never dumbbells; extended to Smith-machine Hip Thrust Dec 2025), a 'Calculator' button appears above the keyboard. Sheet: select available plate denominations and bar weight (selections highlight blue); 'Manage' opens an equipment editor with '+ Custom Bar' and '+ Custom Plate' (arbitrary weights). Output: per-side plate arrangement, computed symmetrically as (target \u2212 bar)/2 filled from selected plates (e.g. 50 lb target, 20 lb bar, plates 35/25/10/5 \u2192 10+5 per side). If the exact target is unbuildable, it notifies and recommends the closest achievable weight ('Closest possible weight is 135kg'). Works in kg and lbs.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Warm-up set calculator",
+      "spec": "Pro feature, enabled via Settings > Workouts > Warm-up Calculator. Use: exercise three-dots > 'Add Warm Up Sets' > enter target working weight > blue 'Insert Warmup Sets'. Generates percentage-based warm-up sets from a user-editable formula: 'Warmup Method' editor with per-set {percentage, reps}, add/remove set buttons, and 'Reset to Default'. Rounding preferences: plate rounding increment (barbell-class) and separate dumbbell rounding increment (e.g. 2.5 kg steps). Inserted sets appear ABOVE working sets, typed as warm-ups; deletable by swipe; applicable to multiple exercises per workout and add/removable mid-session. Load-bearing exercises only \u2014 duration exercises can only have sets manually flagged warm-up.",
+      "platform_specific": "",
+      "pro_gated": "yes"
+     },
+     {
+      "name": "Duration exercises: inline timer",
+      "spec": "Duration-type exercises replace weight/reps with a single TIME column. With Settings > Workouts > Inline Timer on, each set row gets a play/pause control: a count-UP stopwatch (never a countdown \u2014 documented confusion point); starting from 0 and stopping writes the elapsed time into the set's duration. Manual typing always allowed (free-text duration input restored Jun 2026). Edge case: manually typed exercise durations may not roll into the workout's total duration \u2014 user adjusts total duration on the save screen.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Per-exercise session notes (workout notes)",
+      "spec": "Free-text note field under each exercise (below the routine note when both exist). Saved permanently with that workout and visible to other users on the shared post. Carry-forward: the prior session's note appears greyed-out (read-only ghost) the next time the exercise is logged \u2014 type over it to replace, or it is dropped when the workout saves (and not shared with it). Distinct from routine notes, which persist with the template and stay private.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Live PR notification",
+      "spec": "Toggle + independent volume in Settings > Workouts. On marking a set complete (not while typing), the app evaluates all applicable PR types; if beaten, an in-workout banner announces which record type was broken, with its own sound. No PR on the first-ever log of an exercise (nothing to compare); ties or worse never trigger. Because PR types are independent, a lighter set can still PR (e.g. reps-based on assisted movements). The PR persists once the workout saves: a medal badge attaches to the winning set row and the workout summary. Warm-up sets count toward PRs only if the Warm-up Sets stats toggle is on.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Discard & local persistence",
+      "spec": "'Discard Workout' at the bottom abandons the session at any time. The in-progress workout is the ONLY device-local data in the app: it survives app restarts and is resumable, but is permanently lost if the app is uninstalled before saving. Everything saved lives server-side.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Workout finish \u2014 Save Workout screen (overlay)",
+    "purpose": "Final metadata edit before the session is committed to history and (optionally) published.",
+    "features": [
+     {
+      "name": "Save Workout screen",
+      "spec": "Reached via 'Finish' (top right); requires at least one completed set \u2014 incomplete sets/exercises are dropped. Shows computed set count and volume load. Editable fields: session name; duration (tap \u2192 scroll-wheel picker, dismissed by tapping the background, committed with Save); start date and time (backdating mechanism \u2014 profile history orders by the set date, the social feed orders by actual log time); media ('Add a photo / video': camera or library; limit 3 photos OR 2 photos + 1 video; tap an item to delete pre-save; tap-and-drag to reorder \u2014 order controls feed presentation; any image allowed); description/note with @-mention tagging of other users; Visibility selector (Private = owner only, or Everyone/followers per profile privacy; pre-selected from the Default Workout Visibility setting, overridable per workout in both directions); 'Sync With' section with per-destination on/off toggles for each connected integration (Apple Health / Health Connect / Strava) \u2014 a workout saved with a toggle off is never synced later; 'Routine Settings' sheet with the 'Update Routine Values' toggle (default ON: the routine's stored weights/reps are overwritten with what was just performed; OFF preserves originals; rep-range exercises are NEVER auto-updated regardless). Note and media optional \u2014 bare Finish > Save works.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Update Routine vs Keep Original prompt",
+      "spec": "Shown at save time ONLY when the session was started from a routine AND structural changes were made mid-workout (exercise reorder, exercises or sets added/removed). Two options: 'Update Routine' (writes structural changes back to the template) or 'Keep Original Routine' (edits confined to this log \u2014 the one-off-deviation mechanism). Never fires for rep/weight changes \u2014 those are governed solely by the Update Routine Values toggle.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Post-save summary & shareables (overlay)",
+    "purpose": "Celebratory summary with auto-generated social share assets.",
+    "features": [
+     {
+      "name": "Post-save celebration screen",
+      "spec": "Shown automatically after saving: ordinal workout number (e.g. '472nd workout'), active weekly-streak count (displayed only on the FIRST workout of the week), and swipeable stat slides: new PRs (if any), 7-day workout consistency, workout overview (duration, exercise count, set count, volume), exercise list with per-exercise set counts beside a muscle diagram, and a novelty volume comparison ('you lifted a truck').",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Social media shareables",
+      "spec": "Every completed workout auto-generates a carousel of share cards (PR highlights, workout summary, media-based cards, novelty comparison). Actions: 'Stories' posts directly to Instagram Stories; 'More' opens other destinations (Facebook, X, copy link) and 'Save Image' to the gallery for manual overlay use (size/position/tilt adjusted in the social app). Background switcher (bottom left): light / dark / transparent. Past workouts' shareables remain accessible via Profile > workout three-dots > Share Workout (or the up-arrow icon).",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Exercises \u2014 library (via Profile > Exercises and every '+ Add Exercise' picker)",
+    "purpose": "Searchable catalog of 400+ built-in exercises plus user custom exercises; the single source for pickers, browsing, and per-exercise analytics.",
+    "features": [
+     {
+      "name": "Exercise library & picker",
+      "spec": "400+ built-in exercises spanning barbell, weight plate, dumbbell, kettlebell, machine, resistance band, suspension kit, bodyweight, and cardio (HYROX/functional movements added May 2026). Search bar + filters for equipment and target muscle. List order: recently logged first, then custom exercises, then the rest. Same library backs standalone browsing (Profile > Exercises with a 'Create' button top-right) and the blue '+ Add Exercise' picker in the routine builder / live logger, which supports multi-select batch adding. No limit on exercises per workout.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Custom exercise creation",
+      "spec": "'Create' (top right of library). Form: optional asset (photo, video, or GIF), name, required equipment (barbell, dumbbell, kettlebell, gym machine, weight plate, resistance band, suspension kit, or none), one primary muscle target, multiple secondary muscle targets, exercise type. 8 exercise types drive the logging columns and volume math: weight & reps; bodyweight reps; weighted bodyweight; assisted bodyweight; duration; duration & weight; distance & duration; weight & distance. Free cap: 7 custom exercises; Pro unlimited (downgrade keeps over-cap ones usable, blocks new creation). Exercise TYPE is immutable after save; every other field editable. Custom exercises get full performance tracking and feed muscle-distribution stats correctly IF primary/secondary muscles were assigned \u2014 but they NEVER add the user's bodyweight to volume (library-exercise-only behavior). Web app can create but not edit customs.",
+      "platform_specific": "",
+      "pro_gated": "partial \u2014 7-cap on free"
+     },
+     {
+      "name": "Exercise duplication, edit & delete",
+      "spec": "Exercise detail three-dots menu: 'Duplicate Exercise' (clones ANY exercise \u2014 built-in or custom \u2014 into a fresh custom exercise with NO history; because data resets, the otherwise-locked type becomes editable; recommended rename e.g. year suffix; counts toward the 7-custom cap; this is the only 'reset an exercise's stats' mechanism \u2014 there is no account-wide data reset), 'Edit Exercise' (all fields except type; mobile-only), 'Delete Exercise' (custom only). Also in this menu: 'Select Units' for the per-exercise kg/lbs override.",
+      "platform_specific": "",
+      "pro_gated": "partial \u2014 duplicates count as custom exercises"
+     }
+    ]
+   },
+   {
+    "screen": "Exercise detail (overlay \u2014 from library, or by tapping an exercise name anywhere, including mid-workout without pausing)",
+    "purpose": "Per-exercise analytics, records, history, instructions, and social ranking.",
+    "features": [
+     {
+      "name": "Summary tab: performance graph + records",
+      "spec": "Graph at top with tappable metric chips; range selector: last 3 months / last year / all time \u2014 free tier limited to 3 months, Pro unlocks year/all-time. Chartable metrics by exercise type \u2014 weight-based: Heaviest Weight, One Rep Max, Best Set Volume, Session Volume, Total Reps; bodyweight & assisted: Most Reps (Set), Session Reps; duration: Best Time; cardio: Best Pace, Longest Distance, Longest Time. Records panel below mirrors the type (weight-based shows heaviest weight, true-or-projected 1RM, best set volume, best session volume). Tapping any record deep-links to the workout where it happened. Share icon (top right) exports a performance+PR summary card via the OS share sheet.",
+      "platform_specific": "",
+      "pro_gated": "partial \u2014 history beyond 3 months is Pro"
+     },
+     {
+      "name": "Set Records table",
+      "spec": "Collapsed drop-down at the bottom of Summary: for each exact rep count, the heaviest weight ever lifted at that rep count (actual historical bests, NOT a %-of-1RM table). Weighted exercises only. Deliberately low-key: achieving a set record fires NO live notification and awards NO medal \u2014 table-only. Distinct from typed Personal Records.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Strength Level",
+      "spec": "Section at the bottom of Summary on a fixed whitelist of exercises. Compares the user's best against all Hevy users in the same sex + age group + bodyweight cohort; outputs a tier (Beginner / Intermediate / Advanced / Elite) plus a 'stronger than X% of your group' percentile. Whitelist per help center (13, shared with Leaderboard): Behind the Back Bicep Wrist Curl, Bench Press, Bicep Curl, Deadlift, Hip Thrust (all Barbell), Leg Press (Machine), Preacher Curl, Reverse Curl, Romanian Deadlift, Seated Wrist Extension, Skullcrusher, Spider Curl, Squat (Barbell). (Older marketing copy says only the big-3 barbell lifts; one article lists 10 \u2014 build with a server-configurable whitelist.) Powers 'who is stronger' verdicts in comparisons.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Leaderboard tab",
+      "spec": "Extra tab on whitelisted exercises (under the three-dots and share icons): ranks the user plus everyone they FOLLOW by heaviest weight ever lifted, descending; only followed users who logged the exercise appear; no date cutoff. Tapping a row deep-links to the workout containing that PR set. Updates immediately on new follows or new PRs (yours or theirs). Whitelist: 13 exercises per help center; the marketing site's Statistics section claims 38 leaderboard exercises \u2014 treat as a server-configurable list. Also browsable from Profile > Statistics > 'Leaderboard Exercises'.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "History tab",
+      "spec": "Chronological list of every workout containing the exercise: date + that movement's set/rep/weight (or duration) breakdown per session, for spotting context effects (e.g. exercise placed later when fatigued). Tapping a row (name or right arrow) opens the full session with all other exercises.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "'How to' tab",
+      "spec": "Animated demonstration of the movement (most, not all, exercises) plus step-by-step written setup/execution/bracing instructions. Openable mid-workout via the exercise name without pausing or discarding the session.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Profile tab",
+    "purpose": "The user's own identity, history, and gateway to Calendar, Statistics, Exercises, Measures, and Settings.",
+    "features": [
+     {
+      "name": "Profile header & dashboard",
+      "spec": "Profile picture, display name, bio, external link, counts for workouts / followers / following (followers/following open tappable lists), media strip of workout-attached photos/videos (tap-through to source workout), week-to-week activity graph covering the last 3 months. Dashboard buttons: Exercises, Statistics, Measures, Calendar. Gear icon (top right) opens Settings. Upward-arrow shares the profile externally.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Workout history list",
+      "spec": "Scrollable chronological list (newest first) of every saved workout, unlimited scrollback to the first-ever session. Each entry: title, summary stats, like count, comments; up-arrow opens the share/summary screen. Per-workout three-dots menu: Save as Routine (rename + edit variables, stores template in Workout tab), Copy Workout (starts a live session pre-filled with identical exercises, sets, reps, weights, notes, and rest timers \u2014 a one-off alternative to routines; no template created), Edit Workout, Share Workout, Delete Workout (bottom; confirmation popup; unrecoverable \u2014 even support cannot restore; no bulk reset exists).",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Edit saved workout",
+      "spec": "Full retroactive modification of a saved session: duration (scroll picker), start date/time, description, visibility, attached media (tap media > Remove), and all training data \u2014 exercises, sets, set types, reps, load, RPE, notes. Re-saving recomputes dependent stats.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Calendar (Profile > Calendar)",
+    "purpose": "Consistency view over the full workout history with streaks and retroactive logging.",
+    "features": [
+     {
+      "name": "Gym calendar",
+      "spec": "Month grid from the first month the user ever logged through the current month (history only \u2014 cannot schedule future days). Workout days marked with blue circles; tap a circle to open that day's workout. Tap today or any past empty date \u2192 'Log a workout' (build from memory, editable duration before saving); '+' icon on a day that already has a workout logs an additional one (multiple workouts per day allowed). Top-right icon sets which weekday starts the week. Zoom out to a full-year grid or an all-time multi-year view. Upright-arrow shares the current calendar view externally. Also available as a home-screen widget.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Weekly streak + rest-day counter",
+      "spec": "Displayed near the top of Calendar: consecutive-weeks streak (at least one logged workout per calendar week keeps it alive) and days elapsed since the last workout. The streak's ordinal ('Nth week') is celebrated on the first completed workout of each week. Repair mechanic: back-date a workout (any activity type) onto the missed week via the Save Workout screen or calendar retro-logging \u2014 the repaired week appends to the previous streak (extends, doesn't restart). No paid streak-freeze exists. Streak also surfaces on the post-save screen and a home-screen widget.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Statistics (Profile > Statistics)",
+    "purpose": "Training-wide analytics hub.",
+    "features": [
+     {
+      "name": "Last-7-days body graph",
+      "spec": "Top of the screen: rolling trailing-7-day workout-consistency graph plus a front/back anatomical body heat map with muscles trained in that window highlighted blue. Tapping the diagram drills into Muscle Distribution (Body). Body figure gender follows the profile 'Sex' setting (male/female; 'Other' renders the male figure); female muscle assets shipped Mar 2026. Rolling window \u2014 unlike Body Distribution's fixed calendar weeks.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Set count per muscle group",
+      "spec": "Advanced statistics chart of total sets per muscle group over time. Two stacked filters: range (last 30 days / 3 months / year / all time \u2014 no custom ranges) and granularity (weekly / monthly / yearly buckets; e.g. Year + Month = month-over-month comparison). Multi-select muscle filter plots any subset simultaneously. Up-arrow shares the current graph. Free tier caps range at 3 months; year and all-time require Pro. This module as a whole is Pro-only per the official comparison table.",
+      "platform_specific": "",
+      "pro_gated": "yes (module Pro-only; ranges >3 months Pro in any case)"
+     },
+     {
+      "name": "Muscle distribution \u2014 Chart",
+      "spec": "Period dropdown (30 days / 3 months / year / all time). Per-muscle volume chart with built-in comparison to the immediately preceding equal-length period: selected period in blue, prior period in grey. Totals block with deltas vs the prior period: workouts completed, training duration, volume load (sets \u00d7 reps \u00d7 weight), completed sets. Muscle split buckets: back, chest, legs, core, arms, shoulders. Up-arrow generates a shareable image (story format) or link. Free \u22643 months.",
+      "platform_specific": "",
+      "pro_gated": "partial \u2014 free, but >3-month ranges are Pro"
+     },
+     {
+      "name": "Muscle distribution \u2014 Body",
+      "spec": "Fixed calendar-week buckets: anatomical diagram with trained muscles highlighted blue plus total set counts per muscle for the week. Left/right arrows around the date range page week by week. Share icon exports the week's overview as image or link. Volume metric here is SET COUNT, not tonnage.",
+      "platform_specific": "",
+      "pro_gated": "partial \u2014 same 3-month free-history limit"
+     },
+     {
+      "name": "Main exercises",
+      "spec": "Ranked list of most-frequently-logged exercises for a selected window (30 days / 3 months / year / all time), completion count beside each; tapping one opens the full exercise detail. 30d/3m free; year and all-time are Pro.",
+      "platform_specific": "",
+      "pro_gated": "partial \u2014 year/all-time ranges Pro"
+     },
+     {
+      "name": "Leaderboard Exercises section",
+      "spec": "Scroll to bottom of Statistics: browsable list of leaderboard-eligible exercises (mostly barbell); tap one you've performed to see your ranking among followed users, with drill-through from any record to its source workout. Free tier feature.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Monthly Report",
+      "spec": "Entry at the bottom of Statistics (plus Home promo card + optional push notification). Auto-generated recap of the last COMPLETED month, viewable only during the following month (no archive of older reports). Contents: top bar graph across months with the report month in blue, metric switchable between time trained / volume / sets (vs previous months); totals (workouts, duration, volume, sets); PR list with tap-through to source workouts; month calendar with workout days as blue circles (tap-through); muscle distribution vs prior month; per-muscle set counts; top exercises; photos posted that month. Every slide shareable (swipe horizontally, blue Share button) with light/dark/transparent backgrounds. Custom exercises included if muscles were labeled. Free feature.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Year in Review",
+      "spec": "Annual story-style recap released at the start of each December (Home banner/dialog; afterwards at the top of Statistics). Eligibility: first workout of the year logged before November AND \u226510 workouts logged; latest app version may be required. Slides: workout count, active time, total volume; most productive month; most-trained body parts; most-logged exercises; the year's PRs; longest streak; workout calendar; biggest supporters (top social engagers); perspective/novelty comparison. Shareable cards. Free for all users.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Measures \u2014 body measurements & progress photos (Profile > Measures)",
+    "purpose": "Body-composition logging with trend graphs and a private photo library.",
+    "features": [
+     {
+      "name": "Body measurement entries",
+      "spec": "'+' (top right) creates a dated entry ('Add Measurements' CTA for first-timers). Date selector at top supports backdating (scroll date picker). Fields: body weight, body fat %, and 14 circumferences \u2014 neck, shoulders, chest, waist, abdomen, hips, left/right bicep, left/right forearm, left/right thigh, left/right calf. Any subset per entry (weight-only daily weigh-ins fine); one entry per day; 0.1 kg/lb and 0.1 cm/in precision; units follow the Units settings. Entries reopen for editing later (three-dots), including adding values to a photo-only entry. Save commits. Free tier logs body weight + waist ONLY; Pro unlocks body fat % and all other circumferences; on downgrade, Pro-metric history stays visible read-only but new entries for those fields are blocked. Bodyweight logged here powers bodyweight-exercise volume math and the Trainer's weekly bodyweight graph, and syncs to a connected coach.",
+      "platform_specific": "",
+      "pro_gated": "partial \u2014 free: weight + waist; Pro: everything else"
+     },
+     {
+      "name": "Measurement trend graph",
+      "spec": "Graph on the Measures main screen (below the photo strip) charting the selected metric over time; horizontal row of metric buttons below it switches which measurement is plotted; chronological dated value list underneath.",
+      "platform_specific": "",
+      "pro_gated": "partial"
+     },
+     {
+      "name": "Progress photos",
+      "spec": "Optional photo per measurement entry ('Add Picture': in-app camera or gallery upload). In-app camera includes an 'Overlay' toggle (bottom-right of shutter) that ghosts the previous progress photo over the viewfinder for pose/angle matching. Hard limit: ONE photo per day (documented workarounds: rotate angles across days, or upload a collage). ALWAYS private regardless of profile visibility \u2014 only the owner (and a connected Hevy Coach) sees them; entirely separate from public workout media. Recent photos strip at top of Measures; 'See All' opens the full dated gallery. Tapping a photo: compare side-by-side with any other photo, edit the parent entry's metrics, replace, or delete; 'Share' generates a shareable image for external use. Deleting a photo deletes the entry only if the entry contained nothing else; attached measurements survive.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Social overlays \u2014 user profiles, athlete workout detail, comparison",
+    "purpose": "Viewing and interacting with other users' content.",
+    "features": [
+     {
+      "name": "Other user's profile",
+      "spec": "Header: share arrow (external profile link); three-dots menu with Unfollow, 'Workout Notifications' toggle (push alert every time this user saves a workout), Report User, Block User. Body: media strip (tap \u2192 scrollable media library; caption tap jumps to the source workout), workout/follower/following counts (tappable lists), bio + external social links, blue Follow button, 'followed by your friends' row, week-to-week activity graph (last 3 months), Compare button below the graph, scrollable list of their saved routines (any routine saveable into your own library), list of newest workouts (tappable). Public profiles fully browsable without following; private profiles show nothing until a follow request is accepted.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Athlete workout detail (Save as Routine / Copy Workout)",
+      "spec": "Any workout post (Home, Discover, or profile) opens to the full log: muscle split, exercise list, per-set weight/reps, set types, RPE (if the poster logged it), duration, PRs earned, the poster's per-exercise workout notes, and \u2014 for smartwatch-logged sessions \u2014 average HR, an HR graph, and calories. Three-dots (top right): 'Save as Routine' (opens the routine editor pre-populated; rename/tweak, lands in My Routines) and 'Copy Workout' (immediately starts a live session pre-filled with the same contents). Tapping an exercise opens its overview plus a you-vs-them performance comparison.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Profile comparison (Compare)",
+      "spec": "From another user's profile > Compare. Time-range dropdown: last 30 days / 3 months / year / all time. Contents: overlaid muscle-split chart (your data blue, theirs grey; split = volume distribution across back/chest/legs/core/arms/shoulders), stat rows (number of workouts, total time trained, total volume lifted \u2014 volume = sets \u00d7 reps \u00d7 weight), and 'Exercises in Common' \u2014 tap any shared movement for per-exercise PR comparison scoped to the selected period. For whitelisted Strength Level/Leaderboard exercises, the drill-in also declares which user is stronger and shows both users' leaderboard placements. Following not required for public profiles.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Exercise compare (from a workout post)",
+      "spec": "Inside another user's opened workout, a 'Compare' button appears at the bottom of any exercise BOTH users have logged (whitelisted exercises get the full stronger-verdict treatment); 'See Your Stats' beneath it shows your own history on the movement. Result: side-by-side stats appropriate to the exercise type (1RM, heaviest weight, best set, session volume), stronger-user verdict, and leaderboard placements for whitelisted lifts.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Settings (Profile > gear icon)",
+    "purpose": "Account, preferences, workout behavior, privacy, notifications, integrations, and data management.",
+    "features": [
+     {
+      "name": "Account section",
+      "spec": "Change username, change email, update password (current + new), Delete Account (destructive guard: type the exact username to enable, then final confirm; permanent and unrecoverable; a linked Hevy Coach account must be deleted or the coach's access removed first). Login methods supported app-wide: email/username + password, Google Sign-In (all platforms), Apple Sign-In (Apple devices only \u2014 migration to Android requires setting an email+password in Settings > Account while still signed in on an Apple device); Facebook Sign-In discontinued. Forgot Password flow on the login screen (email link). One account per (provider, identity) pair \u2014 signing in with a different provider silently creates a fresh empty account; data lives on the account, not the device.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Profile settings",
+      "spec": "Change Picture, Name, Bio, Link. Private data: Sex (male / female / Other \u2014 drives the muscle heat-map body model only, NOT exercise instruction animations; 'Other' renders male) and Birthday (feeds age-aware stats such as Strength Level cohorts).",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Manage Subscription",
+      "spec": "Shows the current plan at top; offer list for Monthly / Yearly / Lifetime Pro; links to feature info, Privacy Policy, Terms, support; 'Restore Purchase' re-activates an already-paid subscription (may need an app restart; sync can take ~30 min). Store-billed subs are managed in App Store/Play; web (Paddle/Stripe) subs show a Cancel Subscription option here. While coached via Hevy Coach, the Coach subscription takes display precedence; lifetime Pro is restored after leaving Coach.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Units",
+      "spec": "Global defaults, set independently: lifting weight (kg/lbs), distance, body measurements (in/cm). Per-exercise weight-unit override exists separately (tap the KG/LBS column header in a workout > Weight Unit, or exercise three-dots > Select Units); global change applies to all current and future exercises.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Theme",
+      "spec": "Preferences > Theme: Dark, Light, or 'Use OS settings' (auto-switches with the system theme). Identical on iOS and Android.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Privacy & Social",
+      "spec": "Three controls: 'Private Profile' toggle (others must send a follow request you approve before seeing workouts/stats/media; default off = public); 'Hide Suggested Users' toggle (removes recommendation carousels; Discover feed still cannot be removed); 'Default Workout Visibility' picker (Private / Everyone) pre-selecting the save-screen Visibility for every new workout. Full private-logger mode = private profile + hidden suggestions + private default.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Workouts settings hub (12 settings)",
+      "spec": "Reachable from Settings > Workouts AND from the grey Settings button at the bottom of a live workout (mid-session changes apply immediately). Contents: (1) Sounds \u2014 timer sound choice (5 options; only the timer has multiple sounds) + three independent volumes (timer, check-set, PR alert), each off/low/normal/high; (2) Default Rest Timer \u2014 scroll picker incl. off; applies only to exercises added afterwards, never retroactively; (3) Previous Workout Values \u2014 'Any workout' vs 'Same routine' scope; (4) Warm-up Calculator (PRO) \u2014 enable + Warmup Method formula editor + plate/dumbbell rounding; (5) Warm Up Sets \u2014 include warm-ups in statistics toggle; toggling RETROACTIVELY recalculates historical total sets, volume, and PRs; (6) Keep Awake During Workout \u2014 prevents screen sleep while a session is active; (7) Plate Calculator toggle; (8) RPE Tracking toggle; (9) Smart Superset Scrolling toggle; (10) Inline Timer toggle (duration-set stopwatch); (11) Live Personal Record Notification toggle + volume; (12) First Day of the Week \u2014 weekday the calendar/weeks start on.",
+      "platform_specific": "",
+      "pro_gated": "partial \u2014 warm-up calculator is Pro"
+     },
+     {
+      "name": "Notification preferences",
+      "spec": "Grouped toggles. General: rest timer as push notification, new followers, Monthly Report release, Hevy marketing emails. Likes: likes on your workouts, likes on your comments. Comments: comments on your workouts, comment replies, comment mentions, workout discussions.",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Integrations screen",
+      "spec": "Rows with connection state: Apple Health (iOS; Connect + 'Manage Permissions in Settings' hand-off to iOS Health permissions), Health Connect (Android; 'Manage' deep-links into the Health Connect app's permission page), Strava (Connect \u2192 OAuth Authorize; Disconnect when active), HevyGPT (Connect opens ChatGPT OAuth consent). Connected integrations surface as per-workout toggles under 'Sync With' on the Save Workout screen.",
+      "platform_specific": "Apple Health iOS-only; Health Connect Android-only",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Export & Import Data",
+      "spec": "Export Data: two explicit choices \u2014 Export Workouts and Export Measurements (CSV out, e.g. for a coach or spreadsheet). Import Data: single 'Import Strong CSV' button + file picker. Rules: only direct Strong-app exports accepted (Strong must be set to English before exporting); hand-converted CSVs in Strong format work but are unsupported; ONE import allowed per account; an import can be reverted (removes all imported data).",
+      "platform_specific": "",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Contact Us",
+      "spec": "Three routed forms: Bug Report (text-only, no attachments; repro steps/device/frequency requested; email fallback hello@hevyapp.com for attachments), Get Help (usage, subscription, login, refunds), Feature Request (goes to a separate product queue support doesn't see; no individual replies).",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Coach tab (conditional \u2014 appears after accepting a Hevy Coach trainer invitation)",
+    "purpose": "Client-side surface of the Hevy Coach platform.",
+    "features": [
+     {
+      "name": "Assigned program & workouts",
+      "spec": "Invitation is sent to the account email (non-users are prompted to sign up); accepting adds the Coach tab. Trainer's name at top (tap \u2192 trainer info + 'Remove Coach's Access', revocable anytime). 'Program Notes' opens the program description/tips. Each assigned workout is tappable to view or edit training variables (e.g. swap an exercise when a machine is taken), and a blue 'Start Routine' launches it as a live logging session. Only ONE assigned program at a time \u2014 a new assignment deletes the old one from the tab, but completed workouts stay in history. Coach edits propagate to the client instantly. Client may still do any non-assigned training. Every saved workout, measurement, and progress photo is automatically visible to the trainer in the Hevy Coach dashboard \u2014 no manual sharing. Coached clients get Hevy Pro free; the app costs the client nothing.",
+      "platform_specific": "",
+      "pro_gated": "no (grants Pro)"
+     },
+     {
+      "name": "Coach chat",
+      "spec": "Chat icon (top right of the Coach tab) opens a message thread with the trainer supporting text, images, and video. Trainer side runs in the Hevy Coach web dashboard or the separate Hevy Coach mobile app (which can also log the client's prescribed workout on the trainer's phone with full logging capabilities \u2014 sets, weight, reps, RPE, duration, notes, live plan edits).",
+      "platform_specific": "",
+      "pro_gated": "no"
+     }
+    ]
+   },
+   {
+    "screen": "Platform extras (watch apps, Live Activity, widgets, device footprint)",
+    "purpose": "OS-level companions outside the phone app's tab structure.",
+    "features": [
+     {
+      "name": "Apple Watch companion app",
+      "spec": "Standalone watchOS app (watchOS 8.0+): run routines from the wrist, log sets with weight/reps input on watch or phone, mark set types (Warmup/Normal/Drop/Failure), duration-exercise timers, heart-rate display, watch-face complications, Trainer next-workout view (Mar 2026). Live two-way sync with the paired iPhone over Bluetooth/WiFi; watch app must be open/awake; both devices need the same Hevy version; other watch apps live-tracking a workout block sync. Watch workouts auto-save when the watch reconnects. Watch-logged sessions enrich the saved workout with average HR, an HR graph across the session, and calories burned (also shown on feed cards). Workout timer CANNOT be paused from the watch \u2014 phone only.",
+      "platform_specific": "iOS/watchOS only",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Wear OS companion app",
+      "spec": "Android equivalent: track workouts and run routines on Wear OS with live phone sync, heart rate, duration timers, set-type marking, and a Hevy Tile for quick access. Wear OS only \u2014 Tizen watches (pre-Galaxy Watch 4) unsupported. Same sync constraints and auto-save-on-reconnect as watchOS. HR/calorie enrichment identical.",
+      "platform_specific": "Android/Wear OS only",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Live Activity / lock-screen workout widget",
+      "spec": "Active automatically during any live workout. iOS: Live Activity on lock screen + Dynamic Island (enable via system Settings > Face ID & Passcode > Allow Access When Locked > Live Activities, plus Hevy notification permissions). Android: rich notification in the shade/lock screen (enable lock-screen, badge, pop-up notification types). Displays: current/next exercise, sets completed on the current exercise, prescribed weight and reps for the next set, elapsed workout duration. Interactive: mark a set complete directly from the widget without unlocking; once completed, the rest timer takes over the widget with +15s/\u221215s controls (fixed 15-second steps) and a skip action; notification when the timer hits zero. Weight/reps/RPE input still happens in the app.",
+      "platform_specific": "iOS Live Activities + Dynamic Island; Android rich notifications",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Home-screen widget suite",
+      "spec": "Added via the OS widget picker; iOS configures via long-press > Edit Widget, Android via an add-time 'Set up widget' page saved with Done; iOS offers small/medium/large per widget, Android is 2x2. All widgets blank when signed out; all auto-refresh as workouts complete; each deep-links into the relevant screen. Widgets: (1) Aggregate Data (iOS)/Chart (Android) \u2014 one metric (total volume / reps / duration / sets / workouts) over past 7 days or 3 months, iOS default volume-7d; (2) Calendar \u2014 in-app workout/rest calendar, no setup; (3) Calendar and Data / Chart and Stats \u2014 calendar left, current-month totals (workouts, duration, volume) right, no setup; (4) Last Week Workouts \u2014 past 7 days of workouts/rest days, no setup; (5) Routine of the Day \u2014 assign one routine per weekday; shows today's, tap starts it; (6) Quick Access \u2014 one preconfigured action: start empty workout, start a specific routine, or log a measurement; (7) Weekly Data/Stats \u2014 one metric for the current week with week-over-week comparison; (8) Routines / Last Routines \u2014 a chosen folder's routines or latest-used; tap starts the routine; (9) Streak \u2014 current weekly streak; (10) Rest \u2014 rest days since last workout.",
+      "platform_specific": "iOS + Android home screens; naming/sizing differs per OS",
+      "pro_gated": "no"
+     },
+     {
+      "name": "Device footprint & misc platform features",
+      "spec": "Full iPad app; also ships on Mac, Apple Vision (visionOS 1.0+), Chromebook, and Android tablets; web app shares the account (web can create but not edit custom exercises). Same account signs in on two devices/platforms concurrently. AirPods Pro 3 heart-rate biometrics during iOS workouts (Jan 2026). iMessage sticker pack. Haptic feedback + polished dark mode (May 2026). iOS 26 liquid-glass navigation / Android Material navigation (Jun\u2013Jul 2026). Localized in 12 languages: English, French, German, Italian, Japanese, Korean, Portuguese, Russian, Simplified Chinese, Spanish, Traditional Chinese, Turkish.",
+      "platform_specific": "per-device notes inline",
+      "pro_gated": "no"
+     }
+    ]
+   }
+  ],
+  "pro_features": [
+   "Pricing/tiers: Hevy Pro Monthly $2.99 (a $3.99 monthly SKU also listed), Yearly $23.99 (current sticker possibly ~$29.99), Lifetime $74.99 one-time. Purchasable via Apple App Store, Google Play, or web (hevy.com/plans; Stripe today, legacy Paddle). Auto-renews unless cancelled \u226524h before period end. Occasional 50%-off-first-year sale for never-subscribed users only; Lifetime never discounted. No Apple Family Sharing. Restore Purchase in Manage Subscription; entitlement is account-bound and cross-platform (iOS\u2194Android keeps Pro).",
+   "Unlimited routines (free tier: hard cap of 4 stored routines; duplicates count toward the cap).",
+   "Unlimited custom exercises (free tier: cap of 7; duplicated exercises count as custom).",
+   "Statistics/graph history beyond 3 months: the 1-year and all-time ranges on every chart (exercise performance graphs, set count per muscle, muscle distribution, main exercises) are Pro; free tier sees only last 30 days / 3 months.",
+   "Set count per muscle group per week module is Pro-only (muscle distribution body+chart, main exercises, leaderboards, and monthly report remain free).",
+   "Warm-up set calculator (percentage-based warm-up generation with custom formula and rounding) \u2014 explicitly marked PRO.",
+   "Full body measurements: free tier logs body weight + waist circumference only; Pro unlocks body fat % and all remaining circumferences (neck, shoulders, chest, biceps, forearms, abdomen, hips, thighs, calves).",
+   "Hevy Trainer (algorithmic program generator) including the Trainer-exclusive Progress Report \u2014 Pro-only.",
+   "HevyGPT plan import: free accounts cannot import a ChatGPT-generated plan containing more than 4 routines; larger plans require Pro.",
+   "Downgrade behavior (Pro \u2192 free) is always non-destructive: over-cap routines/custom exercises stay usable (creation blocked), Pro-only measurement history stays read-only viewable, >3-month stats become inaccessible but data persists server-side and restores instantly on resubscribe.",
+   "Free tier is fully usable and ad-free: all logging, set types, supersets, RPE, rest timers, plate calculator, social features, monthly report, Year in Review, leaderboards, calendar/streaks, and the entire Explore program library are free.",
+   "Clients coached through Hevy Coach receive Hevy Pro free while coached (Coach subscription supersedes Pro in Manage Subscription; lifetime Pro reactivates after coaching ends)."
+  ],
+  "global_rules": [
+   "150-set hard cap per workout AND per routine, identical on free and Pro; a warning appears at the limit and the user must delete sets/exercises to continue. No cap on exercises per workout or sets per exercise below the total cap.",
+   "Volume load = sets \u00d7 reps \u00d7 weight. Bodyweight math: built-in library exercises flagged 100%-bodyweight (Pull up, Chin up, Dips, Handstand push up) compute set volume as reps \u00d7 logged bodyweight; assisted variants as reps \u00d7 (bodyweight \u2212 assistance weight); weighted variants as reps \u00d7 (bodyweight + added weight); partial-bodyweight weighted exercises (weighted sit-up/push-up) count added weight only; CUSTOM exercises of any bodyweight type never include bodyweight; if no bodyweight is logged in Measures, bodyweight-based volume is simply not computed.",
+   "Estimated 1RM is computed per set from weight \u00d7 reps (formula undisclosed), always \u2265 the actual weight lifted; 'Best 1RM' PR = highest estimate ever; a true single counts directly.",
+   "PR taxonomy varies by exercise measurement type \u2014 weight & reps: Heaviest Weight, Best 1RM, Best Set Volume, Best Session Volume; assisted bodyweight: Best Total Reps + Most Reps (Set) ONLY (no weight-based PRs \u2014 less assistance never counts); bodyweight reps: Best Set (most reps/set) + Most Session Reps; weighted bodyweight: Heaviest Weight + Best Set Volume; duration: Best Time; weight+duration: Heaviest Weight + Best Time; distance & duration: Longest Distance + Longest Time (cardio also charts Best Pace). PRs are evaluated at set check-off, finalized at save, and render as medals on the set and workout summary.",
+   "Set Records are a separate low-key system: heaviest weight per exact rep count, weighted exercises only, table-only \u2014 never a notification or medal.",
+   "Live PR notification: fires only on set completion; never on an exercise's first-ever log; ties/regressions never fire; toggleable with independent volume.",
+   "Warm-up sets in statistics toggle: when off, warm-ups are excluded from total sets, volume, and PRs \u2014 and toggling triggers RETROACTIVE recalculation of all historical totals and PRs.",
+   "PREVIOUS column logic: live workouts only; matched per set index (unlogged higher indexes are blank); blank for never-performed exercises; tap-to-autofill; scope setting 'Any workout' vs 'Same routine'; affects display only, never stored routine values.",
+   "Routine values: by default finishing a workout overwrites the routine's stored weights/reps with the performed values ('Update Routine Values' toggle on the save screen, default ON); exercises using Rep Ranges are NEVER auto-updated. Structural changes (exercise order, exercises/sets added or removed) instead trigger the 'Update Routine' vs 'Keep Original Routine' prompt at save; rep/weight edits never trigger that prompt.",
+   "Workout save requires \u22651 completed set; only completed sets and exercises are persisted. Reps of 0 are rejected (failure on rep 1 \u2192 log 1 or skip the set with a note); failure sets record the last fully completed rep.",
+   "Rest timers are per-exercise (5s\u20135min or off), auto-start on set completion, and are suppressed when the next set is a Drop Set. The Default Rest Timer setting applies only to exercises added after it is set \u2014 never retroactively.",
+   "RPE: opt-in globally; scale restricted to 6\u201310 with half steps (RIR semantics per value); rep-based exercises only; live workouts only (not programmable in routines); always optional per set.",
+   "Units: independent global defaults for lifting weight (kg/lbs), distance, and body measurements (in/cm); per-exercise weight-unit override wins over the global default; measurements accept 0.1 precision.",
+   "Media limits: 3 photos OR 2 photos + 1 video per workout (older marketing pages say 4 photos or 3+1 \u2014 current canonical is 3/2+1); one progress photo per day; one body-measurement entry per day; multiple workouts per day allowed.",
+   "Privacy model: profile is public by default; Private Profile requires approved follow requests for all content. Per-workout Visibility (Private/Everyone) is chosen at save time, overrides the Default Workout Visibility setting in either direction, and a private workout is owner-only even on a public profile. Workout-attached media follows workout/profile privacy; progress photos are ALWAYS private (owner + connected coach only); routine notes and embedded links are always owner-only; session workout notes are public with the post. The Discover feed cannot be disabled.",
+   "Streak: unit is consecutive calendar WEEKS with \u22651 logged workout (week start day per settings); a rest-day counter tracks days since the last workout; back-dating a workout into a missed week repairs the streak by appending that week to the previous streak (extends rather than restarts); any activity type counts; no paid streak freeze.",
+   "Backdated workouts: profile history and calendar order by the user-set date; the social feed orders by actual logging time; back-dated sessions count toward the week their date falls in (streaks) but do NOT retroactively sync to integrations.",
+   "Data architecture: all saved data is server-side per account (uninstall/reinstall loses nothing); the ONLY device-local state is an in-progress unsaved workout (resumable; lost on uninstall). One account per auth-provider identity \u2014 a different provider at login silently creates a new empty account. Two concurrent device sign-ins supported, cross-platform.",
+   "Exercise type is immutable after creation; duplication produces a history-free custom copy (the only way to 'reset' an exercise's stats or edit a locked type). No account-wide data reset exists; workout deletion is one-at-a-time, confirmed, and unrecoverable.",
+   "CSV import: Strong-app format only, English exports only, ONE import per account, revertible (revert removes all imported data).",
+   "Health-platform exports are always typed 'Strength Training'; calories are computed by the platform (Apple Health/Health Connect) or the watch, never by Hevy in-app; all third-party syncs are one-way (Hevy \u2192 platform), fire at save time only, and are never retroactive.",
+   "Comparison/leaderboard whitelists: Strength Level and Exercise Leaderboard share a fixed server-side exercise whitelist (help center: 13 exercises; marketing pages claim 38 for the Statistics leaderboard list and 3 or 10 for Strength Level \u2014 build as a configurable whitelist). Strength Level cohort = same sex + age group + bodyweight; tiers Beginner/Intermediate/Advanced/Elite; leaderboard metric = heaviest single weight, scoped to self + followed users."
+  ],
+  "integrations": [
+   "Apple Health (iOS): one-way write of finished workouts (type 'Strength Training', Active Calories estimate). Connect in Settings > Apple Health; permissions granted in iOS Settings > Health > Data Access & Devices > Hevy; per-workout 'Sync With' toggle on the save screen; never retroactive; off by default.",
+   "Health Connect (Android): one-way write; Hevy's Integrations screen deep-links to Health Connect's permission page ('Total calories burned' etc.); Health Connect relays to Google Fit / Samsung Health per those apps' own permissions; conflicts resolved by Health Connect's user-set app priority; per-workout save-screen toggle. (Direct Google Fit integration was removed \u2014 Health Connect is the only path.)",
+   "Strava: OAuth connect/disconnect in Settings > Integrations; every saved workout auto-posts (with Hevy's muscle-breakdown image) unless the per-workout 'Sync with Strava' toggle is off; strictly one-way (Strava activities never import); post-save editing (title, media, activity type, visibility, muscle groups) happens in Strava via its review notification; no retroactive sync \u2014 workaround is re-logging via calendar backdating.",
+   "MyFitnessPal: no direct integration \u2014 data relays through Apple Health / Health Connect by enabling MyFitnessPal's permissions in the platform.",
+   "HevyGPT (ChatGPT custom GPT): OAuth connect via Settings > Integrations; ChatGPT generates a plan and saves it into Hevy as a new folder of routines (may need pull-to-refresh/restart); with an active connection it can also read training history for tailored recommendations; free Hevy accounts limited to plans of \u22644 routines; works via ChatGPT iOS app or web, NOT the Android ChatGPT app; free ChatGPT account suffices; imported routines are ordinary editable routines.",
+   "Hevy Coach: separate trainer platform (web dashboard + Hevy Coach mobile app). Client-side surface is the conditional Coach tab (assigned program, program notes, Start Routine, chat with text/image/video, access revocation). All client data (workouts, measurements, progress photos) auto-syncs to the trainer; one assigned program at a time; coached clients get Pro free; trainer can log the client's session from the Coach app.",
+   "Strong app CSV import: the only supported bulk import (Settings > Export & Import Data); one import per account, revertible; English-language Strong exports only.",
+   "Wellhub (Gympass): corporate-wellness subscription can activate Hevy benefits; manual linking via support (Hevy username + Wellhub email) when auto-activation fails.",
+   "Public API: developer-facing API for reading/writing Hevy data (linked from site footer; details not in-app).",
+   "Garmin: explicitly NOT supported (Garmin denied partner-API access; Hevy rejected Connect IQ workarounds); no ETA.",
+   "AirPods Pro 3: heart-rate biometrics captured during iOS workouts (Jan 2026).",
+   "Smartwatch companions (Apple Watch watchOS 8+, Wear OS): first-party apps with live phone sync; watch-logged workouts add avg HR, HR graph, and calories to the saved session and feed cards."
+  ]
+ },
+ "gaps": [
+  "Authentication & onboarding \u2014 no login/signup screen anywhere in the index. Taxonomy: 'Login Options Explained \u2014 Email/Password, Google, and Apple Sign-In', 'Forgot my password: How to recover or change a password?'. Spec starts at the Home tab; sign-in methods, password recovery, and first-run onboarding are absent.",
+  "Exercise type system & volume/PR math for bodyweight variants \u2014 3 articles ('Bodyweight vs Assisted vs Weighted', 'Weighted Bodyweight: Is Bodyweight Included in Volume?', 'Assisted Bodyweight: How it Calculates Volume and PRs'). The index never enumerates exercise measurement types or how volume/PRs are computed for them.",
+  "Cardio/distance-based exercises \u2014 article 'Exercise Performance Tracking in Library (Weight, Bodyweight, Cardio and Duration Based Exercises)'. Index covers duration exercises (inline timer) but distance+duration cardio logging fields and their performance graphs are never mentioned.",
+  "Routine builder programming options \u2014 feature page 'exercise-programming-options' (rep-range targets, target RPE/weight, per-exercise rest programming). Spec's routine builder lists only 'creation & editing' and 'exercise notes' \u2014 clearly under-specified relative to Hevy's own page.",
+  "Per-exercise measurement-unit override \u2014 article 'How to change the measurement units? Single exercise or all exercises'. Settings lists a global 'Units' item only; the single-exercise kg/lbs override is absent.",
+  "150-set cap per workout/routine \u2014 article 'Hevy Set Limit Explained: Why Workouts and Routines Have a 150-Set Cap'. A hard product limit not visible in the index (may or may not be in the unseen global rules).",
+  "HevyGPT / workout plan generator import flow \u2014 feature pages 'hevy-gpt' and 'workout-plan-generator'. Only the Pro gating ('free accounts cannot import >4 routines') appears in the pro list; the actual import UI/flow (where it lives, how a ChatGPT plan is pasted/imported) is in no screen.",
+  "Routine FOLDER sharing \u2014 feature page 'share-folders-routines'. Index has 'Routine sharing (external)' and 'Routine folders' separately, but sharing an entire folder is not stated.",
+  "Workout photos on posts \u2014 feature page 'gym-selfie-footage'. Progress photos (Measures) and shareables are covered, but attaching photos to a saved workout/post (presumably on the Save Workout screen) is not explicit anywhere.",
+  "1RM calculation & PR semantics \u2014 articles '1RM Explained: How One-Rep Max is Calculated', 'Set Records vs Personal Records', 'Personal Records (PRs) and Set Records Explained'. Index shows the Set Records table and Live PR notification but not the estimation formula or which PR types exist (best weight / best 1RM / best volume) \u2014 likely under-specified unless in unseen global rules.",
+  "Weekly streak repair \u2014 article 'How to Get Your Weekly Streak Back in the Hevy App'. Index has 'Weekly streak + rest-day counter' but the streak-restoration mechanic is not covered.",
+  "Calories burned display \u2014 article 'How to see the calories burned in a workout? (Apple/iOS/Android)'. Calorie data pulled from Apple Health / watch HR shown on workouts is mentioned nowhere.",
+  "Heat-map gender toggle \u2014 article 'How to Change the Heat Map Gender in the Hevy App'. The male/female body-graph setting is not among the listed Settings items.",
+  "Retroactive workout logging \u2014 article 'Tutorial: Log Previous Workouts and Import CSV'. CSV import is covered (Export & Import Data), but manually logging a past-dated workout (custom date/start-time/duration entry) is only implicitly maybe on the Save Workout screen \u2014 not stated.",
+  "Wellhub (Gympass) Pro entitlement \u2014 article 'Having Trouble Connecting Hevy to Wellhub (Gympass)?'. The pro list covers App Store/Play/Stripe/Paddle channels but not the Wellhub partnership as a Pro-access path.",
+  "Billing self-service details \u2014 articles 'How do I get an invoice for my Pro subscription?', 'How to Update Your Payment Method (iOS, Android, Website)', 'How to get a Refund'. Manage Subscription is listed, but invoices, payment-method update, and refund routing per platform are finer-grained than anything in the index/pro list.",
+  "Delete affordances \u2014 article 'How to Delete Comments, Sets, Workouts, Routines & Your Hevy Account'. Index covers 'Edit saved workout' and an Account section, but deleting a saved workout, deleting own/others' comments on your posts, and full account deletion are not explicitly listed.",
+  "Intervals \u2014 article 'Circuits, Intervals, and Supersets Explained'. Index says 'Supersets & circuits'; interval-style timed circuit training is not named (minor \u2014 plausibly the same mechanism)."
+ ],
+ "auditVerdict": "Spec is substantially complete \u2014 roughly 90-95% of Hevy's own taxonomy maps cleanly to a listed screen/feature (all core logging, routines, social, stats, measures, settings, platform-extras, and Pro-gating items are present). The gaps are concentrated in (1) a wholly missing auth/onboarding surface, (2) the exercise-type/measurement-math layer (bodyweight variants, cardio/distance fields, 1RM formula), and (3) a scatter of small mechanics (per-exercise units, 150-set cap, HevyGPT import flow, folder sharing, workout photos). Note: 22 global_rules exist but only the 12-item pro list was provided, so some flagged items may live in the unseen 10 rules."
+}

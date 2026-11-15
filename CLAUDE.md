@@ -1,0 +1,30 @@
+# CLAUDE.md — Frog
+
+Frog is a **training lab notebook** (web app first; mobile later): log the work *and* the conditions around it (sleep, carbs, stress, etc.), then surface correlations between inputs and outputs. Full spec: `docs/superpowers/specs/2026-06-20-frog-prd.html`. Architecture + conventions: `AGENTS.md` (read it before coding). Project facts live in Claude's project memory (`MEMORY.md`).
+
+## Top priority: lightweight & fast
+
+**Frog must be super lightweight and fast.** First-class product requirement — weigh every dependency and screen against it:
+
+- **Optimistic UI.** Reflect the user's action immediately; logging a set never waits on the network (client-generated IDs, background mutations with retry).
+- **Interactions feel instant** — visual feedback within ~100ms; 100–150ms CSS transitions; nothing animates on the data path.
+- **Minimal dependencies.** Audit before adding any library; prefer a few lines over a package. Initial JS budget ≤220 kB gzipped (CI-gated — the honest eager set, measured from `dist/index.html`, not a filename glob).
+- **Lazy-load** non-critical routes; **virtualize** long lists only when profiling demands; memoize hot paths.
+- Measure, don't guess: if a change risks bundle size or interaction latency, profile it.
+
+Note: v1 web is **online-first** (Convex backend; account required). The PRD's offline mandate is deferred to the mobile phase — the `Repo` interface in `packages/core` is the seam where a local store slots in later. Don't promise offline in UI copy.
+
+## Stack
+
+- Monorepo (Bun workspaces): `apps/web` + `packages/core` + `packages/mcp` + `convex/` (`supabase/migrations/` is frozen history).
+- App: **Vite + React SPA**, react-router v7, TanStack Query, Tailwind v4 (CSS-first `@theme`), vendored shadcn/ui.
+- Data: **Convex** (owner-scoped queries/mutations in `convex/`, called over HTTP by `ConvexRepo`); auth is **Clerk** (Google + email, prebuilt UI) via the Clerk `convex` JWT template → `convex/auth.config.ts`. Live schema `convex/schema.ts`; the Drizzle file `packages/core/src/db/schema.ts` remains for row types/column names.
+- Domain logic: framework-free TS in `packages/core` (units, e1rm, progression, session-reducer, findings) — keep it free of React/DOM/backend-client imports (except `repo/`).
+- Dev/integration layer (a major focus): export + personal-token API + **MCP server** + AI-buildable docs — all **TypeScript**. **No Rust.**
+- Design: **Frog** on the Because green (Fern) system (`docs/brand/README.md`, `docs/brand/because-reference/`; old identity in `docs/brand/archive/`): `apps/web/src/styles/theme.css` is the one token source, Fern `#afcfab` accent, ink primary buttons, Geologica only, Phosphor icons, corners on 4/8/12/16/24, no lines except the 1px text-field line, Device/Day/Night mode, dense keyboard-first UI, ⌘K palette, tabular numerals. Frog voice only at the edges (empty states, errors, celebrations) via the Human/Frog/Ultrafrog registers in `apps/web/src/lib/voice.ts`; data zones stay deadpan-serious. (Legacy app archived on branch `legacy/expo`.)
+
+## Working style
+
+- Design decisions are captured in the PRD, AGENTS.md, and memory — read those before changing direction.
+- The app name is **Frog** — single source `APP_NAME` in `packages/core/src/config.ts`; never hardcode the literal.
+- Prefer `.html` over `.md` for docs the user will read (per global CLAUDE.md).

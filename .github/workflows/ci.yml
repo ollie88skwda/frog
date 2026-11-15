@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run test
+      - run: bun scripts/check-docs.ts
+      - run: bun scripts/check-mark-drift.ts
+      - run: bun scripts/gen-og-image.ts --check
+
+  # Integration + e2e run against a throwaway local Convex backend (the
+  # CLI's anonymous local deployment — no cloud project, no secrets). The
+  # test signing key is generated per run (scripts/convex-test-env.ts) and
+  # only ever installed on that local backend.
+  integration-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: bun install --frozen-lockfile
+      - run: scripts/ci/start-convex-backend.sh
+      - run: bun run test:integration
+      - run: bun run test:import
+      - run: bun x playwright install --with-deps chromium
+      - run: bun run e2e
+        env:
+          # test:integration already pushed functions + seeded.
+          E2E_SKIP_SEED: "1"
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run --cwd apps/web build
+        env:
+          VITE_CONVEX_URL: https://placeholder.convex.cloud
+      - run: bun scripts/check-bundle.ts

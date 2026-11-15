@@ -1,0 +1,1370 @@
+import {
+  EQUIPMENT_LABELS,
+  type Exercise,
+  formatPrevious,
+  formatWeight,
+  groupByPrimaryMuscle,
+  jointActionLabel,
+  type Machine,
+  type Metric,
+  MUSCLE_REGION_LABELS,
+  MUSCLE_REGIONS,
+  type MuscleTarget,
+  muscleLabel,
+  type NewMetricInput,
+  ratingsForMuscle,
+  regionOf,
+  tierRank,
+} from "@frog/core";
+import {
+  Archive,
+  ArrowRight,
+  Barbell,
+  CaretDown,
+  CaretRight,
+  ClockCounterClockwise,
+  Copy,
+  Info,
+  Plus,
+  X,
+} from "@phosphor-icons/react";
+import {
+  type CSSProperties,
+  type FormEvent,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { Link, useSearchParams } from "react-router";
+import {
+  ExerciseThumb,
+  FavoriteButton,
+  JointActionChips,
+  JointActionRatings,
+  TierBadge,
+  TierLegend,
+  tierNameClass,
+} from "@/components/anatomy-ui";
+import { ExerciseEditor } from "@/components/exercise-editor";
+import {
+  ExerciseFilterBar,
+  filterExercises,
+  primaryMuscleKey,
+  type TierFilter,
+} from "@/components/exercise-filter";
+import { MachinesSection } from "@/components/machines";
+import { Button } from "@/components/ui/button";
+import { ChipGroup, ChipItem } from "@/components/ui/chip";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { IconButton, IconLink } from "@/components/ui/icon-button";
+import { Input, Textarea } from "@/components/ui/input";
+import { Row } from "@/components/ui/row";
+import { Select } from "@/components/ui/select";
+import {
+  dismissBulkAddFailures,
+  finishBulkAddRun,
+  isBulkAddRunActive,
+  startBulkAddRun,
+  useBulkAddFailures,
+} from "@/lib/bulk-add-failures";
+import { usePendingExercises } from "@/lib/pending-exercises";
+import {
+  useResolvedUserPrefs,
+  useUpdateUserPrefs,
+} from "@/lib/profile-queries";
+import {
+  copyExerciseOpts,
+  useCreateExercise,
+  useCreateMetric,
+  useDeleteExercise,
+  useDeleteMetric,
+  useExerciseFavorites,
+  useExercises,
+  useLastSets,
+  useMachines,
+  useMetrics,
+  useRecentExerciseIds,
+  useSeedExercises,
+  useSetExerciseFavorite,
+  useSetMetricExercises,
+  useUpdateExercise,
+} from "@/lib/queries";
+import { useUnit } from "@/lib/settings";
+import { useInView } from "@/lib/use-in-view";
+import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
+
+// One name per line, trimmed, blanks dropped, case-insensitive dedupe within
+// the paste (keeps the first occurrence's casing).
+function parseBulkExerciseNames(text: string): string[] {
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    names.push(trimmed);
+  }
+  return names;
+}
+
+// Long name lists (duplicates, failures) are summarised — the full list would
+// push the dialog's own controls below the scroll fold.
+const NAME_PREVIEW = 5;
+
+function previewNames(names: readonly string[]): string {
+  const rest = names.length - NAME_PREVIEW;
+  const head = names.slice(0, NAME_PREVIEW).join(", ");
+  return rest > 0 ? `${head} +${rest} more` : head;
+}
+
+// Bulk add has no `Repo` batch call by design, so bound the fan-out here:
+// at most this many inserts in flight regardless of how many names were pasted.
+const BULK_ADD_CONCURRENCY = 4;
+
+// Resolves to the items whose run failed, in input order.
+async function runBounded<T>(
+  items: T[],
+  run: (item: T) => Promise<unknown>,
+): Promise<T[]> {
+  const failed = new Set<number>();
+  let next = 0;
+  async function worker() {
+    for (let i = next++; i < items.length; i = next++) {
+      try {
+        await run(items[i]);
+      } catch {
+        failed.add(i);
+      }
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(BULK_ADD_CONCURRENCY, items.length) }, () =>
+      worker(),
+    ),
+  );
+  return items.filter((_, i) => failed.has(i));
+}
+
+// Skip layout/paint for off-screen rows (~900 in the seeded library). The
+// `auto` keyword lets the browser cache each row's real height after first
+// render, so the estimate only matters before a row has ever been shown.
+const CV_ROW: CSSProperties = {
+  contentVisibility: "auto",
+  containIntrinsicSize: "auto 88px",
+};
+
+const NO_EXERCISES: Exercise[] = [];
+
+export default function LibraryScreen() {
+  const { t } = useVoice();
+  const { data, isLoading, isError, refetch } = useExercises();
+  // Presence, not query status: a failed background refetch (every bulk run
+  // ends in one) flips `status` to error while the fetched list is still in
+  // `data` and on screen — bulk add only needs the list, not a fresh fetch.
+  const exercises = data ?? NO_EXERCISES;
+  const libraryLoaded = data !== undefined;
+  const { data: metrics = [] } = useMetrics();
+  const { data: machines = [] } = useMachines();
+  const { data: favorites = [] } = useExerciseFavorites();
+  // Rows whose INSERT hasn't landed: favorites, tags, metrics and archive all
+  // key off exercise id server-side, so they must wait for the real row.
+  const pendingExercises = usePendingExercises();
+  const setFavorite = useSetExerciseFavorite();
+  const favoriteIds = useMemo(
+    () => new Set(favorites.filter((f) => f.favorite).map((f) => f.exerciseId)),
+    [favorites],
+  );
+  const [query, setQuery] = useState("");
+  const [filterRegion, setFilterRegion] = useState("");
+  const [filterMuscle, setFilterMuscle] = useState("");
+  const [filterEquipment, setFilterEquipment] = useState("");
+  const [filterTier, setFilterTier] = useState<TierFilter>("");
+  const [yoursOnly, setYoursOnly] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // One shared editor sheet for both "+ Custom exercise" and every row's "Edit"
+  // — mode/exercise together decide create vs. edit.
+  const [editorTarget, setEditorTarget] = useState<
+    { mode: "create" } | { mode: "edit"; exercise: Exercise } | null
+  >(null);
+  // Deep-link from Home's "+ Custom" affordance: opens straight into the create
+  // sheet instead of landing on the list and requiring a second tap.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setEditorTarget({ mode: "create" });
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("new");
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [searchParams, setSearchParams]);
+
+  const setMetrics = useMemo(
+    () => metrics.filter((m) => m.scope === "set" && m.ownerId !== null),
+    [metrics],
+  );
+  // Derived off the whole ~900-row library: every optimistic write re-renders
+  // this screen, and a bulk run does one write per pasted name.
+  const filtered = useMemo(
+    () =>
+      filterExercises(
+        exercises,
+        query,
+        filterMuscle,
+        filterTier,
+        filterEquipment,
+      ).filter((ex) => !yoursOnly || ex.isCustom),
+    [exercises, query, filterMuscle, filterTier, filterEquipment, yoursOnly],
+  );
+  const groups = useMemo(() => groupByPrimaryMuscle(filtered), [filtered]);
+  // F14/R12: joint action (Frog default) or muscle region; persisted pref.
+  const { exerciseGrouping } = useResolvedUserPrefs();
+  const updatePrefs = useUpdateUserPrefs();
+
+  // "Recent" band: exercises with a set logged in the last 30 days, most
+  // recent first (Hevy-style recently-logged-first ordering). Empty until the
+  // first session — renders as nothing, never as an error.
+  const { data: recentIds = [] } = useRecentExerciseIds(30);
+  const recentSet = useMemo(() => new Set(recentIds), [recentIds]);
+  // Default browse (no muscle filter, no query): Recent → Favorites → the
+  // rest alphabetically. Favorites and rest keep the exercises' name order
+  // (listExercises sorts by name); recent follows recency.
+  const bands = useMemo(() => {
+    const favorites: Exercise[] = [];
+    const rest: Exercise[] = [];
+    for (const ex of filtered) {
+      if (recentSet.has(ex.id)) continue;
+      if (favoriteIds.has(ex.id)) favorites.push(ex);
+      else rest.push(ex);
+    }
+    const byId = new Map(filtered.map((e) => [e.id, e]));
+    const recent = recentIds
+      .map((id) => byId.get(id))
+      .filter((e): e is Exercise => e !== undefined);
+    return { recent, favorites, rest };
+  }, [filtered, recentIds, recentSet, favoriteIds]);
+
+  const restGroups = useMemo(
+    () => groupRest(bands.rest, exerciseGrouping),
+    [bands.rest, exerciseGrouping],
+  );
+
+  // Stable identities keep the memoized rows out of the re-render that every
+  // optimistic write triggers — a bulk run does one write per name.
+  const favoriteMutate = setFavorite.mutate;
+  const onToggleFavorite = useCallback(
+    (exerciseId: string, favorite: boolean) =>
+      favoriteMutate({ exerciseId, favorite }),
+    [favoriteMutate],
+  );
+  const onToggleExpanded = useCallback(
+    (id: string) => setExpandedId((prev) => (prev === id ? null : id)),
+    [],
+  );
+  const onEdit = useCallback(
+    (exercise: Exercise) => setEditorTarget({ mode: "edit", exercise }),
+    [],
+  );
+
+  function toggleGroup(key: string) {
+    setCollapsed((old) => {
+      const next = new Set(old);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
+      <h1 className="text-lg font-semibold tracking-tight">Library</h1>
+
+      <div className="mt-4 flex items-center gap-2">
+        <Button
+          variant="primary"
+          className="flex-1"
+          onClick={() => setEditorTarget({ mode: "create" })}
+          data-testid="new-exercise-btn"
+        >
+          <Plus className="size-4" />
+          Custom exercise
+        </Button>
+        <BulkAddDialog
+          exercises={exercises}
+          libraryLoaded={libraryLoaded}
+          libraryFailed={isError && !libraryLoaded}
+          onRetryLibrary={() => void refetch()}
+        />
+      </div>
+      <BulkAddFailures />
+
+      {editorTarget && (
+        <ExerciseEditor
+          open={!!editorTarget}
+          onOpenChange={(open) => !open && setEditorTarget(null)}
+          mode={editorTarget.mode}
+          exercise={
+            editorTarget.mode === "edit" ? editorTarget.exercise : undefined
+          }
+        />
+      )}
+
+      <div className="mt-4">
+        <ExerciseFilterBar
+          query={query}
+          onQuery={setQuery}
+          region={filterRegion}
+          onRegion={setFilterRegion}
+          muscle={filterMuscle}
+          onMuscle={setFilterMuscle}
+          equipment={filterEquipment}
+          onEquipment={setFilterEquipment}
+          after={
+            <button
+              type="button"
+              onClick={() => setYoursOnly((v) => !v)}
+              aria-pressed={yoursOnly}
+              className={cn(
+                "h-8 shrink-0 px-2.5 text-2xs transition-colors duration-150",
+                yoursOnly
+                  ? "bg-accent-soft text-accent-ink"
+                  : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
+              )}
+              data-testid="library-filter-yours"
+            >
+              {t("Yours", "Yours")}
+            </button>
+          }
+        />
+        <div className="mt-2 flex items-center gap-2">
+          <span className="text-2xs text-faint">Group by</span>
+          <ChipGroup
+            value={exerciseGrouping}
+            onValueChange={(v) =>
+              v &&
+              updatePrefs.mutate({
+                exerciseGrouping: v as typeof exerciseGrouping,
+              })
+            }
+            aria-label="Group exercises by"
+          >
+            <ChipItem value="joint_action" data-testid="group-joint-action">
+              Joint action
+            </ChipItem>
+            <ChipItem value="region" data-testid="group-region">
+              Region
+            </ChipItem>
+          </ChipGroup>
+        </div>
+        <TierLegend
+          className="mt-2"
+          active={filterTier}
+          onSelect={(v) => setFilterTier((prev) => (prev === v ? "" : v))}
+        />
+      </div>
+
+      <div className="rounded-md mt-4 overflow-hidden bg-surface">
+        {isLoading ? (
+          <p className="px-4 py-6 text-center text-xs text-faint">
+            {t("Loading…", "The frog is thinking…")}
+          </p>
+        ) : isError && !libraryLoaded ? (
+          <div
+            className="flex flex-col items-center gap-2 px-4 py-6 text-center"
+            data-testid="library-error"
+          >
+            <p className="text-xs text-neg">
+              {t(
+                "Couldn't reach the server. Your exercises may still be there.",
+                "The frog couldn't reach the pond. Your exercises may still be there.",
+              )}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              data-testid="library-retry"
+            >
+              Retry
+            </Button>
+          </div>
+        ) : exercises.length === 0 ? (
+          <p className="px-4 py-6 text-center text-xs text-faint">
+            {t(
+              "No exercises yet. Add your first above.",
+              "No specimens yet. Add your first above.",
+            )}
+          </p>
+        ) : filtered.length === 0 ? (
+          <p className="px-4 py-6 text-center text-xs text-faint">
+            {t("No exercises match your search.", "No specimens match.")}
+          </p>
+        ) : filterMuscle ? (
+          // D2: muscle-grouped sections survive only inside a chosen muscle —
+          // the region→muscle drill-down lands here, tier-sorted within.
+          groups.map((group) => (
+            <section key={group.key} data-testid={`muscle-group-${group.key}`}>
+              <header className="flex h-8 items-center gap-2 bg-surface-2 px-2">
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.key)}
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  data-testid={`muscle-group-toggle-${group.key}`}
+                >
+                  {collapsed.has(group.key) ? (
+                    <CaretRight className="size-4 shrink-0 text-faint" />
+                  ) : (
+                    <CaretDown className="size-4 shrink-0 text-faint" />
+                  )}
+                  <span className="truncate text-2xs font-medium tracking-widest uppercase">
+                    {group.label}
+                  </span>
+                  <span className="num text-2xs text-faint">
+                    {group.items.length}
+                  </span>
+                </button>
+                {group.key !== "other" && (
+                  <BestForMuscle muscle={group.key} exercises={exercises} />
+                )}
+              </header>
+              {!collapsed.has(group.key) && (
+                <ul className="[&>*+*]:mt-0.5">
+                  {group.items.map((ex) => (
+                    <ExerciseRow
+                      key={ex.id}
+                      exercise={ex}
+                      groupMuscle={group.key}
+                      setMetrics={setMetrics}
+                      machines={machines}
+                      isFavorite={favoriteIds.has(ex.id)}
+                      onToggleFavorite={onToggleFavorite}
+                      pending={pendingExercises.has(ex.id)}
+                      expanded={expandedId === ex.id}
+                      onToggle={onToggleExpanded}
+                      onEdit={onEdit}
+                    />
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))
+        ) : query.trim() ? (
+          // Search-first: a query shows a flat list of matches, no bands.
+          <ul className="[&>*+*]:mt-0.5">
+            {filtered.map((ex) => (
+              <ExerciseRow
+                key={ex.id}
+                exercise={ex}
+                groupMuscle={primaryMuscleKey(ex)}
+                flat
+                setMetrics={setMetrics}
+                machines={machines}
+                isFavorite={favoriteIds.has(ex.id)}
+                onToggleFavorite={onToggleFavorite}
+                pending={pendingExercises.has(ex.id)}
+                expanded={expandedId === ex.id}
+                onToggle={onToggleExpanded}
+                onEdit={onEdit}
+              />
+            ))}
+          </ul>
+        ) : (
+          // Default browse: Recent → Favorites → the rest alphabetically.
+          // Bands render only when non-empty (a fresh account has neither).
+          <>
+            {bands.recent.length > 0 && (
+              <section data-testid="library-band-recent">
+                <header className="flex h-8 items-center gap-2 bg-surface-2 px-2">
+                  <span className="truncate text-2xs font-medium tracking-widest uppercase">
+                    {t("Recent", "Recently used")}
+                  </span>
+                  <span className="num text-2xs text-faint">
+                    {bands.recent.length}
+                  </span>
+                </header>
+                <ul className="[&>*+*]:mt-0.5">
+                  {bands.recent.map((ex) => (
+                    <ExerciseRow
+                      key={ex.id}
+                      exercise={ex}
+                      groupMuscle={primaryMuscleKey(ex)}
+                      flat
+                      setMetrics={setMetrics}
+                      machines={machines}
+                      isFavorite={favoriteIds.has(ex.id)}
+                      onToggleFavorite={onToggleFavorite}
+                      pending={pendingExercises.has(ex.id)}
+                      expanded={expandedId === ex.id}
+                      onToggle={onToggleExpanded}
+                      onEdit={onEdit}
+                    />
+                  ))}
+                </ul>
+              </section>
+            )}
+            {bands.favorites.length > 0 && (
+              <section data-testid="library-band-favorites">
+                <header className="flex h-8 items-center gap-2 bg-surface-2 px-2">
+                  <span className="truncate text-2xs font-medium tracking-widest uppercase">
+                    {t("Favorites", "Favorites")}
+                  </span>
+                  <span className="num text-2xs text-faint">
+                    {bands.favorites.length}
+                  </span>
+                </header>
+                <ul className="[&>*+*]:mt-0.5">
+                  {bands.favorites.map((ex) => (
+                    <ExerciseRow
+                      key={ex.id}
+                      exercise={ex}
+                      groupMuscle={primaryMuscleKey(ex)}
+                      flat
+                      setMetrics={setMetrics}
+                      machines={machines}
+                      isFavorite={favoriteIds.has(ex.id)}
+                      onToggleFavorite={onToggleFavorite}
+                      pending={pendingExercises.has(ex.id)}
+                      expanded={expandedId === ex.id}
+                      onToggle={onToggleExpanded}
+                      onEdit={onEdit}
+                    />
+                  ))}
+                </ul>
+              </section>
+            )}
+            {restGroups.map((g) => (
+              <section key={g.key} data-testid={`rest-group-${g.key}`}>
+                <header className="flex h-8 items-center gap-2 bg-surface-2 px-2">
+                  <span className="truncate text-2xs font-medium tracking-widest uppercase">
+                    {g.label}
+                  </span>
+                  <span className="num text-2xs text-faint">
+                    {g.items.length}
+                  </span>
+                </header>
+                <ul className="[&>*+*]:mt-0.5">
+                  {g.items.map((ex) => (
+                    <ExerciseRow
+                      key={ex.id}
+                      exercise={ex}
+                      groupMuscle={primaryMuscleKey(ex)}
+                      flat
+                      setMetrics={setMetrics}
+                      machines={machines}
+                      isFavorite={favoriteIds.has(ex.id)}
+                      onToggleFavorite={onToggleFavorite}
+                      pending={pendingExercises.has(ex.id)}
+                      expanded={expandedId === ex.id}
+                      onToggle={onToggleExpanded}
+                      onEdit={onEdit}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </>
+        )}
+      </div>
+
+      <MachinesSection machines={machines} />
+      <MetricsSection metrics={metrics} />
+    </div>
+  );
+}
+
+// Default-browse grouping (F14, R12): by first joint action (Frog default) or
+// by muscle region of the primary muscle. Exercises with no data land in
+// "Other". Within a group the incoming name order is kept.
+function groupRest(
+  items: Exercise[],
+  mode: "joint_action" | "region",
+): { key: string; label: string; items: Exercise[] }[] {
+  const buckets = new Map<string, Exercise[]>();
+  const push = (k: string, ex: Exercise) => {
+    const b = buckets.get(k);
+    if (b) b.push(ex);
+    else buckets.set(k, [ex]);
+  };
+  for (const ex of items) {
+    if (mode === "joint_action") push(ex.jointActions?.[0] ?? "other", ex);
+    else {
+      const m = ex.muscleTargets?.[0]?.muscle;
+      push((m && regionOf(m)) || "other", ex);
+    }
+  }
+  const out: { key: string; label: string; items: Exercise[] }[] = [];
+  if (mode === "region") {
+    for (const r of MUSCLE_REGIONS) {
+      const b = buckets.get(r);
+      if (b) out.push({ key: r, label: MUSCLE_REGION_LABELS[r], items: b });
+    }
+  } else {
+    const keys = [...buckets.keys()].filter((k) => k !== "other");
+    keys.sort((a, b) => jointActionLabel(a).localeCompare(jointActionLabel(b)));
+    for (const k of keys)
+      out.push({
+        key: k,
+        label: jointActionLabel(k),
+        items: buckets.get(k) ?? [],
+      });
+  }
+  const other = buckets.get("other");
+  if (other) out.push({ key: "other", label: "Other", items: other });
+  return out;
+}
+
+// Owns its own draft state so typing a paste in here never re-renders the
+// ~900-row library list behind the dialog.
+function BulkAddDialog({
+  exercises,
+  libraryLoaded,
+  libraryFailed,
+  onRetryLibrary,
+}: {
+  exercises: Exercise[];
+  libraryLoaded: boolean;
+  libraryFailed: boolean;
+  onRetryLibrary: () => void;
+}) {
+  const create = useCreateExercise();
+  const seedExercises = useSeedExercises();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [skipDuplicates, setSkipDuplicates] = useState(true);
+  const failed = useBulkAddFailures();
+
+  const existingNames = useMemo(
+    () => new Set(exercises.map((e) => e.name.toLowerCase())),
+    [exercises],
+  );
+  const names = parseBulkExerciseNames(text);
+  const duplicates = names.filter((n) => existingNames.has(n.toLowerCase()));
+  const toCreate = skipDuplicates
+    ? names.filter((n) => !existingNames.has(n.toLowerCase()))
+    : names;
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    // `existingNames` is only trustworthy once the list query has resolved —
+    // submitting against an empty library would silently create duplicates.
+    if (!libraryLoaded || toCreate.length === 0) return;
+    setText("");
+    setSkipDuplicates(true);
+    setOpen(false);
+    const runId = startBulkAddRun();
+    // Every row lands now; only the inserts behind them are bounded.
+    const queued = seedExercises(toCreate.map((name) => ({ name })));
+    void runBounded(queued, ({ id, name }) =>
+      // A user change mid-run retires the run: the names belong to the account
+      // that pasted them, and the pool would otherwise insert the rest into
+      // whoever signed in next.
+      isBulkAddRunActive(runId)
+        ? create.mutateAsync({ name, opts: { id } })
+        : Promise.resolve(),
+    ).then((rows) =>
+      finishBulkAddRun(
+        runId,
+        rows.map((r) => r.name),
+      ),
+    );
+  }
+
+  return (
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          // Reopening is the retry path the notice points at, so hand the
+          // full failed list back as the draft — not the truncated preview.
+          if (next) setText(failed.join("\n"));
+          else {
+            setText("");
+            setSkipDuplicates(true);
+          }
+        }}
+      >
+        <DialogTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            // Duplicate detection reads the loaded library, so the dialog
+            // stays shut until there is one — otherwise "Skip duplicates"
+            // silently protects nothing.
+            disabled={!libraryLoaded}
+            title={
+              libraryLoaded
+                ? undefined
+                : libraryFailed
+                  ? "Couldn't load your library — retry first"
+                  : "Loading your library…"
+            }
+            data-testid="bulk-add-exercises-trigger"
+          >
+            Bulk add
+          </Button>
+        </DialogTrigger>
+        <DialogContent title="Bulk add exercises">
+          <form onSubmit={onSubmit} className="flex flex-col gap-3">
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="One exercise name per line"
+              rows={8}
+              className="w-full border border-field bg-surface px-2 py-1 text-xs text-ink placeholder:text-faint"
+              data-testid="bulk-add-textarea"
+            />
+            {duplicates.length > 0 && (
+              <p
+                className="text-2xs text-warn"
+                data-testid="bulk-add-duplicate-warning"
+              >
+                {duplicates.length} name{duplicates.length === 1 ? "" : "s"}{" "}
+                already in your library: {previewNames(duplicates)}
+              </p>
+            )}
+            <label className="flex items-center gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={skipDuplicates}
+                onChange={(e) => setSkipDuplicates(e.target.checked)}
+                className="size-4 accent-(--color-accent-mark)"
+                data-testid="bulk-add-skip-duplicates"
+              />
+              Skip duplicates
+            </label>
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={!libraryLoaded || toCreate.length === 0}
+                data-testid="bulk-add-submit"
+              >
+                {toCreate.length > 0
+                  ? `Add ${toCreate.length} exercise${toCreate.length === 1 ? "" : "s"}`
+                  : "Add exercises"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+      {libraryFailed && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onRetryLibrary}
+          data-testid="bulk-add-retry-library"
+        >
+          Retry loading library
+        </Button>
+      )}
+    </>
+  );
+}
+
+// The post-run failure notice, rendered as a sibling *below* the header row
+// rather than inside it: the row is `items-center`, so a two-line notice
+// stacked under the trigger would grow that flex item and lift "Bulk add"
+// off the primary button's vertical centre line (Note 16). Reads the same
+// module store the dialog does — it outlives both the dialog and the screen.
+function BulkAddFailures() {
+  const failed = useBulkAddFailures();
+  if (failed.length === 0) return null;
+  return (
+    <p
+      role="status"
+      className="mt-1 flex items-start gap-1 text-2xs text-neg"
+      data-testid="bulk-add-failures"
+    >
+      <span className="min-w-0 flex-1">
+        {failed.length} name{failed.length === 1 ? "" : "s"} didn't save:{" "}
+        {previewNames(failed)}. Open bulk add to try again.
+      </span>
+      <IconButton
+        danger
+        title="Dismiss"
+        onClick={dismissBulkAddFailures}
+        data-testid="bulk-add-failures-dismiss"
+      >
+        <X className="size-4" />
+      </IconButton>
+    </p>
+  );
+}
+
+// Ranked joint actions (with nuance + citations) and the user's best
+// exercises for one muscle — the "pick the best exercise" view.
+function BestForMuscle({
+  muscle,
+  exercises,
+}: {
+  muscle: string;
+  exercises: Exercise[];
+}) {
+  const { t } = useVoice();
+  const ratings = ratingsForMuscle(muscle);
+  const ranked = exercises
+    .map((e) => ({
+      exercise: e,
+      target: e.muscleTargets?.find((t) => t.muscle === muscle),
+    }))
+    .filter((x): x is { exercise: Exercise; target: MuscleTarget } =>
+      Boolean(x.target),
+    )
+    .sort((a, b) => tierRank(a.target.tier) - tierRank(b.target.tier));
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <IconButton
+          title={`Best for ${muscleLabel(muscle)}`}
+          data-testid={`best-for-${muscle}`}
+        >
+          <Info className="size-4" />
+        </IconButton>
+      </DialogTrigger>
+      <DialogContent title={`Best for ${muscleLabel(muscle)}`}>
+        <div className="flex max-h-96 flex-col gap-4 overflow-y-auto">
+          <div>
+            <h3 className="text-2xs font-medium tracking-widest text-faint uppercase">
+              Joint actions, ranked
+            </h3>
+            <ul className="mt-2 flex flex-col gap-2">
+              {ratings.map((r) => (
+                <li key={r.jointAction} className="flex items-start gap-2">
+                  <TierBadge tier={r.tier} />
+                  <span className="min-w-0 text-xs">
+                    <span className="text-ink">
+                      {jointActionLabel(r.jointAction)}
+                    </span>
+                    {r.note && (
+                      <span className="block text-2xs text-soft">{r.note}</span>
+                    )}
+                    {r.citations && r.citations.length > 0 && (
+                      <span className="block truncate text-2xs text-faint">
+                        {r.citations.join(" · ")}
+                      </span>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-2xs font-medium tracking-widest text-faint uppercase">
+              Your exercises
+            </h3>
+            {ranked.length === 0 ? (
+              <p className="mt-2 text-2xs text-faint">
+                {t(
+                  "Nothing targets this muscle yet.",
+                  "Nothing targets this muscle yet. The frog refuses to speculate.",
+                )}
+              </p>
+            ) : (
+              <ul className="mt-2 flex flex-col gap-1">
+                {ranked.map(({ exercise, target }) => (
+                  <li key={exercise.id} className="flex items-center gap-2">
+                    <TierBadge tier={target.tier} />
+                    <ExerciseThumb
+                      imageUrl={exercise.imageUrl}
+                      name={exercise.name}
+                    />
+                    <span className="truncate text-xs">{exercise.name}</span>
+                    <JointActionChips actions={exercise.jointActions} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Memoized: the seeded library renders ~900 of these, and every optimistic
+// create re-renders the screen around them.
+const ExerciseRow = memo(function ExerciseRow({
+  exercise,
+  groupMuscle,
+  flat,
+  setMetrics,
+  machines,
+  isFavorite,
+  onToggleFavorite,
+  pending,
+  expanded,
+  onToggle,
+  onEdit,
+}: {
+  exercise: Exercise;
+  groupMuscle: string;
+  /** Flat-list row: show the primary muscle + equipment chip (Option B). */
+  flat?: boolean;
+  setMetrics: Metric[];
+  machines: Machine[];
+  isFavorite: boolean;
+  onToggleFavorite: (exerciseId: string, favorite: boolean) => void;
+  pending: boolean;
+  expanded: boolean;
+  onToggle: (exerciseId: string) => void;
+  onEdit: (exercise: Exercise) => void;
+}) {
+  const { t } = useVoice();
+  const toggleMetric = useSetMetricExercises();
+  const update = useUpdateExercise();
+  const deleteExercise = useDeleteExercise();
+  const createExercise = useCreateExercise();
+  const [confirmingArchive, setConfirmingArchive] = useState(false);
+  // Gate the per-row last-set lookup on visibility — otherwise the seeded
+  // library fires one query per row (~900) on open, saturating the network.
+  const [rowRef, inView] = useInView<HTMLLIElement>();
+  const Chevron = expanded ? CaretDown : CaretRight;
+  const groupTier = exercise.muscleTargets?.find(
+    (t) => t.muscle === groupMuscle,
+  )?.tier;
+  const machine = machines.find((m) => m.id === exercise.machineId);
+
+  return (
+    <li
+      ref={rowRef}
+      style={CV_ROW}
+      data-testid={`exercise-row-${exercise.name}`}
+    >
+      {/* Ribbon: big diagram anchors the row; the name carries the most weight
+          and its brightness encodes exercise quality for this muscle (see
+          TierLegend); joint actions sit under it as plain labels; metadata
+          (machine, last set) is smallest/faintest. */}
+      <div className="flex w-full items-start gap-3 px-4 py-3 transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover">
+        <ExerciseThumb
+          imageUrl={exercise.imageUrl}
+          name={exercise.name}
+          size="lg"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => onToggle(exercise.id)}
+              // The panel behind this toggle edits tags, metrics and archive
+              // state, and its Edit button opens the editor over machine and
+              // classification — every one of them keyed by an id Postgres
+              // doesn't have yet while the create is queued.
+              disabled={pending}
+              className="flex min-w-0 items-center gap-1.5 text-left"
+              data-testid={`exercise-row-toggle-${exercise.name}`}
+            >
+              <span
+                className={cn(
+                  "truncate text-sm font-semibold",
+                  tierNameClass(groupTier),
+                )}
+              >
+                {exercise.name}
+              </span>
+              {pending ? (
+                <span className="shrink-0 text-2xs text-faint">saving…</span>
+              ) : (
+                <Chevron className="size-4 shrink-0 text-faint" />
+              )}
+            </button>
+            <span className="flex shrink-0 items-center gap-1">
+              {exercise.isCustom &&
+                (exercise.ownerId === null ? (
+                  // Community-shared row (owner_id null): quiet "shared" mark,
+                  // the why behind the missing Edit/Archive below.
+                  <span
+                    className="rounded-sm bg-surface px-2 py-0.5 text-2xs text-faint"
+                    data-testid={`shared-badge-${exercise.name}`}
+                  >
+                    shared
+                  </span>
+                ) : (
+                  <span className="rounded-xs bg-accent-soft px-2 py-0.5 text-2xs text-accent-ink">
+                    yours
+                  </span>
+                ))}
+              <FavoriteButton
+                favorite={isFavorite}
+                onToggle={() => onToggleFavorite(exercise.id, !isFavorite)}
+                name={exercise.name}
+                disabled={pending}
+              />
+              <IconLink
+                as={Link}
+                to={`/exercises/${exercise.id}`}
+                title={`Open ${exercise.name}`}
+                data-testid={`open-exercise-${exercise.name}`}
+              >
+                <ArrowRight className="size-4" />
+              </IconLink>
+            </span>
+          </div>
+
+          <JointActionRatings exercise={exercise} className="mt-1.5" />
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-faint">
+            {flat && (
+              <span className="flex items-center gap-1 truncate">
+                <span className="size-1 bg-accent" />
+                {groupMuscle !== "other" ? muscleLabel(groupMuscle) : "Other"}
+              </span>
+            )}
+            {flat && exercise.equipment && (
+              <span className="flex items-center gap-1 truncate">
+                <Barbell className="size-3 shrink-0" />
+                {
+                  EQUIPMENT_LABELS[
+                    exercise.equipment as keyof typeof EQUIPMENT_LABELS
+                  ]
+                }
+              </span>
+            )}
+            {machine && (
+              <span className="flex items-center gap-1 truncate">
+                <Barbell className="size-3 shrink-0" />
+                {machine.brand ? `${machine.brand} · ` : ""}
+                {machine.name}
+              </span>
+            )}
+            {inView && <LastSetSummary exerciseId={exercise.id} />}
+            {exercise.tags?.map((t) => (
+              <span key={t} className="flex shrink-0 items-center gap-1">
+                <span className="size-1 bg-accent" />
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+      {expanded && (
+        <div className="rounded-sm bg-surface-2 px-4 py-2 pl-10">
+          {setMetrics.length === 0 ? (
+            <p className="text-2xs text-faint">
+              {t(
+                "No custom set metrics yet — create one below to track it per set here.",
+                "No custom set metrics yet. Create one below and the frog will track it per set.",
+              )}
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {setMetrics.map((m) => {
+                const enabled = m.exerciseIds?.includes(exercise.id) ?? false;
+                return (
+                  <label key={m.id} className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      onChange={() =>
+                        toggleMetric.mutate({
+                          metricId: m.id,
+                          exerciseIds: enabled
+                            ? (m.exerciseIds ?? []).filter(
+                                (id) => id !== exercise.id,
+                              )
+                            : [...(m.exerciseIds ?? []), exercise.id],
+                        })
+                      }
+                      className="size-4 accent-(--color-accent-mark)"
+                      data-testid={`enable-metric-${m.name}-${exercise.name}`}
+                    />
+                    <span className={cn(enabled ? "text-ink" : "text-soft")}>
+                      {m.name}
+                    </span>
+                    <span className="text-2xs text-faint">{m.type}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+
+          {exercise.isCustom &&
+            (exercise.ownerId === null ? (
+              // Shared rows are RLS-immutable (no owner) — the editor's
+              // Edit/Archive become fork-on-edit: a private copy the user can
+              // change (docs/DECISIONS.md 2026-08-08). The fork is never
+              // itself published (share: false).
+              <div className="mt-3 pt-2">
+                <p className="text-2xs text-faint">
+                  Shared with everyone, so it can't be edited here. Make a
+                  private copy to change it.
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-soft"
+                    onClick={() => {
+                      void createExercise.mutateAsync({
+                        name: `${exercise.name} (copy)`,
+                        opts: { ...copyExerciseOpts(exercise), share: false },
+                      });
+                    }}
+                    data-testid={`fork-exercise-${exercise.name}`}
+                  >
+                    <Copy className="size-4" />
+                    Make a private copy
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3 pt-2">
+                <TagEditor exercise={exercise} update={update} />
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-soft"
+                    onClick={() => onEdit(exercise)}
+                    data-testid={`edit-exercise-${exercise.name}`}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-soft"
+                    onClick={() => setConfirmingArchive(true)}
+                    data-testid={`archive-exercise-${exercise.name}`}
+                  >
+                    <Archive className="size-4" />
+                    Archive exercise
+                  </Button>
+                </div>
+                <Dialog
+                  open={confirmingArchive}
+                  onOpenChange={setConfirmingArchive}
+                >
+                  <DialogContent title="Archive this exercise?">
+                    <p className="text-xs text-soft">
+                      It's hidden from your library and the exercise picker.
+                      Your past sessions and findings keep it — nothing logged
+                      is lost.
+                    </p>
+                    <div className="mt-3 flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setConfirmingArchive(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        onClick={() => {
+                          deleteExercise.mutate(exercise.id);
+                          setConfirmingArchive(false);
+                        }}
+                        data-testid={`confirm-archive-${exercise.name}`}
+                      >
+                        Archive
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            ))}
+        </div>
+      )}
+    </li>
+  );
+});
+
+// "Last set" line — reuses the ghost-prefill lookup (most recent prior
+// session's sets), no separate history query needed. useLastSets already
+// scopes to the single most recent session; the set_logs rows come back
+// grouped by set_no ascending (set 1, 2, …), so the last entry is the last
+// set they did — that one line, not the whole session (Note 15).
+function LastSetSummary({ exerciseId }: { exerciseId: string }) {
+  const { unit } = useUnit();
+  const { data: sets = [] } = useLastSets(exerciseId);
+  if (sets.length === 0) return null;
+  const summary = formatPrevious(sets[sets.length - 1], (kg) =>
+    formatWeight(kg, unit),
+  );
+  if (!summary) return null;
+  return (
+    <span className="flex items-center gap-1 truncate">
+      <ClockCounterClockwise className="size-3 shrink-0" />
+      Last: {summary}
+    </span>
+  );
+}
+
+function TagEditor({
+  exercise,
+  update,
+}: {
+  exercise: Exercise;
+  update: ReturnType<typeof useUpdateExercise>;
+}) {
+  const [tagDraft, setTagDraft] = useState("");
+  // Hold the latest tags so a rapid second add appends to the first instead of
+  // reading stale props (the optimistic cache update lags a render behind).
+  const tagsRef = useRef(exercise.tags ?? []);
+  tagsRef.current = exercise.tags ?? [];
+
+  function addTag(raw: string = tagDraft) {
+    const tag = raw.trim().replace(/,+$/, "");
+    setTagDraft("");
+    if (!tag) return;
+    const current = tagsRef.current;
+    if (current.includes(tag)) return;
+    const nextTags = [...current, tag];
+    tagsRef.current = nextTags;
+    update.mutate({ exerciseId: exercise.id, patch: { tags: nextTags } });
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {(exercise.tags ?? []).map((t) => (
+        <span
+          key={t}
+          className="rounded-sm flex items-center gap-1 bg-surface px-2 py-0.5 text-2xs text-soft"
+        >
+          {t}
+          <button
+            type="button"
+            title={`Remove tag ${t}`}
+            aria-label={`Remove tag ${t}`}
+            onClick={() =>
+              update.mutate({
+                exerciseId: exercise.id,
+                patch: { tags: (exercise.tags ?? []).filter((x) => x !== t) },
+              })
+            }
+            className="flex size-6 items-center justify-center rounded-xs bg-surface-2 text-faint hover:text-neg"
+          >
+            <X className="size-3" />
+          </button>
+        </span>
+      ))}
+      <Input
+        value={tagDraft}
+        onChange={(e) => {
+          if (e.target.value.endsWith(",")) {
+            addTag(e.target.value);
+          } else {
+            setTagDraft(e.target.value);
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            addTag();
+          }
+        }}
+        placeholder="+ tag"
+        aria-label="Add tag"
+        className="w-28"
+        data-testid={`tag-input-${exercise.name}`}
+      />
+    </div>
+  );
+}
+
+const METRIC_TYPES: NewMetricInput["type"][] = [
+  "number",
+  "scale",
+  "text",
+  "checkbox",
+];
+
+function MetricsSection({ metrics }: { metrics: Metric[] }) {
+  const create = useCreateMetric();
+  const deleteMetric = useDeleteMetric();
+  const [name, setName] = useState("");
+  const [type, setType] = useState<NewMetricInput["type"]>("number");
+
+  const custom = metrics.filter((m) => m.ownerId !== null);
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    create.mutate({ name: trimmed, type, scope: "set" });
+    setName("");
+  }
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
+        Custom metrics
+      </h2>
+      <p className="mt-0.5 text-2xs text-faint">
+        Everything logged is a metric. Set-scope metrics attach to exercises
+        above.
+      </p>
+
+      <form onSubmit={onSubmit} className="mt-3 flex gap-2">
+        <Input
+          placeholder="New metric name (e.g. Tempo)"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          data-testid="metric-name-input"
+        />
+        <Select.Root
+          value={type}
+          onValueChange={(v) => setType(v as NewMetricInput["type"])}
+        >
+          <Select.Trigger data-testid="metric-type-select" />
+          <Select.Content>
+            {METRIC_TYPES.map((t) => (
+              <Select.Item key={t} value={t}>
+                {t}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={name.trim().length === 0}
+          data-testid="add-metric-btn"
+        >
+          Add
+        </Button>
+      </form>
+
+      {custom.length > 0 && (
+        <ul className="rounded-md mt-3 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
+          {custom.map((m) => (
+            <li key={m.id} data-testid={`metric-row-${m.name}`}>
+              <Row interactive={false} className="text-sm">
+                <span>{m.name}</span>
+                <span className="flex items-center gap-2">
+                  <span className="num text-2xs text-faint">
+                    {m.type} · {m.scope} · {m.exerciseIds?.length ?? 0}{" "}
+                    exercises
+                  </span>
+                  <IconButton
+                    danger
+                    title="Delete metric"
+                    aria-label="Delete metric"
+                    onClick={() => deleteMetric.mutate(m.id)}
+                    data-testid={`delete-metric-${m.name}`}
+                  >
+                    <X className="size-4" />
+                  </IconButton>
+                </span>
+              </Row>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

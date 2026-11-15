@@ -1,0 +1,604 @@
+import {
+  buildMonthCard,
+  type DistributionTotals,
+  distributionBetween,
+  type MonthCard,
+  MUSCLE_REGION_LABELS,
+  MUSCLE_REGIONS,
+  monthlyReport,
+  PR_TYPE_LABELS,
+  reportableMonths,
+} from "@frog/core";
+import { CaretRight } from "@phosphor-icons/react";
+import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router";
+import {
+  LabelList,
+  Bar as RechartsBar,
+  BarChart as RechartsBarChart,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { MonthHeatGrid } from "@/components/report-calendar";
+import { ShareButton } from "@/components/share-sheet";
+import { BackButton } from "@/components/ui/back-button";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { QueryState } from "@/components/ui/query-state";
+import { Row, rowClass } from "@/components/ui/row";
+import { formatDuration } from "@/lib/format";
+import { useUserPrefs } from "@/lib/profile-queries";
+import {
+  compactVolume,
+  formatVolume,
+  hoursOf,
+  prValue,
+} from "@/lib/report-format";
+import { type ReportData, useReportData } from "@/lib/report-queries";
+import { distanceUnitFor, type Unit, useUnit } from "@/lib/settings";
+import { useVoice } from "@/lib/voice";
+
+const monthYearFmt = new Intl.DateTimeFormat(undefined, {
+  month: "long",
+  year: "numeric",
+});
+const monthShortFmt = new Intl.DateTimeFormat(undefined, { month: "short" });
+
+// Muscle split vs prior month — two grouped series, legend below the plot.
+const DIST_CONFIG = {
+  current: { label: "This month", color: "var(--chart-1)" },
+  previous: { label: "Prior", color: "var(--color-text-secondary)" },
+} satisfies ChartConfig;
+
+type Metric = "time" | "volume" | "sets";
+const METRIC_LABELS: Record<Metric, string> = {
+  time: "Time",
+  volume: "Volume",
+  sets: "Sets",
+};
+
+export default function MonthlyReportScreen() {
+  const navigate = useNavigate();
+  const { data, isLoading, isLoadingError, error, refetch } = useReportData();
+  const { unit } = useUnit();
+  const { t } = useVoice();
+
+  const months = useMemo(
+    () => (data ? reportableMonths(data.history) : []),
+    [data],
+  );
+
+  // Default to the latest *completed* month (the newest reportable month
+  // strictly before the current calendar month); fall back to the newest month
+  // with data if the user has only logged in the current month.
+  const defaultKey = useMemo(() => {
+    if (months.length === 0) return null;
+    const now = new Date();
+    const curIdx = now.getFullYear() * 12 + now.getMonth();
+    const completed = months.find((m) => m.year * 12 + m.month < curIdx);
+    const pick = completed ?? months[0];
+    return `${pick.year}-${pick.month}`;
+  }, [months]);
+
+  const [selKey, setSelKey] = useState<string | null>(null);
+  const activeKey = selKey ?? defaultKey;
+
+  if (isLoading || isLoadingError || !data) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-10">
+        <QueryState
+          isLoading={isLoading}
+          isError={isLoadingError}
+          error={error}
+          onRetry={() => void refetch()}
+        >
+          {null}
+        </QueryState>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+      <div className="flex items-center gap-3">
+        <BackButton
+          onClick={() => navigate(-1)}
+          label="Back"
+          data-testid="monthly-back"
+        />
+        <h1 className="text-lg font-semibold tracking-tight">Monthly report</h1>
+      </div>
+
+      {months.length === 0 || !activeKey ? (
+        <p className="mt-8 text-sm text-faint" data-testid="monthly-empty">
+          {t(
+            "No completed months yet — log a few workouts and your first report appears here.",
+            "No completed months on record. The frog does not report on partial data. Log a few workouts.",
+          )}
+        </p>
+      ) : (
+        <>
+          {/* Month archive picker — Frog keeps every completed month (Hevy shows
+              only the latest). Newest first. */}
+          <div
+            className="mt-4 flex gap-1 overflow-x-auto pb-1"
+            data-testid="monthly-picker"
+          >
+            {months.map((m) => {
+              const key = `${m.year}-${m.month}`;
+              const selected = key === activeKey;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSelKey(key)}
+                  className={`num h-9 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150 ${
+                    selected
+                      ? "bg-accent-soft text-accent-ink"
+                      : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink"
+                  }`}
+                  data-testid={`monthly-month-${key}`}
+                >
+                  {monthShortFmt.format(new Date(m.year, m.month, 1))}{" "}
+                  {String(m.year).slice(2)}
+                </button>
+              );
+            })}
+          </div>
+
+          <ReportBody data={data} monthKey={activeKey} unit={unit} />
+        </>
+      )}
+    </div>
+  );
+}
+
+function ReportBody({
+  data,
+  monthKey,
+  unit,
+}: {
+  data: ReportData;
+  monthKey: string;
+  unit: Unit;
+}) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const distUnit = distanceUnitFor(unit);
+
+  const opts = useMemo(
+    () => ({
+      now: Date.now(),
+      includeWarmups: data.includeWarmups,
+      firstWeekday: data.firstWeekday,
+    }),
+    [data.includeWarmups, data.firstWeekday],
+  );
+
+  const report = useMemo(
+    () =>
+      monthlyReport(
+        data.history,
+        data.muscles,
+        year,
+        month,
+        opts,
+        data.bodyweightKg,
+      ),
+    [data, year, month, opts],
+  );
+
+  // Trailing 6 months (incl. selected) for the header comparison chart.
+  const trailing = useMemo(() => {
+    const out: Array<{
+      month: number;
+      label: string;
+      totals: DistributionTotals;
+    }> = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(year, month - i, 1);
+      const y = d.getFullYear();
+      const m = d.getMonth();
+      const from = new Date(y, m, 1).getTime();
+      const to = new Date(y, m + 1, 1).getTime();
+      const dist = distributionBetween(
+        data.history,
+        data.muscles,
+        from,
+        to,
+        opts,
+        data.bodyweightKg,
+      );
+      out.push({
+        month: m,
+        label: monthShortFmt.format(new Date(y, m, 1)),
+        totals: dist.totals,
+      });
+    }
+    return out;
+  }, [data, year, month, opts]);
+
+  const workoutDays = useMemo(
+    () => new Set(report.workoutDays),
+    [report.workoutDays],
+  );
+  const { data: prefs } = useUserPrefs();
+  const shareCard = useMemo(
+    () =>
+      buildMonthCard({
+        report,
+        unit,
+        topExerciseName: report.topExercises[0]
+          ? data.nameOf(report.topExercises[0].exerciseId)
+          : null,
+        identity: { displayName: prefs?.displayName ?? null },
+      }),
+    [report, unit, data, prefs],
+  );
+
+  return (
+    <div className="mt-4 flex flex-col gap-4">
+      <TrendSlide trailing={trailing} unit={unit} />
+
+      <TotalsSlide
+        totals={report.totals}
+        previous={report.previous.totals}
+        prCount={report.prEvents.length}
+        unit={unit}
+        card={shareCard}
+      />
+
+      <Slide title="Personal records" testId="monthly-prs">
+        {report.prEvents.length === 0 ? (
+          <p className="text-xs text-faint">No PRs this month.</p>
+        ) : (
+          <ul className="[&>*+*]:mt-0.5">
+            {report.prEvents.map((e) => (
+              <li key={`${e.exerciseId}-${e.prType}-${e.at}`}>
+                <Link
+                  to={`/history/${e.sessionId}`}
+                  className={rowClass()}
+                  data-testid={`monthly-pr-${e.prType}`}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-xs text-ink">
+                      {data.nameOf(e.exerciseId)}
+                    </span>
+                    <span className="block text-2xs text-faint">
+                      {PR_TYPE_LABELS[e.prType]}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="num text-sm">
+                      {prValue(e.prType, e.value, unit, distUnit)}
+                    </span>
+                    <CaretRight className="size-4 text-faint" />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Slide>
+
+      <Slide title="Training days" testId="monthly-calendar">
+        <MonthHeatGrid
+          year={year}
+          month={month}
+          firstWeekday={data.firstWeekday}
+          workoutDays={workoutDays}
+        />
+        <p className="num mt-3 text-2xs text-faint">
+          {workoutDays.size} training {workoutDays.size === 1 ? "day" : "days"}{" "}
+          in {monthYearFmt.format(new Date(year, month, 1))}
+        </p>
+      </Slide>
+
+      <Slide title="Muscle split vs prior month" testId="monthly-distribution">
+        <ChartContainer
+          config={DIST_CONFIG}
+          className="h-42 w-full"
+          role="img"
+          aria-label="Muscle split vs prior month"
+          data-testid="monthly-dist-chart"
+        >
+          <RechartsBarChart
+            data={MUSCLE_REGIONS.map((r) => ({
+              label: MUSCLE_REGION_LABELS[r],
+              current: round1(report.distribution.regionSets[r]),
+              previous: round1(report.previous.regionSets[r]),
+            }))}
+            margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
+            accessibilityLayer
+          >
+            <XAxis
+              dataKey="label"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+              interval={0}
+            />
+            <YAxis hide width={0} />
+            <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+            <ChartLegend content={<ChartLegendContent />} />
+            <RechartsBar
+              dataKey="current"
+              fill="var(--color-current)"
+              maxBarSize={40}
+            />
+            <RechartsBar
+              dataKey="previous"
+              fill="var(--color-previous)"
+              maxBarSize={40}
+            />
+          </RechartsBarChart>
+        </ChartContainer>
+      </Slide>
+
+      <Slide title="Top exercises" testId="monthly-top">
+        {report.topExercises.length === 0 ? (
+          <p className="text-xs text-faint">No exercises logged this month.</p>
+        ) : (
+          <ul className="[&>*+*]:mt-0.5">
+            {report.topExercises.map((ex) => (
+              <li key={ex.exerciseId}>
+                <Row interactive={false}>
+                  <span className="truncate text-xs text-soft">
+                    {data.nameOf(ex.exerciseId)}
+                  </span>
+                  <span className="num shrink-0 text-2xs text-faint">
+                    {ex.sessions}×
+                  </span>
+                </Row>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Slide>
+    </div>
+  );
+}
+
+// ── Header comparison: metric-switchable bars across trailing months ─────────
+function TrendSlide({
+  trailing,
+  unit,
+}: {
+  trailing: Array<{ month: number; label: string; totals: DistributionTotals }>;
+  unit: Unit;
+}) {
+  const [metric, setMetric] = useState<Metric>("volume");
+  const bars = trailing.map((t) => ({
+    label: t.label,
+    value:
+      metric === "time"
+        ? t.totals.durationMs
+        : metric === "volume"
+          ? t.totals.volumeKg
+          : t.totals.sets,
+  }));
+  const fmt = (v: number) =>
+    metric === "time"
+      ? hoursOf(v)
+      : metric === "volume"
+        ? compactVolume(v, unit)
+        : String(Math.round(v));
+  // The tooltip/axis formatting follows the active metric; the label stays
+  // the metric name so a tooltip reads "Volume: 12.5k".
+  const trendConfig: ChartConfig = {
+    value: { label: METRIC_LABELS[metric], color: "var(--chart-1)" },
+  };
+
+  return (
+    <Slide
+      title="Monthly trend"
+      testId="monthly-trend"
+      action={
+        <div className="flex gap-1">
+          {(["time", "volume", "sets"] as Metric[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMetric(m)}
+              className={`h-7 px-2 text-2xs transition-colors duration-150 ${
+                metric === m
+                  ? "bg-accent-soft text-accent-ink"
+                  : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink"
+              }`}
+              data-testid={`monthly-metric-${m}`}
+            >
+              {METRIC_LABELS[m]}
+            </button>
+          ))}
+        </div>
+      }
+    >
+      <ChartContainer
+        config={trendConfig}
+        className="h-40 w-full"
+        role="img"
+        aria-label={`${METRIC_LABELS[metric]} by month`}
+        data-testid="monthly-trend-chart"
+      >
+        <RechartsBarChart
+          data={bars}
+          margin={{ top: 16, right: 4, left: 0, bottom: 0 }}
+          accessibilityLayer
+        >
+          <XAxis
+            dataKey="label"
+            tickLine={false}
+            axisLine={false}
+            tickMargin={6}
+            interval={0}
+          />
+          <YAxis hide width={0} />
+          <ChartTooltip
+            cursor={false}
+            content={
+              <ChartTooltipContent valueFormatter={(v) => fmt(Number(v))} />
+            }
+          />
+          <RechartsBar
+            dataKey="value"
+            fill="var(--color-value)"
+            maxBarSize={40}
+          >
+            <LabelList
+              dataKey="value"
+              position="top"
+              formatter={(v) => (Number(v) > 0 ? fmt(Number(v)) : "")}
+              className="num"
+              fill="var(--color-text-secondary)"
+              fontSize={10}
+            />
+          </RechartsBar>
+        </RechartsBarChart>
+      </ChartContainer>
+      <p className="mt-1 text-2xs text-faint">
+        {metric === "time"
+          ? "Active hours per month"
+          : metric === "volume"
+            ? `Total volume per month (${unit === "kg" ? "kg" : "lbs"})`
+            : "Working sets per month"}
+      </p>
+    </Slide>
+  );
+}
+
+function TotalsSlide({
+  totals,
+  previous,
+  prCount,
+  unit,
+  card,
+}: {
+  totals: DistributionTotals;
+  previous: DistributionTotals;
+  prCount: number;
+  unit: Unit;
+  card: MonthCard;
+}) {
+  // Stable identity — an inline `{kind:"static",card}` literal would give
+  // ShareButton a new `source` object every render (share-sheet.tsx's own
+  // memoization notes why that matters once the sheet is open).
+  const source = useMemo(() => ({ kind: "static" as const, card }), [card]);
+  return (
+    <Slide
+      title="This month"
+      testId="monthly-totals"
+      action={
+        <ShareButton
+          source={source}
+          filename="month-report"
+          testId="monthly-share-btn"
+          variant="ghost"
+          size="icon"
+          label={null}
+        />
+      }
+    >
+      <div className="grid grid-cols-2 gap-2">
+        <Stat
+          label="Workouts"
+          value={String(totals.workouts)}
+          delta={totals.workouts - previous.workouts}
+          fmtDelta={(d) => String(d)}
+        />
+        <Stat
+          label="Active time"
+          value={formatDuration(totals.durationMs)}
+          delta={totals.durationMs - previous.durationMs}
+          fmtDelta={(d) => `${hoursOf(Math.abs(d))}h`}
+        />
+        <Stat
+          label="Volume"
+          value={formatVolume(totals.volumeKg, unit)}
+          delta={totals.volumeKg - previous.volumeKg}
+          fmtDelta={(d) => compactVolume(Math.abs(d), unit)}
+        />
+        <Stat
+          label="Sets"
+          value={String(totals.sets)}
+          delta={totals.sets - previous.sets}
+          fmtDelta={(d) => String(d)}
+        />
+      </div>
+      <div className="rounded-md mt-2 bg-surface-2 p-3">
+        <div className="text-2xs font-medium tracking-widest text-faint uppercase">
+          Personal records
+        </div>
+        <div
+          className="num mt-1 text-lg font-semibold"
+          data-testid="monthly-pr-count"
+        >
+          {prCount}
+        </div>
+      </div>
+    </Slide>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  delta,
+  fmtDelta,
+}: {
+  label: string;
+  value: string;
+  delta: number;
+  fmtDelta: (d: number) => string;
+}) {
+  return (
+    <div className="rounded-md bg-surface-2 p-3">
+      <div className="text-2xs font-medium tracking-widest text-faint uppercase">
+        {label}
+      </div>
+      <div className="num mt-1 text-lg font-semibold">{value}</div>
+      {delta === 0 ? (
+        <div className="num mt-0.5 text-2xs text-faint">±0 vs last month</div>
+      ) : (
+        <div
+          className={`num mt-0.5 text-2xs ${delta > 0 ? "text-pos" : "text-neg"}`}
+        >
+          {delta > 0 ? "▲" : "▼"} {fmtDelta(delta)} vs last month
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Slide({
+  title,
+  action,
+  children,
+  testId,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  testId?: string;
+}) {
+  return (
+    <section
+      className="overflow-hidden rounded-md bg-surface"
+      data-testid={testId}
+    >
+      <div className="flex items-center justify-between gap-2 px-4 py-2">
+        <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
+          {title}
+        </h2>
+        {action}
+      </div>
+      <div className="p-4">{children}</div>
+    </section>
+  );
+}
+
+const round1 = (n: number) => Math.round(n * 10) / 10;

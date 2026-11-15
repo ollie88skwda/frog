@@ -1,0 +1,1992 @@
+import {
+  EXERCISE_TYPES,
+  type Exercise,
+  type ExercisePatch,
+  type ExerciseType,
+  groupByPrimaryMuscle,
+  isConfidentMatch,
+  LATERALITY_EXPLAINERS,
+  LATERALITY_LABELS,
+  type Laterality,
+  lbToKg,
+  matchExerciseName,
+  type NewRoutineInput,
+  newId,
+  type ParsedExercise,
+  PROGRAM_RULES,
+  parseRoutineText,
+  primaryMuscles,
+  type RoutineExerciseInput,
+  type SetType,
+  type SwapCandidate,
+  sameExerciseName,
+  secondaryMuscles,
+  sessionsPerWeek,
+  TYPE_FIELDS,
+  toDisplayWeight,
+  unitLabel,
+  viewFromRoutines,
+  weightLabel,
+} from "@frog/core";
+import {
+  ArrowDown,
+  ArrowsLeftRight,
+  ArrowUp,
+  Barbell,
+  Check,
+  Clipboard,
+  DotsThreeVertical,
+  Flame,
+  Link,
+  Plus,
+  Trash,
+  X,
+} from "@phosphor-icons/react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router";
+import { MachineAttachDialog } from "@/components/attach-machine";
+import {
+  applyReps,
+  applyRir,
+  applyTopSet,
+  isTopSet,
+  REP_PRESETS,
+  RIR_PRESETS,
+} from "@/components/builder/logic";
+import { SwapSheet } from "@/components/builder/slot-sheets";
+import { ExerciseEditor } from "@/components/exercise-editor";
+import {
+  ExerciseFilterBar,
+  filterExercises,
+} from "@/components/exercise-filter";
+import {
+  AdjustField,
+  REPS_DELTAS,
+  REPS_DELTAS_COMPACT,
+  WEIGHT_DELTAS,
+} from "@/components/routine/adjust-field";
+import { ProgramMeterRail } from "@/components/routine/meter-rail";
+import { RoutineSetTypeCell } from "@/components/routine/routine-set-type-cell";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
+import { IconButton } from "@/components/ui/icon-button";
+import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import {
+  formatMMSS,
+  parseDuration,
+  parseFloatOrNull,
+  parseIntOrNull,
+} from "@/lib/format";
+import { usePendingExercises } from "@/lib/pending-exercises";
+import { useActiveBuilderConfig } from "@/lib/program-queries";
+import {
+  copyExerciseOpts,
+  useCreateExercise,
+  useDeleteExercise,
+  useExercises,
+  useMachines,
+  useUpdateExercise,
+} from "@/lib/queries";
+import { userFacingRepoError } from "@/lib/repo-error";
+import { parseTargetRirFields } from "@/lib/rir";
+import {
+  useCreateRoutine,
+  useFolderRoutineInputs,
+  useRoutineDetail,
+  useRoutineFolders,
+  useUpdateRoutine,
+} from "@/lib/routine-queries";
+import { useUnit } from "@/lib/settings";
+import { cn } from "@/lib/utils";
+import { useVoice } from "@/lib/voice";
+
+// Laterality in the routine builder is a per-set prescription: unilateral
+// means "each side does the reps, logged as a pair in the session" — the
+// session's LATERALITY also has alternating, which lives on the exercise row
+// (never authored here) and is out of this screen's scope. A null
+// routine_sets.laterality reads as bilateral, the same default the session
+// uses.
+type SetLaterality = "bilateral" | "unilateral";
+
+// Draft model for the builder: targets in DISPLAY units (converted to kg on
+// save). Rep range mode = repsMax non-empty.
+//
+// `reps` doubles as the per-side target on a unilateral set (session-redesign-
+// r3 A3): routine_sets carries one reps value per row, which the session
+// already reads as "reps per side" for a unilateral prescription, so the
+// ᴸ/ᴿ grid below edits the same field from both columns rather than a second
+// column with nowhere to persist independently — see the PR body.
+type DraftSet = {
+  key: string;
+  setType: SetType;
+  laterality: SetLaterality;
+  weight: string; // display-unit weight target, editable (session-redesign-r3)
+  reps: string;
+  repsMax: string;
+  duration: string; // mm:ss or seconds
+  distance: string; // km/mi display
+  rirMin: string; // target RIR range (reps-based types only)
+  rirMax: string;
+};
+
+type DraftExercise = {
+  key: string;
+  exerciseId: string;
+  name: string;
+  exerciseType: ExerciseType;
+  supersetGroup: number | null;
+  restSec: number | null;
+  note: string;
+  sets: DraftSet[];
+};
+
+// A parsed "paste workout" line whose exercise name didn't fuzzy-match
+// anything in the library — surfaced for the user to resolve, never dropped
+// or guessed.
+type UnmatchedLine = ParsedExercise & { key: string };
+
+// A pasted line the parser couldn't read at all (no set×rep token, or no
+// name beside one). Surfaced so a partial import is never silent — pasted
+// text has no id and can repeat verbatim, hence the generated key.
+type UnparsedLine = { key: string; text: string };
+
+// A pasted line parsing to more sets than this is almost certainly a
+// misread (e.g. weight×reps like "80x5" read as sets×reps, or a stray
+// digit run) rather than a real prescription — route it to the unmatched
+// list instead of materializing hundreds of DraftSet rows.
+const MAX_PARSED_SETS = 20;
+
+// What a line whose set count was rejected as implausible falls back to once
+// the user resolves it by hand: the reps were readable, the count wasn't.
+const FALLBACK_SETS = 3;
+
+// A multi-week program pasted at once (150-250 set×rep lines) would render
+// one full non-virtualized DraftExercise editor per line — cuts against the
+// "lightweight & fast" requirement the set-count cap already protects at the
+// set level. Cap exercises per parse too; overflow is reported, not dropped
+// silently.
+const MAX_PARSED_EXERCISES = 50;
+
+// Radix Select forbids empty-string values; this sentinel stands in for the
+// null case (no folder) and maps back to null at the boundary.
+const NO_FOLDER = "__none__";
+
+// A fresh set's target RIR range default: 1-3 reps in reserve (R10, redesign
+// J9; was 1-2). RIR ≈ 10 − RPE. Editable per set; presets live in the ⋯ menu.
+const DEFAULT_RIR_MIN = String(PROGRAM_RULES.rirDefault[0]);
+const DEFAULT_RIR_MAX = String(PROGRAM_RULES.rirDefault[1]);
+
+function emptySet(): DraftSet {
+  return {
+    key: crypto.randomUUID(),
+    setType: "normal",
+    laterality: "bilateral",
+    weight: "",
+    reps: "",
+    repsMax: "",
+    duration: "",
+    distance: "",
+    rirMin: DEFAULT_RIR_MIN,
+    rirMax: DEFAULT_RIR_MAX,
+  };
+}
+
+// + Add set inherits the prescription (weight/reps/range/duration/distance/
+// RIR range) from the previous set — so a third set added to a 3×5 doesn't
+// mean typing it all again (session-redesign-r3 #3, the editor's analogue of
+// the session's "start from last time") — but not setType (a
+// warmup/failure/drop label carried forward would silently mislabel a new
+// working set). Weight now inherits too: superseding the 2026-07-31 call
+// that excluded it for being "intentionally variable set-to-set" — see
+// docs/DECISIONS.md.
+function inheritedSet(prev: DraftSet | undefined): DraftSet {
+  const base = emptySet();
+  return prev
+    ? {
+        ...base,
+        weight: prev.weight,
+        reps: prev.reps,
+        repsMax: prev.repsMax,
+        duration: prev.duration,
+        distance: prev.distance,
+        rirMin: prev.rirMin,
+        rirMax: prev.rirMax,
+        // Laterality is structural, not a label: a set added to a unilateral
+        // exercise keeps prescribing one pair unless the user flips it (a
+        // carried-forward warmup/failure TYPE would mislabel, laterality
+        // can't).
+        laterality: prev.laterality,
+      }
+    : base;
+}
+
+function exerciseTypeOf(e: Exercise | undefined): ExerciseType {
+  const t = e?.exerciseType as ExerciseType | undefined;
+  return t && (EXERCISE_TYPES as readonly string[]).includes(t)
+    ? t
+    : "weight_reps";
+}
+
+// Shared by the exercise picker and the paste-workout parser — same
+// DraftExercise shape either way, just a different starting set of `sets`.
+function draftFromExercise(e: Exercise, sets: DraftSet[]): DraftExercise {
+  return {
+    key: crypto.randomUUID(),
+    exerciseId: e.id,
+    name: e.name,
+    exerciseType: exerciseTypeOf(e),
+    supersetGroup: null,
+    restSec: e.defaultRestSec ?? null,
+    note: "",
+    sets,
+  };
+}
+
+// A fresh "Add exercise" pick (not resolving a parsed/pasted line, which
+// already carries its own reps) — prefills the exercise's own default rep
+// range instead of three blank sets.
+function defaultSetsFor(e: Exercise): DraftSet[] {
+  const reps = e.defaultRepsMin != null ? String(e.defaultRepsMin) : "";
+  const repsMax = e.defaultRepsMax != null ? String(e.defaultRepsMax) : "";
+  return [emptySet(), emptySet(), emptySet()].map((s) => ({
+    ...s,
+    reps,
+    repsMax,
+  }));
+}
+
+function setsFromParsed(p: ParsedExercise): DraftSet[] {
+  // A count over MAX_PARSED_SETS is precisely why the line was routed to the
+  // unmatched list (a misread like weight×reps "80x5"), so materializing it —
+  // even clamped — hands the user 20 rows to delete. Keep the readable half
+  // (the reps) and fall back to a normal set count for the rest.
+  const count = p.sets > MAX_PARSED_SETS ? FALLBACK_SETS : Math.max(1, p.sets);
+  return Array.from({ length: count }, () => ({
+    ...emptySet(),
+    reps: p.reps != null ? String(p.reps) : "",
+    repsMax: p.repsMax != null ? String(p.repsMax) : "",
+  }));
+}
+
+// The picker's filter is a literal `includes`, strictly stricter than the
+// fuzzy matcher that just failed on this same raw name — seeding the whole
+// line would open the picker on zero results. The longest lettered word is
+// the most distinctive part and keeps real candidates on screen.
+function pickerSeed(rawName: string): string {
+  return rawName
+    .split(/[^a-zA-Z0-9]+/)
+    .filter((w) => /[a-zA-Z]/.test(w))
+    .reduce((best, w) => (w.length > best.length ? w : best), "");
+}
+
+export default function RoutineEditScreen() {
+  const { id } = useParams(); // undefined on /routines/new
+  const navigate = useNavigate();
+  const { unit } = useUnit();
+  const { t } = useVoice();
+  const {
+    data: exercises = [],
+    isSuccess: libraryLoaded,
+    isError: libraryFailed,
+  } = useExercises();
+  // Saving the routine inserts routine_exercises against a real FK, so a row
+  // whose own create is still queued can't be drafted in.
+  const pendingExercises = usePendingExercises();
+  const { data: folders = [] } = useRoutineFolders();
+  const { data: detail, isError: detailFailed } = useRoutineDetail(id ?? null);
+  const createRoutine = useCreateRoutine();
+  const updateRoutine = useUpdateRoutine();
+  // Exercise-level defaults (machine, laterality) that the session header
+  // now reads to pre-load a block — these live on `exercises`, not
+  // `routine_exercises`, so they're written straight through the same
+  // optimistic patch the session's own block ⋯ menu uses (docs/DECISIONS.md
+  // 2026-08-08, first entry).
+  const { data: machines = [] } = useMachines();
+  const updateExercise = useUpdateExercise();
+  const createExercise = useCreateExercise();
+  const deleteExercise = useDeleteExercise();
+
+  const [name, setName] = useState<string | null>(null);
+  const [folderId, setFolderId] = useState<string | null | undefined>(
+    undefined,
+  );
+  const [drafts, setDrafts] = useState<DraftExercise[] | null>(null);
+  const [picking, setPicking] = useState(false);
+  const [query, setQuery] = useState("");
+  const [muscle, setMuscle] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Index into `list` of the exercise whose machine-attach dialog is open
+  // (mirrors the session block menu's controlled MachineAttachDialog).
+  const [attachMachineFor, setAttachMachineFor] = useState<number | null>(null);
+
+  // Paste-workout import: raw text -> matched drafts + a resolvable
+  // unmatched list. `pickFor` routes the (shared) exercise picker's
+  // selection back into a specific unmatched line instead of a fresh add.
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+  const [pasteError, setPasteError] = useState<string | null>(null);
+  const [unmatched, setUnmatched] = useState<UnmatchedLine[]>([]);
+  const [unparsed, setUnparsed] = useState<UnparsedLine[]>([]);
+  const [overflowCount, setOverflowCount] = useState(0);
+  const [pickFor, setPickFor] = useState<UnmatchedLine | null>(null);
+  // "Create exercise…" opens the shared editor prefilled with the raw line;
+  // pendingTwinCreate resolves every unmatched line sharing that name once
+  // the new row lands in `exercises` (the editor itself is optimistic and
+  // closes instantly, but the twin draft rows need the real exerciseType).
+  const [creatingFor, setCreatingFor] = useState<UnmatchedLine | null>(null);
+  const [pendingTwinCreate, setPendingTwinCreate] = useState<{
+    id: string;
+    forRawName: string;
+  } | null>(null);
+
+  const byId = useMemo(
+    () => new Map(exercises.map((e) => [e.id, e])),
+    [exercises],
+  );
+
+  // Read by createFromUnmatched after its await, where the render-time
+  // `unmatched` closure would be stale — a line dismissed or picked while the
+  // create was in flight must not come back as a draft row.
+  const unmatchedRef = useRef(unmatched);
+  unmatchedRef.current = unmatched;
+
+  // Seed the draft once when editing an existing routine.
+  const seeded = detail && drafts === null && id;
+  if (seeded) {
+    setName(detail.routine.name);
+    setFolderId(detail.routine.folderId);
+    setDrafts(
+      detail.exercises.map((re) => ({
+        key: crypto.randomUUID(),
+        exerciseId: re.exerciseId,
+        name: re.exerciseName,
+        exerciseType: exerciseTypeOf(byId.get(re.exerciseId)),
+        supersetGroup: re.supersetGroup,
+        restSec: re.restSec,
+        note: re.note ?? "",
+        sets: re.sets.map((s) => ({
+          key: crypto.randomUUID(),
+          setType: (s.setType as SetType) ?? "normal",
+          reps: s.targetReps != null ? String(s.targetReps) : "",
+          repsMax: s.targetRepsMax != null ? String(s.targetRepsMax) : "",
+          duration:
+            s.targetDurationSec != null ? formatMMSS(s.targetDurationSec) : "",
+          distance:
+            s.targetDistanceM != null
+              ? String(
+                  Math.round(
+                    (s.targetDistanceM / (unit === "kg" ? 1000 : 1609.344)) *
+                      100,
+                  ) / 100,
+                )
+              : "",
+          // A pre-existing set with no authored target RIR shows blank, not
+          // the fresh-set default — fabricating "1-2" for old data would
+          // claim a prescription that was never made.
+          rirMin: s.targetRirMin != null ? String(s.targetRirMin) : "",
+          rirMax: s.targetRirMax != null ? String(s.targetRirMax) : "",
+          // Same blank-not-fabricated rule as RIR above: a pre-existing set
+          // with no authored weight target shows blank, not 0.
+          weight:
+            s.targetWeightKg != null
+              ? String(toDisplayWeight(s.targetWeightKg, unit))
+              : "",
+          laterality:
+            s.laterality === "unilateral" ? "unilateral" : "bilateral",
+        })),
+      })),
+    );
+  }
+
+  const list = drafts ?? [];
+  const routineName = name ?? "";
+
+  // Program meter rail (report 8.5): this draft plus the folder's other
+  // routines, run through the same validateProgram the builder uses. Shown
+  // only when the routine sits in a folder. Never blocks saving.
+  const effectiveFolder =
+    folderId === undefined ? detail?.routine.folderId : folderId;
+  const siblings = useFolderRoutineInputs(effectiveFolder, id ?? null);
+  const activeProgram = useActiveBuilderConfig();
+  const programConfig =
+    effectiveFolder && effectiveFolder === activeProgram.program?.folderId
+      ? activeProgram.config
+      : null;
+  const [swapFor, setSwapFor] = useState<number | null>(null);
+  const meterView = useMemo(() => {
+    if (!effectiveFolder || list.length === 0) return null;
+    const num = (v: string) => {
+      const n = Number.parseInt(v, 10);
+      return Number.isFinite(n) ? n : null;
+    };
+    const draftRoutine = {
+      id: id ?? "draft",
+      name: routineName.trim() || "This routine",
+      exercises: list.map((d) => ({
+        exerciseId: d.exerciseId,
+        restSec: d.restSec,
+        sets: d.sets.map((s) => ({
+          setType: s.setType,
+          targetReps: num(s.reps),
+          targetRepsMax: num(s.repsMax),
+          targetRirMin: num(s.rirMin),
+          targetRirMax: num(s.rirMax),
+        })),
+      })),
+    };
+    return viewFromRoutines([...siblings, draftRoutine], byId as never, {
+      schedule: programConfig?.answers.schedule,
+      goal: programConfig?.answers.goal,
+    });
+  }, [effectiveFolder, list, siblings, id, routineName, byId, programConfig]);
+  const swapPerWeek = meterView
+    ? sessionsPerWeek(meterView.schedule) /
+      Math.max(1, meterView.sessions.length)
+    : 1;
+  const folderName =
+    folders.find((f) => f.id === effectiveFolder)?.name ?? null;
+
+  // Shared gate for every action that mutates the draft on /routines/:id.
+  // Any of them makes `drafts` non-null, which permanently disables the
+  // seed-once block above — so an Add/Paste that lands before the saved
+  // routine arrives would leave its exercises unloaded and let Save
+  // overwrite them with only the new rows.
+  const draftReady = !id || drafts !== null;
+  // Resolved-but-absent counts as broken too: without a seed, saving would
+  // replace the routine's contents with whatever was added since.
+  const detailBroken = detailFailed || detail === null;
+
+  function patchExercise(i: number, patch: Partial<DraftExercise>) {
+    setDrafts((prev) =>
+      (prev ?? []).map((d, j) => (j === i ? { ...d, ...patch } : d)),
+    );
+  }
+
+  // Exercise-level edits (item 6: default machine + laterality) target
+  // `exercises`, and a seed row OR a community-shared row (is_custom true,
+  // owner_id null) is RLS-immutable — a plain UPDATE silently affects zero
+  // rows there. Mirrors the session BlockMenu's `forkExercise` and the
+  // library's "Duplicate as custom" gate (docs/DECISIONS.md 2026-08-08): an
+  // owned custom row patches in place, anything else forks a private copy
+  // (`share: false`) and repoints this draft row at it.
+  //
+  // The create settles asynchronously, and a second exercise-level write
+  // before it lands would target the not-yet-inserted fork id — a plain
+  // .update().eq('id', …) against a missing row resolves with error:null and
+  // zero rows affected, silently dropping the patch (the same silent-loss
+  // family this gate exists to prevent). Writes for an in-flight fork queue
+  // up and flush onto the fork id once the create resolves; the draft keeps
+  // its optimistic repoint so the UI never visibly waits.
+  //
+  // The registry is keyed by the fork id itself, never by draft index or
+  // original id: removing, reordering or replacing a draft row mid-flight,
+  // or re-adding the same shared exercise elsewhere, must not alias one
+  // fork's queue onto another's or misroute a later edit onto a stale queue.
+  const forkingRef = useRef<Map<string, ExercisePatch[]>>(new Map());
+  const draftRowsRef = useRef<Map<string, string>>(new Map());
+  useLayoutEffect(() => {
+    draftRowsRef.current = new Map(
+      (drafts ?? []).map((d) => [d.key, d.exerciseId]),
+    );
+  }, [drafts]);
+
+  function repointRow(key: string | undefined, patch: Partial<DraftExercise>) {
+    if (!key) return;
+    setDrafts((prev) =>
+      (prev ?? []).map((d) => (d.key === key ? { ...d, ...patch } : d)),
+    );
+  }
+
+  function patchExerciseField(
+    i: number,
+    exercise: Exercise,
+    patch: ExercisePatch,
+  ) {
+    const queue = forkingRef.current.get(exercise.id);
+    if (queue) {
+      queue.push(patch);
+      return;
+    }
+    if (exercise.isCustom && exercise.ownerId !== null) {
+      updateExercise.mutate({ exerciseId: exercise.id, patch });
+      return;
+    }
+    const id = newId();
+    const name = `${exercise.name} (copy)`;
+    const rowKey = list[i]?.key;
+    forkingRef.current.set(id, []);
+    patchExercise(i, { exerciseId: id, name });
+    void (async () => {
+      let settledId = id;
+      try {
+        const res = await createExercise.mutateAsync({
+          name,
+          opts: { id, ...copyExerciseOpts(exercise), ...patch, share: false },
+        });
+        settledId = res.id;
+        if (
+          rowKey === undefined ||
+          (draftRowsRef.current.get(rowKey) !== id &&
+            draftRowsRef.current.get(rowKey) !== settledId)
+        ) {
+          deleteExercise.mutate(settledId);
+          return;
+        }
+        if (settledId !== id) {
+          repointRow(rowKey, { exerciseId: settledId, name: res.name });
+          const q = forkingRef.current.get(id);
+          if (q) {
+            forkingRef.current.delete(id);
+            forkingRef.current.set(settledId, q);
+          }
+        }
+        for (const p of forkingRef.current.get(settledId) ?? []) {
+          updateExercise.mutate({ exerciseId: settledId, patch: p });
+        }
+      } catch {
+        // The fork never landed — the draft must not keep pointing at a row
+        // that doesn't exist. Revert to the original; queued patches were
+        // never applied anywhere and drop with the queue.
+        repointRow(rowKey, { exerciseId: exercise.id, name: exercise.name });
+      } finally {
+        forkingRef.current.delete(id);
+        forkingRef.current.delete(settledId);
+      }
+    })();
+  }
+
+  function patchSet(i: number, si: number, patch: Partial<DraftSet>) {
+    setDrafts((prev) =>
+      (prev ?? []).map((d, j) =>
+        j === i
+          ? {
+              ...d,
+              sets: d.sets.map((s, k) => (k === si ? { ...s, ...patch } : s)),
+            }
+          : d,
+      ),
+    );
+  }
+
+  function move(i: number, dir: -1 | 1) {
+    setDrafts((prev) => {
+      const arr = [...(prev ?? [])];
+      const j = i + dir;
+      if (j < 0 || j >= arr.length) return arr;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      return arr;
+    });
+  }
+
+  // Parse the pasted text against the current library, split matches (go
+  // straight into the draft, same as picking one by hand) from misses (held
+  // in `unmatched` for the user to resolve — never saved, never guessed).
+  function parsePaste() {
+    if (!draftReady) {
+      setPasteError(
+        t(
+          "This routine is still loading — try again in a moment.",
+          "The frog hasn't finished reading this routine. One moment.",
+        ),
+      );
+      return;
+    }
+    // Matching against a library that hasn't loaded marks every line
+    // unmatched, and "Create exercise" would then duplicate rows that already
+    // exist — refuse to parse until the real list is in hand.
+    if (!libraryLoaded) {
+      setPasteError(
+        libraryFailed
+          ? t(
+              "Couldn't load your exercise library. Reload before pasting a workout.",
+              "The frog lost your library. Reload before you paste.",
+            )
+          : t(
+              "Your exercise library is still loading — try again in a moment.",
+              "The frog is still unpacking your library. One moment.",
+            ),
+      );
+      return;
+    }
+    const parsed = parseRoutineText(pasteText);
+    if (parsed.exercises.length === 0) {
+      setPasteError(
+        t(
+          "No exercises found in that text.",
+          "The frog found nothing to chew on there.",
+        ),
+      );
+      return;
+    }
+    const exercisesToProcess = parsed.exercises.slice(0, MAX_PARSED_EXERCISES);
+    const overflow = parsed.exercises.length - exercisesToProcess.length;
+    const matchedDrafts: DraftExercise[] = [];
+    const misses: UnmatchedLine[] = [];
+    for (const p of exercisesToProcess) {
+      // An implausible set count (likely a misread, not a real prescription)
+      // always goes to the unmatched list for manual review, even if the
+      // name matched cleanly — never auto-add a hundreds-of-sets draft row.
+      const raw =
+        p.sets <= MAX_PARSED_SETS
+          ? matchExerciseName(p.rawName, exercises)
+          : null;
+      // Same confidence bar as voice logging (isConfidentMatch's default):
+      // the merged matcher's scoring is more generous than this file's old
+      // Jaccard formula was, so reusing that formula's old looser threshold
+      // here would silently accept shorthand it used to reject (a bare
+      // "row" against a library that also has "Barbell Bent Over Row").
+      // A tie (two candidates scoring equally) is never auto-picked either;
+      // it falls to "Pick manually" same as a low-confidence miss.
+      const match =
+        raw && raw.tied.length === 1 && isConfidentMatch(raw) ? raw : null;
+      if (match)
+        matchedDrafts.push(draftFromExercise(match, setsFromParsed(p)));
+      else misses.push({ ...p, key: crypto.randomUUID() });
+    }
+    if (parsed.name && !name) setName(parsed.name);
+    setDrafts((prev) => [...(prev ?? []), ...matchedDrafts]);
+    setUnmatched((prev) => [...prev, ...misses]);
+    setUnparsed((prev) => [
+      ...prev,
+      ...parsed.unparsed.map((text) => ({ key: crypto.randomUUID(), text })),
+    ]);
+    if (overflow > 0) setOverflowCount((prev) => prev + overflow);
+    setPasteOpen(false);
+    setPasteText("");
+    setPasteError(null);
+  }
+
+  function pickManually(u: UnmatchedLine) {
+    setQuery(pickerSeed(u.rawName));
+    setPickFor(u);
+    setPicking(true);
+  }
+
+  // Opens the shared editor prefilled with the raw line, instead of a bare
+  // one-tap create — the primary action now produces a real record (report
+  // §5.3), not a metadata-free row (mechanic/equipment/muscles all null).
+  function createFromUnmatched(u: UnmatchedLine) {
+    setCreatingFor(u);
+  }
+
+  // The editor's onCreated fires the instant Save is tapped (optimistic —
+  // it doesn't wait on the network), so the new row lands in `exercises` on
+  // the very next render; this resolves once it does.
+  useEffect(() => {
+    if (!pendingTwinCreate) return;
+    // Wait for the create to settle: resolving against the still-pending
+    // optimistic row binds the draft to an id that a publish dupe-hit then
+    // drops (the RPC backstop's canonical row supersedes it — the editor
+    // re-fires onCreated with that id, which re-points this effect at the
+    // row that actually exists).
+    if (pendingExercises.has(pendingTwinCreate.id)) return;
+    const created = exercises.find((e) => e.id === pendingTwinCreate.id);
+    if (!created) return;
+    // A routine can name the same lift twice (main sets + a backoff line),
+    // possibly with a plural mismatch ("Tricep Pushdowns" / "Tricep
+    // Pushdown") — sameExerciseName is the matcher's own equality, so twin
+    // detection can't drift from what matchExerciseName itself considers
+    // one exercise. Resolve every unmatched line sharing this name against
+    // the row we just created rather than leaving a button that
+    // duplicates it.
+    const twins = unmatchedRef.current.filter((x) =>
+      sameExerciseName(x.rawName, pendingTwinCreate.forRawName),
+    );
+    setDrafts((prev) => [
+      ...(prev ?? []),
+      ...twins.map((x) => draftFromExercise(created, setsFromParsed(x))),
+    ]);
+    setUnmatched((prev) =>
+      prev.filter(
+        (x) => !sameExerciseName(x.rawName, pendingTwinCreate.forRawName),
+      ),
+    );
+    setPendingTwinCreate(null);
+  }, [pendingTwinCreate, exercises, pendingExercises]);
+
+  function selectFromPicker(e: Exercise) {
+    if (pickFor) {
+      // Same twin resolution as createFromUnmatched: a routine can name the
+      // same lift twice (main sets + a backoff line), so picking one exercise
+      // for this line also resolves every sibling unmatched line sharing its
+      // name, instead of leaving a Create-exercise button that would mint a
+      // different row for the same lift.
+      const twins = unmatchedRef.current.filter((x) =>
+        sameExerciseName(x.rawName, pickFor.rawName),
+      );
+      setDrafts((prev) => [
+        ...(prev ?? []),
+        ...twins.map((x) => draftFromExercise(e, setsFromParsed(x))),
+      ]);
+      setUnmatched((prev) =>
+        prev.filter((x) => !sameExerciseName(x.rawName, pickFor.rawName)),
+      );
+      setPickFor(null);
+    } else {
+      setDrafts((prev) => [
+        ...(prev ?? []),
+        draftFromExercise(e, defaultSetsFor(e)),
+      ]);
+    }
+    setPicking(false);
+    setQuery("");
+    setMuscle("");
+  }
+
+  function toInput(): NewRoutineInput {
+    const exercisesInput: RoutineExerciseInput[] = list.map((d, i) => ({
+      exerciseId: d.exerciseId,
+      orderIndex: i,
+      supersetGroup: d.supersetGroup,
+      restSec: d.restSec,
+      note: d.note.trim() || null,
+      sets: d.sets.map((s, si) => {
+        const fields = TYPE_FIELDS[d.exerciseType];
+        const reps = parseIntOrNull(s.reps);
+        const repsMax = parseIntOrNull(s.repsMax);
+        // An inverted range is unreadable as a prescription — drop it rather
+        // than persist bounds the session UI would render backwards. The
+        // session's logging path swaps instead (a performed set is data, not a
+        // prescription); both rules live in lib/rir.ts.
+        const { rirMin, rirMax } = parseTargetRirFields(s.rirMin, s.rirMax);
+        const weight = parseFloatOrNull(s.weight);
+        return {
+          setNo: si,
+          setType: s.setType,
+          targetWeightKg: fields.weight
+            ? weight != null
+              ? unit === "kg"
+                ? weight
+                : lbToKg(weight)
+              : null
+            : null,
+          targetReps: fields.reps ? reps : null,
+          targetRepsMax: fields.reps ? repsMax : null,
+          targetDurationSec: fields.duration ? parseDuration(s.duration) : null,
+          targetDistanceM: (() => {
+            if (!fields.distance || s.distance.trim() === "") return null;
+            const v = Number.parseFloat(s.distance);
+            if (!Number.isFinite(v)) return null;
+            return unit === "kg" ? v * 1000 : v * 1609.344;
+          })(),
+          targetRirMin: fields.reps ? rirMin : null,
+          targetRirMax: fields.reps ? rirMax : null,
+          laterality: s.laterality,
+        };
+      }),
+    }));
+    return {
+      name: routineName.trim() || "Untitled routine",
+      folderId: folderId ?? null,
+      exercises: exercisesInput,
+    };
+  }
+
+  const [confirmUnmatched, setConfirmUnmatched] = useState(false);
+
+  async function save(confirmedUnmatched = false) {
+    if (saving || !draftReady) return;
+    if (unmatched.length > 0 && !confirmedUnmatched) {
+      setConfirmUnmatched(true);
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const input = toInput();
+      if (id) await updateRoutine.mutateAsync({ routineId: id, patch: input });
+      else await createRoutine.mutateAsync(input);
+      navigate("/routines");
+    } catch (e) {
+      setError(userFacingRepoError(e));
+      setSaving(false);
+    }
+  }
+
+  const grouped = useMemo(
+    () => groupByPrimaryMuscle(filterExercises(exercises, query, muscle)),
+    [exercises, query, muscle],
+  );
+
+  return (
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-lg font-semibold tracking-tight">
+          {id ? "Edit routine" : "New routine"}
+        </h1>
+        {/* TODO(lessons): <InfoTip lessonId="programming-a-routine" /> once copy exists */}
+        <div className="flex gap-2">
+          <Button variant="ghost" onClick={() => navigate("/routines")}>
+            Cancel
+          </Button>
+          <ConfirmDialog
+            open={confirmUnmatched}
+            onOpenChange={setConfirmUnmatched}
+            title="Save without pasted lines?"
+            description={`${unmatched.length} pasted line${unmatched.length === 1 ? " from Paste workout is" : "s from Paste workout are"} still unresolved and will be left out of this save.`}
+            confirmLabel="Save anyway"
+            onConfirm={() => void save(true)}
+          />
+          <Button
+            variant="primary"
+            onClick={() => void save()}
+            disabled={saving || list.length === 0 || !draftReady}
+            data-testid="routine-save-btn"
+          >
+            {saving ? "Saving…" : "Save routine"}
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <Input
+          placeholder="Routine name"
+          value={routineName}
+          onChange={(e) => setName(e.target.value)}
+          // sm:flex-1, not flex-1: below `sm` this row is flex-col, and a
+          // flex-basis:0 item there ignores its own explicit height (collapses
+          // to content size) — only grow to fill width once the row is
+          // actually a row. Mobile already gets full width from the default
+          // align-items:stretch cross-axis behavior.
+          className="h-10 sm:flex-1 md:h-10"
+          data-testid="routine-name-input"
+        />
+        <Select.Root
+          value={folderId ?? NO_FOLDER}
+          onValueChange={(v) => setFolderId(v === NO_FOLDER ? null : v)}
+        >
+          <Select.Trigger
+            className="h-10 w-full sm:w-40 md:h-10"
+            data-testid="routine-folder-select"
+          />
+          <Select.Content>
+            <Select.Item value={NO_FOLDER}>No folder</Select.Item>
+            {folders.map((f) => (
+              <Select.Item key={f.id} value={f.id}>
+                {f.name}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
+      </div>
+
+      {meterView && (
+        <ProgramMeterRail view={meterView} folderName={folderName} />
+      )}
+
+      {/* Frog frames the failure; the exact error stays outside t() so the
+          fact survives every register. */}
+      {error && (
+        <p className="mt-3 text-xs text-neg">
+          {t("Save failed.", "The frog is annoyed (your draft is safe).")}{" "}
+          {error}
+        </p>
+      )}
+
+      {!draftReady && (
+        <p
+          className={cn(
+            "mt-3 text-xs",
+            detailBroken ? "text-neg" : "text-soft",
+          )}
+          data-testid="routine-detail-status"
+        >
+          {detailBroken
+            ? t(
+                "Couldn't load this routine. Reload before editing it — saving now would overwrite it.",
+                "The frog lost this routine. Reload before you edit it.",
+              )
+            : t("Loading this routine…", "The frog is reading your routine…")}
+        </p>
+      )}
+
+      <div className="mt-4 flex flex-col gap-3">
+        {list.map((d, i) => {
+          const fields = TYPE_FIELDS[d.exerciseType];
+          const exercise = byId.get(d.exerciseId);
+          const machine = machines.find((m) => m.id === exercise?.machineId);
+          const defaultLaterality: Laterality =
+            exercise?.laterality === "unilateral" ? "unilateral" : "bilateral";
+          return (
+            <div
+              key={d.key}
+              className="rounded-md bg-surface p-3"
+              data-testid={`routine-ex-${i}`}
+            >
+              <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium">
+                    {d.name}
+                  </span>
+                  {/* Exercise-level context the session header now reads
+                      (item 6): machine + default laterality, set below via
+                      the ⋯ menu. */}
+                  {(machine || defaultLaterality === "unilateral") && (
+                    <span className="block truncate text-2xs text-faint">
+                      {[
+                        machine &&
+                          [machine.brand, machine.name]
+                            .filter(Boolean)
+                            .join(" · "),
+                        defaultLaterality === "unilateral" &&
+                          "Unilateral by default",
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  )}
+                </div>
+                <ExerciseMenu
+                  index={i}
+                  canMoveUp={i > 0}
+                  canMoveDown={i < list.length - 1}
+                  setsLaterality={d.sets[0]?.laterality ?? "bilateral"}
+                  onSetLaterality={(l) =>
+                    setDrafts((prev) =>
+                      (prev ?? []).map((x, j) =>
+                        j === i
+                          ? {
+                              ...x,
+                              sets: x.sets.map((s) => ({
+                                ...s,
+                                laterality: l,
+                              })),
+                            }
+                          : x,
+                      ),
+                    )
+                  }
+                  onAddWarmup={() =>
+                    patchExercise(i, {
+                      sets: [
+                        { ...inheritedSet(d.sets[0]), setType: "warmup" },
+                        ...d.sets,
+                      ],
+                    })
+                  }
+                  machineName={
+                    machine
+                      ? [machine.brand, machine.name]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : null
+                  }
+                  onAttachMachine={() => setAttachMachineFor(i)}
+                  onRemoveMachine={
+                    exercise
+                      ? () =>
+                          patchExerciseField(i, exercise, { machineId: null })
+                      : undefined
+                  }
+                  defaultLaterality={defaultLaterality}
+                  onSetDefaultLaterality={
+                    exercise
+                      ? (l) =>
+                          patchExerciseField(i, exercise, { laterality: l })
+                      : undefined
+                  }
+                  onApplyReps={(r) =>
+                    patchExercise(i, { sets: applyReps(d.sets, r) })
+                  }
+                  onApplyRir={(r) =>
+                    patchExercise(i, { sets: applyRir(d.sets, r) })
+                  }
+                  topSet={isTopSet(d.sets)}
+                  onToggleTopSet={(on) =>
+                    patchExercise(i, { sets: applyTopSet(d.sets, on) })
+                  }
+                  onSwap={exercise ? () => setSwapFor(i) : undefined}
+                  onMove={(dir) => move(i, dir)}
+                  onRemove={() => {
+                    const key = list[i]?.key;
+                    if (key) draftRowsRef.current.delete(key);
+                    setDrafts((prev) => (prev ?? []).filter((_, j) => j !== i));
+                  }}
+                />
+              </div>
+
+              <div className="mt-2">
+                <Input
+                  placeholder="Exercise note (shows every session)"
+                  value={d.note}
+                  onChange={(e) => patchExercise(i, { note: e.target.value })}
+                  className="h-8 w-full text-xs"
+                  data-testid={`routine-ex-${i}-note`}
+                />
+              </div>
+
+              <div className="mt-3 flex flex-col gap-2">
+                {d.sets.map((s, si) => {
+                  const prev = si > 0 ? d.sets[si - 1] : undefined;
+                  const weightHint =
+                    prev && s.weight !== "" && s.weight === prev.weight
+                      ? `same as set ${si}`
+                      : undefined;
+                  const repsHint =
+                    prev && s.reps !== "" && s.reps === prev.reps
+                      ? `same as set ${si}`
+                      : undefined;
+                  const unilateral =
+                    fields.reps && s.laterality === "unilateral";
+                  const testBase = `routine-ex-${i}-set-${si}`;
+                  return (
+                    <div
+                      key={s.key}
+                      className={cn(
+                        "-mx-3 px-3 pt-2 pb-3",
+                        si % 2 === 0 ? "bg-surface" : "bg-surface-2",
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <RoutineSetTypeCell
+                          index={si}
+                          setType={s.setType}
+                          onChange={(t) => patchSet(i, si, { setType: t })}
+                          testId={`${testBase}-type`}
+                        />
+                        <span className="text-2xs text-faint">
+                          Set {si + 1}
+                        </span>
+                        {unilateral && (
+                          <span className="rounded-sm bg-surface-3 px-1.5 py-0.5 text-2xs text-faint">
+                            per side
+                          </span>
+                        )}
+                        <SetMenu
+                          index={i}
+                          si={si}
+                          laterality={s.laterality}
+                          onSetLaterality={(l) =>
+                            patchSet(i, si, { laterality: l })
+                          }
+                          onRemove={() =>
+                            patchExercise(i, {
+                              sets: d.sets.filter((_, k) => k !== si),
+                            })
+                          }
+                        />
+                      </div>
+
+                      <div className="mt-2 flex flex-col gap-2">
+                        {fields.weight && (
+                          <AdjustField
+                            label={
+                              unilateral ? "Weight · both sides" : "Weight"
+                            }
+                            hint={weightHint}
+                            unit={weightLabel(d.exerciseType, unitLabel(unit))}
+                            value={s.weight}
+                            onValueChange={(v) =>
+                              patchSet(i, si, { weight: v })
+                            }
+                            deltas={WEIGHT_DELTAS}
+                            testId={`${testBase}-weight`}
+                          />
+                        )}
+
+                        {fields.reps &&
+                          (unilateral ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="grid grid-cols-2 gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
+                                <span>ᴸ Left</span>
+                                <span>ᴿ Right</span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <AdjustField
+                                  label="Reps"
+                                  compact
+                                  integer
+                                  value={s.reps}
+                                  onValueChange={(v) =>
+                                    patchSet(i, si, { reps: v })
+                                  }
+                                  deltas={REPS_DELTAS_COMPACT}
+                                  testId={`${testBase}-reps-l`}
+                                />
+                                <AdjustField
+                                  label="Reps"
+                                  compact
+                                  integer
+                                  value={s.reps}
+                                  onValueChange={(v) =>
+                                    patchSet(i, si, { reps: v })
+                                  }
+                                  deltas={REPS_DELTAS_COMPACT}
+                                  testId={`${testBase}-reps-r`}
+                                />
+                              </div>
+                              {/* routine_sets has one reps target per set — the
+                                  same value the session already reads as
+                                  "reps per side" for a unilateral prescription
+                                  — so both columns write it and there's no
+                                  independent value to unlink to. Real
+                                  per-side authoring needs a schema column; see
+                                  the PR body. */}
+                              <div className="flex items-center gap-1">
+                                <span className="text-2xs text-faint">to</span>
+                                <Field
+                                  inputMode="numeric"
+                                  placeholder="max"
+                                  title="Optional rep-range max"
+                                  value={s.repsMax}
+                                  onChange={(e) =>
+                                    patchSet(i, si, {
+                                      repsMax: e.target.value,
+                                    })
+                                  }
+                                  className="w-14 text-center"
+                                  data-testid={`${testBase}-repsmax`}
+                                />
+                              </div>
+                              <p className="flex items-center gap-1 text-2xs text-faint">
+                                <Link className="size-3 shrink-0" />
+                                Same target both sides — log a different result
+                                per side in the session.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex items-end gap-2">
+                              <AdjustField
+                                label="Reps"
+                                hint={repsHint}
+                                integer
+                                value={s.reps}
+                                onValueChange={(v) =>
+                                  patchSet(i, si, { reps: v })
+                                }
+                                deltas={REPS_DELTAS}
+                                testId={`${testBase}-reps`}
+                                className="flex-1"
+                              />
+                              <div className="flex flex-col items-center pb-1.5">
+                                <span className="text-2xs text-faint">to</span>
+                                <Field
+                                  inputMode="numeric"
+                                  placeholder="max"
+                                  title="Optional rep-range max"
+                                  value={s.repsMax}
+                                  onChange={(e) =>
+                                    patchSet(i, si, {
+                                      repsMax: e.target.value,
+                                    })
+                                  }
+                                  className="w-14 text-center"
+                                  data-testid={`${testBase}-repsmax`}
+                                />
+                              </div>
+                            </div>
+                          ))}
+
+                        {fields.duration && (
+                          <div className="flex items-center gap-2">
+                            <span className="w-12 shrink-0 text-2xs font-medium tracking-widest text-faint uppercase">
+                              Time
+                            </span>
+                            <Field
+                              inputMode="numeric"
+                              placeholder="mm:ss"
+                              value={s.duration}
+                              onChange={(e) =>
+                                patchSet(i, si, { duration: e.target.value })
+                              }
+                              className="flex-1"
+                              data-testid={`${testBase}-duration`}
+                            />
+                          </div>
+                        )}
+                        {fields.distance && (
+                          <div className="flex items-center gap-2">
+                            <span className="w-12 shrink-0 text-2xs font-medium tracking-widest text-faint uppercase">
+                              {unit === "kg" ? "Km" : "Mi"}
+                            </span>
+                            <Field
+                              inputMode="decimal"
+                              placeholder="—"
+                              value={s.distance}
+                              onChange={(e) =>
+                                patchSet(i, si, { distance: e.target.value })
+                              }
+                              className="flex-1"
+                              data-testid={`${testBase}-distance`}
+                            />
+                          </div>
+                        )}
+
+                        {fields.reps && (
+                          <div className="flex items-center gap-1">
+                            <span className="w-8 shrink-0 text-2xs font-medium tracking-widest text-faint uppercase">
+                              RIR
+                            </span>
+                            <Field
+                              inputMode="numeric"
+                              placeholder="RIR"
+                              value={s.rirMin}
+                              onChange={(e) =>
+                                patchSet(i, si, { rirMin: e.target.value })
+                              }
+                              className="w-12 flex-none"
+                              data-testid={`${testBase}-rirmin`}
+                            />
+                            <span className="text-2xs text-faint">–</span>
+                            <Field
+                              inputMode="numeric"
+                              placeholder="RIR"
+                              title="Target RIR range max"
+                              value={s.rirMax}
+                              onChange={(e) =>
+                                patchSet(i, si, { rirMax: e.target.value })
+                              }
+                              className="w-12 flex-none"
+                              data-testid={`${testBase}-rirmax`}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2"
+                onClick={() =>
+                  patchExercise(i, {
+                    sets: [...d.sets, inheritedSet(d.sets.at(-1))],
+                  })
+                }
+                data-testid={`routine-ex-${i}-add-set`}
+              >
+                <Plus className="size-4" /> Add set
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+
+      {unmatched.length > 0 && (
+        <div className="mt-4 flex flex-col gap-2">
+          <p className="text-xs text-warn">
+            {t(
+              `${unmatched.length} pasted line${unmatched.length === 1 ? "" : "s"} didn't match a library exercise.`,
+              `The frog couldn't place ${unmatched.length} line${unmatched.length === 1 ? "" : "s"}. Pick one or teach it a name.`,
+            )}
+          </p>
+          {unmatched.map((u) => (
+            <div
+              key={u.key}
+              className="rounded-md bg-surface p-3"
+              data-testid={`routine-unmatched-${u.key}`}
+            >
+              {/* Stacked on phones: the name is what the user is resolving,
+                and three actions on one row leave it unreadable at 375px. */}
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <span className="min-w-0 flex-1 truncate text-sm">
+                  {u.rawName}{" "}
+                  <span className="num text-2xs text-faint">
+                    {u.sets}×{u.reps ?? "?"}
+                    {u.repsMax ? `–${u.repsMax}` : ""}
+                  </span>
+                </span>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => pickManually(u)}
+                    data-testid={`routine-unmatched-${u.key}-pick`}
+                  >
+                    Pick manually
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => createFromUnmatched(u)}
+                    data-testid={`routine-unmatched-${u.key}-create`}
+                  >
+                    Create exercise…
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Dismiss"
+                    onClick={() =>
+                      setUnmatched((prev) =>
+                        prev.filter((x) => x.key !== u.key),
+                      )
+                    }
+                  >
+                    <X className="size-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {unparsed.length > 0 && (
+        <div
+          className="mt-4 rounded-md bg-surface p-3"
+          data-testid="routine-unparsed"
+        >
+          <div className="flex items-start gap-2">
+            <p className="flex-1 text-xs text-soft">
+              {t(
+                `${unparsed.length} pasted line${unparsed.length === 1 ? "" : "s"} had no set×rep to read and ${unparsed.length === 1 ? "was" : "were"} left out.`,
+                `The frog couldn't read ${unparsed.length} line${unparsed.length === 1 ? "" : "s"} — no set×rep in ${unparsed.length === 1 ? "it" : "them"}.`,
+              )}
+            </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Dismiss unreadable lines"
+              onClick={() => setUnparsed([])}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+          <ul className="mt-1 flex flex-col gap-0.5">
+            {unparsed.map((line) => (
+              <li key={line.key} className="truncate text-xs text-faint">
+                {line.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {overflowCount > 0 && (
+        <div
+          className="mt-4 flex items-start gap-2 rounded-md bg-surface p-3"
+          data-testid="routine-paste-overflow"
+        >
+          <p className="flex-1 text-xs text-soft">
+            {t(
+              `Stopped after ${MAX_PARSED_EXERCISES} exercises per paste — ${overflowCount} more line${overflowCount === 1 ? "" : "s"} ${overflowCount === 1 ? "was" : "were"} left out. Paste the rest separately.`,
+              `The frog stopped at ${MAX_PARSED_EXERCISES} exercises — ${overflowCount} more line${overflowCount === 1 ? "" : "s"} for another paste.`,
+            )}
+          </p>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Dismiss overflow notice"
+            onClick={() => setOverflowCount(0)}
+          >
+            <X className="size-4" />
+          </Button>
+        </div>
+      )}
+
+      <div className="mt-4 flex gap-2">
+        <Button
+          variant="outline"
+          className="flex-1"
+          onClick={() => setPicking(true)}
+          disabled={!draftReady}
+          data-testid="routine-add-exercise-btn"
+        >
+          <Plus className="size-4" /> Add exercise
+        </Button>
+        <Button
+          variant="outline"
+          className="flex-1"
+          onClick={() => setPasteOpen(true)}
+          disabled={!draftReady}
+          data-testid="routine-paste-btn"
+        >
+          <Clipboard className="size-4" /> Paste workout
+        </Button>
+      </div>
+
+      <Dialog
+        open={picking}
+        onOpenChange={(o) => {
+          setPicking(o);
+          if (!o) {
+            setPickFor(null);
+            setQuery("");
+            setMuscle("");
+          }
+        }}
+      >
+        <DialogContent
+          title={pickFor ? "Match exercise" : "Add exercise"}
+          className="max-h-[80vh] overflow-y-auto"
+        >
+          {pickFor && (
+            <p className="mb-2 text-2xs text-faint">
+              Matching "{pickFor.rawName}"
+            </p>
+          )}
+          <ExerciseFilterBar
+            query={query}
+            onQuery={setQuery}
+            muscle={muscle}
+            onMuscle={setMuscle}
+            autoFocus
+          />
+          <div className="mt-2 flex flex-col gap-3">
+            {grouped.length === 0 && (
+              <p className="text-xs text-faint">
+                {t(
+                  "No exercises match your search.",
+                  "No exercises match. The frog refuses to speculate.",
+                )}
+              </p>
+            )}
+            {grouped.map((g) => (
+              <div key={g.key}>
+                <p className="text-2xs font-medium tracking-widest text-faint uppercase">
+                  {g.label}
+                </p>
+                <div className="mt-1 flex flex-col">
+                  {g.items.map((e) => (
+                    <button
+                      key={e.id}
+                      type="button"
+                      disabled={pendingExercises.has(e.id)}
+                      title={
+                        pendingExercises.has(e.id)
+                          ? `${e.name} is still saving`
+                          : undefined
+                      }
+                      className="flex h-10 items-center rounded-sm px-2 text-left text-sm hover:bg-surface-2 disabled:opacity-50 disabled:hover:bg-transparent"
+                      onClick={() => selectFromPicker(e)}
+                      data-testid={`routine-pick-${e.name}`}
+                    >
+                      {e.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ExerciseEditor
+        open={!!creatingFor}
+        onOpenChange={(o) => !o && setCreatingFor(null)}
+        mode="create"
+        initialName={creatingFor?.rawName ?? ""}
+        onCreated={(id) => {
+          // The pasted line, not the name the user saved: the unmatched list
+          // is keyed by raw line, so a corrected spelling in the sheet would
+          // match none of it and silently resolve nothing.
+          if (creatingFor)
+            setPendingTwinCreate({ id, forRawName: creatingFor.rawName });
+        }}
+      />
+
+      <Dialog
+        open={pasteOpen}
+        onOpenChange={(o) => {
+          setPasteOpen(o);
+          if (!o) {
+            setPasteText("");
+            setPasteError(null);
+          }
+        }}
+      >
+        <DialogContent
+          title="Paste workout"
+          className="max-h-[80vh] overflow-y-auto"
+        >
+          <p className="text-xs text-faint">
+            {t(
+              'Paste or type a routine, one exercise per line — e.g. "Bench press 4x8". Unmatched exercises can be picked or created afterward.',
+              'Feed the frog your scrawl, one exercise per line — e.g. "Bench press 4x8". Anything it can\'t place gets sorted out after.',
+            )}
+          </p>
+          <Textarea
+            rows={8}
+            value={pasteText}
+            onChange={(e) => setPasteText(e.target.value)}
+            placeholder={
+              "Push day\nBench press 4x8\nIncline dumbbell press 3x10\nTricep pushdown 3x12"
+            }
+            className="mt-2 w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
+            data-testid="routine-paste-textarea"
+          />
+          {pasteError && <p className="mt-2 text-xs text-neg">{pasteError}</p>}
+          {libraryFailed && (
+            <p
+              className="mt-2 text-xs text-neg"
+              data-testid="routine-library-status"
+            >
+              {t(
+                "Couldn't load your exercise library. Reload before pasting a workout.",
+                "The frog lost your library. Reload before you paste.",
+              )}
+            </p>
+          )}
+          <Button
+            variant="primary"
+            className="mt-2 w-full"
+            onClick={parsePaste}
+            disabled={!pasteText.trim() || !libraryLoaded || !draftReady}
+            data-testid="routine-paste-parse-btn"
+          >
+            {libraryLoaded && draftReady
+              ? "Parse"
+              : libraryFailed
+                ? "Library unavailable"
+                : "Loading…"}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {swapFor != null &&
+        list[swapFor] &&
+        byId.get(list[swapFor].exerciseId) && (
+          <SwapSheet
+            open
+            onOpenChange={(o) => !o && setSwapFor(null)}
+            current={
+              byId.get(list[swapFor].exerciseId) as unknown as SwapCandidate
+            }
+            library={(exercises ?? []) as unknown as SwapCandidate[]}
+            slot={{
+              slot: `ex-${swapFor}`,
+              role: "isolation",
+              credits: {
+                direct: primaryMuscles(
+                  byId.get(list[swapFor].exerciseId)?.muscleTargets as never,
+                ),
+                indirect: secondaryMuscles(
+                  byId.get(list[swapFor].exerciseId)?.muscleTargets as never,
+                ),
+              },
+              rx: {
+                sets: list[swapFor].sets.filter((s) => s.setType !== "warmup")
+                  .length,
+                reps: [8, 12],
+                rir: [1, 3],
+              } as never,
+            }}
+            currentRegion={null}
+            regionOf={() => null}
+            perWeek={swapPerWeek}
+            excludeIds={new Set(list.map((d) => d.exerciseId))}
+            onPick={(e) => {
+              const ex = byId.get(e.id);
+              if (ex)
+                patchExercise(swapFor, {
+                  exerciseId: ex.id,
+                  name: ex.name,
+                  exerciseType: exerciseTypeOf(ex),
+                  sets: list[swapFor].sets.map((s) => ({
+                    ...s,
+                    weight: "",
+                    laterality:
+                      ex.laterality === "unilateral"
+                        ? "unilateral"
+                        : "bilateral",
+                  })),
+                });
+              setSwapFor(null);
+            }}
+          />
+        )}
+
+      {attachMachineFor != null && list[attachMachineFor] && (
+        <MachineAttachDialog
+          blockName={list[attachMachineFor].name}
+          open={attachMachineFor != null}
+          onOpenChange={(o) => !o && setAttachMachineFor(null)}
+          onAttach={(machineId) => {
+            const exercise = byId.get(list[attachMachineFor].exerciseId);
+            if (exercise)
+              patchExerciseField(attachMachineFor, exercise, { machineId });
+            setAttachMachineFor(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// The exercise header's ⋯ menu (note 10: parity with the session's BlockMenu
+// — move-up/down, warm-up and remove moved in here so the header keeps only
+// the name + ⋯). The menu mirrors the session's popup styling: `floating`
+// surface, label sections, hover rows.
+//
+// Superset is GONE (session-redesign-r3 decisions.md #8 — "not super
+// science-based"): no toggle here any more. A routine saved before this
+// change that still carries a supersetGroup keeps it — save/load round-trips
+// the field untouched — it just no longer renders or is offered in the UI.
+//
+// Two distinct "Laterality" concepts live in this menu, deliberately
+// labeled apart: "Laterality" (this routine's sets — bulk-writes every
+// routine_sets.laterality below, the session BlockMenu's own bulk semantics)
+// vs "Default laterality" (exercises.laterality — an app-wide default the
+// session header pre-loads for every routine/session that uses this
+// exercise, item 6).
+function ExerciseMenu({
+  index,
+  canMoveUp,
+  canMoveDown,
+  setsLaterality,
+  onSetLaterality,
+  onAddWarmup,
+  machineName,
+  onAttachMachine,
+  onRemoveMachine,
+  defaultLaterality,
+  onSetDefaultLaterality,
+  onApplyReps,
+  onApplyRir,
+  topSet,
+  onToggleTopSet,
+  onSwap,
+  onMove,
+  onRemove,
+}: {
+  index: number;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  setsLaterality: SetLaterality;
+  onSetLaterality: (l: SetLaterality) => void;
+  onAddWarmup: () => void;
+  machineName: string | null;
+  onAttachMachine: () => void;
+  onRemoveMachine?: () => void;
+  defaultLaterality: Laterality;
+  onSetDefaultLaterality?: (l: Laterality) => void;
+  onApplyReps: (r: readonly [number, number]) => void;
+  onApplyRir: (r: readonly [number, number]) => void;
+  topSet: boolean;
+  onToggleTopSet: (on: boolean) => void;
+  onSwap?: () => void;
+  onMove: (dir: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+  const labelCls =
+    "px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase";
+  const itemCls =
+    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft";
+
+  return (
+    <span className="relative">
+      <IconButton
+        aria-label="Exercise options"
+        onClick={() => setOpen((o) => !o)}
+        data-testid={`routine-ex-${index}-menu`}
+      >
+        <DotsThreeVertical className="size-4" />
+      </IconButton>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Close menu"
+            tabIndex={-1}
+            onClick={close}
+            className="fixed inset-0 z-10 cursor-default"
+          />
+          <div
+            className="floating absolute top-full right-0 z-20 mt-1 max-h-96 min-w-56 overflow-y-auto py-1"
+            data-testid={`routine-ex-${index}-menu-popup`}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                onAddWarmup();
+                close();
+              }}
+              data-testid={`routine-ex-${index}-warmup`}
+              className={itemCls}
+            >
+              <Flame className="size-3.5 shrink-0 text-warn" />
+              Add warm-up set
+            </button>
+            {onSwap && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSwap();
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-swap`}
+                className={itemCls}
+              >
+                <ArrowsLeftRight className="size-3.5 shrink-0 text-faint" />
+                Swap exercise
+              </button>
+            )}
+            <button
+              type="button"
+              aria-pressed={topSet}
+              onClick={() => {
+                onToggleTopSet(!topSet);
+                close();
+              }}
+              data-testid={`routine-ex-${index}-top-set`}
+              className={itemCls}
+            >
+              <span className="flex flex-col">
+                Top set first
+                <span className="text-2xs font-normal normal-case tracking-normal text-faint">
+                  Set 1 at 1 RIR, the rest 2-3. A method, not a research rule.
+                </span>
+              </span>
+              {topSet && (
+                <Check className="ml-auto size-3.5 shrink-0 text-accent-ink" />
+              )}
+            </button>
+            <p className={labelCls}>Rep range</p>
+            {REP_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  onApplyReps(p.reps);
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-reps-${p.id}`}
+                className={itemCls}
+              >
+                {p.label}
+              </button>
+            ))}
+            <p className={labelCls}>Reps in reserve</p>
+            {RIR_PRESETS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  onApplyRir(p.rir);
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-rir-${p.id}`}
+                className={itemCls}
+              >
+                {p.label}
+              </button>
+            ))}
+            <p className={labelCls}>Laterality</p>
+            {(
+              [
+                ["bilateral", LATERALITY_LABELS.bilateral],
+                ["unilateral", LATERALITY_LABELS.unilateral],
+              ] as const
+            ).map(([l, label]) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => {
+                  onSetLaterality(l);
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-laterality-${l}`}
+                className={itemCls}
+              >
+                <span className="flex flex-col">
+                  {label}
+                  <span className="text-2xs font-normal normal-case tracking-normal text-faint">
+                    {LATERALITY_EXPLAINERS[l]}
+                  </span>
+                </span>
+                {setsLaterality === l && (
+                  <Check className="ml-auto size-3.5 shrink-0 text-accent-ink" />
+                )}
+              </button>
+            ))}
+            <p className={labelCls}>Machine</p>
+            <button
+              type="button"
+              onClick={() => {
+                onAttachMachine();
+                close();
+              }}
+              data-testid={`routine-ex-${index}-machine-attach`}
+              className={itemCls}
+            >
+              <Barbell className="size-3.5 shrink-0 text-faint" />
+              <span className="truncate">
+                {machineName ? `Change — ${machineName}` : "Attach machine…"}
+              </span>
+            </button>
+            {machineName && onRemoveMachine && (
+              <button
+                type="button"
+                onClick={() => {
+                  onRemoveMachine();
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-machine-remove`}
+                className={itemCls}
+              >
+                <X className="size-3.5 shrink-0 text-faint" />
+                Remove machine
+              </button>
+            )}
+            <p className={labelCls}>Default laterality</p>
+            <p className="px-3 pb-1 text-2xs text-faint">
+              Applies everywhere this exercise is used — pre-loads the session
+              header.
+            </p>
+            {(
+              [
+                ["bilateral", LATERALITY_LABELS.bilateral],
+                ["unilateral", LATERALITY_LABELS.unilateral],
+              ] as const
+            ).map(([l, label]) => (
+              <button
+                key={l}
+                type="button"
+                disabled={!onSetDefaultLaterality}
+                onClick={() => {
+                  onSetDefaultLaterality?.(l);
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-default-laterality-${l}`}
+                className={itemCls}
+              >
+                {label}
+                {defaultLaterality === l && (
+                  <Check className="ml-auto size-3.5 shrink-0 text-accent-ink" />
+                )}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                onMove(-1);
+                close();
+              }}
+              disabled={!canMoveUp}
+              data-testid={`routine-ex-${index}-move-up`}
+              className={itemCls}
+            >
+              <ArrowUp className="size-3.5 shrink-0 text-faint" />
+              Move up
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onMove(1);
+                close();
+              }}
+              disabled={!canMoveDown}
+              data-testid={`routine-ex-${index}-move-down`}
+              className={itemCls}
+            >
+              <ArrowDown className="size-3.5 shrink-0 text-faint" />
+              Move down
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onRemove();
+                close();
+              }}
+              data-testid={`routine-ex-${index}-remove`}
+              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
+            >
+              <Trash className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
+              Remove exercise
+            </button>
+          </div>
+        </>
+      )}
+    </span>
+  );
+}
+
+// The per-set row's small ⋯ menu (note 13: the oversized remove X becomes a
+// menu — laterality + remove set now, room for future per-set options). A
+// unilateral routine set prescribes one pair — two sides, reps per side —
+// exactly how the session logs it.
+function SetMenu({
+  index,
+  si,
+  laterality,
+  onSetLaterality,
+  onRemove,
+}: {
+  index: number;
+  si: number;
+  laterality: SetLaterality;
+  onSetLaterality: (l: SetLaterality) => void;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const close = () => setOpen(false);
+  const itemCls =
+    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink";
+
+  return (
+    <span className="relative flex justify-self-end">
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-label="Set options"
+        onClick={() => setOpen((o) => !o)}
+        data-testid={`routine-ex-${index}-set-${si}-menu`}
+      >
+        <DotsThreeVertical className="size-4" />
+      </Button>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Close menu"
+            tabIndex={-1}
+            onClick={close}
+            className="fixed inset-0 z-10 cursor-default"
+          />
+          <div
+            className="floating absolute top-full right-0 z-20 mt-1 min-w-44 py-1"
+            data-testid={`routine-ex-${index}-set-${si}-menu-popup`}
+          >
+            <p className="px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
+              Laterality
+            </p>
+            {(
+              [
+                ["bilateral", LATERALITY_LABELS.bilateral],
+                ["unilateral", LATERALITY_LABELS.unilateral],
+              ] as const
+            ).map(([l, label]) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => {
+                  onSetLaterality(l);
+                  close();
+                }}
+                data-testid={`routine-ex-${index}-set-${si}-laterality-${l}`}
+                className={itemCls}
+              >
+                {label}
+                {laterality === l && (
+                  <Check className="ml-auto size-3.5 shrink-0 text-accent-ink" />
+                )}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                onRemove();
+                close();
+              }}
+              data-testid={`routine-ex-${index}-set-${si}-remove`}
+              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
+            >
+              <Trash className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
+              Remove set
+            </button>
+          </div>
+        </>
+      )}
+    </span>
+  );
+}

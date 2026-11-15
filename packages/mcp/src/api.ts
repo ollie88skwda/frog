@@ -1,0 +1,74 @@
+import type { FindingsSessionInput } from "@frog/core";
+
+// Thin client over the personal-access-token REST API — the MCP server
+// deliberately dogfoods the public API instead of talking to the database.
+// The API is served by the Convex deployment's HTTP actions under /api
+// (convex/http.ts); the default is a local backend's site port.
+const API_URL = process.env.FROG_API_URL ?? "http://127.0.0.1:3211/api";
+const TOKEN = process.env.FROG_TOKEN ?? "";
+
+export async function api<T>(path: string): Promise<T> {
+  if (!TOKEN)
+    throw new Error(
+      "FROG_TOKEN env var is required (create one in Settings → API tokens). " +
+        "The env prefix was renamed in the 2026-07-28 rebrand — update any older client config.",
+    );
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: { authorization: `Bearer ${TOKEN}` },
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`API ${res.status}: ${body}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+type Row = Record<string, unknown>;
+
+export type ExportJson = {
+  schema_version: number;
+  exported_at: number;
+  exercises: Row[];
+  metrics: Row[];
+  sessions: Row[];
+  session_exercises: Row[];
+  set_logs: Row[];
+};
+
+export const fetchExport = () => api<ExportJson>("/v1/export");
+
+/** Joins the export bundle into the findings engine's session shape. */
+export function toFindingsInputs(bundle: ExportJson): FindingsSessionInput[] {
+  const exerciseName = new Map(
+    bundle.exercises.map((e) => [e.id as string, e.name as string]),
+  );
+  const seById = new Map(
+    bundle.session_exercises.map((se) => [se.id as string, se]),
+  );
+  const setsBySession = new Map<string, FindingsSessionInput["sets"]>();
+  for (const sl of bundle.set_logs) {
+    const se = seById.get(sl.session_exercise_id as string);
+    if (!se) continue;
+    const sessionId = se.session_id as string;
+    const list = setsBySession.get(sessionId) ?? [];
+    list.push({
+      exerciseId: se.exercise_id as string,
+      exerciseName: exerciseName.get(se.exercise_id as string) ?? "",
+      weightKg: (sl.weight_kg as number | null) ?? null,
+      reps: (sl.reps as number | null) ?? null,
+      setType: (sl.set_type as string | null) ?? null,
+      rir: (sl.rir as number | null) ?? null,
+      rirMin: (sl.rir_min as number | null) ?? null,
+      rirMax: (sl.rir_max as number | null) ?? null,
+      rpe: (sl.rpe as number | null) ?? null,
+    });
+    setsBySession.set(sessionId, list);
+  }
+  return bundle.sessions.map((s) => ({
+    sessionId: s.id as string,
+    startedAt: s.started_at as number,
+    conditionValues:
+      (s.condition_values as Record<string, unknown> | null) ?? null,
+    sets: setsBySession.get(s.id as string) ?? [],
+  }));
+}

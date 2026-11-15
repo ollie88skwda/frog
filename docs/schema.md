@@ -1,0 +1,345 @@
+# Frog schema reference
+
+Stable, documented data model — the contract behind the export, the read
+API, and the MCP server. Stored in Convex (`convex/schema.ts`, camelCase
+fields); this document, the export and the API use the snake_case column
+names from `packages/core/src/db/schema.ts`, which are stable across the
+2026-11-01 Supabase → Convex move.
+
+## Conventions
+
+- **ids**: uuid v4, generated client-side (`newId()`), never reused or renumbered.
+- **timestamps**: `created_at` / `updated_at` / `deleted_at` are **millisecond epoch bigints**, app-managed.
+- **soft delete**: rows get `deleted_at`; nothing is hard-deleted. Consumers must filter `deleted_at is null` (the API does this for you).
+- **ownership**: every table has `owner_id` (the Clerk user id), enforced by the Convex functions — every read and write is scoped to the caller. `owner_id null` on `exercises`/`metrics`/`machine_catalog` marks global rows readable by everyone.
+- **weight**: canonical **kg** in `weight_kg`; kg/lb is a display preference only.
+- **custom values**: jsonb objects keyed by metric id — `sessions.condition_values` and `set_logs.metric_values`.
+- **files**: every `*_path` column (and `machines.settings[].photoPath`) holds a Convex file-storage id, private to the uploader (only they can read it, through the Clerk-authenticated `GET <site>/files/<id>` HTTP action). Before 2026-11-01 these were object paths in the private Supabase Storage buckets named below; the import rewrote them. Bucket names in the column notes and the changelog are historical.
+
+## Tables
+
+### machines
+The user's gym equipment — settings entered once, recalled in every session.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| name | text | |
+| brand | text? | |
+| catalog_key | text? | the `machine_catalog` row's uuid when added from the catalog (denormalized, no FK) |
+| settings | jsonb | `{label, value, photoPath?}[]` remembered setup — `photoPath` is a per-setting photo in the `machine-photos` bucket (2026-08-08) |
+| notes | text? | freeform setup notes |
+| photo_path | text? | storage path of the user's photo |
+| owner_id | uuid | |
+
+### machine_catalog
+Global reference catalog of real gym-machine models (brand/model/specs) —
+distinct from `machines` (the user's owned equipment above; no seed rows
+there). `owner_id null` = global seed row, same convention as `exercises`/
+`metrics`. v1 is seeded from the static catalog
+(`packages/core/src/data/machine-catalog.ts`, Tier 1 brands). Read only
+through the `search_machine_catalog` / `list_machine_categories` RPCs
+(migration `20260807101227_search_machine_catalog.sql`); a row picked in the
+machine picker has its uuid stored in `machines.catalog_key`. See AGENTS.md's
+`machine_catalog` bullet and `docs/DECISIONS.md` 2026-08-07.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| brand | text | |
+| model | text | |
+| aliases | jsonb? | string[], alternate names |
+| category | text | extends `machines`' static-catalog `MachineCategory` union (app-validated) |
+| mechanism | text? | `selectorized` \| `plate-loaded` \| `cable` \| `pneumatic` \| `smith` \| `bodyweight` \| `electronic` |
+| muscle_targets | jsonb? | `{muscle, tier, role?}[]`, same shape as `exercises.muscle_targets` |
+| weight_stack_kg | real? | |
+| plate_capacity_kg | real? | |
+| dimensions | jsonb? | `{lengthCm?, widthCm?, heightCm?, weightKg?}` |
+| product_url | text? | link out — no stored photo (copyright, `docs/DECISIONS.md` 2026-07-12) |
+| introduced_year / discontinued_year | integer? | discontinued null = current line |
+| source_url | text? | provenance |
+| source_note | text? | e.g. "migrated from static catalog 2026-08-07" |
+| created_by | text? | community-shared rows carry the publisher's JWT `sub`; null on migration seeds (`publish_catalog_machine`, phase 2) |
+| owner_id | text? | null = global seed |
+| created_at / updated_at / deleted_at | bigint ms | |
+
+### exercises
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| name | text | |
+| tags | jsonb | string[], light tagging (v1) |
+| is_custom | boolean | false = seed row |
+| machine_id | uuid? | FK → machines |
+| joint_actions | jsonb | string[], display labels |
+| muscle_targets | jsonb | `{muscle, tier, role?}[]`; `role` is `"primary" \| "secondary"` — absent role means index 0 is primary, everything after is secondary (back-compat, `roleAt()`). An exercise can declare two primaries. First target still decides library grouping regardless of role. Optional redesign §9.7 keys per entry: `weight` (explicit fractional credit), `lengthened` (boolean), `region` (R12b region cell); absent on older rows. |
+| image_url | text? | reference diagram (seed rows only) |
+| image_attribution | text? | image credit |
+| exercise_type | text | measurement type (`domain/exercise-types.ts`); immutable once sets exist |
+| equipment | text? | `barbell` \| `ez_bar` \| `dumbbell` \| `machine` \| `cable` \| `bodyweight` \| `plate` \| `other` (kettlebell/band/suspension removed from the picker 2026-08-08; legacy rows may still carry them) |
+| instructions | jsonb? | string[], how-to steps (detail screen only) |
+| image_urls | jsonb? | string[], how-to frames (detail screen only) |
+| mechanic | text? | `compound` \| `isolation`; explicit, overrides the muscle-count proxy in `generator/generate.ts` |
+| movement_pattern | text? | `horizontal-push` \| `vertical-push` \| `horizontal-pull` \| `vertical-pull` \| `squat` \| `hinge` \| `lunge` \| `carry` \| `rotation` \| `isolation` |
+| laterality | text? | `bilateral` \| `unilateral` \| `alternating`; unilateral logs each set as a ᴸ/ᴿ pair of `set_logs` rows sharing one `set_no` (see [set_logs](#set_logs)), alternating labels the reps column "total reps" in-session. Muscle credit is per physical set, the same for all three. |
+| default_reps_min / default_reps_max | integer? | prefill only — routine editor "Add exercise" + generator; never rewrites a logged/prescribed value |
+| default_rest_sec | integer? | prefill only — seeds `routine_exercises.rest_sec` when the routine editor adds this exercise; no session-side reader (rest is an untargeted stopwatch) |
+| notes | text? | the user's own note about the exercise (setup, cue); shown read-only under the block header in a session |
+| aliases | jsonb? | string[], alternate names; matched by the fuzzy matcher (voice logging, routine paste) and search alongside `name` |
+| created_by | text? | publisher's JWT `sub` on community-shared rows (`owner_id null`, `is_custom true`); null on migration seeds — set only by the `publish_exercise` RPC (`20260808062400_publish_exercise_rpc.sql`), never by a plain insert |
+| media_path | text? | storage path in the private `exercise-media` bucket (user-uploaded demo image/video, resized client-side); null = no media |
+| media_type | text? | `image` \| `video`; null when `media_path` is null |
+| stability | text? | explicit stability rank override (redesign §9.7); null/absent = derived from the static equipment map |
+| owner_id | uuid? | null = global seed |
+| created_at / updated_at / deleted_at | bigint ms | |
+
+### metrics
+Everything logged is a metric. Built-ins (reps, weight, RIR, note) are columns
+on `set_logs`; custom metrics are rows here.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| name | text | e.g. "Sleep (h)", "Seat height" |
+| type | text | `number` \| `scale` \| `text` \| `checkbox` |
+| scope | text | `session` (condition) \| `set` |
+| exercise_ids | jsonb | string[]; which exercises a set-scope metric is enabled for |
+| owner_id | uuid? | null = seeded condition metric |
+
+Seeded condition metrics (fixed ids, see `packages/core/src/db/seed-ids.ts`):
+Sleep (h), Bodyweight, Pre-workout carbs (g), Caffeine (mg), Stress (1–10),
+Last meal (h before), Meal note.
+
+### tracked_conditions
+A user's "experiment variables" pre-loaded into every session. A row is an
+explicit choice; its absence means "use the defaults" (Sleep + Stress).
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| metric_id | uuid | FK → metrics (session-scope) |
+| tracked | boolean | false = hidden from future sessions |
+| position | integer? | display order |
+| owner_id | uuid | one row per (owner, metric) |
+
+### exercise_favorites
+A user's favorited exercises (a separate owner-scoped table, so it works on
+shared seed rows too).
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| exercise_id | uuid | FK → exercises |
+| favorite | boolean | presence + true = favorited |
+| owner_id | uuid | one row per (owner, exercise) |
+
+### sessions
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| title | text? | |
+| started_at / ended_at | bigint ms | |
+| condition_values | jsonb | {metric_id: value} |
+| share_slug | text? | dormant — future public share link, unused today |
+| owner_id | uuid | |
+
+### session_exercises
+One exercise performed within one session, ordered.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| session_id | uuid | FK → sessions |
+| exercise_id | uuid | FK → exercises |
+| order_index | integer | position within the session |
+| planned_reps_min / planned_reps_max | integer? | target snapshot written at session start (redesign §9.1); null on pre-snapshot and ad-hoc blocks |
+| planned_rir_min / planned_rir_max | integer? | snapshot of the target RIR range |
+| planned_sets | integer? | working sets planned, excluding warm-ups (R17b) |
+| planned_load_kg | real? | load prescribed at start |
+| planned_first_set_max | boolean? | top-set flag |
+| planned_is_deload | boolean? | deload overlay applied (F11) |
+| prescription_rule_id | text? | coach rule that set the prescription, e.g. `C2c-progress` |
+| snapshot_source | text? | `start` or `backfill` (backfilled snapshots are never stall-comparable) |
+| owner_id | uuid | |
+
+### set_logs
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| session_exercise_id | uuid | FK → session_exercises |
+| set_no | integer | Physical set number within the exercise block. NOT unique per row: a unilateral set is TWO rows sharing one set_no, one per `side` — see DECISIONS.md. |
+| side | text? | `'left' \| 'right' \| null`. Null = the whole set (bilateral, alternating, and every row logged before this column existed). |
+| weight_kg | real? | canonical kg |
+| reps | integer? | |
+| rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null. Session logging leaves it null now (it writes the range pair instead); the Strong/Hevy CSV importers are the only remaining writers |
+| rir_min / rir_max | integer? | logged RIR range; the session screen's `Spotlight` component (`session.tsx`) writes it from a segmented 0/1/2/3/4+ pick (`min === max`, or `max` empty for "4+") — see DECISIONS.md 2026-08-12 |
+| planned_rir_min / planned_rir_max | integer? | planned RIR of the seeded set this row was committed from (redesign §9.1/§9.7); absent on older rows |
+| rpe | real? | 1–10 perceived exertion (halves allowed) |
+| rest_sec | integer? | seconds rested before this set (null = first/unknown). On a unilateral pair, only the left row carries it — one commit, one rest stopwatch. |
+| note | text? | |
+| metric_values | jsonb | {metric_id: value} for enabled set metrics |
+| completed | boolean | |
+| owner_id | uuid | |
+
+### api_tokens
+Personal access tokens for the read API (not part of the export).
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| name | text | user label |
+| token_hash | text | sha256 of the plaintext; plaintext never stored |
+| created_at / last_used_at / revoked_at | bigint ms | revoked_at set = dead |
+| owner_id | uuid | |
+
+### routine_folders
+Groups routines (program/split/goal). Owner-scoped, no seeds.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| name | text | |
+| position | integer | drag order |
+| owner_id | text | |
+
+### routines
+Reusable workout templates. Starting one pre-fills a live session.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| name | text | |
+| folder_id | uuid? | FK → routine_folders; null = unfiled |
+| position | integer | list order |
+| description | text? | |
+| owner_id | text | |
+
+### routine_exercises
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| routine_id | uuid | FK → routines |
+| exercise_id | uuid | FK → exercises |
+| order_index | integer | |
+| superset_group | integer? | same int = same superset; null = none |
+| rest_sec | integer? | per-exercise rest seconds; null = unset, 0 = off. No longer a timer target (rest is an untargeted stopwatch). The routine builder has no field for it but still writes it — a newly added exercise seeds from `exercises.default_rest_sec` (the exercise editor's "Rest — seconds" field) and an existing value round-trips through every save; also written by the generator. Read by the Trainer's duration estimate |
+| note | text? | persistent template note (re-renders every session) |
+| rep_class | text? | `main` \| `compound` \| `isolation`; rep-range class driving presets (redesign §9.7) |
+| owner_id | text | |
+
+### routine_sets
+Target prescription per set. `target_reps_max` non-null ⇒ rep range
+[`target_reps`, `target_reps_max`]; rep-range sets are never auto-updated by
+Update Routine Values.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| routine_exercise_id | uuid | FK |
+| set_no | integer | |
+| set_type | text | 'normal' \| 'warmup' \| 'failure' \| 'drop' |
+| target_weight_kg | real? | |
+| target_reps | integer? | |
+| target_reps_max | integer? | non-null ⇒ rep range |
+| target_duration_sec | integer? | duration types |
+| target_distance_m | real? | distance types (canonical meters) |
+| target_rir_min / target_rir_max | integer? | target RIR range (reps-based exercise types only) |
+| owner_id | text | |
+
+### programs
+Generator/library provenance. Progression state is not stored — the overload
+rule reads history via `sessions.routine_id`.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| source | text | 'generated' \| 'library' |
+| library_key | text? | catalog key when source='library' |
+| config | jsonb | questionnaire answers |
+| folder_id | uuid | FK → routine_folders |
+| active | boolean | |
+| owner_id | text | |
+
+### measurements
+One entry per local day (unique owner + measured_on). Canonical bodyweight
+store (volume math, trends, generator report); the seeded Bodyweight
+condition mirrors into it. Progress photo is part of the day's entry.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| measured_on | text | local YYYY-MM-DD, unique per owner |
+| bodyweight_kg | real? | |
+| bodyfat_pct | real? | |
+| neck_cm … calf_r_cm | real? | 14 circumference columns (canonical cm) |
+| photo_path | text? | progress-photos bucket; always private |
+| owner_id | text | |
+
+### exercise_prefs
+Per-exercise prefs; satellite on shared seed rows (favorites pattern).
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| exercise_id | uuid | unique per owner |
+| weight_unit | text? | 'kg' \| 'lb'; null = global default |
+| generator_excluded | boolean | "don't recommend again" |
+| owner_id | text | |
+
+### user_prefs
+One row per user. Only semantics-bearing/cross-device settings live here;
+pure device behavior (theme, display unit, sounds…) stays in localStorage.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| include_warmups_in_stats | boolean | toggling recomputes records client-side |
+| default_rest_sec | integer? | dormant — retained, but the Settings row that set it is gone and nothing reads it since rest became an up-counting stopwatch with no target |
+| previous_values_scope | text | 'any' \| 'routine' |
+| body_diagram | text | heat-map figure variant |
+| plate_config | jsonb | `{barKg, platesKg[], barLb, platesLb[], dumbbellStepKg}` |
+| display_name | text? | |
+| bio | text? | short self-description on the Profile header (edit control covers name + bio; see DECISIONS.md 2026-08-08) |
+| goal | text? | `build\|cut\|bulk\|maintain` (redesign §9.2) |
+| training_status | text? | `new\|intermediate\|experienced` |
+| exercise_grouping | text? | `joint_action` (default) \| `region` |
+| coach_enabled | boolean? | default true |
+| coach_rules_off | jsonb? | string[] of rule ids the user opted out of |
+| show_evidence_labels | boolean? | default true |
+| hard_set_rir_max | integer? | R6 hard-set cutoff, default 4 |
+| owner_id | text | unique |
+
+The §9.2 columns are optional on stored rows; read them through `resolveUserPrefs` (`packages/core/src/repo/prefs.ts`), which applies the defaults. `include_warmups_in_stats` defaults to false for new users (R6/R17b); a user with existing sessions keeps true.
+
+### coach_events
+Append-only log of what the user did with a coach suggestion (redesign §9.3). Suggestions are recomputed, never stored. Idempotent on `id`.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK (client-generated; the idempotency key) |
+| suggestion_id | text | |
+| rule_id | text | e.g. `C2c-progress` |
+| exercise_id | uuid? | |
+| session_id | uuid? | |
+| state | text | `accepted\|adjusted\|dismissed\|applied\|undone` |
+| scope | text? | `once\|exercise_4w\|rule` |
+| payload | jsonb? | |
+| owner_id | text | |
+
+### session_media
+Workout photos attached at save (photos v1; ≤3 app-enforced).
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| session_id | uuid | FK → sessions |
+| path | text | session-media bucket (private) |
+| position | integer | carousel order |
+| media_type | text | 'photo' (video = backlog) |
+| owner_id | text | |
+
+### push_subscriptions
+Web-push endpoints for the Settings → Notifications toggle (M12). The sender
+Edge Function (`send-rest-push`) was deleted with the rest countdown; the table
+and the subscribe path stay for any future push use.
+| column | type | notes |
+|---|---|---|
+| id | uuid | PK |
+| endpoint | text | unique |
+| keys | jsonb | `{p256dh, auth}` |
+| owner_id | text | |
+
+### Column additions (2026-07-15, Hevy parity)
+- `exercises`: + `exercise_type` (8 measurement types; immutable once logged — duplicate-as-custom resets), `equipment`, `instructions` (jsonb string[]), `image_urls` (jsonb string[] how-to frames).
+- `set_logs`: + `set_type`, `duration_sec`, `distance_m`. `weight_kg` is reinterpreted per exercise type (added weight for weighted-bodyweight, assistance for assisted-bodyweight).
+- `session_exercises`: + `superset_group`, `rest_sec`, `note`, `routine_exercise_id` (provenance → routine write-back + same-routine PREVIOUS scope).
+- `sessions`: + `routine_id` (provenance; null = empty workout), `paused_ms` (duration = ended − started − paused).
+
+### Column additions (2026-07-30, custom exercise adder)
+- `exercises`: + `mechanic`, `movement_pattern`, `laterality`, `default_reps_min`, `default_reps_max`, `default_rest_sec`, `notes`, `aliases` (jsonb string[]), `media_path`, `media_type`. `muscle_targets` entries gained an optional `role` field (`"primary" | "secondary"`, back-compat absent = index-0-primary). All nullable, no default — a book row that never fills them behaves exactly as before.
+- New private storage bucket `exercise-media`, RLS-scoped to the owning user (same `(storage.foldername(name))[1] = (select auth.jwt()->>'sub')` pattern as `session-media`/machine photos), holding the file `media_path` points at. `file_size_limit` is 50 MB — images are resized client-side, a video is not, so the ceiling is enforced both in the editor (visible message, before upload) and by the bucket.
+- `GET /v1/exercises` (and the `exercises` field of `GET /v1/export`) now select the full row instead of a hand-picked column list — see docs/DECISIONS.md.

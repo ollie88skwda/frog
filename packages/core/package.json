@@ -1,0 +1,25 @@
+{
+  "name": "@frog/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "convex": "1.49.0",
+    "vitest": "^4.1.9",
+    "yaml": "^2.9.1"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2"
+  }
+}

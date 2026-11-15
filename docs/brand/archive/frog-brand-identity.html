@@ -1,0 +1,1476 @@
+<title>Frog — Brand Identity & Design System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  /* ============================================================
+     FROG — BRAND IDENTITY & DESIGN SYSTEM
+     A deadpan amphibian running a dead-serious statistics lab.
+     Neutral ink ground · frog-green accent · 0px radius · 8px grid.
+     Re-skin of the shipped Radix Themes 3 system.
+     ============================================================ */
+
+  :root {
+    /* --- frog-green ramp (accent + semantic success) --- */
+    --frog-50:  #EAFBEF;  --frog-100: #C9F5D6; --frog-200: #9CEBB4;
+    --frog-300: #6BE291;  --frog-400: #43DD6E; --frog-500: #22C455;
+    --frog-600: #16A34A;  --frog-700: #12833C; --frog-800: #106A33; --frog-900: #0C4D26;
+
+    /* --- neutral ink ramp (chosen: faint green-cool bias) --- */
+    --ink-950: #0B0F0E; --ink-900: #101613; --ink-850: #121714; --ink-800: #171E1A;
+    --ink-700: #243029; --ink-600: #33453B; --ink-500: #4A574F; --ink-400: #5A6560;
+    --ink-300: #8B968F; --ink-200: #B7C0BA; --ink-100: #DCE4DE; --ink-50: #F5F8F5; --paper: #FFFFFF;
+
+    /* --- semantic (kept legible, separate from accent hue) --- */
+    --amber: #E6B24A; --red: #E5484D;
+
+    /* --- role tokens: DARK is the default --- */
+    --bg: var(--ink-950); --bg-grid: rgba(67,221,110,0.045);
+    --surface: var(--ink-850); --surface-2: var(--ink-800);
+    --border: var(--ink-700); --border-strong: var(--ink-600);
+    --text: #E7EDE9; --text-muted: var(--ink-300); --text-faint: var(--ink-400);
+    --accent: var(--frog-400); --accent-solid: var(--frog-500); --accent-text: var(--frog-400);
+    --on-accent: var(--ink-950); --warn: var(--amber); --err: var(--red);
+
+    --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: "JetBrains Mono", "Commit Mono", ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+
+    --maxw: 1080px; --u: 8px;
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: var(--ink-50); --bg-grid: rgba(16,120,60,0.06);
+      --surface: var(--paper); --surface-2: #EEF3EE;
+      --border: var(--ink-100); --border-strong: #C3CEC6;
+      --text: #10160F; --text-muted: #566159; --text-faint: #8B968F;
+      --accent: var(--frog-500); --accent-solid: var(--frog-500); --accent-text: var(--frog-600); --on-accent: var(--paper);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: var(--ink-50); --bg-grid: rgba(16,120,60,0.06);
+    --surface: var(--paper); --surface-2: #EEF3EE;
+    --border: var(--ink-100); --border-strong: #C3CEC6;
+    --text: #10160F; --text-muted: #566159; --text-faint: #8B968F;
+    --accent: var(--frog-500); --accent-solid: var(--frog-500); --accent-text: var(--frog-600); --on-accent: var(--paper);
+  }
+  :root[data-theme="dark"] {
+    --bg: var(--ink-950); --bg-grid: rgba(67,221,110,0.045);
+    --surface: var(--ink-850); --surface-2: var(--ink-800);
+    --border: var(--ink-700); --border-strong: var(--ink-600);
+    --text: #E7EDE9; --text-muted: var(--ink-300); --text-faint: var(--ink-400);
+    --accent: var(--frog-400); --accent-solid: var(--frog-500); --accent-text: var(--frog-400); --on-accent: var(--ink-950);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    background-image: linear-gradient(var(--bg-grid) 1px, transparent 1px), linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    color: var(--text); font-family: var(--font-sans); font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  .tnum, .tlnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+  .mono { font-family: var(--font-mono); }
+  a { color: var(--accent-text); text-decoration: none; }
+  a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  ::selection { background: var(--accent); color: var(--on-accent); }
+
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- top bar ---------- */
+  header.bar { position: sticky; top: 0; z-index: 50; background: color-mix(in oklab, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--border); }
+  .bar-in { display: flex; align-items: center; gap: 12px; height: 52px; max-width: var(--maxw); margin: 0 auto; padding: 0 16px; }
+  .brand { display: flex; align-items: center; gap: 9px; font-family: var(--font-display); font-weight: 800; letter-spacing: -0.04em; font-size: 18px; }
+  .brand svg { display: block; }
+  .bar-nav { display: none; gap: 2px; margin-left: 12px; }
+  .bar-nav a { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); padding: 6px 7px; border: 1px solid transparent; }
+  .bar-nav a:hover { color: var(--text); text-decoration: none; border-color: var(--border); }
+  .bar-tools { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .theme-btn { font-family: var(--font-mono); font-size: 11px; color: var(--text); background: var(--surface); border: 1px solid var(--border); padding: 7px 10px; cursor: pointer; }
+  .theme-btn:hover { border-color: var(--border-strong); }
+  @media (min-width: 1000px) { .bar-nav { display: flex; } }
+
+  /* ---------- segmented control (language switcher) ---------- */
+  .segment { display: inline-flex; border: 1px solid var(--border); background: var(--surface); }
+  .segment button { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.03em; text-transform: uppercase; padding: 8px 13px; background: transparent; color: var(--text-muted); border: 0; border-right: 1px solid var(--border); cursor: pointer; }
+  .segment button:last-child { border-right: 0; }
+  .segment button[aria-pressed="true"] { background: var(--accent-solid); color: var(--on-accent); font-weight: 600; }
+  .segment.compact button { padding: 7px 9px; font-size: 11px; }
+  .segment .full { display: none; } .segment .abbr { display: inline; }
+  @media (min-width: 680px) { .segment .full { display: inline; } .segment .abbr { display: none; } }
+
+  /* ---------- hero ---------- */
+  .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--border); }
+  .hero-in { position: relative; z-index: 2; padding: 80px 24px 64px; max-width: var(--maxw); margin: 0 auto; }
+  .eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-text); margin: 0 0 20px; }
+  .wordmark { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.05em; line-height: 0.92; font-size: clamp(64px, 15vw, 168px); margin: 0; display: flex; align-items: center; gap: 0.02em; flex-wrap: wrap; }
+  .wordmark .eye { display: inline-block; }
+  .hero-sub { font-family: var(--font-display); font-weight: 600; letter-spacing: -0.02em; font-size: clamp(20px, 3.4vw, 30px); margin: 24px 0 0; max-width: 22ch; text-wrap: balance; }
+  .hero-lede { color: var(--text-muted); max-width: 62ch; margin: 18px 0 0; font-size: 16px; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 28px; }
+  .ripples { position: absolute; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+  .ripples span { position: absolute; top: 42%; right: -6%; width: 10px; height: 10px; border: 1px solid var(--accent); border-radius: 50%; opacity: 0; animation: ripple 6.5s linear infinite; }
+  .ripples span:nth-child(2) { animation-delay: 2.1s; } .ripples span:nth-child(3) { animation-delay: 4.2s; }
+  @keyframes ripple { 0% { transform: scale(1); opacity: 0.5; } 70% { opacity: 0.10; } 100% { transform: scale(60); opacity: 0; } }
+
+  /* ---------- sections ---------- */
+  section { padding: 64px 0; border-bottom: 1px solid var(--border); }
+  .sec-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 28px; }
+  .sec-num { font-family: var(--font-mono); font-size: 13px; color: var(--accent-text); letter-spacing: 0.05em; padding-top: 6px; }
+  .sec-title { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.03em; font-size: clamp(26px, 4.4vw, 38px); margin: 0; line-height: 1.02; text-wrap: balance; }
+  .sec-kicker { color: var(--text-muted); margin: 8px 0 0; max-width: 66ch; }
+  .lead { font-size: 17px; max-width: 68ch; }
+  h3.blk { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; font-size: 18px; margin: 0 0 12px; }
+  .label { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-faint); }
+  .note { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); margin-top: 14px; line-height: 1.7; }
+  .callout { border-left: 2px solid var(--accent); padding: 4px 0 4px 16px; color: var(--text-muted); margin: 20px 0; }
+  .callout b { color: var(--text); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); padding: 24px; }
+  .grid2 { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 760px) { .grid2 { grid-template-columns: 1fr 1fr; } .grid3 { grid-template-columns: repeat(3, 1fr); } }
+
+  /* zone tags */
+  .zone { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 9px; border: 1px solid var(--border); }
+  .zone::before { content: ""; width: 8px; height: 8px; display: inline-block; }
+  .zone.sacred { color: var(--text-muted); } .zone.sacred::before { background: var(--text-faint); }
+  .zone.play { color: var(--accent-text); border-color: color-mix(in oklab, var(--accent) 40%, var(--border)); }
+  .zone.play::before { background: var(--accent); }
+  .pill { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); border: 1px solid var(--border); padding: 4px 8px; white-space: nowrap; }
+  .pill b { color: var(--accent-text); font-weight: 600; }
+
+  /* spectrum */
+  .spectrum { border: 1px solid var(--border); background: var(--surface); }
+  .spectrum-bar { height: 10px; background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-2) 46%, color-mix(in oklab, var(--accent) 22%, var(--surface-2)) 74%, var(--accent) 100%); border-bottom: 1px solid var(--border); }
+  .spectrum-cols { display: grid; grid-template-columns: 1fr 1fr; }
+  .spectrum-cols > div { padding: 20px 22px; }
+  .spectrum-cols > div:first-child { border-right: 1px solid var(--border); }
+  .spectrum-cols h4 { margin: 0 0 8px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .spectrum-cols ul { margin: 0; padding-left: 18px; color: var(--text-muted); font-size: 13.5px; }
+  .spectrum-cols li { margin: 4px 0; }
+
+  /* mock UI chrome */
+  .mock { background: #0B0F0E; color: #E7EDE9; border: 1px solid #243029; font-family: var(--font-mono); }
+  .mock-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid #243029; font-size: 11px; color: #8B968F; letter-spacing: 0.06em; text-transform: uppercase; }
+  .mock-body { padding: 16px; }
+  .mock .big { font-size: 30px; font-weight: 500; letter-spacing: -0.01em; color: #E7EDE9; }
+  .mock .accent { color: var(--frog-400); }
+  .mock .muted { color: #8B968F; }
+  .mock .tlnum { color: var(--frog-400); }
+  .mock .row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 5px 0; border-bottom: 1px dashed #171E1A; }
+  .mock .row:last-child { border-bottom: 0; }
+  .copy-title { color: var(--frog-400); font-size: 13px; letter-spacing: 0.02em; }
+  .copy-body { color: #C4CDC7; font-size: 13px; line-height: 1.55; margin-top: 6px; }
+  .copy-nums { color: #8B968F; font-size: 12px; margin-top: 10px; }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.03em; text-transform: uppercase; padding: 9px 14px; border: 1px solid var(--frog-500); background: var(--frog-500); color: #06180C; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--accent-text); border-color: var(--border-strong); }
+  .btn.danger { background: transparent; color: var(--err); border-color: color-mix(in oklab, var(--err) 50%, var(--border)); }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+
+  /* color ramps */
+  .ramp { display: grid; grid-template-columns: repeat(5, 1fr); border: 1px solid var(--border); }
+  @media (min-width: 640px) { .ramp { grid-template-columns: repeat(10, 1fr); } }
+  .ramp12 { display: grid; grid-template-columns: repeat(6, 1fr); border: 1px solid var(--border); }
+  @media (min-width: 640px) { .ramp12 { grid-template-columns: repeat(12, 1fr); } }
+  .swatch { aspect-ratio: 1 / 1.15; display: flex; flex-direction: column; justify-content: flex-end; padding: 6px; border-right: 1px solid color-mix(in oklab, var(--bg) 50%, transparent); }
+  .swatch:last-child { border-right: 0; }
+  .swatch small { font-family: var(--font-mono); font-size: 9.5px; line-height: 1.3; }
+  .step-legend { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); line-height: 1.7; margin-top: 8px; }
+  .step-legend b { color: var(--text-muted); font-weight: 400; }
+  .token-tbl { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12.5px; }
+  .token-tbl th, .token-tbl td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .token-tbl th { color: var(--text-faint); font-weight: 400; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+  .chip { display: inline-block; width: 13px; height: 13px; border: 1px solid var(--border-strong); vertical-align: -2px; margin-right: 8px; }
+  .scroll-x { overflow-x: auto; }
+
+  /* logos */
+  .logos { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 680px) { .logos { grid-template-columns: 1fr 1fr; } }
+  .logo-card { background: var(--surface); border: 1px solid var(--border); display: flex; flex-direction: column; }
+  .logo-stage { display: flex; align-items: center; justify-content: center; gap: 28px; padding: 30px 24px; border-bottom: 1px solid var(--border); min-height: 150px; background: linear-gradient(var(--bg-grid) 1px, transparent 1px), linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px); background-size: 12px 12px; }
+  .logo-stage .big-mark { color: var(--text); }
+  .logo-stage .tiny { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .logo-stage .tiny small { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); }
+  .logo-16 { width: 16px; height: 16px; border: 1px solid var(--border); color: var(--text); }
+  .logo-meta { padding: 16px 20px; }
+  .logo-meta h4 { margin: 0 0 4px; font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+  .logo-meta p { margin: 0; color: var(--text-muted); font-size: 13px; }
+  .rec { border-color: color-mix(in oklab, var(--accent) 55%, var(--border)); }
+  .rec .logo-meta h4::after { content: "LOCKED"; font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.08em; color: var(--on-accent); background: var(--accent); padding: 2px 6px; margin-left: 8px; vertical-align: 2px; }
+
+  /* type */
+  .spec-display { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.03em; font-size: clamp(30px, 6vw, 52px); line-height: 1; margin: 6px 0 0; }
+  .spec-body { font-size: 17px; max-width: 60ch; margin: 6px 0 0; }
+  .spec-mono { font-family: var(--font-mono); font-size: clamp(22px, 4vw, 34px); letter-spacing: -0.01em; margin: 6px 0 0; }
+
+  /* registers */
+  .reg { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 820px) { .reg { grid-template-columns: repeat(3, 1fr); } }
+  .reg-card { border: 1px solid var(--border); background: var(--surface); padding: 18px; }
+  .reg-card.on { border-color: color-mix(in oklab, var(--accent) 55%, var(--border)); }
+  .reg-card h4 { margin: 0 0 4px; font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.04em; }
+  .reg-card p.d { margin: 0; color: var(--text-muted); font-size: 13px; }
+  .reg-card .ex { font-family: var(--font-mono); font-size: 12.5px; color: var(--text-muted); margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 12px; line-height: 1.6; }
+
+  /* foundations */
+  .scale-row { display: flex; align-items: center; gap: 14px; padding: 4px 0; }
+  .scale-row .bar { height: 12px; background: var(--accent); }
+  .scale-row code { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); width: 92px; flex: none; }
+  .radius-demo { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+  .radius-demo figure { margin: 0; text-align: center; }
+  .radius-demo .box { width: 56px; height: 56px; background: var(--surface-2); border: 1px solid var(--border-strong); }
+  .radius-demo figcaption { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-faint); margin-top: 6px; }
+  .icons { display: flex; gap: 20px; flex-wrap: wrap; color: var(--text); align-items: center; }
+  .icons svg { display: block; }
+
+  /* components */
+  .comp { background: var(--surface); border: 1px solid var(--border); padding: 20px; }
+  .comp .demo { padding: 18px; border: 1px solid var(--border); background: var(--bg); margin-top: 12px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.03em; padding: 3px 8px; border: 1px solid var(--border); text-transform: uppercase; }
+  .badge.pos { color: var(--accent-text); border-color: color-mix(in oklab, var(--accent) 40%, var(--border)); }
+  .badge.neg { color: var(--err); border-color: color-mix(in oklab, var(--err) 40%, var(--border)); }
+  .badge.warn { color: var(--warn); border-color: color-mix(in oklab, var(--warn) 40%, var(--border)); }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 150px; }
+  .field label { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
+  .fauxinput { font-family: var(--font-mono); font-size: 15px; background: var(--bg); border: 1px solid var(--border-strong); color: var(--text); padding: 9px 12px; }
+  .fauxinput.focus { border-color: var(--accent); outline: 2px solid color-mix(in oklab, var(--accent) 40%, transparent); outline-offset: 1px; }
+  .numpad { display: grid; grid-template-columns: repeat(3, 46px); gap: 6px; }
+  .numpad button { height: 46px; font-family: var(--font-mono); font-size: 16px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); cursor: pointer; }
+  .numpad button:hover { border-color: var(--accent); }
+
+  /* rules table (may/may-not, do/don't) */
+  .rules { display: grid; grid-template-columns: 1fr; border: 1px solid var(--border); }
+  @media (min-width: 720px) { .rules { grid-template-columns: 1fr 1fr; } }
+  .rules > div { padding: 20px 22px; }
+  .rules > div:first-child { border-bottom: 1px solid var(--border); }
+  @media (min-width: 720px) { .rules > div:first-child { border-bottom: 0; border-right: 1px solid var(--border); } }
+  .rules h4 { margin: 0 0 14px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+  .rules ul { list-style: none; margin: 0; padding: 0; }
+  .rules li { display: flex; gap: 10px; padding: 7px 0; font-size: 14px; border-bottom: 1px dashed var(--border); }
+  .rules li:last-child { border-bottom: 0; }
+  .rules .mark { flex: none; width: 18px; font-weight: 700; }
+  .may .mark, .do .mark { color: var(--accent-text); }
+  .maynot .mark, .dont .mark { color: var(--err); }
+
+  /* findings reveal */
+  .conf { margin-top: 12px; }
+  .conf-track { height: 6px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+  .conf-fill { height: 100%; width: 0; background: var(--accent); transition: width 900ms cubic-bezier(0.22,0.61,0.36,1); }
+  .revealed .conf-fill { width: var(--to, 78%); }
+
+  /* radix diff */
+  .ok { color: var(--accent-text); font-weight: 600; }
+  .diff-old { color: var(--text-faint); text-decoration: line-through; }
+  .diff-new { color: var(--accent-text); }
+  .codeblk { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; background: var(--surface); border: 1px solid var(--border); padding: 16px 18px; overflow-x: auto; white-space: pre; color: var(--text-muted); }
+  .codeblk .add { color: var(--accent-text); } .codeblk .del { color: var(--err); } .codeblk .cmt { color: var(--text-faint); }
+
+  .foot { padding: 56px 0 72px; }
+  .northstar { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; font-size: clamp(22px, 3.6vw, 34px); text-wrap: balance; max-width: 30ch; margin: 0; }
+  .foot small { display: block; margin-top: 20px; color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; line-height: 1.7; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ripples span { animation: none; display: none; }
+    .conf-fill { transition: none; }
+    * { scroll-behavior: auto !important; }
+  }
+</style>
+
+<header class="bar">
+  <div class="bar-in">
+    <span class="brand">
+      <svg width="24" height="24" viewBox="0 0 64 64" fill="none" aria-hidden="true">
+        <circle cx="32" cy="32" r="21" stroke="var(--accent)" stroke-width="3"/>
+        <line x1="32" y1="6" x2="32" y2="20" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <line x1="32" y1="44" x2="32" y2="58" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <line x1="6" y1="32" x2="20" y2="32" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <line x1="44" y1="32" x2="58" y2="32" stroke="var(--border-strong)" stroke-width="1.5"/>
+        <circle cx="32" cy="32" r="6" fill="var(--accent)"/>
+      </svg>
+      Frog
+    </span>
+    <nav class="bar-nav" aria-label="Sections">
+      <a href="#split">01</a><a href="#persona">02</a><a href="#lang">03</a><a href="#voice">04</a>
+      <a href="#color">05</a><a href="#type">06</a><a href="#foundations">07</a><a href="#components">08</a>
+      <a href="#numbers">09</a><a href="#feel">10</a><a href="#motion">11</a><a href="#a11y">12</a>
+      <a href="#mascot">13</a><a href="#radix">14</a>
+    </nav>
+    <div class="bar-tools">
+      <div class="segment compact" id="langBar" role="group" aria-label="App language register">
+        <button type="button" data-reg="human" aria-pressed="false"><span class="full">Human</span><span class="abbr">H</span></button>
+        <button type="button" data-reg="frog" aria-pressed="true"><span class="full">Frog</span><span class="abbr">F</span></button>
+        <button type="button" data-reg="ultra" aria-pressed="false"><span class="full">Ultra</span><span class="abbr">U</span></button>
+      </div>
+      <button class="theme-btn" id="themeBtn" type="button" aria-label="Toggle theme">◐</button>
+    </div>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="ripples" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div class="hero-in">
+    <p class="eyebrow">Brand identity &amp; design system · v1 · a re-skin of Radix Themes&nbsp;3 · “SBL” → <b>Frog</b></p>
+    <h1 class="wordmark">
+      FR<span class="eye" aria-hidden="true">
+        <svg width="0.86em" height="0.86em" viewBox="0 0 64 64" fill="none" style="vertical-align:-0.02em">
+          <circle cx="32" cy="32" r="28" stroke="currentColor" stroke-width="4"/>
+          <path d="M8 24 Q32 12 56 24" stroke="currentColor" stroke-width="4" fill="none"/>
+          <circle cx="32" cy="34" r="8" fill="var(--accent)"/>
+        </svg>
+      </span>G
+    </h1>
+    <p class="hero-sub">A training lab notebook that a frog wandered into and now runs.</p>
+    <p class="hero-lede">
+      Serious lifters log the work — reps × weight, RIR — and the conditions around it: sleep, bodyweight, carbs, caffeine, stress.
+      Frog surfaces honest correlations with visible confidence and an unbroken habit of reminding you it is only a correlation.
+      The statistics are exact. The frog is an idiot. Both, deliberately, at once.
+    </p>
+    <div class="hero-meta">
+      <span class="zone sacred">Data stays sacred</span>
+      <span class="zone play">Edges get the frog</span>
+      <span class="pill">0px radius</span>
+      <span class="pill">8px grid</span>
+      <span class="pill">tabular nums</span>
+      <span class="pill"><b>Human</b> · Frog · Ultra</span>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <!-- 00 NORTH STAR -->
+  <section id="north">
+    <div class="sec-head"><span class="sec-num">00</span><div><h2 class="sec-title">North star</h2></div></div>
+    <p class="northstar">The driest, most rigorous instrument you’ve ever trusted — and, unmistakably, a frog runs it.</p>
+    <p class="lead" style="margin-top:24px;color:var(--text-muted)">
+      If a lifter ever distrusts a Finding because the app “seems like a joke,” the balance is wrong. Everything below keeps the numbers credible while the frog gets to be a goofball at the edges.
+    </p>
+  </section>
+
+  <!-- 01 THE SPLIT -->
+  <section id="split">
+    <div class="sec-head"><span class="sec-num">01</span><div>
+      <h2 class="sec-title">The split — one principle</h2>
+      <p class="sec-kicker">The whole brand rides on one rule. Print it on the wall.</p>
+    </div></div>
+    <div class="callout" style="border-left-width:3px"><b>The closer to the data, the more serious. The closer to the edges, the more the frog is an idiot.</b></div>
+    <div class="spectrum" style="margin:24px 0 8px">
+      <div class="spectrum-bar" aria-hidden="true"></div>
+      <div class="spectrum-cols">
+        <div>
+          <h4 style="color:var(--text-muted)">◻ Sacred — never goofy</h4>
+          <ul>
+            <li>The logging hot path (set → save, &lt;100ms)</li>
+            <li>Charts, e1RM, timers, tabular numbers</li>
+            <li>Findings: the statistic, its confidence, its caveat</li>
+            <li>Anything a lifter makes a training decision on</li>
+          </ul>
+          <p class="label" style="margin-top:12px">Quiet · precise · tabular · brutalist.</p>
+        </div>
+        <div>
+          <h4 style="color:var(--accent-text)">◆ Playground — the frog lives here</h4>
+          <ul>
+            <li>Wordmark &amp; mascot, onboarding, empty states</li>
+            <li>Loading, PR celebrations, streaks, alerts</li>
+            <li>Errors, 404s, notifications, achievement names</li>
+            <li>The settings / about corners</li>
+          </ul>
+          <p class="label" style="margin-top:12px">Deadpan · dry · quietly absurd. Never random.</p>
+        </div>
+      </div>
+    </div>
+    <p class="note">The comedy is the contrast, delivered straight-faced next to real numbers — not the app being random.</p>
+  </section>
+
+  <!-- 02 PERSONA -->
+  <section id="persona">
+    <div class="sec-head"><span class="sec-num">02</span><div>
+      <h2 class="sec-title">The frog</h2>
+      <p class="sec-kicker">One character. A serious mark for the chrome; an expressive mascot for the playground. Both, so neither compromises.</p>
+    </div></div>
+    <div class="grid2">
+      <div class="card">
+        <span class="label">Persona · 3 lines</span>
+        <div style="display:flex;gap:20px;align-items:flex-start;margin-top:16px">
+          <svg width="96" height="96" viewBox="0 0 96 96" fill="none" aria-label="Dr. Frog mascot" style="flex:none">
+            <path d="M20 96 L34 70 L48 78 L62 70 L76 96 Z" fill="var(--surface-2)" stroke="var(--border-strong)" stroke-width="2"/>
+            <line x1="48" y1="78" x2="48" y2="96" stroke="var(--border-strong)" stroke-width="2"/>
+            <rect x="44" y="80" width="8" height="10" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="1.5"/>
+            <rect x="26" y="34" width="44" height="40" fill="var(--surface)" stroke="currentColor" stroke-width="2.5"/>
+            <rect x="26" y="22" width="16" height="16" fill="var(--surface)" stroke="currentColor" stroke-width="2.5"/>
+            <rect x="54" y="22" width="16" height="16" fill="var(--surface)" stroke="currentColor" stroke-width="2.5"/>
+            <rect x="31" y="31" width="6" height="4" fill="var(--accent)"/><rect x="59" y="31" width="6" height="4" fill="var(--accent)"/>
+            <line x1="26" y1="30" x2="42" y2="30" stroke="currentColor" stroke-width="2"/><line x1="54" y1="30" x2="70" y2="30" stroke="currentColor" stroke-width="2"/>
+            <line x1="34" y1="62" x2="62" y2="62" stroke="currentColor" stroke-width="2.5"/>
+            <rect x="6" y="52" width="22" height="28" fill="var(--surface)" stroke="var(--border-strong)" stroke-width="2"/>
+            <rect x="13" y="49" width="8" height="5" fill="var(--accent)"/>
+            <line x1="10" y1="60" x2="24" y2="60" stroke="var(--text-faint)" stroke-width="1.5"/><line x1="10" y1="66" x2="24" y2="66" stroke="var(--text-faint)" stroke-width="1.5"/><line x1="10" y1="72" x2="20" y2="72" stroke="var(--text-faint)" stroke-width="1.5"/>
+          </svg>
+          <div>
+            <p style="margin:0 0 10px"><b>Dr. Frog, PhD (unaccredited).</b> An amphibian who read every paper on autoregulation and now runs a lab out of a pond.</p>
+            <p style="margin:0 0 10px;color:var(--text-muted)">Deadpan, exacting, and quietly obsessed with your sleep data — and with whether you <em>actually</em> hit RIR&nbsp;1.</p>
+            <p style="margin:0;color:var(--text-muted)">Will present a p-value with a completely straight face, then remind you it is only a correlation.</p>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="display:flex;flex-direction:column;gap:14px">
+        <span class="label">Proof: funny while presenting a p-value</span>
+        <div class="mock">
+          <div class="mock-head"><span>◆ finding · frog voice</span><span>n=19</span></div>
+          <div class="mock-body">
+            <div class="big">Heavier on sleep.</div>
+            <p class="copy-body tl" data-h="Your top sets average +4.2% heavier after 7h+ sleep." data-f="Your top sets average +4.2% heavier after 7h+ sleep. The frog has seen the data and is nodding slowly, which for a frog is a standing ovation."></p>
+            <div class="row"><span class="muted">correlation r</span><span class="tlnum">0.61</span></div>
+            <div class="row"><span class="muted">p-value</span><span class="tlnum accent">0.007</span></div>
+            <div class="row"><span class="muted">the caveat</span><span class="muted" style="font-size:11px">correlation, not causation</span></div>
+          </div>
+        </div>
+        <p class="note">The <em>statistic</em> is sober. The <em>sentence around it</em> is the frog. Never the other way round.</p>
+      </div>
+    </div>
+
+    <h3 class="sec-title" style="font-size:19px;margin:34px 0 6px">The mark</h3>
+    <p class="note" style="margin:0 0 16px">A literal frog, seen head-on, sitting on a ground line: broad rounded body, a head that bulges into a hump over each eye, two big dark eyes with a light glint, two nostrils, one long flat mouth, two front feet, two haunches. It is a <b>color-separated potrace trace of the supplied reference art</b> (<code>docs/brand/assets/frog-logo-reference.jpg</code>, traced by <code>bun scripts/vectorize-frog-mark.ts</code> into <code>docs/brand/assets/frog-mark.svg</code>) — three flat-color layers (outline, body, eye glints) each fit with clean bezier curves, not redrawn by eye. <code>apps/web/public/icon.svg</code> and every PNG derivative are <b>generated output</b> of that vector (<code>bun scripts/gen-pwa-icons.ts</code>); never hand-edit either — re-run the two scripts if the reference art changes. See <code>docs/DECISIONS.md</code> 2026-08-06 and 2026-08-07 (the re-trace: 3&times; supersampled classify/trace for smooth curves, and the small-size fixes below).</p>
+
+    <div class="logos">
+      <div class="logo-card rec">
+        <div class="logo-stage">
+          <svg class="big-mark" width="120" height="120" viewBox="0 0 512 512" aria-label="Frog app tile">
+            <style>@media (max-width: 48px) { .fine-detail { display: none } }</style>
+            <rect id="ground" width="512" height="512" fill="#6ab347"/>
+            <g id="pad" transform="translate(15.36 105.35) scale(0.253840)">
+              <g id="mark" transform="translate(0,1187) scale(0.1,-0.1)">
+    <g fill="#131426"><path d="M8155 11244 c-191 -13 -466 -75 -662 -150 -411 -158 -803 -468 -1040
+-824 -264 -398 -374 -729 -390 -1175 -7 -219 0 -204 -143 -285 -299 -168 -713
+-484 -984 -749 -375 -369 -650 -701 -887 -1071 -388 -606 -651 -1202 -815
+-1845 -35 -138 -58 -175 -108 -175 -37 0 -372 -86 -471 -120 -332 -117 -737
+-426 -925 -705 -217 -323 -302 -565 -351 -1000 -55 -495 88 -1090 378 -1572
+51 -86 93 -161 93 -167 0 -33 -23 -36 -311 -36 -321 0 -368 -7 -465 -73 -251
+-168 -205 -557 79 -670 67 -27 67 -27 8355 -27 7367 0 8293 2 8333 15 58 20
+135 79 180 139 108 142 89 380 -40 506 -93 92 -164 110 -429 110 -270 0 -276
+4 -192 130 167 249 357 755 406 1080 29 192 26 649 -5 800 -48 235 -137 480
+-231 636 -151 252 -283 397 -540 591 -139 105 -534 287 -653 300 -130 15 -139
+33 -125 253 11 175 -1 667 -22 920 -29 351 -39 438 -65 620 -8 52 -17 122 -20
+155 -3 33 -19 134 -35 225 -16 91 -38 217 -49 280 -11 63 -52 239 -91 390
+-106 412 -100 363 -58 461 246 576 261 1208 41 1759 -111 279 -360 606 -623
+817 -278 223 -654 387 -990 433 -382 52 -773 23 -1062 -80 -332 -117 -581
+-269 -827 -505 -82 -79 -149 -135 -160 -135 -11 0 -55 11 -98 24 -173 54 -375
+99 -584 131 -150 23 -636 23 -809 0 -210 -28 -478 -89 -596 -136 -41 -16 -79
+-29 -85 -29 -5 0 -51 40 -103 88 -282 266 -522 417 -851 535 -148 53 -196 65
+-445 113 -84 16 -395 26 -525 18z m485 -788 c362 -67 647 -235 929 -548 189
+-209 284 -273 422 -284 92 -8 133 4 299 87 587 294 1255 290 1858 -13 141 -71
+193 -80 306 -54 128 30 233 114 337 268 51 76 198 224 294 296 280 210 714
+320 1045 267 275 -45 504 -143 680 -290 342 -287 500 -621 500 -1055 0 -253
+-50 -442 -186 -705 -93 -181 -95 -269 -14 -545 22 -74 52 -191 65 -259 14 -68
+37 -172 50 -230 38 -163 43 -190 59 -281 48 -276 107 -718 132 -990 33 -356
+27 -1246 -12 -1655 -28 -297 -67 -623 -79 -665 -2 -8 -12 -64 -20 -125 -23
+-159 -98 -530 -136 -670 -17 -66 -42 -165 -54 -220 -81 -361 -401 -1291 -473
+-1377 -24 -28 -24 -28 -746 -28 -606 0 -725 2 -741 14 -29 21 -33 112 -34 702
+l-1 511 -35 71 c-42 82 -108 147 -193 189 -83 41 -221 41 -304 0 -70 -34 -146
+-101 -187 -165 -56 -88 -59 -121 -59 -717 1 -555 0 -578 -32 -595 -12 -6
+-1023 -10 -2871 -10 -2725 -1 -2854 0 -2870 17 -16 17 -18 65 -23 595 -5 538
+-7 580 -25 627 -69 182 -183 265 -366 266 -169 0 -276 -70 -353 -233 l-36 -77
+-2 -578 c-2 -551 -3 -580 -20 -598 -18 -17 -49 -18 -627 -20 -483 -1 -611 2
+-623 12 -29 24 -97 180 -260 594 -76 193 -182 576 -224 805 -6 36 -20 106 -30
+155 -35 168 -67 385 -85 580 -42 449 -27 800 52 1195 19 96 39 196 43 221 27
+154 155 581 226 755 31 77 65 162 76 189 73 187 408 757 566 964 261 344 621
+724 853 900 46 36 111 85 143 110 173 133 436 305 569 374 157 81 197 109 270
+185 105 111 127 198 121 473 -5 249 10 373 66 541 103 308 337 622 590 790
+351 234 746 313 1170 234z m-5568 -6323 c16 -14 18 -34 19 -157 1 -267 27
+-644 63 -901 9 -60 21 -150 26 -200 6 -49 17 -117 25 -150 8 -33 28 -125 45
+-204 18 -80 54 -217 82 -305 27 -89 67 -218 88 -287 22 -69 66 -207 100 -305
+65 -193 69 -218 43 -232 -32 -16 -623 -22 -668 -7 -65 22 -255 244 -372 435
+-22 36 -64 103 -93 150 -186 298 -311 838 -270 1167 13 103 90 336 142 433
+148 271 307 409 613 531 137 55 132 54 157 32z m13273 -61 c462 -202 669 -550
+669 -1127 0 -239 -10 -296 -120 -640 -80 -249 -295 -607 -490 -814 -112 -119
+-74 -111 -502 -111 -464 0 -429 -19 -344 192 73 182 267 783 310 959 78 314
+102 420 118 504 9 50 27 148 40 219 39 205 103 590 119 720 8 65 20 125 26
+132 19 24 60 16 174 -34z"/><path d="M8215 9830 c-166 -22 -182 -37 -113 -107 137 -142 107 -324 -68 -409
+-137 -67 -322 23 -341 165 -12 92 -52 73 -113 -54 -84 -175 -104 -261 -105
+-435 0 -138 3 -163 24 -225 85 -250 217 -401 451 -520 227 -115 499 -111 742
+11 389 195 566 696 385 1088 -161 346 -492 533 -862 486z"/><path d="M13725 9834 c-120 -17 -132 -37 -67 -109 134 -146 95 -346 -82 -420
+-114 -48 -268 20 -322 142 -31 69 -42 73 -76 33 -132 -159 -187 -471 -122
+-695 82 -285 250 -471 513 -568 142 -52 371 -65 503 -28 259 73 465 250 557
+479 96 239 96 424 1 670 -85 221 -279 401 -505 467 -88 26 -308 42 -400 29z"/><path class="fine-detail" d="M11750 8679 c-89 -40 -170 -151 -170 -233 0 -52 34 -121 85 -173 93
+-93 206 -104 318 -33 250 158 36 561 -233 439z"/><path class="fine-detail" d="M10321 8677 c-118 -45 -183 -176 -147 -299 47 -161 200 -231 346
+-156 180 92 197 316 33 430 -55 37 -166 49 -232 25z"/><path d="M10795 6720 c-286 -4 -650 -13 -810 -19 -159 -6 -418 -16 -575 -21
+-581 -21 -789 -30 -930 -40 -80 -5 -224 -14 -320 -20 -335 -20 -419 -38 -497
+-105 -106 -91 -120 -234 -34 -353 71 -97 166 -121 411 -103 91 6 271 16 400
+21 129 6 397 17 595 25 401 16 1117 39 1805 56 639 16 1843 1 2600 -31 882
+-39 813 -42 905 42 131 119 142 267 30 387 -91 98 -100 99 -885 130 -805 32
+-1798 44 -2695 31z"/></g>
+    <g fill="#6ab347"><path d="M8175 10480 c-511 -52 -949 -353 -1203 -830 -122 -228 -165 -436
+-158 -759 6 -275 -16 -362 -121 -473 -73 -76 -113 -104 -270 -185 -133 -69
+-396 -241 -569 -374 -32 -25 -97 -74 -143 -110 -232 -176 -592 -556 -853 -900
+-158 -207 -493 -777 -566 -964 -11 -27 -45 -112 -76 -189 -71 -174 -199 -601
+-226 -755 -4 -25 -24 -125 -43 -221 -39 -196 -51 -284 -68 -515 -25 -335 17
+-854 101 -1260 10 -49 24 -119 30 -155 42 -229 148 -612 224 -805 163 -414
+231 -570 260 -594 12 -10 140 -13 623 -12 578 2 609 3 627 20 17 18 18 47 20
+598 l2 578 36 77 c77 163 184 233 353 233 183 -1 297 -84 366 -266 18 -47 20
+-89 25 -627 5 -530 7 -578 23 -595 16 -17 145 -18 2870 -17 1848 0 2859 4
+2871 10 32 17 33 40 32 595 0 596 3 629 59 717 41 64 117 131 187 165 83 41
+221 41 304 0 85 -42 151 -107 193 -189 l35 -71 1 -511 c1 -590 5 -681 34 -702
+16 -12 135 -14 741 -14 833 0 740 -17 806 150 183 465 347 963 413 1255 12 55
+37 154 54 220 38 140 113 511 136 670 8 61 18 117 20 125 12 42 51 368 79 665
+39 409 45 1299 12 1655 -25 272 -84 714 -132 990 -16 91 -21 118 -59 281 -13
+58 -36 162 -50 230 -13 68 -43 185 -65 259 -81 276 -79 364 14 545 205 396
+242 756 119 1150 -110 352 -457 706 -802 819 -341 111 -527 122 -841 50 -308
+-70 -650 -295 -809 -532 -104 -154 -209 -238 -337 -268 -113 -26 -165 -17
+-306 54 -603 303 -1271 307 -1858 13 -166 -83 -207 -95 -299 -87 -138 11 -233
+75 -422 284 -204 226 -343 330 -594 444 -239 108 -532 155 -800 128z m357
+-666 c501 -129 760 -707 529 -1178 -206 -418 -708 -595 -1111 -391 -234 119
+-366 270 -451 520 -40 116 -35 344 10 480 61 185 134 316 162 288 18 -18 48
+-2 59 32 29 86 174 185 274 185 39 0 47 4 58 27 27 57 307 80 470 37z m5593
+-9 c226 -66 420 -246 505 -467 95 -246 95 -431 -1 -670 -92 -229 -298 -406
+-557 -479 -132 -37 -361 -24 -503 28 -263 97 -431 283 -513 568 -34 117 -37
+300 -6 420 33 131 133 314 165 301 16 -6 37 18 54 60 30 76 202 194 283 194
+42 0 50 3 60 25 28 62 332 74 513 20z m-2190 -1119 c186 -78 215 -341 48 -446
+-112 -71 -225 -60 -318 33 -81 82 -100 155 -65 249 50 133 215 214 335 164z
+m-1382 -34 c164 -114 147 -338 -33 -430 -258 -132 -493 223 -271 409 84 71
+218 80 304 21z m2127 -1937 c357 -7 1243 -41 1428 -55 149 -12 202 -32 267
+-101 112 -120 101 -268 -30 -387 -92 -84 -23 -81 -905 -42 -757 32 -1961 47
+-2600 31 -688 -17 -1404 -40 -1805 -56 -198 -8 -466 -19 -595 -25 -129 -5
+-309 -15 -400 -21 -245 -18 -340 6 -411 103 -86 119 -72 262 34 353 78 67 162
+85 497 105 96 6 240 15 320 20 141 10 349 19 930 40 157 5 416 15 575 21 623
+25 1759 30 2695 14z"/>
+<path d="M2915 4101 c-160 -64 -205 -88 -301 -160 -328 -245 -510 -705 -449
+-1136 50 -357 136 -629 265 -835 29 -47 71 -114 93 -150 117 -191 307 -413
+372 -435 45 -15 636 -9 668 7 26 14 22 39 -43 232 -34 98 -78 236 -100 305
+-21 69 -61 198 -88 287 -28 88 -64 225 -82 305 -17 79 -37 171 -45 204 -8 33
+-19 101 -25 150 -5 50 -17 140 -26 200 -36 257 -62 634 -63 901 -1 123 -3 143
+-19 157 -25 22 -20 23 -157 -32z"/>
+<path d="M16171 4106 c-6 -7 -18 -67 -26 -132 -16 -130 -80 -515 -119 -720
+-13 -71 -31 -169 -40 -219 -16 -84 -40 -190 -118 -504 -43 -176 -237 -777
+-310 -959 -85 -211 -120 -192 344 -192 428 0 390 -8 502 111 195 207 410 565
+490 814 110 344 120 401 120 640 0 577 -207 925 -669 1127 -114 50 -155 58
+-174 34z"/></g>
+    <g fill="#ffffff"><path d="M13423 9710 c-89 -55 -153 -120 -153 -157 0 -31 16 -29 47 7 35 42
+46 38 94 -27 24 -32 48 -62 56 -66 7 -4 13 -14 13 -21 0 -7 11 -23 25 -36 24
+-23 24 -23 83 36 74 74 83 107 46 170 -29 49 -50 64 -88 64 -31 0 -35 25 -6
+40 11 6 20 17 20 25 0 30 -56 15 -137 -35z"/>
+<path d="M7887 9716 c-114 -55 -167 -126 -167 -223 0 -57 44 -127 88 -139 36
+-10 40 5 9 32 -16 13 -25 29 -22 34 4 6 18 0 37 -15 16 -14 38 -25 49 -25 12
+0 19 -7 19 -19 0 -23 30 -35 61 -26 16 5 18 9 8 21 -13 16 -1 30 52 59 35 19
+79 72 79 95 0 29 11 50 26 50 8 0 14 7 14 15 0 8 5 15 10 15 6 0 10 7 10 15 0
+8 -4 15 -10 15 -5 0 -16 16 -24 35 -14 33 -52 53 -40 20 7 -17 -4 -19 -26 -5
+-10 6 -11 10 -2 10 19 0 14 25 -11 48 -33 31 -79 27 -160 -12z"/></g>
+    </g>
+            </g>
+          </svg>
+          <div class="tiny">
+            <svg class="logo-16" viewBox="0 0 512 512" aria-label="Frog favicon at 16px">
+                <rect id="ground" width="512" height="512" fill="#6ab347"/>
+                <g id="pad" transform="translate(15.36 105.35) scale(0.253840)">
+                  <g id="mark" transform="translate(0,1187) scale(0.1,-0.1)">
+    <g fill="#131426"><path d="M8155 11244 c-191 -13 -466 -75 -662 -150 -411 -158 -803 -468 -1040
+-824 -264 -398 -374 -729 -390 -1175 -7 -219 0 -204 -143 -285 -299 -168 -713
+-484 -984 -749 -375 -369 -650 -701 -887 -1071 -388 -606 -651 -1202 -815
+-1845 -35 -138 -58 -175 -108 -175 -37 0 -372 -86 -471 -120 -332 -117 -737
+-426 -925 -705 -217 -323 -302 -565 -351 -1000 -55 -495 88 -1090 378 -1572
+51 -86 93 -161 93 -167 0 -33 -23 -36 -311 -36 -321 0 -368 -7 -465 -73 -251
+-168 -205 -557 79 -670 67 -27 67 -27 8355 -27 7367 0 8293 2 8333 15 58 20
+135 79 180 139 108 142 89 380 -40 506 -93 92 -164 110 -429 110 -270 0 -276
+4 -192 130 167 249 357 755 406 1080 29 192 26 649 -5 800 -48 235 -137 480
+-231 636 -151 252 -283 397 -540 591 -139 105 -534 287 -653 300 -130 15 -139
+33 -125 253 11 175 -1 667 -22 920 -29 351 -39 438 -65 620 -8 52 -17 122 -20
+155 -3 33 -19 134 -35 225 -16 91 -38 217 -49 280 -11 63 -52 239 -91 390
+-106 412 -100 363 -58 461 246 576 261 1208 41 1759 -111 279 -360 606 -623
+817 -278 223 -654 387 -990 433 -382 52 -773 23 -1062 -80 -332 -117 -581
+-269 -827 -505 -82 -79 -149 -135 -160 -135 -11 0 -55 11 -98 24 -173 54 -375
+99 -584 131 -150 23 -636 23 -809 0 -210 -28 -478 -89 -596 -136 -41 -16 -79
+-29 -85 -29 -5 0 -51 40 -103 88 -282 266 -522 417 -851 535 -148 53 -196 65
+-445 113 -84 16 -395 26 -525 18z m485 -788 c362 -67 647 -235 929 -548 189
+-209 284 -273 422 -284 92 -8 133 4 299 87 587 294 1255 290 1858 -13 141 -71
+193 -80 306 -54 128 30 233 114 337 268 51 76 198 224 294 296 280 210 714
+320 1045 267 275 -45 504 -143 680 -290 342 -287 500 -621 500 -1055 0 -253
+-50 -442 -186 -705 -93 -181 -95 -269 -14 -545 22 -74 52 -191 65 -259 14 -68
+37 -172 50 -230 38 -163 43 -190 59 -281 48 -276 107 -718 132 -990 33 -356
+27 -1246 -12 -1655 -28 -297 -67 -623 -79 -665 -2 -8 -12 -64 -20 -125 -23
+-159 -98 -530 -136 -670 -17 -66 -42 -165 -54 -220 -81 -361 -401 -1291 -473
+-1377 -24 -28 -24 -28 -746 -28 -606 0 -725 2 -741 14 -29 21 -33 112 -34 702
+l-1 511 -35 71 c-42 82 -108 147 -193 189 -83 41 -221 41 -304 0 -70 -34 -146
+-101 -187 -165 -56 -88 -59 -121 -59 -717 1 -555 0 -578 -32 -595 -12 -6
+-1023 -10 -2871 -10 -2725 -1 -2854 0 -2870 17 -16 17 -18 65 -23 595 -5 538
+-7 580 -25 627 -69 182 -183 265 -366 266 -169 0 -276 -70 -353 -233 l-36 -77
+-2 -578 c-2 -551 -3 -580 -20 -598 -18 -17 -49 -18 -627 -20 -483 -1 -611 2
+-623 12 -29 24 -97 180 -260 594 -76 193 -182 576 -224 805 -6 36 -20 106 -30
+155 -35 168 -67 385 -85 580 -42 449 -27 800 52 1195 19 96 39 196 43 221 27
+154 155 581 226 755 31 77 65 162 76 189 73 187 408 757 566 964 261 344 621
+724 853 900 46 36 111 85 143 110 173 133 436 305 569 374 157 81 197 109 270
+185 105 111 127 198 121 473 -5 249 10 373 66 541 103 308 337 622 590 790
+351 234 746 313 1170 234z m-5568 -6323 c16 -14 18 -34 19 -157 1 -267 27
+-644 63 -901 9 -60 21 -150 26 -200 6 -49 17 -117 25 -150 8 -33 28 -125 45
+-204 18 -80 54 -217 82 -305 27 -89 67 -218 88 -287 22 -69 66 -207 100 -305
+65 -193 69 -218 43 -232 -32 -16 -623 -22 -668 -7 -65 22 -255 244 -372 435
+-22 36 -64 103 -93 150 -186 298 -311 838 -270 1167 13 103 90 336 142 433
+148 271 307 409 613 531 137 55 132 54 157 32z m13273 -61 c462 -202 669 -550
+669 -1127 0 -239 -10 -296 -120 -640 -80 -249 -295 -607 -490 -814 -112 -119
+-74 -111 -502 -111 -464 0 -429 -19 -344 192 73 182 267 783 310 959 78 314
+102 420 118 504 9 50 27 148 40 219 39 205 103 590 119 720 8 65 20 125 26
+132 19 24 60 16 174 -34z"/><path d="M8215 9830 c-166 -22 -182 -37 -113 -107 137 -142 107 -324 -68 -409
+-137 -67 -322 23 -341 165 -12 92 -52 73 -113 -54 -84 -175 -104 -261 -105
+-435 0 -138 3 -163 24 -225 85 -250 217 -401 451 -520 227 -115 499 -111 742
+11 389 195 566 696 385 1088 -161 346 -492 533 -862 486z"/><path d="M13725 9834 c-120 -17 -132 -37 -67 -109 134 -146 95 -346 -82 -420
+-114 -48 -268 20 -322 142 -31 69 -42 73 -76 33 -132 -159 -187 -471 -122
+-695 82 -285 250 -471 513 -568 142 -52 371 -65 503 -28 259 73 465 250 557
+479 96 239 96 424 1 670 -85 221 -279 401 -505 467 -88 26 -308 42 -400 29z"/><path class="fine-detail" style="display:none" d="M11750 8679 c-89 -40 -170 -151 -170 -233 0 -52 34 -121 85 -173 93
+-93 206 -104 318 -33 250 158 36 561 -233 439z"/><path class="fine-detail" style="display:none" d="M10321 8677 c-118 -45 -183 -176 -147 -299 47 -161 200 -231 346
+-156 180 92 197 316 33 430 -55 37 -166 49 -232 25z"/><path d="M10795 6720 c-286 -4 -650 -13 -810 -19 -159 -6 -418 -16 -575 -21
+-581 -21 -789 -30 -930 -40 -80 -5 -224 -14 -320 -20 -335 -20 -419 -38 -497
+-105 -106 -91 -120 -234 -34 -353 71 -97 166 -121 411 -103 91 6 271 16 400
+21 129 6 397 17 595 25 401 16 1117 39 1805 56 639 16 1843 1 2600 -31 882
+-39 813 -42 905 42 131 119 142 267 30 387 -91 98 -100 99 -885 130 -805 32
+-1798 44 -2695 31z"/></g>
+    <g fill="#6ab347"><path d="M8175 10480 c-511 -52 -949 -353 -1203 -830 -122 -228 -165 -436
+-158 -759 6 -275 -16 -362 -121 -473 -73 -76 -113 -104 -270 -185 -133 -69
+-396 -241 -569 -374 -32 -25 -97 -74 -143 -110 -232 -176 -592 -556 -853 -900
+-158 -207 -493 -777 -566 -964 -11 -27 -45 -112 -76 -189 -71 -174 -199 -601
+-226 -755 -4 -25 -24 -125 -43 -221 -39 -196 -51 -284 -68 -515 -25 -335 17
+-854 101 -1260 10 -49 24 -119 30 -155 42 -229 148 -612 224 -805 163 -414
+231 -570 260 -594 12 -10 140 -13 623 -12 578 2 609 3 627 20 17 18 18 47 20
+598 l2 578 36 77 c77 163 184 233 353 233 183 -1 297 -84 366 -266 18 -47 20
+-89 25 -627 5 -530 7 -578 23 -595 16 -17 145 -18 2870 -17 1848 0 2859 4
+2871 10 32 17 33 40 32 595 0 596 3 629 59 717 41 64 117 131 187 165 83 41
+221 41 304 0 85 -42 151 -107 193 -189 l35 -71 1 -511 c1 -590 5 -681 34 -702
+16 -12 135 -14 741 -14 833 0 740 -17 806 150 183 465 347 963 413 1255 12 55
+37 154 54 220 38 140 113 511 136 670 8 61 18 117 20 125 12 42 51 368 79 665
+39 409 45 1299 12 1655 -25 272 -84 714 -132 990 -16 91 -21 118 -59 281 -13
+58 -36 162 -50 230 -13 68 -43 185 -65 259 -81 276 -79 364 14 545 205 396
+242 756 119 1150 -110 352 -457 706 -802 819 -341 111 -527 122 -841 50 -308
+-70 -650 -295 -809 -532 -104 -154 -209 -238 -337 -268 -113 -26 -165 -17
+-306 54 -603 303 -1271 307 -1858 13 -166 -83 -207 -95 -299 -87 -138 11 -233
+75 -422 284 -204 226 -343 330 -594 444 -239 108 -532 155 -800 128z m357
+-666 c501 -129 760 -707 529 -1178 -206 -418 -708 -595 -1111 -391 -234 119
+-366 270 -451 520 -40 116 -35 344 10 480 61 185 134 316 162 288 18 -18 48
+-2 59 32 29 86 174 185 274 185 39 0 47 4 58 27 27 57 307 80 470 37z m5593
+-9 c226 -66 420 -246 505 -467 95 -246 95 -431 -1 -670 -92 -229 -298 -406
+-557 -479 -132 -37 -361 -24 -503 28 -263 97 -431 283 -513 568 -34 117 -37
+300 -6 420 33 131 133 314 165 301 16 -6 37 18 54 60 30 76 202 194 283 194
+42 0 50 3 60 25 28 62 332 74 513 20z m-2190 -1119 c186 -78 215 -341 48 -446
+-112 -71 -225 -60 -318 33 -81 82 -100 155 -65 249 50 133 215 214 335 164z
+m-1382 -34 c164 -114 147 -338 -33 -430 -258 -132 -493 223 -271 409 84 71
+218 80 304 21z m2127 -1937 c357 -7 1243 -41 1428 -55 149 -12 202 -32 267
+-101 112 -120 101 -268 -30 -387 -92 -84 -23 -81 -905 -42 -757 32 -1961 47
+-2600 31 -688 -17 -1404 -40 -1805 -56 -198 -8 -466 -19 -595 -25 -129 -5
+-309 -15 -400 -21 -245 -18 -340 6 -411 103 -86 119 -72 262 34 353 78 67 162
+85 497 105 96 6 240 15 320 20 141 10 349 19 930 40 157 5 416 15 575 21 623
+25 1759 30 2695 14z"/>
+<path d="M2915 4101 c-160 -64 -205 -88 -301 -160 -328 -245 -510 -705 -449
+-1136 50 -357 136 -629 265 -835 29 -47 71 -114 93 -150 117 -191 307 -413
+372 -435 45 -15 636 -9 668 7 26 14 22 39 -43 232 -34 98 -78 236 -100 305
+-21 69 -61 198 -88 287 -28 88 -64 225 -82 305 -17 79 -37 171 -45 204 -8 33
+-19 101 -25 150 -5 50 -17 140 -26 200 -36 257 -62 634 -63 901 -1 123 -3 143
+-19 157 -25 22 -20 23 -157 -32z"/>
+<path d="M16171 4106 c-6 -7 -18 -67 -26 -132 -16 -130 -80 -515 -119 -720
+-13 -71 -31 -169 -40 -219 -16 -84 -40 -190 -118 -504 -43 -176 -237 -777
+-310 -959 -85 -211 -120 -192 344 -192 428 0 390 -8 502 111 195 207 410 565
+490 814 110 344 120 401 120 640 0 577 -207 925 -669 1127 -114 50 -155 58
+-174 34z"/></g>
+    <g fill="#ffffff"><path d="M13423 9710 c-89 -55 -153 -120 -153 -157 0 -31 16 -29 47 7 35 42
+46 38 94 -27 24 -32 48 -62 56 -66 7 -4 13 -14 13 -21 0 -7 11 -23 25 -36 24
+-23 24 -23 83 36 74 74 83 107 46 170 -29 49 -50 64 -88 64 -31 0 -35 25 -6
+40 11 6 20 17 20 25 0 30 -56 15 -137 -35z"/>
+<path d="M7887 9716 c-114 -55 -167 -126 -167 -223 0 -57 44 -127 88 -139 36
+-10 40 5 9 32 -16 13 -25 29 -22 34 4 6 18 0 37 -15 16 -14 38 -25 49 -25 12
+0 19 -7 19 -19 0 -23 30 -35 61 -26 16 5 18 9 8 21 -13 16 -1 30 52 59 35 19
+79 72 79 95 0 29 11 50 26 50 8 0 14 7 14 15 0 8 5 15 10 15 6 0 10 7 10 15 0
+8 -4 15 -10 15 -5 0 -16 16 -24 35 -14 33 -52 53 -40 20 7 -17 -4 -19 -26 -5
+-10 6 -11 10 -2 10 19 0 14 25 -11 48 -33 31 -79 27 -160 -12z"/></g>
+    </g>
+                </g>
+              </svg>
+            <small>16px</small>
+          </div>
+        </div>
+        <div class="logo-meta">
+          <h4>Standalone tile</h4>
+          <p>Browser favicon, PWA icon, iOS home screen. Ships on the reference art's own grass green <code>#6ab347</code> with the frog as <b>flat navy line art</b> — outline, eyes, nostrils and mouth in <code>#131426</code>, both values sampled straight out of the reference. The body carries the <em>same</em> green as the ground, so only the outline separates them; the eye glints are the one light note (<code>#ffffff</code>) against the dark eyes. <b>Ground and line work move together</b> — flipping one alone breaks the mark. Being <b>filled vector shapes, not stroked lines</b>, the mark has no thin-stroke-goes-sub-pixel problem at small sizes, but the two nostril dots and the mouth line still go to mush under ~48px, so <code>icon.svg</code> carries a <code>@media (max-width: 48px)</code> rule that hides the nostrils (tagged <code>class="fine-detail"</code> on their two <code>&lt;path&gt;</code>s — found automatically by measuring each outline path's own bounding-box diagonal, not hand-picked) — the 16px sample alongside is the same geometry, just smaller, with those two paths hard-hidden inline (a media query inside an inline SVG would resolve against this page's viewport, not the 16px box) so it renders what a real 16px favicon shows: nostrils dropped. 0px radius: iOS rounds its own corners, so never bake one in.</p>
+        </div>
+      </div>
+
+      <div class="logo-card">
+        <div class="logo-stage">
+          <svg class="big-mark" width="120" height="120" viewBox="0 0 1896 1187" aria-label="Frog in-app mark">
+            <g transform="translate(0,1187) scale(0.1,-0.1)">
+        <g fill="#131426">
+          <path d="M8155 11244 c-191 -13 -466 -75 -662 -150 -411 -158 -803 -468 -1040 -824 -264 -398 -374 -729 -390 -1175 -7 -219 0 -204 -143 -285 -299 -168 -713 -484 -984 -749 -375 -369 -650 -701 -887 -1071 -388 -606 -651 -1202 -815 -1845 -35 -138 -58 -175 -108 -175 -37 0 -372 -86 -471 -120 -332 -117 -737 -426 -925 -705 -217 -323 -302 -565 -351 -1000 -55 -495 88 -1090 378 -1572 51 -86 93 -161 93 -167 0 -33 -23 -36 -311 -36 -321 0 -368 -7 -465 -73 -251 -168 -205 -557 79 -670 67 -27 67 -27 8355 -27 7367 0 8293 2 8333 15 58 20 135 79 180 139 108 142 89 380 -40 506 -93 92 -164 110 -429 110 -270 0 -276 4 -192 130 167 249 357 755 406 1080 29 192 26 649 -5 800 -48 235 -137 480 -231 636 -151 252 -283 397 -540 591 -139 105 -534 287 -653 300 -130 15 -139 33 -125 253 11 175 -1 667 -22 920 -29 351 -39 438 -65 620 -8 52 -17 122 -20 155 -3 33 -19 134 -35 225 -16 91 -38 217 -49 280 -11 63 -52 239 -91 390 -106 412 -100 363 -58 461 246 576 261 1208 41 1759 -111 279 -360 606 -623 817 -278 223 -654 387 -990 433 -382 52 -773 23 -1062 -80 -332 -117 -581 -269 -827 -505 -82 -79 -149 -135 -160 -135 -11 0 -55 11 -98 24 -173 54 -375 99 -584 131 -150 23 -636 23 -809 0 -210 -28 -478 -89 -596 -136 -41 -16 -79 -29 -85 -29 -5 0 -51 40 -103 88 -282 266 -522 417 -851 535 -148 53 -196 65 -445 113 -84 16 -395 26 -525 18z m485 -788 c362 -67 647 -235 929 -548 189 -209 284 -273 422 -284 92 -8 133 4 299 87 587 294 1255 290 1858 -13 141 -71 193 -80 306 -54 128 30 233 114 337 268 51 76 198 224 294 296 280 210 714 320 1045 267 275 -45 504 -143 680 -290 342 -287 500 -621 500 -1055 0 -253 -50 -442 -186 -705 -93 -181 -95 -269 -14 -545 22 -74 52 -191 65 -259 14 -68 37 -172 50 -230 38 -163 43 -190 59 -281 48 -276 107 -718 132 -990 33 -356 27 -1246 -12 -1655 -28 -297 -67 -623 -79 -665 -2 -8 -12 -64 -20 -125 -23 -159 -98 -530 -136 -670 -17 -66 -42 -165 -54 -220 -81 -361 -401 -1291 -473 -1377 -24 -28 -24 -28 -746 -28 -606 0 -725 2 -741 14 -29 21 -33 112 -34 702 l-1 511 -35 71 c-42 82 -108 147 -193 189 -83 41 -221 41 -304 0 -70 -34 -146 -101 -187 -165 -56 -88 -59 -121 -59 -717 1 -555 0 -578 -32 -595 -12 -6 -1023 -10 -2871 -10 -2725 -1 -2854 0 -2870 17 -16 17 -18 65 -23 595 -5 538 -7 580 -25 627 -69 182 -183 265 -366 266 -169 0 -276 -70 -353 -233 l-36 -77 -2 -578 c-2 -551 -3 -580 -20 -598 -18 -17 -49 -18 -627 -20 -483 -1 -611 2 -623 12 -29 24 -97 180 -260 594 -76 193 -182 576 -224 805 -6 36 -20 106 -30 155 -35 168 -67 385 -85 580 -42 449 -27 800 52 1195 19 96 39 196 43 221 27 154 155 581 226 755 31 77 65 162 76 189 73 187 408 757 566 964 261 344 621 724 853 900 46 36 111 85 143 110 173 133 436 305 569 374 157 81 197 109 270 185 105 111 127 198 121 473 -5 249 10 373 66 541 103 308 337 622 590 790 351 234 746 313 1170 234z m-5568 -6323 c16 -14 18 -34 19 -157 1 -267 27 -644 63 -901 9 -60 21 -150 26 -200 6 -49 17 -117 25 -150 8 -33 28 -125 45 -204 18 -80 54 -217 82 -305 27 -89 67 -218 88 -287 22 -69 66 -207 100 -305 65 -193 69 -218 43 -232 -32 -16 -623 -22 -668 -7 -65 22 -255 244 -372 435 -22 36 -64 103 -93 150 -186 298 -311 838 -270 1167 13 103 90 336 142 433 148 271 307 409 613 531 137 55 132 54 157 32z m13273 -61 c462 -202 669 -550 669 -1127 0 -239 -10 -296 -120 -640 -80 -249 -295 -607 -490 -814 -112 -119 -74 -111 -502 -111 -464 0 -429 -19 -344 192 73 182 267 783 310 959 78 314 102 420 118 504 9 50 27 148 40 219 39 205 103 590 119 720 8 65 20 125 26 132 19 24 60 16 174 -34z" />
+          <path d="M8215 9830 c-166 -22 -182 -37 -113 -107 137 -142 107 -324 -68 -409 -137 -67 -322 23 -341 165 -12 92 -52 73 -113 -54 -84 -175 -104 -261 -105 -435 0 -138 3 -163 24 -225 85 -250 217 -401 451 -520 227 -115 499 -111 742 11 389 195 566 696 385 1088 -161 346 -492 533 -862 486z" />
+          <path d="M13725 9834 c-120 -17 -132 -37 -67 -109 134 -146 95 -346 -82 -420 -114 -48 -268 20 -322 142 -31 69 -42 73 -76 33 -132 -159 -187 -471 -122 -695 82 -285 250 -471 513 -568 142 -52 371 -65 503 -28 259 73 465 250 557 479 96 239 96 424 1 670 -85 221 -279 401 -505 467 -88 26 -308 42 -400 29z" />
+          <path d="M11750 8679 c-89 -40 -170 -151 -170 -233 0 -52 34 -121 85 -173 93 -93 206 -104 318 -33 250 158 36 561 -233 439z" />
+          <path d="M10321 8677 c-118 -45 -183 -176 -147 -299 47 -161 200 -231 346 -156 180 92 197 316 33 430 -55 37 -166 49 -232 25z" />
+          <path d="M10795 6720 c-286 -4 -650 -13 -810 -19 -159 -6 -418 -16 -575 -21 -581 -21 -789 -30 -930 -40 -80 -5 -224 -14 -320 -20 -335 -20 -419 -38 -497 -105 -106 -91 -120 -234 -34 -353 71 -97 166 -121 411 -103 91 6 271 16 400 21 129 6 397 17 595 25 401 16 1117 39 1805 56 639 16 1843 1 2600 -31 882 -39 813 -42 905 42 131 119 142 267 30 387 -91 98 -100 99 -885 130 -805 32 -1798 44 -2695 31z" />
+        </g>
+        <g fill="var(--accent)">
+          <path d="M8175 10480 c-511 -52 -949 -353 -1203 -830 -122 -228 -165 -436 -158 -759 6 -275 -16 -362 -121 -473 -73 -76 -113 -104 -270 -185 -133 -69 -396 -241 -569 -374 -32 -25 -97 -74 -143 -110 -232 -176 -592 -556 -853 -900 -158 -207 -493 -777 -566 -964 -11 -27 -45 -112 -76 -189 -71 -174 -199 -601 -226 -755 -4 -25 -24 -125 -43 -221 -39 -196 -51 -284 -68 -515 -25 -335 17 -854 101 -1260 10 -49 24 -119 30 -155 42 -229 148 -612 224 -805 163 -414 231 -570 260 -594 12 -10 140 -13 623 -12 578 2 609 3 627 20 17 18 18 47 20 598 l2 578 36 77 c77 163 184 233 353 233 183 -1 297 -84 366 -266 18 -47 20 -89 25 -627 5 -530 7 -578 23 -595 16 -17 145 -18 2870 -17 1848 0 2859 4 2871 10 32 17 33 40 32 595 0 596 3 629 59 717 41 64 117 131 187 165 83 41 221 41 304 0 85 -42 151 -107 193 -189 l35 -71 1 -511 c1 -590 5 -681 34 -702 16 -12 135 -14 741 -14 833 0 740 -17 806 150 183 465 347 963 413 1255 12 55 37 154 54 220 38 140 113 511 136 670 8 61 18 117 20 125 12 42 51 368 79 665 39 409 45 1299 12 1655 -25 272 -84 714 -132 990 -16 91 -21 118 -59 281 -13 58 -36 162 -50 230 -13 68 -43 185 -65 259 -81 276 -79 364 14 545 205 396 242 756 119 1150 -110 352 -457 706 -802 819 -341 111 -527 122 -841 50 -308 -70 -650 -295 -809 -532 -104 -154 -209 -238 -337 -268 -113 -26 -165 -17 -306 54 -603 303 -1271 307 -1858 13 -166 -83 -207 -95 -299 -87 -138 11 -233 75 -422 284 -204 226 -343 330 -594 444 -239 108 -532 155 -800 128z m357 -666 c501 -129 760 -707 529 -1178 -206 -418 -708 -595 -1111 -391 -234 119 -366 270 -451 520 -40 116 -35 344 10 480 61 185 134 316 162 288 18 -18 48 -2 59 32 29 86 174 185 274 185 39 0 47 4 58 27 27 57 307 80 470 37z m5593 -9 c226 -66 420 -246 505 -467 95 -246 95 -431 -1 -670 -92 -229 -298 -406 -557 -479 -132 -37 -361 -24 -503 28 -263 97 -431 283 -513 568 -34 117 -37 300 -6 420 33 131 133 314 165 301 16 -6 37 18 54 60 30 76 202 194 283 194 42 0 50 3 60 25 28 62 332 74 513 20z m-2190 -1119 c186 -78 215 -341 48 -446 -112 -71 -225 -60 -318 33 -81 82 -100 155 -65 249 50 133 215 214 335 164z m-1382 -34 c164 -114 147 -338 -33 -430 -258 -132 -493 223 -271 409 84 71 218 80 304 21z m2127 -1937 c357 -7 1243 -41 1428 -55 149 -12 202 -32 267 -101 112 -120 101 -268 -30 -387 -92 -84 -23 -81 -905 -42 -757 32 -1961 47 -2600 31 -688 -17 -1404 -40 -1805 -56 -198 -8 -466 -19 -595 -25 -129 -5 -309 -15 -400 -21 -245 -18 -340 6 -411 103 -86 119 -72 262 34 353 78 67 162 85 497 105 96 6 240 15 320 20 141 10 349 19 930 40 157 5 416 15 575 21 623 25 1759 30 2695 14z" />
+          <path d="M2915 4101 c-160 -64 -205 -88 -301 -160 -328 -245 -510 -705 -449 -1136 50 -357 136 -629 265 -835 29 -47 71 -114 93 -150 117 -191 307 -413 372 -435 45 -15 636 -9 668 7 26 14 22 39 -43 232 -34 98 -78 236 -100 305 -21 69 -61 198 -88 287 -28 88 -64 225 -82 305 -17 79 -37 171 -45 204 -8 33 -19 101 -25 150 -5 50 -17 140 -26 200 -36 257 -62 634 -63 901 -1 123 -3 143 -19 157 -25 22 -20 23 -157 -32z" />
+          <path d="M16171 4106 c-6 -7 -18 -67 -26 -132 -16 -130 -80 -515 -119 -720 -13 -71 -31 -169 -40 -219 -16 -84 -40 -190 -118 -504 -43 -176 -237 -777 -310 -959 -85 -211 -120 -192 344 -192 428 0 390 -8 502 111 195 207 410 565 490 814 110 344 120 401 120 640 0 577 -207 925 -669 1127 -114 50 -155 58 -174 34z" />
+        </g>
+        <g fill="#ECEEED">
+          <path d="M13423 9710 c-89 -55 -153 -120 -153 -157 0 -31 16 -29 47 7 35 42 46 38 94 -27 24 -32 48 -62 56 -66 7 -4 13 -14 13 -21 0 -7 11 -23 25 -36 24 -23 24 -23 83 36 74 74 83 107 46 170 -29 49 -50 64 -88 64 -31 0 -35 25 -6 40 11 6 20 17 20 25 0 30 -56 15 -137 -35z" />
+          <path d="M7887 9716 c-114 -55 -167 -126 -167 -223 0 -57 44 -127 88 -139 36 -10 40 5 9 32 -16 13 -25 29 -22 34 4 6 18 0 37 -15 16 -14 38 -25 49 -25 12 0 19 -7 19 -19 0 -23 30 -35 61 -26 16 5 18 9 8 21 -13 16 -1 30 52 59 35 19 79 72 79 95 0 29 11 50 26 50 8 0 14 7 14 15 0 8 5 15 10 15 6 0 10 7 10 15 0 8 -4 15 -10 15 -5 0 -16 16 -24 35 -14 33 -52 53 -40 20 7 -17 -4 -19 -26 -5 -10 6 -11 10 -2 10 19 0 14 25 -11 48 -33 31 -79 27 -160 -12z" />
+        </g>
+            </g>
+          </svg>
+        </div>
+        <div class="logo-meta">
+          <h4>In-app mark</h4>
+          <p>Sidebar and sign-in, at 20&ndash;32px. Same geometry as the tile's mark, recolored: outline/eyes/nostrils/mouth a fixed reference navy (<code>#131426</code>), body <code>var(--accent)</code> so it still follows the theme. The eye glints stay a fixed light sage (<code>#ECEEED</code>) &mdash; a glint has to read as light regardless of theme. The outline used to be <code>currentColor</code> (following the theme like the body); a captain-reviewed A/B/C/D comparison rendered at 20/32/64px on the real dark-theme surface (<code>docs/DECISIONS.md</code>) showed the fixed navy reads perfectly fine there &mdash; the green body carries the mark's legibility on its own, so only the outline needed to stop following the theme. <b>The mark's body still follows the app chrome; the outline and glints are fixed hex, same as the tile.</b> Component: <code>components/frog-mark.tsx</code>.</p>
+        </div>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:16px">
+      <b>Tiles center the mark with a little breathing room, not a tight crop.</b> The mark is landscape (a sitting frog is wider than tall), so every tile
+      scales it to <b>94%</b> of the square on its longer axis and centers it, leaving margin on the shorter axis rather than cropping anything off (was 90% — tightened for small-size legibility, see docs/DECISIONS.md).
+      <code>apple-touch-icon</code> is exactly 180&nbsp;&times;&nbsp;180 and fully opaque (iOS discards alpha and composites on black) with no baked corner radius.
+      <b><code>maskable</code> is the exception</b> and shrinks further: platforms crop it to an arbitrary shape and only the inner-80% circle is guaranteed,
+      so it is scaled to fit the mark's own bounding-box diagonal inside that circle, with half a pixel of margin for antialiasing.
+      <code>scripts/gen-pwa-icons.ts</code> derives both from the mark's measured viewBox, so a redrawn mark reflows both tiles automatically.
+    </div>
+  </section>
+
+  <!-- 03 LANGUAGE REGISTERS -->
+  <section id="lang">
+    <div class="sec-head"><span class="sec-num">03</span><div>
+      <h2 class="sec-title">Language registers — Human · Frog · Ultrafrog</h2>
+      <p class="sec-kicker">One setting changes how the whole app <em>talks</em> — never what it <em>reports</em>. The numbers are identical in every register; only the words around them change. Flip the switch below (or in the top bar) and watch this entire page re-voice itself.</p>
+    </div></div>
+
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:24px">
+      <div class="segment" id="langMain" role="group" aria-label="App language register">
+        <button type="button" data-reg="human" aria-pressed="false">Human</button>
+        <button type="button" data-reg="frog" aria-pressed="true">Frog</button>
+        <button type="button" data-reg="ultra" aria-pressed="false">Ultrafrog</button>
+      </div>
+      <span class="note" style="margin:0">Live — affects every sample of app copy on this page.</span>
+    </div>
+
+    <div class="reg">
+      <div class="reg-card" data-regcard="human">
+        <h4>Human</h4>
+        <p class="d">Plain, clear, zero personality. The accessibility / serious-mode escape hatch. What a lifter switches to when they want facts and nothing else.</p>
+        <div class="ex">Rest complete — 3:00 elapsed. Next: bench <span class="tlnum">100.0</span> kg.</div>
+      </div>
+      <div class="reg-card on" data-regcard="frog">
+        <h4>Frog <span style="color:var(--accent-text)">· default</span></h4>
+        <p class="d">The deadpan brand voice. Dry, exacting, too into frogs. Editorialises around the number, never on it.</p>
+        <div class="ex">Rest complete. The frog suggests you pick up the bar in <span class="tlnum">3:00</span>. Next: bench <span class="tlnum">100.0</span> kg.</div>
+      </div>
+      <div class="reg-card" data-regcard="ultra">
+        <h4>Ultrafrog</h4>
+        <p class="d">Every word becomes <em>ribbit</em> (case preserved). Numbers and units survive untouched — so all information rides on the figures. Absurd, and a live proof that the data is the only thing that matters.</p>
+        <div class="ex">Ribbit ribbit. Ribbit ribbit ribbit ribbit ribbit ribbit <span class="tlnum">3:00</span>. Ribbit: ribbit <span class="tlnum">100.0</span> kg.</div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:24px">
+      <b>The rule that makes Ultrafrog safe:</b> the transform keeps any token containing a digit, plus a whitelist of units (kg, lb, %, s, RIR, e1RM, n, ×). Everything a lifter needs to make a decision survives; everything else ribbits. This is the split principle, executed in grammar.
+    </div>
+    <p class="note">Engineering note: registers are a pure text transform at render time. Data, timers, and charts are untouched — Ultrafrog is a skin on strings, never on state. Human is also the i18n seam: real translations slot in beside the frog voice.</p>
+  </section>
+
+  <!-- 04 VOICE & WORDING -->
+  <section id="voice">
+    <div class="sec-head"><span class="sec-num">04</span><div>
+      <h2 class="sec-title">Voice &amp; wording rules</h2>
+      <p class="sec-kicker">Dry, smart, quietly absurd — a scientist who is too into frogs, delivered straight-faced next to real numbers. Never random-quirky. This is where the brand is won. Every sample below is live — switch registers up top.</p>
+    </div></div>
+
+    <div class="grid2">
+      <div class="mock">
+        <div class="mock-head"><span>◆ PR celebration</span><span>squat</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" data-h="New personal record · 172.4 kg" data-f="New personal record · 172.4 kg"></div>
+          <p class="copy-body tl" data-h="Your best squat e1RM has been updated." data-f="The frog has recorded your personal record and updated the relevant distributions. It is not impressed easily. It is, on this occasion, impressed."></p>
+          <p class="copy-nums tl" data-h="+3.1 kg over 84 days · n=19" data-f="▲ +3.1 kg over 84 days · n=19"></p>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-head"><span>◆ empty Findings</span><span>not enough data</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" data-h="Not enough data yet." data-f="The frog refuses to speculate."></div>
+          <p class="copy-body tl" data-h="You have logged 4 sessions. Findings need about 12 sessions before they are statistically meaningful. Keep logging sleep and carbs." data-f="You’ve logged 4 sessions. A correlation needs roughly 12 before the frog will put its name on it. Keep logging sleep and carbs — it is watching, it is patient, and it has nowhere else to be."></p>
+          <p class="copy-nums tl" data-h="4 of 12 sessions · 0 findings" data-f="4 / 12 sessions · 0 findings"></p>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-head"><span>◆ rest-timer done</span><span>3:00</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" data-h="Rest complete." data-f="Rest complete."></div>
+          <p class="copy-body tl" data-h="Your rest period is over. Time for your next set." data-f="Adenosine triphosphate: replenished (approximately). The frog suggests you pick up the bar. The frog is not going to lift it for you."></p>
+          <p class="copy-nums tl" data-h="elapsed 3:00 · next: bench 100.0 kg" data-f="elapsed 3:00 · next: bench 100.0 kg"></p>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-head"><span>◆ failed sync</span><span style="color:var(--err)">● offline</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" style="color:var(--err)" data-h="Sync failed." data-f="Sync failed. Your data is safe; the frog is annoyed."></div>
+          <p class="copy-body tl" data-h="2 sets could not upload and are saved on this device. Retrying every 30s. No data was lost." data-f="Two sets are stranded on this device and could not reach the lab. Retrying every 30s. Nothing was lost — the frog keeps meticulous local records, as any serious amphibian would."></p>
+          <p class="copy-nums tl" data-h="2 sets queued · retry in 0:27" data-f="2 sets queued · retry in 0:27"></p>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-head"><span>◆ notification</span><span>day 7</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" data-h="7-day streak." data-f="You logged before noon."></div>
+          <p class="copy-body tl" data-h="You have logged 7 days in a row. Keep it up. →" data-f="The frog noticed. It has said nothing, but it noticed. Consistency, n=7. →"></p>
+          <p class="copy-nums tl" data-h="streak 7 · logged 11:42" data-f="streak 7 · logged 11:42"></p>
+        </div>
+      </div>
+      <div class="mock">
+        <div class="mock-head"><span>◆ 404 / achievement</span><span>edge</span></div>
+        <div class="mock-body">
+          <div class="copy-title tl" data-h="Page not found." data-f="This page is not in the literature."></div>
+          <p class="copy-body tl" data-h="We could not find this page. Check the URL or head back home." data-f="The frog searched every folder and one lily pad. Nothing here. Achievement unlocked: “Control Group” — you visited a page with no data whatsoever."></p>
+          <p class="copy-nums tl" data-h="HTTP 404 · specimens found: 0" data-f="HTTP 404 · specimens found: 0"></p>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="blk" style="margin:32px 0 12px">Do / don’t</h3>
+    <div class="rules">
+      <div class="do">
+        <h4 style="color:var(--accent-text)">✓ Do</h4>
+        <ul>
+          <li><span class="mark">✓</span> State the real number first or last; let the frog editorialise in between.</li>
+          <li><span class="mark">✓</span> Deadpan. Understate. The frog is impressed by nodding slowly.</li>
+          <li><span class="mark">✓</span> Use real terms: e1RM, RIR, correlation, n=, p-value.</li>
+          <li><span class="mark">✓</span> Keep the caveat: “correlation, not causation.”</li>
+          <li><span class="mark">✓</span> Sentence case. Periods. One idea per line.</li>
+        </ul>
+      </div>
+      <div class="dont">
+        <h4 style="color:var(--err)">✕ Don’t</h4>
+        <ul>
+          <li><span class="mark">✕</span> Let a joke touch the figure itself.</li>
+          <li><span class="mark">✕</span> Exclaim. No “!”, no “Oops!”, no “Woohoo!”.</li>
+          <li><span class="mark">✕</span> Emoji inside data, charts, or Findings.</li>
+          <li><span class="mark">✕</span> Be zany or random. The humour is contrast, not chaos.</li>
+          <li><span class="mark">✕</span> Fake certainty — never round a caveat away.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="blk" style="margin:32px 0 12px">Glossary — human ↔ frog</h3>
+    <div class="scroll-x">
+      <table class="token-tbl">
+        <thead><tr><th>concept</th><th>human</th><th>frog</th></tr></thead>
+        <tbody>
+          <tr><td>workout</td><td>session</td><td>session / today’s experiment</td></tr>
+          <tr><td>personal record</td><td>new record</td><td>the frog is, on this occasion, impressed</td></tr>
+          <tr><td>streak</td><td>7-day streak</td><td>consistency, n=7</td></tr>
+          <tr><td>loading</td><td>loading…</td><td>the frog is thinking</td></tr>
+          <tr><td>no data</td><td>not enough data yet</td><td>the frog refuses to speculate</td></tr>
+          <tr><td>error</td><td>something went wrong</td><td>the frog is annoyed (your data is safe)</td></tr>
+          <tr><td>success</td><td>saved</td><td>recorded. the frog nods, slowly</td></tr>
+          <tr><td>settings</td><td>settings</td><td>the lab</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Number formatting is fixed regardless of register: tabular mono, decimals aligned, unit after a hair space (172.4 kg), time as m:ss, correlations to 2 dp, p-values to 3. Never localise a decimal into a comma inside the data path.</p>
+  </section>
+
+  <!-- 05 COLOR -->
+  <section id="color">
+    <div class="sec-head"><span class="sec-num">05</span><div>
+      <h2 class="sec-title">Color</h2>
+      <p class="sec-kicker">Neutral lab-ink ground so the data reads honest — and a single frog-green that is the only living thing on screen. Green doubles as semantic success: a PR is green, and the frog is pleased.</p>
+    </div></div>
+    <div class="grid2" style="align-items:start">
+      <div>
+        <h3 class="blk">Accent — Frog Green</h3>
+        <div class="ramp" role="img" aria-label="Frog green ramp 50 to 900">
+          <div class="swatch" style="background:var(--frog-50);color:#0C4D26"><small>50</small></div>
+          <div class="swatch" style="background:var(--frog-100);color:#0C4D26"><small>100</small></div>
+          <div class="swatch" style="background:var(--frog-200);color:#0C4D26"><small>200</small></div>
+          <div class="swatch" style="background:var(--frog-300);color:#0C4D26"><small>300</small></div>
+          <div class="swatch" style="background:var(--frog-400);color:#06180C"><small>400</small></div>
+          <div class="swatch" style="background:var(--frog-500);color:#06180C"><small>500</small></div>
+          <div class="swatch" style="background:var(--frog-600);color:#EAFBEF"><small>600</small></div>
+          <div class="swatch" style="background:var(--frog-700);color:#EAFBEF"><small>700</small></div>
+          <div class="swatch" style="background:var(--frog-800);color:#EAFBEF"><small>800</small></div>
+          <div class="swatch" style="background:var(--frog-900);color:#EAFBEF"><small>900</small></div>
+        </div>
+        <p class="note">Base <span class="mono">#43DD6E</span> (400). 400 = dark accent; 500 = solid fill; 600 = accent text on light.</p>
+        <h3 class="blk" style="margin-top:28px">Neutral — Lab Ink (green-cool bias)</h3>
+        <div class="ramp" role="img" aria-label="Neutral ink ramp">
+          <div class="swatch" style="background:var(--ink-950)"><small style="color:#B7C0BA">950</small></div>
+          <div class="swatch" style="background:var(--ink-900)"><small style="color:#B7C0BA">900</small></div>
+          <div class="swatch" style="background:var(--ink-850)"><small style="color:#B7C0BA">850</small></div>
+          <div class="swatch" style="background:var(--ink-800)"><small style="color:#B7C0BA">800</small></div>
+          <div class="swatch" style="background:var(--ink-700)"><small style="color:#B7C0BA">700</small></div>
+          <div class="swatch" style="background:var(--ink-600)"><small style="color:#DCE4DE">600</small></div>
+          <div class="swatch" style="background:var(--ink-400)"><small style="color:#0B0F0E">400</small></div>
+          <div class="swatch" style="background:var(--ink-200)"><small style="color:#0B0F0E">200</small></div>
+          <div class="swatch" style="background:var(--ink-100)"><small style="color:#0B0F0E">100</small></div>
+          <div class="swatch" style="background:var(--ink-50)"><small style="color:#0B0F0E">50</small></div>
+        </div>
+        <p class="note">Not a dead grey — a hair of green-cool so the neutral reads <em>chosen</em>. Ground <span class="mono">#0B0F0E</span> dark / <span class="mono">#F5F8F5</span> light.</p>
+      </div>
+      <div>
+        <h3 class="blk">Role tokens — dark &amp; light</h3>
+        <div class="scroll-x">
+          <table class="token-tbl">
+            <thead><tr><th>token</th><th>dark</th><th>light</th></tr></thead>
+            <tbody>
+              <tr><td><span class="chip" style="background:#0B0F0E"></span>bg</td><td>#0B0F0E</td><td>#F5F8F5</td></tr>
+              <tr><td><span class="chip" style="background:#121714"></span>surface</td><td>#121714</td><td>#FFFFFF</td></tr>
+              <tr><td><span class="chip" style="background:#243029"></span>border</td><td>#243029</td><td>#DCE4DE</td></tr>
+              <tr><td><span class="chip" style="background:#E7EDE9"></span>text</td><td>#E7EDE9</td><td>#10160F</td></tr>
+              <tr><td><span class="chip" style="background:#8B968F"></span>text-muted</td><td>#8B968F</td><td>#566159</td></tr>
+              <tr><td><span class="chip" style="background:#43DD6E"></span>accent</td><td>#43DD6E</td><td>#22C455</td></tr>
+              <tr><td><span class="chip" style="background:#E6B24A"></span>warning</td><td>#E6B24A</td><td>#B7842A</td></tr>
+              <tr><td><span class="chip" style="background:#E5484D"></span>error</td><td>#E5484D</td><td>#D13B40</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="blk" style="margin-top:24px">Semantic — three signals, no more</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <span class="badge pos">✓ success = frog</span><span class="badge warn">! warning = amber</span><span class="badge neg">✕ error = red</span>
+        </div>
+        <p class="note">Success <em>is</em> the frog. Amber = caution / low confidence. Red = regression / error. No blue competes for attention.</p>
+      </div>
+    </div>
+
+    <div style="margin-top:32px">
+      <h3 class="blk">Radix 12-step scales — the real tokens the app renders</h3>
+      <p class="sec-kicker" style="margin:0 0 16px">The ramps above map 1:1 onto Radix Themes’ 12-step scales. Accent = <span class="mono">grass</span>; neutral = <span class="mono">sage</span> (green-cool gray). The app never picks a hex — it picks a step.</p>
+      <span class="label">accentColor = grass</span>
+      <div class="ramp12" role="img" aria-label="Radix grass dark scale">
+        <div class="swatch" style="background:#0e1511"><small style="color:#71d083">1</small></div><div class="swatch" style="background:#141a15"><small style="color:#71d083">2</small></div><div class="swatch" style="background:#1b2a1e"><small style="color:#71d083">3</small></div><div class="swatch" style="background:#1d3a24"><small style="color:#c2f0c2">4</small></div><div class="swatch" style="background:#25482d"><small style="color:#c2f0c2">5</small></div><div class="swatch" style="background:#2d5736"><small style="color:#c2f0c2">6</small></div><div class="swatch" style="background:#366740"><small style="color:#c2f0c2">7</small></div><div class="swatch" style="background:#3e7949"><small style="color:#eafbef">8</small></div><div class="swatch" style="background:#46a758"><small style="color:#06180c">9</small></div><div class="swatch" style="background:#53b365"><small style="color:#06180c">10</small></div><div class="swatch" style="background:#71d083"><small style="color:#06180c">11</small></div><div class="swatch" style="background:#c2f0c2"><small style="color:#06180c">12</small></div>
+      </div>
+      <span class="label" style="display:block;margin-top:20px">grayColor = sage</span>
+      <div class="ramp12" role="img" aria-label="Radix sage dark scale">
+        <div class="swatch" style="background:#101211"><small style="color:#adb5b2">1</small></div><div class="swatch" style="background:#171918"><small style="color:#adb5b2">2</small></div><div class="swatch" style="background:#202221"><small style="color:#adb5b2">3</small></div><div class="swatch" style="background:#272a29"><small style="color:#adb5b2">4</small></div><div class="swatch" style="background:#2e3130"><small style="color:#adb5b2">5</small></div><div class="swatch" style="background:#373b39"><small style="color:#eceeed">6</small></div><div class="swatch" style="background:#444947"><small style="color:#eceeed">7</small></div><div class="swatch" style="background:#5b625f"><small style="color:#eceeed">8</small></div><div class="swatch" style="background:#63706b"><small style="color:#eceeed">9</small></div><div class="swatch" style="background:#717d79"><small style="color:#eceeed">10</small></div><div class="swatch" style="background:#adb5b2"><small style="color:#101211">11</small></div><div class="swatch" style="background:#eceeed"><small style="color:#101211">12</small></div>
+      </div>
+      <p class="step-legend"><b>1</b> app bg · <b>2</b> subtle bg · <b>3</b> element bg · <b>4</b> hover · <b>5</b> active · <b>6</b> subtle border · <b>7</b> element border · <b>8</b> strong border · <b>9</b> solid fill · <b>10</b> solid hover · <b>11</b> low-contrast text · <b>12</b> high-contrast text</p>
+      <p class="note">Built-in <span class="mono">grass</span> reads a shade more botanical than the <span class="mono">#43DD6E</span> neon (grass-9 ≈ <span class="mono">#46A758</span>, grass-11 ≈ <span class="mono">#71D083</span>). Ship on grass; a generated custom scale hits the exact neon later. See §14.</p>
+    </div>
+  </section>
+
+  <!-- 06 TYPE -->
+  <section id="type">
+    <div class="sec-head"><span class="sec-num">06</span><div>
+      <h2 class="sec-title">Typography</h2>
+      <p class="sec-kicker">Keep the shipped pairing — evolve its discipline. Numbers are the serious anchor: always mono &amp; tabular. Non-negotiable.</p>
+    </div></div>
+    <div class="grid3" style="margin-bottom:8px">
+      <div class="card"><span class="label">Display · headings</span><div class="spec-display">Frog</div><p class="note"><b>Bricolage Grotesque</b>, 700–800, tracking −0.03em. Where headings smile.</p></div>
+      <div class="card"><span class="label">Body · prose</span><p class="spec-body" style="font-size:19px">Log the work, and the conditions around it.</p><p class="note"><b>Inter</b> / system sans, 400–500. Quiet, never competes with data.</p></div>
+      <div class="card"><span class="label">Data · the anchor</span><div class="spec-mono tnum">142.5<span style="color:var(--text-faint)">kg</span></div><p class="note"><b>JetBrains Mono</b>, <span class="mono">tabular-nums</span>. Every weight, rep, RIR, e1RM, timer, p-value.</p></div>
+    </div>
+    <div class="card">
+      <span class="label">Type scale (matches shipped theme.css)</span>
+      <div class="scroll-x" style="margin-top:12px">
+        <table class="token-tbl">
+          <thead><tr><th>token</th><th>size / line</th><th>use</th></tr></thead>
+          <tbody>
+            <tr><td>text-2xs</td><td>12 / 16</td><td>micro-labels, captions</td></tr>
+            <tr><td>text-xs</td><td>13 / 18</td><td>dense UI, table cells</td></tr>
+            <tr><td>text-sm</td><td>15 / 22</td><td>body base</td></tr>
+            <tr><td>text-base</td><td>17 / 26</td><td>lede, prose</td></tr>
+            <tr><td>text-lg → 2xl</td><td>20 → 26</td><td>headings</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="note">Fit with the shipped system: Bricolage is already <span class="mono">--default-font-family</span>; data already routes through a <span class="mono">num</span> utility (system mono + <span class="mono">tabular-nums</span>) because Bricolage has no tabular figures. A branded mono (JetBrains) is optional — self-host and set <span class="mono">--font-mono</span>. This page falls back to grotesque + system mono; font CDNs are blocked in artifacts.</p>
+  </section>
+
+  <!-- 07 FOUNDATIONS -->
+  <section id="foundations">
+    <div class="sec-head"><span class="sec-num">07</span><div>
+      <h2 class="sec-title">Foundations</h2>
+      <p class="sec-kicker">The invisible grid everything snaps to. Spacing, radius, borders, elevation, breakpoints, motion, icons — all derived from the 8px unit.</p>
+    </div></div>
+    <div class="grid2" style="align-items:start">
+      <div class="card">
+        <span class="label">Spacing — 8px grid</span>
+        <div style="margin-top:14px">
+          <div class="scale-row"><code>4 · half</code><span class="bar" style="width:4px"></span></div>
+          <div class="scale-row"><code>8 · 1u</code><span class="bar" style="width:8px"></span></div>
+          <div class="scale-row"><code>12</code><span class="bar" style="width:12px"></span></div>
+          <div class="scale-row"><code>16 · 2u</code><span class="bar" style="width:16px"></span></div>
+          <div class="scale-row"><code>24 · 3u</code><span class="bar" style="width:24px"></span></div>
+          <div class="scale-row"><code>32 · 4u</code><span class="bar" style="width:32px"></span></div>
+          <div class="scale-row"><code>48 · 6u</code><span class="bar" style="width:48px"></span></div>
+          <div class="scale-row"><code>64 · 8u</code><span class="bar" style="width:64px"></span></div>
+        </div>
+        <p class="note">Every margin, pad, and gap is a multiple of 8 (4 allowed for tight optical fixes). Nothing off-grid.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <span class="label">Radius — none (0px)</span>
+          <div class="radius-demo" style="margin-top:14px">
+            <figure><div class="box"></div><figcaption>everything · 0px</figcaption></figure>
+            <figure><div class="box" style="border-radius:9999px"></div><figcaption>avatars only · full</figcaption></figure>
+          </div>
+          <p class="note">Sharp corners = precise instrument. The <em>only</em> exception is a circular avatar. Reverses the shipped <span class="mono">radius="small"</span> — see §14.</p>
+        </div>
+        <div class="card">
+          <span class="label">Borders &amp; elevation</span>
+          <ul style="margin:12px 0 0;padding-left:18px;color:var(--text-muted);font-size:14px">
+            <li>Hairlines only — <b style="color:var(--text)">1px</b>, <span class="mono">--border</span>.</li>
+            <li>Flat by default — <b style="color:var(--text)">no shadows</b> on surfaces.</li>
+            <li>Shadow appears on <em>one</em> thing: floating layers (menus, palette, toasts).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:16px;align-items:start">
+      <div class="card">
+        <span class="label">Breakpoints — mobile-first</span>
+        <div class="scroll-x" style="margin-top:12px">
+          <table class="token-tbl">
+            <tbody>
+              <tr><td>base</td><td>0–639</td><td>phone (design target)</td></tr>
+              <tr><td>sm</td><td>640</td><td>large phone / small tablet</td></tr>
+              <tr><td>md</td><td>760</td><td>tablet — 2-col</td></tr>
+              <tr><td>lg</td><td>1000</td><td>desktop — full nav</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <span class="label">Motion tokens</span>
+        <div class="scroll-x" style="margin-top:12px">
+          <table class="token-tbl">
+            <tbody>
+              <tr><td>micro</td><td>100–150ms</td><td>hover, press, toggle</td></tr>
+              <tr><td>float-in</td><td>160ms</td><td>menus, toasts (fade + 2px)</td></tr>
+              <tr><td>commit-flash</td><td>480ms</td><td>set-row saved (accent inset)</td></tr>
+              <tr><td>reveal</td><td>900ms</td><td>Findings confidence fill</td></tr>
+              <tr><td>ease</td><td colspan="2">out-quad default · <span class="mono">cubic-bezier(.25,.46,.45,.94)</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <span class="label">Iconography — line, 1.75px, square joins</span>
+      <div class="icons" style="margin-top:16px">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="dumbbell"><path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="timer"><circle cx="12" cy="13" r="8"/><path d="M12 13V8M9 2h6"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="chart"><path d="M4 20V4M4 20h16M8 16l4-5 3 3 4-6"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-label="notebook"><rect x="5" y="3" width="14" height="18"/><path d="M9 3v18M12 8h4M12 12h4"/></svg>
+        <svg width="28" height="28" viewBox="0 0 1896 1187" aria-label="frog"><g transform="translate(0,1187) scale(0.1,-0.1)">
+        <g fill="#131426">
+          <path d="M8155 11244 c-191 -13 -466 -75 -662 -150 -411 -158 -803 -468 -1040 -824 -264 -398 -374 -729 -390 -1175 -7 -219 0 -204 -143 -285 -299 -168 -713 -484 -984 -749 -375 -369 -650 -701 -887 -1071 -388 -606 -651 -1202 -815 -1845 -35 -138 -58 -175 -108 -175 -37 0 -372 -86 -471 -120 -332 -117 -737 -426 -925 -705 -217 -323 -302 -565 -351 -1000 -55 -495 88 -1090 378 -1572 51 -86 93 -161 93 -167 0 -33 -23 -36 -311 -36 -321 0 -368 -7 -465 -73 -251 -168 -205 -557 79 -670 67 -27 67 -27 8355 -27 7367 0 8293 2 8333 15 58 20 135 79 180 139 108 142 89 380 -40 506 -93 92 -164 110 -429 110 -270 0 -276 4 -192 130 167 249 357 755 406 1080 29 192 26 649 -5 800 -48 235 -137 480 -231 636 -151 252 -283 397 -540 591 -139 105 -534 287 -653 300 -130 15 -139 33 -125 253 11 175 -1 667 -22 920 -29 351 -39 438 -65 620 -8 52 -17 122 -20 155 -3 33 -19 134 -35 225 -16 91 -38 217 -49 280 -11 63 -52 239 -91 390 -106 412 -100 363 -58 461 246 576 261 1208 41 1759 -111 279 -360 606 -623 817 -278 223 -654 387 -990 433 -382 52 -773 23 -1062 -80 -332 -117 -581 -269 -827 -505 -82 -79 -149 -135 -160 -135 -11 0 -55 11 -98 24 -173 54 -375 99 -584 131 -150 23 -636 23 -809 0 -210 -28 -478 -89 -596 -136 -41 -16 -79 -29 -85 -29 -5 0 -51 40 -103 88 -282 266 -522 417 -851 535 -148 53 -196 65 -445 113 -84 16 -395 26 -525 18z m485 -788 c362 -67 647 -235 929 -548 189 -209 284 -273 422 -284 92 -8 133 4 299 87 587 294 1255 290 1858 -13 141 -71 193 -80 306 -54 128 30 233 114 337 268 51 76 198 224 294 296 280 210 714 320 1045 267 275 -45 504 -143 680 -290 342 -287 500 -621 500 -1055 0 -253 -50 -442 -186 -705 -93 -181 -95 -269 -14 -545 22 -74 52 -191 65 -259 14 -68 37 -172 50 -230 38 -163 43 -190 59 -281 48 -276 107 -718 132 -990 33 -356 27 -1246 -12 -1655 -28 -297 -67 -623 -79 -665 -2 -8 -12 -64 -20 -125 -23 -159 -98 -530 -136 -670 -17 -66 -42 -165 -54 -220 -81 -361 -401 -1291 -473 -1377 -24 -28 -24 -28 -746 -28 -606 0 -725 2 -741 14 -29 21 -33 112 -34 702 l-1 511 -35 71 c-42 82 -108 147 -193 189 -83 41 -221 41 -304 0 -70 -34 -146 -101 -187 -165 -56 -88 -59 -121 -59 -717 1 -555 0 -578 -32 -595 -12 -6 -1023 -10 -2871 -10 -2725 -1 -2854 0 -2870 17 -16 17 -18 65 -23 595 -5 538 -7 580 -25 627 -69 182 -183 265 -366 266 -169 0 -276 -70 -353 -233 l-36 -77 -2 -578 c-2 -551 -3 -580 -20 -598 -18 -17 -49 -18 -627 -20 -483 -1 -611 2 -623 12 -29 24 -97 180 -260 594 -76 193 -182 576 -224 805 -6 36 -20 106 -30 155 -35 168 -67 385 -85 580 -42 449 -27 800 52 1195 19 96 39 196 43 221 27 154 155 581 226 755 31 77 65 162 76 189 73 187 408 757 566 964 261 344 621 724 853 900 46 36 111 85 143 110 173 133 436 305 569 374 157 81 197 109 270 185 105 111 127 198 121 473 -5 249 10 373 66 541 103 308 337 622 590 790 351 234 746 313 1170 234z m-5568 -6323 c16 -14 18 -34 19 -157 1 -267 27 -644 63 -901 9 -60 21 -150 26 -200 6 -49 17 -117 25 -150 8 -33 28 -125 45 -204 18 -80 54 -217 82 -305 27 -89 67 -218 88 -287 22 -69 66 -207 100 -305 65 -193 69 -218 43 -232 -32 -16 -623 -22 -668 -7 -65 22 -255 244 -372 435 -22 36 -64 103 -93 150 -186 298 -311 838 -270 1167 13 103 90 336 142 433 148 271 307 409 613 531 137 55 132 54 157 32z m13273 -61 c462 -202 669 -550 669 -1127 0 -239 -10 -296 -120 -640 -80 -249 -295 -607 -490 -814 -112 -119 -74 -111 -502 -111 -464 0 -429 -19 -344 192 73 182 267 783 310 959 78 314 102 420 118 504 9 50 27 148 40 219 39 205 103 590 119 720 8 65 20 125 26 132 19 24 60 16 174 -34z" />
+          <path d="M8215 9830 c-166 -22 -182 -37 -113 -107 137 -142 107 -324 -68 -409 -137 -67 -322 23 -341 165 -12 92 -52 73 -113 -54 -84 -175 -104 -261 -105 -435 0 -138 3 -163 24 -225 85 -250 217 -401 451 -520 227 -115 499 -111 742 11 389 195 566 696 385 1088 -161 346 -492 533 -862 486z" />
+          <path d="M13725 9834 c-120 -17 -132 -37 -67 -109 134 -146 95 -346 -82 -420 -114 -48 -268 20 -322 142 -31 69 -42 73 -76 33 -132 -159 -187 -471 -122 -695 82 -285 250 -471 513 -568 142 -52 371 -65 503 -28 259 73 465 250 557 479 96 239 96 424 1 670 -85 221 -279 401 -505 467 -88 26 -308 42 -400 29z" />
+          <path d="M11750 8679 c-89 -40 -170 -151 -170 -233 0 -52 34 -121 85 -173 93 -93 206 -104 318 -33 250 158 36 561 -233 439z" />
+          <path d="M10321 8677 c-118 -45 -183 -176 -147 -299 47 -161 200 -231 346 -156 180 92 197 316 33 430 -55 37 -166 49 -232 25z" />
+          <path d="M10795 6720 c-286 -4 -650 -13 -810 -19 -159 -6 -418 -16 -575 -21 -581 -21 -789 -30 -930 -40 -80 -5 -224 -14 -320 -20 -335 -20 -419 -38 -497 -105 -106 -91 -120 -234 -34 -353 71 -97 166 -121 411 -103 91 6 271 16 400 21 129 6 397 17 595 25 401 16 1117 39 1805 56 639 16 1843 1 2600 -31 882 -39 813 -42 905 42 131 119 142 267 30 387 -91 98 -100 99 -885 130 -805 32 -1798 44 -2695 31z" />
+        </g>
+        <g fill="var(--accent)">
+          <path d="M8175 10480 c-511 -52 -949 -353 -1203 -830 -122 -228 -165 -436 -158 -759 6 -275 -16 -362 -121 -473 -73 -76 -113 -104 -270 -185 -133 -69 -396 -241 -569 -374 -32 -25 -97 -74 -143 -110 -232 -176 -592 -556 -853 -900 -158 -207 -493 -777 -566 -964 -11 -27 -45 -112 -76 -189 -71 -174 -199 -601 -226 -755 -4 -25 -24 -125 -43 -221 -39 -196 -51 -284 -68 -515 -25 -335 17 -854 101 -1260 10 -49 24 -119 30 -155 42 -229 148 -612 224 -805 163 -414 231 -570 260 -594 12 -10 140 -13 623 -12 578 2 609 3 627 20 17 18 18 47 20 598 l2 578 36 77 c77 163 184 233 353 233 183 -1 297 -84 366 -266 18 -47 20 -89 25 -627 5 -530 7 -578 23 -595 16 -17 145 -18 2870 -17 1848 0 2859 4 2871 10 32 17 33 40 32 595 0 596 3 629 59 717 41 64 117 131 187 165 83 41 221 41 304 0 85 -42 151 -107 193 -189 l35 -71 1 -511 c1 -590 5 -681 34 -702 16 -12 135 -14 741 -14 833 0 740 -17 806 150 183 465 347 963 413 1255 12 55 37 154 54 220 38 140 113 511 136 670 8 61 18 117 20 125 12 42 51 368 79 665 39 409 45 1299 12 1655 -25 272 -84 714 -132 990 -16 91 -21 118 -59 281 -13 58 -36 162 -50 230 -13 68 -43 185 -65 259 -81 276 -79 364 14 545 205 396 242 756 119 1150 -110 352 -457 706 -802 819 -341 111 -527 122 -841 50 -308 -70 -650 -295 -809 -532 -104 -154 -209 -238 -337 -268 -113 -26 -165 -17 -306 54 -603 303 -1271 307 -1858 13 -166 -83 -207 -95 -299 -87 -138 11 -233 75 -422 284 -204 226 -343 330 -594 444 -239 108 -532 155 -800 128z m357 -666 c501 -129 760 -707 529 -1178 -206 -418 -708 -595 -1111 -391 -234 119 -366 270 -451 520 -40 116 -35 344 10 480 61 185 134 316 162 288 18 -18 48 -2 59 32 29 86 174 185 274 185 39 0 47 4 58 27 27 57 307 80 470 37z m5593 -9 c226 -66 420 -246 505 -467 95 -246 95 -431 -1 -670 -92 -229 -298 -406 -557 -479 -132 -37 -361 -24 -503 28 -263 97 -431 283 -513 568 -34 117 -37 300 -6 420 33 131 133 314 165 301 16 -6 37 18 54 60 30 76 202 194 283 194 42 0 50 3 60 25 28 62 332 74 513 20z m-2190 -1119 c186 -78 215 -341 48 -446 -112 -71 -225 -60 -318 33 -81 82 -100 155 -65 249 50 133 215 214 335 164z m-1382 -34 c164 -114 147 -338 -33 -430 -258 -132 -493 223 -271 409 84 71 218 80 304 21z m2127 -1937 c357 -7 1243 -41 1428 -55 149 -12 202 -32 267 -101 112 -120 101 -268 -30 -387 -92 -84 -23 -81 -905 -42 -757 32 -1961 47 -2600 31 -688 -17 -1404 -40 -1805 -56 -198 -8 -466 -19 -595 -25 -129 -5 -309 -15 -400 -21 -245 -18 -340 6 -411 103 -86 119 -72 262 34 353 78 67 162 85 497 105 96 6 240 15 320 20 141 10 349 19 930 40 157 5 416 15 575 21 623 25 1759 30 2695 14z" />
+          <path d="M2915 4101 c-160 -64 -205 -88 -301 -160 -328 -245 -510 -705 -449 -1136 50 -357 136 -629 265 -835 29 -47 71 -114 93 -150 117 -191 307 -413 372 -435 45 -15 636 -9 668 7 26 14 22 39 -43 232 -34 98 -78 236 -100 305 -21 69 -61 198 -88 287 -28 88 -64 225 -82 305 -17 79 -37 171 -45 204 -8 33 -19 101 -25 150 -5 50 -17 140 -26 200 -36 257 -62 634 -63 901 -1 123 -3 143 -19 157 -25 22 -20 23 -157 -32z" />
+          <path d="M16171 4106 c-6 -7 -18 -67 -26 -132 -16 -130 -80 -515 -119 -720 -13 -71 -31 -169 -40 -219 -16 -84 -40 -190 -118 -504 -43 -176 -237 -777 -310 -959 -85 -211 -120 -192 344 -192 428 0 390 -8 502 111 195 207 410 565 490 814 110 344 120 401 120 640 0 577 -207 925 -669 1127 -114 50 -155 58 -174 34z" />
+        </g>
+        <g fill="#ECEEED">
+          <path d="M13423 9710 c-89 -55 -153 -120 -153 -157 0 -31 16 -29 47 7 35 42 46 38 94 -27 24 -32 48 -62 56 -66 7 -4 13 -14 13 -21 0 -7 11 -23 25 -36 24 -23 24 -23 83 36 74 74 83 107 46 170 -29 49 -50 64 -88 64 -31 0 -35 25 -6 40 11 6 20 17 20 25 0 30 -56 15 -137 -35z" />
+          <path d="M7887 9716 c-114 -55 -167 -126 -167 -223 0 -57 44 -127 88 -139 36 -10 40 5 9 32 -16 13 -25 29 -22 34 4 6 18 0 37 -15 16 -14 38 -25 49 -25 12 0 19 -7 19 -19 0 -23 30 -35 61 -26 16 5 18 9 8 21 -13 16 -1 30 52 59 35 19 79 72 79 95 0 29 11 50 26 50 8 0 14 7 14 15 0 8 5 15 10 15 6 0 10 7 10 15 0 8 -4 15 -10 15 -5 0 -16 16 -24 35 -14 33 -52 53 -40 20 7 -17 -4 -19 -26 -5 -10 6 -11 10 -2 10 19 0 14 25 -11 48 -33 31 -79 27 -160 -12z" />
+        </g>
+      </g></svg>
+      </div>
+      <p class="note">Stroke line icons, uniform 1.75px, no fills. (The frog is the exception: it isn't a stroke icon at all, but the same filled vector mark as the tile/in-app mark above, just small.) Match the engineered, drawn-in-a-notebook feel.</p>
+    </div>
+  </section>
+
+  <!-- 08 COMPONENTS -->
+  <section id="components">
+    <div class="sec-head"><span class="sec-num">08</span><div>
+      <h2 class="sec-title">Components</h2>
+      <p class="sec-kicker">The core kit, in the frog skin. Flat, 1px, 0px radius, mono numerals. Buttons always carry a visible background — never bare text.</p>
+    </div></div>
+
+    <div class="grid2" style="align-items:start">
+      <div class="comp">
+        <h3 class="blk">Buttons</h3>
+        <div class="demo">
+          <button class="btn" type="button">Log set</button>
+          <button class="btn ghost" type="button">Skip</button>
+          <button class="btn danger" type="button">Discard</button>
+        </div>
+        <p class="note">Primary = green fill. Ghost = hairline. Danger = red hairline. Never text-only.</p>
+      </div>
+      <div class="comp">
+        <h3 class="blk">Badges &amp; chips</h3>
+        <div class="demo">
+          <span class="badge pos">▲ PR</span><span class="badge warn">low confidence</span><span class="badge neg">▼ regression</span>
+          <span class="pill">RIR 1</span><span class="pill"><b>e1RM</b> 168.2</span>
+        </div>
+        <p class="note">Semantic badges carry a glyph + word, never color alone (a11y).</p>
+      </div>
+      <div class="comp">
+        <h3 class="blk">Inputs &amp; number pad</h3>
+        <div class="demo" style="align-items:flex-start">
+          <div class="field"><label>weight · kg</label><span class="fauxinput focus tnum">142.5</span></div>
+          <div class="field"><label>reps</label><span class="fauxinput tnum">5</span></div>
+          <div class="numpad" aria-hidden="true">
+            <button>1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button><button>7</button><button>8</button><button>9</button><button>.</button><button>0</button><button>⌫</button>
+          </div>
+        </div>
+        <p class="note">Inputs are 16px min <b>on touch</b> (no iOS zoom); mouse-pointer desktop keeps the denser <code>text-sm</code>/<code>text-xs</code> sizing. Mono, no spinners on the logging path. Focus = accent ring.</p>
+      </div>
+      <div class="comp">
+        <h3 class="blk">Table — tabular data</h3>
+        <div class="demo" style="display:block;padding:0">
+          <table class="token-tbl tnum" style="font-size:12.5px">
+            <thead><tr><th>lift</th><th style="text-align:right">top set</th><th style="text-align:right">e1RM</th></tr></thead>
+            <tbody>
+              <tr><td>Squat</td><td style="text-align:right">142.5</td><td style="text-align:right;color:var(--accent-text)">168.2</td></tr>
+              <tr><td>Bench</td><td style="text-align:right">100.0</td><td style="text-align:right;color:var(--accent-text)">118.9</td></tr>
+              <tr><td>Deadlift</td><td style="text-align:right">180.0</td><td style="text-align:right;color:var(--accent-text)">205.7</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Numbers right-aligned, decimal-aligned, mono. Columns never ripple.</p>
+      </div>
+      <div class="comp">
+        <h3 class="blk">Toast — playground copy</h3>
+        <div class="demo" style="display:block;padding:0">
+          <div class="mock">
+            <div class="mock-head"><span>◆ toast</span><span class="tl" data-h="saved" data-f="recorded"></span></div>
+            <div class="mock-body"><p class="copy-body tl" style="margin:0" data-h="Set saved. 142.5 kg × 5 · RIR 1." data-f="Recorded. 142.5 kg × 5 · RIR 1. The frog nods, slowly."></p></div>
+          </div>
+        </div>
+        <p class="note">Toasts get the frog. The numbers inside stay exact. Switch registers to see it re-voice.</p>
+      </div>
+      <div class="comp">
+        <h3 class="blk">Empty state — playground copy</h3>
+        <div class="demo" style="display:block;padding:0">
+          <div class="mock">
+            <div class="mock-head"><span>◆ empty · history</span><span>0</span></div>
+            <div class="mock-body">
+              <p class="copy-title tl" style="margin:0" data-h="No sessions yet." data-f="The lab is empty. The frog is waiting."></p>
+              <p class="copy-body tl" data-h="Log your first set to begin." data-f="Log your first set. The frog will begin taking notes immediately, possibly before you finish."></p>
+            </div>
+          </div>
+        </div>
+        <p class="note">Empty states are prime frog territory — but they still point at the next action.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 09 NUMBERS & DATA -->
+  <section id="numbers">
+    <div class="sec-head"><span class="sec-num">09</span><div>
+      <h2 class="sec-title">Numbers &amp; data — the sacred spec</h2>
+      <p class="sec-kicker">This is the instrument. No jokes, no mascot, no register change touches it. Consistency here is what lets the frog be an idiot everywhere else.</p>
+    </div></div>
+    <div class="grid2" style="align-items:start">
+      <div class="card">
+        <span class="zone sacred" style="margin-bottom:14px">Sacred proof · Findings card</span>
+        <div class="mock reveal" style="--to:78%">
+          <div class="mock-head"><span>◻ finding</span><span>7d sleep vs top set</span></div>
+          <div class="mock-body">
+            <div class="big"><span class="accent tnum">+4.2%</span> heavier</div>
+            <p class="muted" style="font-size:12px;margin:6px 0 0">on nights with 7h+ sleep · n=19 sessions</p>
+            <svg viewBox="0 0 260 64" width="100%" height="64" style="margin-top:14px" aria-label="trend sparkline">
+              <line x1="0" y1="16" x2="260" y2="16" stroke="#243029" stroke-width="1"/>
+              <line x1="0" y1="32" x2="260" y2="32" stroke="#243029" stroke-width="1"/>
+              <line x1="0" y1="48" x2="260" y2="48" stroke="#243029" stroke-width="1"/>
+              <path d="M0 46 L37 44 L74 40 L111 42 L148 34 L185 30 L222 24 L260 18" fill="none" stroke="var(--frog-400)" stroke-width="2"/>
+              <path d="M0 46 L37 44 L74 40 L111 42 L148 34 L185 30 L222 24 L260 18 L260 64 L0 64 Z" fill="var(--frog-400)" opacity="0.10"/>
+              <circle cx="260" cy="18" r="3.5" fill="var(--frog-400)"/>
+            </svg>
+            <div class="conf">
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:#8B968F"><span>confidence</span><span class="tnum">95%</span></div>
+              <div class="conf-track"><div class="conf-fill"></div></div>
+            </div>
+            <p class="muted" style="font-size:11px;margin-top:12px">correlation, not causation. controls: bodyweight, caffeine.</p>
+          </div>
+        </div>
+        <p class="note">Faint grid, area fill, emphasised endpoint, tabular figures, honest confidence bar + mandatory caveat.</p>
+      </div>
+      <div class="card">
+        <span class="label">Rules for every number</span>
+        <ul style="margin:12px 0 0;padding-left:18px;color:var(--text-muted);font-size:14px;line-height:1.7">
+          <li><b style="color:var(--text)">Mono &amp; tabular</b> always — weights, reps, RIR, e1RM, timers, p-values.</li>
+          <li><b style="color:var(--text)">Decimals aligned</b>; fixed dp per type (weight 1, correlation 2, p 3).</li>
+          <li><b style="color:var(--text)">Units after a hair space</b>: 172.4 kg, not 172.4kg.</li>
+          <li><b style="color:var(--text)">Time</b> as m:ss (3:00), never 180s in the UI.</li>
+          <li><b style="color:var(--text)">Confidence is visible</b> — a bar + %, never hidden.</li>
+          <li><b style="color:var(--text)">Caveat is mandatory</b> — “correlation, not causation” ships with every Finding.</li>
+          <li><b style="color:var(--text)">No black boxes</b> — formulas (e1RM) are inspectable; the frog shows its working.</li>
+          <li><b style="color:var(--text)">Never round a lie</b> — n is shown; low n reads “not enough data.”</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 LOOK & FEEL -->
+  <section id="feel">
+    <div class="sec-head"><span class="sec-num">10</span><div>
+      <h2 class="sec-title">Look &amp; feel</h2>
+      <p class="sec-kicker">How “goofy frog + serious lab notebook + brutalist terminal” coheres: graph-paper surfaces, deadpan line-art, terminal-green cues, sparse ripple motifs.</p>
+    </div></div>
+    <div class="grid2" style="align-items:start">
+      <div class="card">
+        <span class="label">Motifs</span>
+        <ul style="margin:12px 0 0;padding-left:18px;color:var(--text-muted);font-size:14px;line-height:1.7">
+          <li><b style="color:var(--text)">Graph paper</b> — faint 8px/24px grid on empty &amp; playground surfaces.</li>
+          <li><b style="color:var(--text)">Dissection-diagram line art</b> — deadpan labelled illustrations with leader lines.</li>
+          <li><b style="color:var(--text)">Terminal-green cues</b> — the accent as a phosphor blink: cursor, active state.</li>
+          <li><b style="color:var(--text)">Lily-pad ripple</b> — one expanding ring for a “leap” moment. Sparse. Never on data.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="label">Surfaces</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <span class="pill">Flat — no shadows</span><span class="pill">0px radius</span><span class="pill">1px hairlines</span><span class="pill">8px grid</span><span class="pill">Dense 13px UI</span><span class="pill">Dark default + light</span>
+        </div>
+        <p class="note">Buttons always carry a visible background. The frog is loud; the surfaces are silent.</p>
+        <div class="btn-row"><button class="btn" type="button">Log set</button><button class="btn ghost" type="button">Skip</button></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 MOTION -->
+  <section id="motion">
+    <div class="sec-head"><span class="sec-num">11</span><div>
+      <h2 class="sec-title">Motion</h2>
+      <p class="sec-kicker">Micro-interactions 100–150ms. Nothing animates on the data path. A restrained “leap” or “ripple” earns a smile at the edges — never under a number.</p>
+    </div></div>
+    <div class="grid3">
+      <div class="card"><span class="label">Allowed · playground</span><p style="margin:12px 0 0;font-size:14px;color:var(--text-muted)">A lily-pad ripple on a PR banner. A 120ms leap on a streak. A confidence bar that fills once. Cursor blink on active input.</p><div class="btn-row"><button class="btn leap" type="button" id="leapBtn">▲ New PR — tap</button></div></div>
+      <div class="card"><span class="label">Forbidden · sacred</span><p style="margin:12px 0 0;font-size:14px;color:var(--text-muted)">No animation on set-save, keypad, live charts, timers, or any figure. Feedback there is instant state change (&lt;100ms), not motion.</p></div>
+      <div class="card"><span class="label">Findings reveal</span><p style="margin:12px 0 0;font-size:14px;color:var(--text-muted)">The statistic appears immediately; only its confidence bar animates once (900ms) on scroll-in — a flourish on the frame, never the number.</p><div class="conf reveal" style="--to:88%"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint)"><span>demo</span><span class="tnum">88%</span></div><div class="conf-track"><div class="conf-fill"></div></div></div></div>
+    </div>
+    <p class="note">All motion respects <span class="mono">prefers-reduced-motion</span> — ripples and fills disable cleanly, state still reads.</p>
+  </section>
+
+  <!-- 12 ACCESSIBILITY -->
+  <section id="a11y">
+    <div class="sec-head"><span class="sec-num">12</span><div>
+      <h2 class="sec-title">Accessibility</h2>
+      <p class="sec-kicker">A rigorous instrument is legible to everyone. The frog never gets in the way of a lifter reading their numbers.</p>
+    </div></div>
+    <div class="grid2">
+      <div class="card">
+        <span class="label">Hard requirements</span>
+        <ul style="margin:12px 0 0;padding-left:18px;color:var(--text-muted);font-size:14px;line-height:1.7">
+          <li><b style="color:var(--text)">Contrast</b> — body text ≥ 4.5:1, large ≥ 3:1, on both themes (Radix step 11/12 guarantees it).</li>
+          <li><b style="color:var(--text)">Focus visible</b> — 2px accent ring, 2px offset, on every interactive element.</li>
+          <li><b style="color:var(--text)">Tap targets</b> — ≥ 44px on the logging path.</li>
+          <li><b style="color:var(--text)">16px inputs on touch</b> — never smaller on a coarse pointer (blocks iOS zoom); enforced globally in <code>apps/web/src/styles/theme.css</code>, not per call site, so a <code>text-sm</code>/<code>text-xs</code> class on an input still computes to 16px on a phone. Pinch-zoom stays enabled — no <code>user-scalable=no</code>/<code>maximum-scale</code> lockdown.</li>
+          <li><b style="color:var(--text)">Never color alone</b> — semantics carry a glyph + word too.</li>
+          <li><b style="color:var(--text)">Reduced motion</b> — honored; nothing essential lives in animation.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <span class="label">Humour never blocks clarity</span>
+        <p style="margin:12px 0 0;font-size:14px;color:var(--text-muted);line-height:1.7">
+          <b style="color:var(--text)">Human register is an accessibility feature.</b> A lifter who finds the frog tiring — or who relies on a screen reader and wants plain strings — flips to Human and gets clean, literal copy with the same numbers. Ultrafrog is opt-in and never the default. The frog is a personality, not a barrier.
+        </p>
+        <div style="margin-top:14px"><span class="badge pos">Human = plain-language mode</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 MASCOT RULES -->
+  <section id="mascot">
+    <div class="sec-head"><span class="sec-num">13</span><div>
+      <h2 class="sec-title">Mascot usage — where the frog may &amp; may not appear</h2>
+      <p class="sec-kicker">The single most important guardrail. The expressive mascot lives only in the playground. In sacred zones, at most <a href="#persona">the mark</a> appears as quiet chrome — never the character.</p>
+    </div></div>
+    <div class="rules">
+      <div class="may">
+        <h4><span class="zone play" style="padding:2px 8px">May appear</span></h4>
+        <ul>
+          <li><span class="mark">✓</span> Wordmark, app icon, splash, onboarding</li>
+          <li><span class="mark">✓</span> Empty states &amp; “not enough data yet”</li>
+          <li><span class="mark">✓</span> Loading screens</li>
+          <li><span class="mark">✓</span> PR celebrations, streaks, achievement names</li>
+          <li><span class="mark">✓</span> Rest-timer <em>alerts</em> (the toast, not the timer face)</li>
+          <li><span class="mark">✓</span> Errors, failed-sync, 404s</li>
+          <li><span class="mark">✓</span> Notifications &amp; push copy</li>
+          <li><span class="mark">✓</span> Settings / about / changelog corners</li>
+        </ul>
+      </div>
+      <div class="maynot">
+        <h4><span class="zone sacred" style="padding:2px 8px">May NOT appear</span></h4>
+        <ul>
+          <li><span class="mark">✕</span> The logging hot path (set entry → save)</li>
+          <li><span class="mark">✕</span> Charts, graphs, sparklines</li>
+          <li><span class="mark">✕</span> Numbers, e1RM, RIR, bodyweight fields</li>
+          <li><span class="mark">✕</span> The running timer face</li>
+          <li><span class="mark">✕</span> A Finding’s statistic, confidence, or caveat</li>
+          <li><span class="mark">✕</span> Anything used to make a training decision</li>
+          <li><span class="mark">✕</span> Export / API / data-table views</li>
+          <li><span class="mark">✕</span> Never as a “helpful assistant” explaining the math</li>
+        </ul>
+      </div>
+    </div>
+    <p class="note">Test before shipping any frog: <em>“Is a lifter about to make a decision from this pixel?”</em> If yes, the frog leaves the room.</p>
+  </section>
+
+  <!-- 14 RADIX -->
+  <section id="radix">
+    <div class="sec-head"><span class="sec-num">14</span><div>
+      <h2 class="sec-title">Built on Radix Themes — not beside it</h2>
+      <p class="sec-kicker">Frog is a <b>re-skin of the shipped Radix Themes 3 system</b>, not a rebuild. Every decision above is one prop or one token swap. Here is the exact diff and, for each, whether Radix supports it natively.</p>
+    </div></div>
+    <div class="grid2" style="align-items:start">
+      <div>
+        <h3 class="blk">&lt;Theme&gt; props — the whole visual change</h3>
+        <div class="scroll-x">
+          <table class="token-tbl">
+            <thead><tr><th>prop</th><th>today</th><th>Frog</th><th>ok?</th></tr></thead>
+            <tbody>
+              <tr><td>accentColor</td><td class="diff-old">indigo</td><td class="diff-new">grass</td><td class="ok">✓</td></tr>
+              <tr><td>grayColor</td><td class="diff-old">slate</td><td class="diff-new">sage</td><td class="ok">✓</td></tr>
+              <tr><td>radius</td><td class="diff-old">small</td><td class="diff-new">none</td><td class="ok">✓ *</td></tr>
+              <tr><td>appearance</td><td>dark</td><td>dark</td><td class="ok">✓</td></tr>
+              <tr><td>panelBackground</td><td>solid</td><td>solid</td><td class="ok">✓</td></tr>
+              <tr><td>scaling</td><td>100%</td><td>100%</td><td class="ok">✓</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">All six are native Radix Theme props. <b>*</b> <span class="mono">radius="none"</span> restores the brief’s 0px mandate — a deliberate reversal, decided below.</p>
+        <h3 class="blk" style="margin-top:28px">theme.css — the scale imports</h3>
+        <div class="codeblk"><span class="del">- @import ".../colors/indigo.css";  /* accent */</span>
+<span class="del">- @import ".../colors/slate.css";   /* gray */</span>
+<span class="add">+ @import ".../colors/grass.css";   /* accent */</span>
+<span class="add">+ @import ".../colors/sage.css";    /* gray  */</span>
+  @import ".../colors/red.css";     <span class="cmt">/* --neg   */</span>
+  @import ".../colors/amber.css";   <span class="cmt">/* --warn  */</span>
+  @import ".../colors/orange.css";  <span class="cmt">/* --orange*/</span>
+<span class="cmt">  /* success folds into accent → drop green.css */</span>
+
+<span class="cmt">/* bridge remaps (locked scales, no light/dark dupes) */</span>
+  --accent:  <span class="add">var(--grass-9)</span>;
+  --brand:   <span class="add">var(--grass-9)</span>;
+  --ring:    <span class="add">var(--grass-8)</span>;
+  --pos:     <span class="add">var(--grass-11)</span>;  <span class="cmt">/* success = frog */</span>
+  --border:  <span class="add">var(--sage-6)</span>;
+  --ink:     <span class="add">var(--sage-12)</span>;</div>
+        <p class="note">Honors the file’s 6-scale budget — ends at <b>5</b> scales (sage · grass · red · amber · orange), one lighter than today. Referencing an un-imported scale silently breaks, so the swap is import-for-import.</p>
+      </div>
+      <div>
+        <h3 class="blk">Support matrix — everything proposed is native</h3>
+        <div class="scroll-x">
+          <table class="token-tbl">
+            <thead><tr><th>brand decision</th><th>radix mechanism</th></tr></thead>
+            <tbody>
+              <tr><td>Frog-green accent</td><td><span class="ok">✓</span> grass (or custom scale)</td></tr>
+              <tr><td>Green-cool ink</td><td><span class="ok">✓</span> sage gray</td></tr>
+              <tr><td>0px radius</td><td><span class="ok">✓</span> radius="none"</td></tr>
+              <tr><td>Dark default + light</td><td><span class="ok">✓</span> appearance (in place)</td></tr>
+              <tr><td>Tabular numerals</td><td><span class="ok">✓</span> existing <span class="mono">num</span> utility</td></tr>
+              <tr><td>Bricolage display</td><td><span class="ok">✓</span> --default-font-family</td></tr>
+              <tr><td>Language registers</td><td><span class="ok">✓</span> app-layer text transform (theme-agnostic)</td></tr>
+              <tr><td>success / warn / error</td><td><span class="ok">✓</span> grass / amber / red</td></tr>
+              <tr><td>Buttons never bare</td><td><span class="ok">✓</span> radix layer &gt; preflight</td></tr>
+              <tr><td>Flat, no shadows</td><td><span class="ok">✓</span> panelBackground="solid"</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Nothing in this identity needs a mechanism Radix Themes 3 doesn’t already ship. The frog lives in <em>content</em> — mascot, copy, registers — none of which touches the theme engine.</p>
+        <div class="card" style="margin-top:20px;border-color:color-mix(in oklab, var(--accent) 45%, var(--border))">
+          <span class="label" style="color:var(--accent-text)">Decisions · locked</span>
+          <ol style="margin:12px 0 0;padding-left:20px;font-size:14px;color:var(--text-muted)">
+            <li style="margin-bottom:10px"><b style="color:var(--text)">Radius → <span class="mono">none</span> (0px).</b> Deliberate reversal of the recent <span class="mono">radius="small"</span> call. Brutalist 0px is load-bearing for the terminal/lab soul. Fallback if mobile tap-feel regresses: <span class="mono">small</span> on interactive controls only.</li>
+            <li style="margin-bottom:10px"><b style="color:var(--text)">Accent → built-in <span class="mono">grass</span> for v1.</b> Zero custom CSS, accessible, keeps the bundle light. Custom neon scale later without touching anything else.</li>
+            <li><b style="color:var(--text)">Success = the frog.</b> Folds into the accent green → 5 scales total, reinforces the brand.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <section class="foot" style="border-bottom:0">
+    <span class="label">North star</span>
+    <p class="northstar" style="margin-top:14px">The driest, most rigorous instrument you’ve ever trusted — and, unmistakably, a frog runs it.</p>
+    <small>
+      Frog · brand identity &amp; design system v1 · neutral-ink + frog-green<br/>
+      base #0B0F0E · accent #43DD6E (= success) · 8px grid · tabular mono numerals · registers: Human / Frog / Ultrafrog<br/>
+      Radix Themes 3 re-skin: accentColor <span class="diff-old">indigo</span>→<span class="diff-new">grass</span> · grayColor <span class="diff-old">slate</span>→<span class="diff-new">sage</span> · radius <span class="diff-old">small</span>→<span class="diff-new">none</span><br/>
+      “SBL” is a placeholder — this proposes the name <b style="color:var(--accent-text)">Frog</b>. Single-source it; keep it renameable.
+    </small>
+  </section>
+
+</main>
+
+<script>
+  (function () {
+    /* ---------- theme toggle ---------- */
+    var btn = document.getElementById('themeBtn');
+    if (btn) btn.addEventListener('click', function () {
+      var root = document.documentElement, cur = root.getAttribute('data-theme');
+      if (!cur) cur = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+    });
+
+    /* ---------- language registers: Human / Frog / Ultrafrog ---------- */
+    // Units that survive the ribbit transform so numbers stay interpretable.
+    var UNITS = new Set(['kg','lb','lbs','rir','e1rm','n','s','sec','min','hr','hrs','h','reps','rep','set','sets','bw','r','p','ci','x']);
+    function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function matchCase(core){
+      if (core === core.toUpperCase() && core !== core.toLowerCase()) return 'RIBBIT';
+      if (core[0] === core[0].toUpperCase() && core[0] !== core[0].toLowerCase()) return 'Ribbit';
+      return 'ribbit';
+    }
+    // token → html. kind: number (accent), unit (kept), word (kept or ribbit)
+    function renderToken(tok, reg){
+      if (/^\s+$/.test(tok)) return tok;
+      var m = tok.match(/^([^0-9A-Za-zÀ-ɏ]*)([\s\S]*?)([^0-9A-Za-zÀ-ɏ]*)$/);
+      var lead = m[1], core = m[2], trail = m[3];
+      if (core === '') return esc(tok);
+      var out;
+      if (/[0-9]/.test(core)) out = '<span class="tlnum">' + esc(core) + '</span>';        // number → survives, accented
+      else if (UNITS.has(core.toLowerCase())) out = esc(core);                               // unit → survives
+      else out = (reg === 'ultra') ? matchCase(core) : esc(core);                            // word → ribbit in ultra
+      return esc(lead) + out + esc(trail);
+    }
+    function render(str, reg){
+      return str.split(/(\s+)/).map(function(t){ return renderToken(t, reg); }).join('');
+    }
+
+    var nodes = Array.prototype.slice.call(document.querySelectorAll('.tl'));
+    function setRegister(reg){
+      nodes.forEach(function(el){
+        var src = (reg === 'human') ? (el.getAttribute('data-h') || el.getAttribute('data-f') || '')
+                                    : (el.getAttribute('data-f') || '');
+        el.innerHTML = render(src, reg);
+      });
+      // sync both segmented controls + register cards
+      document.querySelectorAll('[data-reg]').forEach(function(b){
+        b.setAttribute('aria-pressed', b.getAttribute('data-reg') === reg ? 'true' : 'false');
+      });
+      document.querySelectorAll('[data-regcard]').forEach(function(c){
+        c.classList.toggle('on', c.getAttribute('data-regcard') === reg);
+      });
+    }
+    document.querySelectorAll('[data-reg]').forEach(function(b){
+      b.addEventListener('click', function(){ setRegister(b.getAttribute('data-reg')); });
+    });
+    setRegister('frog'); // default
+
+    /* ---------- reveal confidence bars ---------- */
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var reveals = document.querySelectorAll('.reveal');
+    if (reduce || !('IntersectionObserver' in window)) {
+      reveals.forEach(function (el) { el.classList.add('revealed'); });
+    } else {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('revealed'); io.unobserve(e.target); } });
+      }, { threshold: 0.4 });
+      reveals.forEach(function (el) { io.observe(el); });
+    }
+
+    /* ---------- leap micro-interaction ---------- */
+    var leap = document.getElementById('leapBtn');
+    if (leap && !reduce) leap.addEventListener('click', function () {
+      leap.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-8px)' }, { transform: 'translateY(0)' }],
+        { duration: 320, easing: 'cubic-bezier(0.22,0.61,0.36,1)' });
+    });
+  })();
+</script>

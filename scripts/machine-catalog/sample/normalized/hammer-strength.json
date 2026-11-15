@@ -1,0 +1,60 @@
+{
+  "meta": {
+    "brandKey": "hammer-strength",
+    "extractedAt": "2026-08-07T06:23:03.550Z",
+    "mode": "dry-run",
+    "provider": null,
+    "model": null,
+    "normalizedAt": "2026-08-07T06:23:03.573Z"
+  },
+  "machines": [
+    {
+      "brand": "Hammer Strength",
+      "model": "Iso-Lateral T-Bar Row",
+      "aliases": ["ISO-Lateral"],
+      "category": "row",
+      "mechanism": "plate-loaded",
+      "muscleTargets": null,
+      "weightStackKg": null,
+      "plateCapacityKg": null,
+      "dimensions": null,
+      "productUrl": "https://www.lifefitness.com/en-us/catalog/strength-training/plate-loaded/iso-lateral-t-bar-row",
+      "introducedYear": null,
+      "discontinuedYear": null,
+      "sourceUrl": "https://www.lifefitness.com/en-us/catalog/strength-training/plate-loaded/iso-lateral-t-bar-row",
+      "sourceNote": "dry-run/mock extraction: parsed from schema.org Product JSON-LD (name/brand/description only). Spec fields (weight stack, plate capacity, dimensions, era) were not present in this source and need a PDF spec sheet or a real model pass to fill — see docs/machine-catalog-pipeline.md."
+    },
+    {
+      "brand": "Hammer Strength",
+      "model": "Reverse V-Squat",
+      "aliases": ["V-Squat"],
+      "category": "squat-machine",
+      "mechanism": "plate-loaded",
+      "muscleTargets": null,
+      "weightStackKg": null,
+      "plateCapacityKg": null,
+      "dimensions": null,
+      "productUrl": "https://www.lifefitness.com/en-us/catalog/strength-training/plate-loaded/reverse-v-squat",
+      "introducedYear": null,
+      "discontinuedYear": null,
+      "sourceUrl": "https://www.lifefitness.com/en-us/catalog/strength-training/plate-loaded/reverse-v-squat",
+      "sourceNote": "dry-run/mock extraction: parsed from schema.org Product JSON-LD (name/brand/description only). Spec fields (weight stack, plate capacity, dimensions, era) were not present in this source and need a PDF spec sheet or a real model pass to fill — see docs/machine-catalog-pipeline.md."
+    },
+    {
+      "brand": "Hammer Strength",
+      "model": "Super Squat Press",
+      "aliases": null,
+      "category": "squat-machine",
+      "mechanism": "plate-loaded",
+      "muscleTargets": null,
+      "weightStackKg": null,
+      "plateCapacityKg": null,
+      "dimensions": null,
+      "productUrl": "https://www.lifefitness.com/en-us/catalog/strength-training/plate-loaded/super-squat-press",
+      "introducedYear": null,
+      "discontinuedYear": null,
+      "sourceUrl": "https://www.lifefitness.com/en-us/catalog/strength-training/plate-loaded/super-squat-press",
+      "sourceNote": "dry-run/mock extraction: parsed from schema.org Product JSON-LD (name/brand/description only). Spec fields (weight stack, plate capacity, dimensions, era) were not present in this source and need a PDF spec sheet or a real model pass to fill — see docs/machine-catalog-pipeline.md."
+    }
+  ]
+}

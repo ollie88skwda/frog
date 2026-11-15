@@ -1,0 +1,1 @@
+ALTER TABLE "routine_sets" ADD COLUMN "laterality" text;

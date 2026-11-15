@@ -1,0 +1,80 @@
+import { PR_TYPE_LABELS, type PrType } from "@frog/core";
+import { Medal, X } from "@phosphor-icons/react";
+import { useEffect, useRef } from "react";
+import { useVoice } from "@/lib/voice";
+
+export type PrBannerData = {
+  // A monotonically increasing id so re-hitting the same record re-triggers the
+  // auto-dismiss timer even if the text is identical.
+  id: number;
+  exerciseName: string;
+  prTypes: PrType[];
+};
+
+/**
+ * Live PR banner: announced when a completed set beats a stored record. Names
+ * the exercise + which record type(s) fell, auto-dismisses after 4s. The medal
+ * badge on the winning set row (session-local) persists in the grid.
+ */
+export function PrBanner({
+  data,
+  onDismiss,
+}: {
+  data: PrBannerData | null;
+  onDismiss: () => void;
+}) {
+  const { t } = useVoice();
+  // Keep the latest callback in a ref so a parent passing an inline function
+  // doesn't restart the 4s timer on every re-render.
+  const dismissRef = useRef(onDismiss);
+  dismissRef.current = onDismiss;
+  useEffect(() => {
+    if (!data) return;
+    const timer = setTimeout(() => dismissRef.current(), 4000);
+    return () => clearTimeout(timer);
+  }, [data]);
+
+  if (!data) return null;
+  const labels = data.prTypes.map((p) => PR_TYPE_LABELS[p]).join(" · ");
+
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-28 z-30 flex justify-center px-4">
+      <div
+        // Opaque panel (not bg-accent-soft): that token is a ~5% alpha wash
+        // meant for pills sitting on a known surface, and read as nearly
+        // transparent floating over arbitrary scrolled content underneath.
+        className="float-in pointer-events-auto flex max-w-md items-center gap-2 rounded-sm bg-raised px-3 py-2 shadow-lg"
+        role="status"
+        data-testid="pr-banner"
+      >
+        <Medal className="size-4 shrink-0 text-accent-ink" />
+        <span className="min-w-0 text-xs text-ink">
+          <span className="font-semibold">New PR — {data.exerciseName}</span>
+          <span
+            className="block truncate text-soft"
+            data-testid="pr-banner-types"
+          >
+            {labels}
+          </span>
+          {/* Editorial framing only — the exercise name and record types above
+              stay bare literals (data never routes through a register). */}
+          <span className="block text-2xs text-faint">
+            {t(
+              "Saved to your records.",
+              "The frog has recorded your personal record and updated the relevant distributions. It is not impressed easily. It is, on this occasion, impressed.",
+            )}
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={onDismiss}
+          title="Dismiss"
+          className="ml-1 flex size-6 shrink-0 items-center justify-center rounded-xs bg-surface text-faint transition-colors duration-100 hover:text-ink"
+          data-testid="pr-banner-dismiss"
+        >
+          <X className="size-3" />
+        </button>
+      </div>
+    </div>
+  );
+}

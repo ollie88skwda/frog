@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Frog</title>
+    <!-- sizes="any" keeps the vector primary: Chromium prefers the last
+         supported rel=icon, and an unsized SVG loses to a sized PNG. -->
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" sizes="any" />
+    <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#191513" />
+    <!-- apple-mobile-web-app-capable is deprecated (and warns in the console),
+         but older iOS reads only that one — ship both. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Frog" />
+    <!-- og:title/og:site_name/twitter:title are checked against APP_NAME by
+         scripts/gen-og-image.ts (packages/core/src/config.ts is the source of
+         truth; index.html can't import it — see AGENTS.md "The name") — a
+         rebrand that only changes APP_NAME will fail that check until these
+         are updated by hand. og:image is a static brand card (Green ground,
+         same painter as the share cards), not per-route: this is a
+         client-only SPA with no public read path for a session, so a link
+         unfurl can only ever carry the brand, never a real user's data. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Frog" />
+    <meta property="og:title" content="Frog — a training lab notebook" />
+    <meta
+      property="og:description"
+      content="Log the work and the conditions around it, then see what actually moves the needle."
+    />
+    <!-- No og:url: it must be an absolute canonical URL and Frog has no domain
+         yet (SHARE_DOMAIN is null) — an omitted optional tag beats a
+         meaningless one, and scrapers fall back to the fetched URL. The image
+         URLs stay root-relative, which the major crawlers resolve against the
+         page origin; make them absolute once a domain lands. -->
+    <meta property="og:image" content="/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Frog — a training lab notebook" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Frog — a training lab notebook" />
+    <meta
+      name="twitter:description"
+      content="Log the work and the conditions around it, then see what actually moves the needle."
+    />
+    <meta name="twitter:image" content="/og.png" />
+    <script>
+      // Set theme + mode before first paint (no flash). Frog ships the Because
+      // GREEN theme only; mode is Device (default) | Day | Night, persisted in
+      // localStorage "mode". Keep in sync with src/lib/theme.ts.
+      (() => {
+        var stored = localStorage.getItem("mode");
+        var legacy = localStorage.getItem("theme");
+        if (stored === null && (legacy === "light" || legacy === "dark")) {
+          stored = legacy === "light" ? "day" : "night";
+          localStorage.setItem("mode", stored);
+        }
+        localStorage.removeItem("theme");
+        var night =
+          stored === "night" ||
+          (stored !== "day" &&
+            !window.matchMedia("(prefers-color-scheme: light)").matches);
+        var root = document.documentElement;
+        root.dataset.theme = "green";
+        root.dataset.mode = night ? "night" : "day";
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute("content", night ? "#191513" : "#fcf9f4");
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

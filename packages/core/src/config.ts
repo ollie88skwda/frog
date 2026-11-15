@@ -1,0 +1,47 @@
+/**
+ * App display name — "Frog" (docs/brand/archive/frog-brand-identity.html, 2026-07-16).
+ *
+ * This is the SINGLE source of truth for the user-facing display name. Reference
+ * APP_NAME from UI (headers, branding) instead of hardcoding the literal anywhere.
+ * To rebrand, change it here plus the three static assets that cannot import this
+ * module: apps/web/index.html (title + Apple/OG/Twitter metas, CI-checked by
+ * scripts/gen-og-image.ts), apps/web/public/manifest.webmanifest (name /
+ * short_name), and apps/web/public/sw.js (default push-payload title).
+ * Technical identifiers now agree with the display name (package scope @frog/*,
+ * FROG_* env vars, frog_ token prefix) — the identifier layer was renamed on
+ * 2026-07-28, see docs/DECISIONS.md.
+ */
+export const APP_NAME = "Frog";
+
+/**
+ * Calendar/streak week start — Sunday (0=Sun…6=Sat), hardcoded per
+ * docs/DECISIONS.md 2026-07-30. Previously a per-user preference
+ * (`user_prefs.first_weekday`); the picker was removed, so every call site
+ * that used to read the preference now imports this constant instead.
+ */
+export const FIRST_WEEKDAY = 0;
+
+/**
+ * Share-card footer domain — single source of truth for the identity line's
+ * destination (`docs/DECISIONS.md`, share redesign). `null` until a custom
+ * domain is attached; the footer renders `@handle` alone with no domain when
+ * unset, never a placeholder Vercel URL. Flip to e.g. `"olivernguyen.com/frog"`
+ * once the domain is live — every share surface reads this one constant.
+ */
+export const SHARE_DOMAIN: string | null = null;
+
+/**
+ * Community sharing — the dev-mode population-phase switch
+ * (frog-community-direction plan, docs/DECISIONS.md 2026-08-08).
+ * When true (dev default), every custom exercise a user creates is published
+ * to the shared library via the `publish_exercise` RPC (owner_id null +
+ * created_by = the publisher) instead of being inserted as a private row.
+ *
+ * Per the captain's temp-vs-permanent decision, this flag is the
+ * "temporary" switch: the durable seam (RPC + created_by + fork-on-edit) is
+ * what ships, and flipping this to false (plus revoking execute on the RPC)
+ * stops new shared rows — existing ones stay as ordinary seed-posture rows.
+ * Fork paths (duplicate, session copy-on-write) pass `share: false`
+ * explicitly and are never affected by this flag.
+ */
+export const COMMUNITY_SHARING = true;

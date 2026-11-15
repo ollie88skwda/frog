@@ -1,0 +1,324 @@
+import { describe, expect, it } from "vitest";
+import type { MuscleTarget } from "../domain/anatomy";
+import type { RecordsSessionInput } from "../records/types";
+import {
+  bucketStart,
+  type MuscleByExercise,
+  mainExercises,
+  muscleCredits,
+  muscleDistribution,
+  setsPerMuscle,
+  sevenDayMuscleSets,
+  weeklyConsistency,
+} from "./aggregate";
+import { monthlyReport, reportableMonths } from "./monthly-report";
+import { yearReview } from "./year-review";
+
+const DAY = 24 * 60 * 60 * 1000;
+// Mon 2026-07-13 12:00 local
+const NOW = new Date(2026, 6, 13, 12).getTime();
+const OPTS = { now: NOW, includeWarmups: true, firstWeekday: 1 };
+
+const bench = (targets: MuscleTarget[]): MuscleByExercise =>
+  new Map([["bench", { targets }]]);
+
+const MUSCLES = bench([
+  { muscle: "pecs", tier: "S" },
+  { muscle: "front-delts", tier: "A" },
+]);
+
+function session(
+  id: string,
+  startedAt: number,
+  sets: number,
+  weightKg = 100,
+): RecordsSessionInput {
+  return {
+    sessionId: id,
+    startedAt,
+    endedAt: startedAt + 60 * 60 * 1000,
+    pausedMs: 0,
+    exercises: [
+      {
+        exerciseId: "bench",
+        exerciseType: "weight_reps",
+        sets: Array.from({ length: sets }, (_, i) => ({
+          setType: "normal",
+          weightKg,
+          reps: 5,
+          durationSec: null,
+          distanceM: null,
+          setNo: i,
+          side: null,
+        })),
+      },
+    ],
+  };
+}
+
+describe("muscleCredits", () => {
+  it("primary 1.0, secondaries 0.5", () => {
+    expect(
+      muscleCredits([
+        { muscle: "pecs", tier: null },
+        { muscle: "triceps", tier: null },
+      ]),
+    ).toEqual([
+      { muscle: "pecs", credit: 1 },
+      { muscle: "triceps", credit: 0.5 },
+    ]);
+    expect(muscleCredits(null)).toEqual([]);
+  });
+
+  it("reads role, not position, when both are explicit — two primaries", () => {
+    expect(
+      muscleCredits([
+        { muscle: "quads", tier: null, role: "primary" },
+        { muscle: "glutes", tier: null, role: "primary" },
+        { muscle: "erectors", tier: null, role: "secondary" },
+      ]),
+    ).toEqual([
+      { muscle: "quads", credit: 1 },
+      { muscle: "glutes", credit: 1 },
+      { muscle: "erectors", credit: 0.5 },
+    ]);
+  });
+});
+
+describe("setsPerMuscle", () => {
+  it("buckets fractional counts by week", () => {
+    const history = [
+      session("a", NOW - DAY, 4),
+      session("b", NOW - 8 * DAY, 2),
+    ];
+    const buckets = setsPerMuscle(history, MUSCLES, "3m", "week", OPTS);
+    expect(buckets).toHaveLength(2);
+    const latest = buckets[1];
+    expect(latest.counts.pecs).toBe(4);
+    expect(latest.counts["front-delts"]).toBe(2); // 4 sets × 0.5
+  });
+
+  it("excludes warm-ups when configured", () => {
+    const h: RecordsSessionInput[] = [
+      {
+        ...session("a", NOW - DAY, 0),
+        exercises: [
+          {
+            exerciseId: "bench",
+            exerciseType: "weight_reps",
+            sets: [
+              {
+                setType: "warmup",
+                weightKg: 60,
+                reps: 5,
+                durationSec: null,
+                distanceM: null,
+                setNo: 0,
+                side: null,
+              },
+              {
+                setType: "normal",
+                weightKg: 100,
+                reps: 5,
+                durationSec: null,
+                distanceM: null,
+                setNo: 1,
+                side: null,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    const buckets = setsPerMuscle(h, MUSCLES, "30d", "week", {
+      ...OPTS,
+      includeWarmups: false,
+    });
+    expect(buckets[0].counts.pecs).toBe(1);
+  });
+
+  it("a unilateral pair (two rows sharing set_no) credits as one set, not two", () => {
+    const rows = [0, 1, 2].flatMap((setNo) => [
+      {
+        setType: "normal",
+        weightKg: 30,
+        reps: 10,
+        durationSec: null,
+        distanceM: null,
+        setNo,
+        side: "left" as const,
+      },
+      {
+        setType: "normal",
+        weightKg: 28,
+        reps: 8,
+        durationSec: null,
+        distanceM: null,
+        setNo,
+        side: "right" as const,
+      },
+    ]);
+    const h: RecordsSessionInput[] = [
+      {
+        ...session("a", NOW - DAY, 0),
+        exercises: [
+          { exerciseId: "bench", exerciseType: "weight_reps", sets: rows },
+        ],
+      },
+    ];
+    const buckets = setsPerMuscle(h, MUSCLES, "30d", "week", OPTS);
+    // 3 physical sets, not 6 rows: primary muscle gets 3.0 credit.
+    expect(buckets[0].counts.pecs).toBe(3);
+    expect(buckets[0].counts["front-delts"]).toBe(1.5);
+  });
+});
+
+describe("muscleDistribution", () => {
+  it("totals + prior-equal-period compare", () => {
+    const history = [
+      session("cur", NOW - 5 * DAY, 3), // in current 30d
+      session("prev", NOW - 45 * DAY, 2), // in previous 30d window
+    ];
+    const { current, previous } = muscleDistribution(
+      history,
+      MUSCLES,
+      "30d",
+      OPTS,
+    );
+    expect(current.totals.workouts).toBe(1);
+    expect(current.totals.sets).toBe(3);
+    expect(current.totals.volumeKg).toBe(1500);
+    expect(current.totals.durationMs).toBe(60 * 60 * 1000);
+    expect(current.regionSets.chest).toBe(3);
+    expect(current.regionSets.shoulders).toBe(1.5);
+    expect(previous.totals.workouts).toBe(1);
+    expect(previous.totals.sets).toBe(2);
+  });
+
+  it("a unilateral pair counts as one set but both limbs' tonnage", () => {
+    const sets = [0, 1].flatMap((setNo) =>
+      (["left", "right"] as const).map((side, i) => ({
+        setType: "normal",
+        weightKg: 30 - i * 2,
+        reps: 10,
+        durationSec: null,
+        distanceM: null,
+        setNo,
+        side,
+      })),
+    );
+    const h: RecordsSessionInput[] = [
+      {
+        ...session("uni", NOW - DAY, 0),
+        exercises: [{ exerciseId: "bench", exerciseType: "weight_reps", sets }],
+      },
+    ];
+    const { current } = muscleDistribution(h, MUSCLES, "30d", OPTS);
+    expect(current.totals.sets).toBe(2);
+    expect(current.regionSets.chest).toBe(2);
+    expect(current.regionSets.shoulders).toBe(1);
+    expect(current.muscleSets.pecs).toBe(2);
+    // 2 × (30 × 10 + 28 × 10) — the sibling row's tonnage still counts.
+    expect(current.totals.volumeKg).toBe(1160);
+    expect(current.regionVolumeKg.chest).toBe(1160);
+  });
+});
+
+describe("mainExercises / consistency / 7-day muscles", () => {
+  it("ranks by session count and windows correctly", () => {
+    const history = [
+      session("a", NOW - DAY, 3),
+      session("b", NOW - 2 * DAY, 3),
+      session("old", NOW - 100 * DAY, 3),
+    ];
+    expect(mainExercises(history, "30d", OPTS)).toEqual([
+      { exerciseId: "bench", sessions: 2 },
+    ]);
+    const weeks = weeklyConsistency(history, 4, OPTS);
+    expect(weeks).toHaveLength(4);
+    // NOW is Mon 12:00; NOW−1d (Sun) and NOW−2d (Sat) fall in the PREVIOUS
+    // Monday-start week, so the current week is empty.
+    expect(weeks[3].sessions).toBe(0);
+    expect(weeks[2].sessions).toBe(2);
+    const seven = sevenDayMuscleSets(history, MUSCLES, OPTS);
+    expect(seven.pecs).toBe(6);
+  });
+});
+
+describe("monthly report + year review", () => {
+  const june = new Date(2026, 5, 10, 10).getTime();
+  const july = new Date(2026, 6, 5, 10).getTime();
+  const history = [
+    session("jun1", june, 4, 100),
+    session("jul1", july, 4, 110), // beats june weights → PR events in July
+  ];
+
+  it("builds a month window with PRs and workout days", () => {
+    const r = monthlyReport(history, MUSCLES, 2026, 6, OPTS);
+    expect(r.totals.workouts).toBe(1);
+    expect(r.previous.totals.workouts).toBe(1);
+    expect(r.workoutDays).toEqual(["2026-07-05"]);
+    expect(r.prEvents.length).toBeGreaterThan(0);
+    expect(
+      r.prEvents.every((e) => e.at >= new Date(2026, 6, 1).getTime()),
+    ).toBe(true);
+    expect(reportableMonths(history)).toEqual([
+      { year: 2026, month: 6 },
+      { year: 2026, month: 5 },
+    ]);
+  });
+
+  it("year review aggregates the calendar year", () => {
+    const r = yearReview(history, MUSCLES, 2026, OPTS);
+    expect(r.workouts).toBe(2);
+    expect(r.volumeKg).toBe(4 * 5 * 100 + 4 * 5 * 110);
+    expect(r.mostProductiveMonth?.workouts).toBe(1);
+    expect(r.topRegions[0].region).toBe("chest");
+    expect(r.topExercises[0]).toEqual({ exerciseId: "bench", sessions: 2 });
+    expect(r.workoutDays).toHaveLength(2);
+  });
+});
+
+describe("bucketStart", () => {
+  it("month + year buckets snap to calendar boundaries", () => {
+    expect(bucketStart(NOW, "month", 1)).toBe(new Date(2026, 6, 1).getTime());
+    expect(bucketStart(NOW, "year", 1)).toBe(new Date(2026, 0, 1).getTime());
+  });
+});
+
+describe("weekly muscle volume counts hard sets only (R6/R17b)", () => {
+  it("warm-ups and RIR>4 sets earn no credit, whatever the tonnage toggle says", () => {
+    const h: RecordsSessionInput[] = [
+      {
+        sessionId: "s",
+        startedAt: NOW - DAY,
+        endedAt: NOW - DAY + 3600_000,
+        pausedMs: 0,
+        exercises: [
+          {
+            exerciseId: "bench",
+            exerciseType: "weight_reps",
+            sets: [
+              { setType: "warmup", weightKg: 40, reps: 6, rir: 5 },
+              { setType: "normal", weightKg: 100, reps: 5, rir: 2 },
+              { setType: "normal", weightKg: 100, reps: 5, rir: 6 },
+              { setType: "normal", weightKg: 100, reps: 5 },
+            ].map((x, i) => ({
+              durationSec: null,
+              distanceM: null,
+              setNo: i,
+              side: null,
+              ...x,
+            })),
+          },
+        ],
+      },
+    ];
+    const seven = sevenDayMuscleSets(h, MUSCLES, {
+      ...OPTS,
+      includeWarmups: true,
+    });
+    expect(seven.pecs).toBe(2); // RIR 2 + blank RIR; warm-up and RIR 6 excluded
+    expect(seven["front-delts"]).toBe(1);
+  });
+});

@@ -1,0 +1,43 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+dist-*/
+*.tsbuildinfo
+.vite/
+
+# test artifacts
+/test-results/
+/playwright-report/
+/blob-report/
+
+# supabase local
+supabase/.temp/
+supabase/.branches/
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*
+!.env.example
+!*.env.example
+
+# secrets
+*.key
+*.p8
+*.p12
+.lavish/
+.wrangler/
+
+# machine-catalog pipeline staging output (raw crawls, extractions, QA reports)
+scripts/machine-catalog/staging/
+
+# local tooling config
+treehouse.toml
+
+# convex local test signing key + local backend state
+.convex-test/
+.convex/

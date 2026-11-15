@@ -1,0 +1,1 @@
+ALTER TABLE "metrics" ADD COLUMN "exercise_ids" jsonb;
