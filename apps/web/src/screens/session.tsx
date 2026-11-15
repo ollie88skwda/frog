@@ -126,6 +126,7 @@ import {
   planFromSnapshot,
   rangeState,
   reportE1rm,
+  rirHint,
   setTarget,
 } from "@/components/session/prescription";
 import { RestStopwatch } from "@/components/session/rest-stopwatch";
@@ -247,7 +248,8 @@ export type SeedSet = {
   durationSec: number | null;
   distanceM: number | null;
   laterality?: Laterality | null;
-  /** Planned RIR for this set (routine target); stored, never prefilled. */
+  /** Planned RIR for this set (routine target); stored and hinted, never
+   * prefilled. */
   rirMin?: number | null;
   rirMax?: number | null;
 };
@@ -389,11 +391,14 @@ function RirSegmented({
   max,
   onChange,
   side,
+  hint,
 }: {
   min: string;
   max: string;
   onChange: (v: { min: string; max: string }) => void;
   side?: "left" | "right";
+  /** Planned segment, outlined until tapped; never selected by itself. */
+  hint?: number | null;
 }) {
   const selected = rirSegmentOf(min, max);
   return (
@@ -404,6 +409,7 @@ function RirSegmented({
       <div className="flex gap-1">
         {RIR_SEGMENTS.map((v) => {
           const on = selected === v;
+          const hinted = !on && hint === v;
           return (
             <button
               key={v}
@@ -418,7 +424,9 @@ function RirSegmented({
                 on
                   ? "bg-ink text-on-action"
                   : "bg-surface text-soft hover:bg-surface-hover",
+                hinted && "text-ink ring-2 ring-accent ring-inset",
               )}
+              data-hint={hinted ? "true" : undefined}
               data-testid={rirOptionId(v, side)}
             >
               {v === 4 ? "4+" : v}
@@ -3695,9 +3703,14 @@ function Spotlight({
   // Planned RIR for THIS set (routine target / exercise snapshot) is stored
   // with the set for the coach, but never fills the effort strip: each set's
   // RIR is its own, and blank stays blank (no carry from a previous set or the
-  // plan).
+  // plan). Its midpoint is only outlined on the strip so an on-plan set stays
+  // one tap away.
   const plannedRirMin = seed?.rirMin ?? plan?.rirMin ?? null;
   const plannedRirMax = seed?.rirMax ?? plan?.rirMax ?? null;
+  const rirHintValue =
+    isEditing || (seed?.setType ?? "normal") === "warmup"
+      ? null
+      : rirHint(plannedRirMin, plannedRirMax);
   const [rirMin, setRirMin] = useState(
     () => draft?.rirMin ?? (left?.rirMin != null ? String(left.rirMin) : ""),
   );
@@ -3829,8 +3842,10 @@ function Spotlight({
   // switched to it.
   useEffect(() => {
     if (!voiceFill || isEditing) return;
-    if (f.weight && voiceFill.weightKg != null)
+    if (f.weight && voiceFill.weightKg != null) {
+      setWeightError(false);
       setWeightRaw(String(toDisplayWeight(voiceFill.weightKg, unit)));
+    }
     if (f.reps && voiceFill.reps != null) setReps(String(voiceFill.reps));
     onVoiceFillConsumed();
   }, [voiceFill, isEditing, f.weight, f.reps, unit, onVoiceFillConsumed]);
@@ -4576,6 +4591,7 @@ function Spotlight({
                 setRirMin(v.min);
                 setRirMax(v.max);
               }}
+              hint={rirHintValue}
             />
           </div>
         </div>
@@ -4590,6 +4606,7 @@ function Spotlight({
               setRirMax(v.max);
             }}
             side="left"
+            hint={rirHintValue}
           />
           <RirSegmented
             min={rirMin2}
@@ -4599,6 +4616,7 @@ function Spotlight({
               setRirMax2(v.max);
             }}
             side="right"
+            hint={rirHintValue}
           />
         </div>
       )}

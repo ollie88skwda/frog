@@ -6,6 +6,7 @@ import {
   planFromSnapshot,
   rangeState,
   reportE1rm,
+  rirHint,
   setTarget,
 } from "./prescription";
 
@@ -35,6 +36,19 @@ describe("rangeState (R8b, C2c overshoot)", () => {
   it("is null without a range or reps", () => {
     expect(rangeState({ reps: 5, repsMin: null, repsMax: null })).toBeNull();
     expect(rangeState({ reps: null, repsMin: 6, repsMax: 8 })).toBeNull();
+  });
+});
+
+describe("rirHint (R10)", () => {
+  it("uses the midpoint of the plan", () => {
+    expect(rirHint(1, 3)).toBe(2);
+    expect(rirHint(2, 2)).toBe(2);
+    expect(rirHint(0, 1)).toBe(1);
+    expect(rirHint(3, 4)).toBe(4);
+  });
+  it("is null with no plan", () => {
+    expect(rirHint(null, null)).toBeNull();
+    expect(rirHint(undefined, undefined)).toBeNull();
   });
 });
 
