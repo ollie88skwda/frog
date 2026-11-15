@@ -52,7 +52,9 @@ export_all.
   treated as 0 and flagged.
 - Warm-up sets (set_type 'warmup') are excluded from volume, records and
   trends by default.
-- A change under 10% is normal swing, not progress or regression. A confident
-  verdict needs 7 comparable sessions; fewer is labelled a rough estimate.
-- Condition findings need about 10 sessions with the condition logged. They
-  are correlation, not causation.
+- A change under 10% is normal swing, not progress or regression. Verdicts
+  show from 2 sessions as a best guess with a computed confidence percentage
+  (never 100%); under 50% is labelled tentative. The 7-session stall check
+  still gives the firm call.
+- Condition findings show from 3 sessions per side with a confidence
+  percentage (small samples are capped). They are correlation, not causation.
