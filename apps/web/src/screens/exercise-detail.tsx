@@ -1,6 +1,7 @@
 import {
   ACTION_RATINGS,
   buildExerciseRecordsCard,
+  type ConfidenceScore,
   EQUIPMENT_LABELS,
   EXERCISE_TYPE_LABELS,
   type Exercise,
@@ -41,6 +42,7 @@ import {
 } from "recharts";
 import { ExerciseThumb, TierBadge } from "@/components/anatomy-ui";
 import { ExerciseEditor } from "@/components/exercise-editor";
+import { liftSeries, liftVerdict } from "@/components/progress/derive";
 import { LiftHeader } from "@/components/progress/lift-header";
 import { ShareButton } from "@/components/share-sheet";
 import { BackButton } from "@/components/ui/back-button";
@@ -246,6 +248,11 @@ function SummaryTab({
   const sessions = data?.history ?? [];
   const includeWarmups = data?.includeWarmups ?? false;
   const records = data?.records.byExercise.get(exercise.id);
+  const liftScore = useMemo(() => {
+    if (type !== "weight_reps") return null;
+    const v = liftVerdict(liftSeries(sessions, exercise.id));
+    return v.kind === "status" ? v.score : null;
+  }, [sessions, exercise.id, type]);
 
   // Per-session scalar for the active metric, over sessions in the range that
   // contain this exercise. Chronological → the line reads left (old) to right.
@@ -412,6 +419,7 @@ function SummaryTab({
       </div>
 
       <RecordsPanel
+        confidence={liftScore}
         type={type}
         exerciseName={exercise.name}
         records={records}
@@ -425,6 +433,7 @@ function SummaryTab({
 }
 
 function RecordsPanel({
+  confidence,
   type,
   exerciseName,
   records,
@@ -432,6 +441,7 @@ function RecordsPanel({
   distUnit,
   sparkline,
 }: {
+  confidence: ConfidenceScore | null;
   type: ExerciseType;
   exerciseName: string;
   records: ExerciseRecords | undefined;
@@ -455,10 +465,11 @@ function RecordsPanel({
             unit,
             distUnit,
             sparkline,
+            confidence,
             identity: { displayName: prefs?.displayName ?? null },
           })
         : null,
-    [records, exerciseName, type, unit, distUnit, sparkline, prefs],
+    [records, exerciseName, type, unit, distUnit, sparkline, prefs, confidence],
   );
   const source = useMemo(
     () => (card ? { kind: "static" as const, card } : null),

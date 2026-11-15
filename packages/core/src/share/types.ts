@@ -77,6 +77,8 @@ export type PrCard = {
   /** When 2+ PRs land in one session: the rest, as a max-3 supporting list
    * (hero already carries the largest delta). */
   extraPrs: string[];
+  /** "81%" (or "42% · tentative"): computed confidence in the e1RM trend. */
+  confidence: ShareStat | null;
   identity: ShareIdentity;
 };
 
@@ -132,6 +134,8 @@ export type ExerciseRecordsCard = {
   hero: ShareHero; // best e1RM or heaviest weight
   heroPrType: PrType;
   support: ShareStat[]; // up to 3 rep-max set records
+  /** Computed confidence in the lift's e1RM direction, e.g. "81%". */
+  confidence: ShareStat | null;
   sparkline: Array<{ at: number; value: number }>;
   identity: ShareIdentity;
 };
