@@ -96,6 +96,14 @@ const MARKERS = [
     re: /"data-frog-src":/,
     msg: "dev JSX source stamps (data-frog-src)",
   },
+  {
+    // Dev-only /dev/data-kit gallery (apps/web/src/dev/data-kit.tsx, mounted in
+    // app.tsx behind the same dead-branch shape as the annotate overlay).
+    // Matched in the emitted JSX-children shape so the changelog chunk, which
+    // quotes DECISIONS.md prose, cannot trip it.
+    re: /\["Data kit · "/,
+    msg: "dev data-kit gallery (/dev/data-kit)",
+  },
 ] as const;
 
 for (const f of readdirSync(assetsDir).filter((n) => n.endsWith(".js"))) {

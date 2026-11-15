@@ -44,3 +44,15 @@ TypeScript stdio server (`frog-mcp`, packages/mcp in the repo). Config env:
 FROG_TOKEN (required), FROG_API_URL. Tools: list_exercises, list_sessions,
 get_session, get_sets, get_progression (runs the findings engine locally),
 export_all.
+
+## Findings math (what get_progression and the Findings/Progress screens use)
+
+- Strength estimate (e1RM): Brzycki with RIR, for sets of 10 or fewer total
+  reps (reps + RIR). Longer sets get no estimate, never a guess. A blank RIR is
+  treated as 0 and flagged.
+- Warm-up sets (set_type 'warmup') are excluded from volume, records and
+  trends by default.
+- A change under 10% is normal swing, not progress or regression. A confident
+  verdict needs 7 comparable sessions; fewer is labelled a rough estimate.
+- Condition findings need about 10 sessions with the condition logged. They
+  are correlation, not causation.

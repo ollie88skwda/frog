@@ -65,11 +65,11 @@ Each note points at one element in the running app. `Source` is the JSX
 that rendered it — start there.
 
 ## 1. <button> "Start empty workout"
-- Source: apps/web/src/screens/train.tsx:113:9 (nearest JSX ancestor of the click)
-- Component: Button (in TrainScreen)
+- Source: apps/web/src/components/home-hero.tsx:197:11 (nearest JSX ancestor of the click)
+- Component: Button (in HomeHero)
 - Test id: `start-session-btn`
 - Selector: `div > div:nth-of-type(2) > div > button[data-testid="start-session-btn"]`
-- Route: `/train`
+- Route: `/`
 - Viewport: 390×664
 
 Make this the primary action.
