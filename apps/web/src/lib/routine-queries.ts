@@ -1,10 +1,23 @@
-import type {
-  NewRoutineInput,
-  Routine,
-  RoutineDetail,
-  RoutineFolder,
+import {
+  estimateMinutes,
+  lastPerformedByRoutine,
+  type NewRoutineInput,
+  type Routine,
+  type RoutineDetail,
+  type RoutineFolder,
+  type RoutineViewInput,
+  viewFromRoutines,
 } from "@frog/core";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useMemo } from "react";
+import { formatDaysAgo } from "./format";
+import { useAllSessions } from "./profile-queries";
+import { useExercises } from "./queries";
 import { useRepo } from "./repo";
 
 // Routine + folder hooks (Hevy-parity M2). Same optimistic pattern as
@@ -217,3 +230,123 @@ export function useDeleteRoutine() {
 }
 
 export type { RoutineDetail };
+
+// Routines-list summary line (report 8.3): "24 sets · ~52 min · last 2d ago".
+// Working sets only (warm-ups are never counted), minutes from the same
+// estimator the builder uses (R15/R15b, an estimate, not measured).
+export type RoutineSummary = {
+  sets: number;
+  minutes: { min: number; max: number } | null;
+  lastAt: number | null;
+};
+
+export function formatRoutineSummary(
+  s: RoutineSummary,
+  now: number = Date.now(),
+): string {
+  const parts = [`${s.sets} ${s.sets === 1 ? "set" : "sets"}`];
+  if (s.minutes && s.sets > 0) {
+    const m = Math.round((s.minutes.min + s.minutes.max) / 2);
+    parts.push(`~${m} min`);
+  }
+  parts.push(
+    s.lastAt != null ? `last ${formatDaysAgo(s.lastAt, now)}` : "not done yet",
+  );
+  return parts.join(" · ");
+}
+
+function dataOnly<T>(results: { data: T | undefined }[]): (T | undefined)[] {
+  return results.map((r) => r.data);
+}
+
+export function useRoutineSummaries(
+  routines: readonly Routine[],
+): Map<string, RoutineSummary> {
+  const repo = useRepo();
+  const { data: exercises = [] } = useExercises();
+  const { data: sessions = [] } = useAllSessions();
+  const details = useQueries({
+    queries: routines.map((r) => ({
+      queryKey: ["routine-detail", r.id],
+      queryFn: () => repo.getRoutineDetail(r.id),
+      staleTime: 60_000,
+    })),
+    combine: dataOnly,
+  });
+  return useMemo(() => {
+    const lookup = new Map(exercises.map((e) => [e.id, e]));
+    const last = lastPerformedByRoutine(sessions);
+    const out = new Map<string, RoutineSummary>();
+    details.forEach((d, i) => {
+      const r = routines[i];
+      if (!r || !d) return;
+      const view = viewFromRoutines(
+        [
+          {
+            id: r.id,
+            name: r.name,
+            exercises: d.exercises.map((e) => ({
+              exerciseId: e.exerciseId,
+              restSec: e.restSec,
+              sets: e.sets,
+            })),
+          },
+        ],
+        lookup,
+      );
+      const slots = view.sessions[0]?.slots ?? [];
+      out.set(r.id, {
+        sets: slots.reduce((a, s) => a + s.rx.sets, 0),
+        minutes: slots.length ? estimateMinutes(slots) : null,
+        lastAt: last.get(r.id) ?? null,
+      });
+    });
+    return out;
+  }, [details, routines, exercises, sessions]);
+}
+
+/** Sibling routines of a folder as meter inputs (everything but `excludeId`). */
+export function useFolderRoutineInputs(
+  folderId: string | null | undefined,
+  excludeId: string | null,
+): RoutineViewInput[] {
+  const { data: routines = [] } = useRoutines();
+  const repo = useRepo();
+  const sibs = useMemo(
+    () =>
+      folderId
+        ? routines
+            .filter((r) => r.folderId === folderId && r.id !== excludeId)
+            .sort((a, b) => a.position - b.position)
+        : [],
+    [routines, folderId, excludeId],
+  );
+  const details = useQueries({
+    queries: sibs.map((r) => ({
+      queryKey: ["routine-detail", r.id],
+      queryFn: () => repo.getRoutineDetail(r.id),
+      staleTime: 60_000,
+    })),
+    combine: dataOnly,
+  });
+  return useMemo(
+    () =>
+      sibs.flatMap((r, i) => {
+        const d = details[i];
+        return d
+          ? [
+              {
+                id: r.id,
+                name: r.name,
+                exercises: d.exercises.map((e) => ({
+                  exerciseId: e.exerciseId,
+                  restSec: e.restSec,
+                  sets: e.sets,
+                })),
+              },
+            ]
+          : [];
+      }),
+    [sibs, details],
+  );
+}

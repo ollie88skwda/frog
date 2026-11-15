@@ -284,7 +284,7 @@ test("weight and reps adjust chips step the boxed target fields, and a typed wei
   });
 });
 
-test("a fresh set defaults its target RIR range to 1-2, and the RIR/name controls meet the 40px floor", async ({
+test("a fresh set defaults its target RIR range to 1-3, and the RIR/name controls meet the 40px floor", async ({
   page,
 }) => {
   const EX = `RirDefaultEx ${Date.now()}`;
@@ -297,7 +297,8 @@ test("a fresh set defaults its target RIR range to 1-2, and the RIR/name control
   await page.getByTestId(`routine-pick-${EX}`).click();
 
   await expect(page.getByTestId("routine-ex-0-set-0-rirmin")).toHaveValue("1");
-  await expect(page.getByTestId("routine-ex-0-set-0-rirmax")).toHaveValue("2");
+  // 1-3 is the deliberate default (R10, J9).
+  await expect(page.getByTestId("routine-ex-0-set-0-rirmax")).toHaveValue("3");
   await page.getByTestId("routine-ex-0-set-0-rirmin").fill("0");
   await expect(page.getByTestId("routine-ex-0-set-0-rirmin")).toHaveValue("0");
 

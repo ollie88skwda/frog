@@ -42,6 +42,7 @@ async function seedIds(page: Page): Promise<Record<string, string>> {
   await page.waitForURL(/\/session\//);
   const session = new URL(page.url()).pathname.split("/")[2];
   await page.goto("/programs");
+  await page.getByTestId("more-templates").click();
   const program = (
     await page
       .locator('[data-testid^="program-card-"]')

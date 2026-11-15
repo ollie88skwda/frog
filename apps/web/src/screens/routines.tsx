@@ -16,8 +16,11 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { QueryState } from "@/components/ui/query-state";
 import { Toolbar } from "@/components/ui/toolbar";
+import { useActiveProgram } from "@/lib/program-queries";
 import { useRepo } from "@/lib/repo";
 import {
+  formatRoutineSummary,
+  type RoutineSummary,
   useCreateRoutineFolder,
   useDeleteRoutine,
   useDeleteRoutineFolder,
@@ -25,6 +28,7 @@ import {
   useMoveRoutine,
   useRenameRoutineFolder,
   useRoutineFolders,
+  useRoutineSummaries,
   useRoutines,
 } from "@/lib/routine-queries";
 import { cn } from "@/lib/utils";
@@ -72,6 +76,8 @@ export default function RoutinesScreen() {
   const routines = routinesQ.data ?? [];
   const isError = foldersQ.isLoadingError || routinesQ.isLoadingError;
   const isLoading = !isError && (foldersQ.isPending || routinesQ.isPending);
+  const summaries = useRoutineSummaries(routines);
+  const activeProgram = useActiveProgram();
   const createFolder = useCreateRoutineFolder();
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [folderName, setFolderName] = useState("");
@@ -102,6 +108,14 @@ export default function RoutinesScreen() {
             <FolderPlus className="size-4" />
           </Button>
           <Button
+            variant="accent"
+            size="sm"
+            onClick={() => navigate("/programs/new")}
+            data-testid="build-program-btn"
+          >
+            Build my program
+          </Button>
+          <Button
             variant="outline"
             size="sm"
             onClick={() => navigate("/routines/new")}
@@ -129,6 +143,8 @@ export default function RoutinesScreen() {
               folder={f}
               routines={byFolder.get(f.id) ?? []}
               folders={folders}
+              summaries={summaries}
+              isProgram={activeProgram.data?.folderId === f.id}
             />
           ))}
 
@@ -141,7 +157,12 @@ export default function RoutinesScreen() {
               )}
               <div className="flex flex-col gap-2">
                 {unfiled.map((r) => (
-                  <RoutineCard key={r.id} routine={r} folders={folders} />
+                  <RoutineCard
+                    key={r.id}
+                    routine={r}
+                    folders={folders}
+                    summary={summaries.get(r.id)}
+                  />
                 ))}
               </div>
             </div>
@@ -210,10 +231,14 @@ function FolderSection({
   folder,
   routines,
   folders,
+  summaries,
+  isProgram,
 }: {
   folder: RoutineFolder;
   routines: Routine[];
   folders: RoutineFolder[];
+  summaries: Map<string, RoutineSummary>;
+  isProgram: boolean;
 }) {
   const { t } = useVoice();
   const [open, setOpen] = useState(true);
@@ -241,6 +266,11 @@ function FolderSection({
           <Folder className="size-4 text-faint" />
           <span className="text-sm font-medium">{folder.name}</span>
           <span className="num text-2xs text-faint">{routines.length}</span>
+          {isProgram && (
+            <span className="inline-flex h-5 items-center rounded-xs bg-accent-soft px-1.5 text-2xs font-semibold text-accent-ink">
+              Program
+            </span>
+          )}
         </button>
         <div className="relative" ref={menu.wrapRef}>
           <Button
@@ -311,7 +341,12 @@ function FolderSection({
       {open && (
         <div className="mt-2 flex flex-col gap-2 pl-6">
           {routines.map((r) => (
-            <RoutineCard key={r.id} routine={r} folders={folders} />
+            <RoutineCard
+              key={r.id}
+              routine={r}
+              folders={folders}
+              summary={summaries.get(r.id)}
+            />
           ))}
           {routines.length === 0 && (
             <p className="text-xs text-faint">
@@ -327,9 +362,11 @@ function FolderSection({
 function RoutineCard({
   routine,
   folders,
+  summary,
 }: {
   routine: Routine;
   folders: RoutineFolder[];
+  summary?: RoutineSummary;
 }) {
   const navigate = useNavigate();
   const repo = useRepo();
@@ -361,6 +398,14 @@ function RoutineCard({
     >
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{routine.name}</p>
+        {summary && (
+          <p
+            className="num truncate text-xs text-soft"
+            data-testid={`routine-summary-${routine.name}`}
+          >
+            {formatRoutineSummary(summary)}
+          </p>
+        )}
         {routine.description && (
           <p className="truncate text-2xs text-faint">{routine.description}</p>
         )}

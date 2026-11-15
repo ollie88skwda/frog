@@ -137,6 +137,7 @@ test("the Rest default still moves the Trainer's duration estimate", async ({
   // An active program is what puts a next-workout card (and its ~N min
   // estimate) on the Trainer.
   await page.goto("/programs");
+  await page.getByTestId("more-templates").click();
   await page.getByTestId("program-card-full-body-foundations").click();
   const save = page.getByTestId("save-program-btn");
   await expect(save).toBeEnabled();
