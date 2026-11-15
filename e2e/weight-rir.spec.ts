@@ -142,6 +142,7 @@ test("planned RIR is an outlined hint: untouched saves blank, tapping it saves t
   await expect(page).toHaveURL(/\/plan\?s=routines$/);
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
+  const id = page.url().split("/session/")[1];
 
   // Set 1: the plan's midpoint (1-3 -> 2) is outlined, nothing is pressed,
   // and logging without a tap saves a blank RIR next to the stored plan.
@@ -179,6 +180,10 @@ test("planned RIR is an outlined hint: untouched saves blank, tapping it saves t
     "data-state",
     "done",
   );
+
+  await page.getByTestId("session-finish").click();
+  await page.getByTestId("finish-save").click();
+  await expect(page).toHaveURL(new RegExp(`/history/${id}`));
 
   const rows = await page.evaluate(async () => {
     const { data } = await window.__frog.db
