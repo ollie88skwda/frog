@@ -114,6 +114,19 @@ export function isCompletableSet(
   return true;
 }
 
+// A live set must carry a weight for every weight-bearing type, except an
+// exercise that is genuinely no-load: equipment "bodyweight" on a plain
+// weight & reps exercise (pull-ups logged as weight_reps). Types without a
+// weight field (bodyweight_reps, duration, ...) never require one, and
+// weighted/assisted bodyweight keep requiring one (0 is a valid entry).
+export function isWeightRequired(
+  type: ExerciseType,
+  equipment: string | null | undefined,
+): boolean {
+  if (!TYPE_FIELDS[type].weight) return false;
+  return !(type === "weight_reps" && equipment === "bodyweight");
+}
+
 // Gimmick kinds (kettlebell/band/suspension) were removed 2026-08-08 — the
 // picker side of the 2026-08-07 gimmick-exercise purge (docs/DECISIONS.md):
 // the captain's call that bands, kettlebells, balls, ropes and similar

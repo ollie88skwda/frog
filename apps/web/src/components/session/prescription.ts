@@ -126,8 +126,9 @@ export function formatRange(
   return lo === hi ? `${lo}` : `${lo}-${hi}`;
 }
 
-/** RIR strip preselect: the midpoint of the planned range (1-3 -> 2). */
-export function rirPreselect(
+/** RIR strip hint: the midpoint of the planned range (1-3 -> 2). Shown on the
+ * strip only; never saved unless the user taps it. */
+export function rirHint(
   min: number | null | undefined,
   max: number | null | undefined,
 ): number | null {

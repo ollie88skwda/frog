@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn, waitForExercise } from "./helpers";
 
 // Cross-job happy path (redesign §8.1, §8.2, §8.6): Today -> start a routine ->
-// the prescription-aware workout screen (target line, Top set, RIR preselect,
+// the prescription-aware workout screen (target line, Top set, planned-RIR hint,
 // range chip, live strip) -> finish -> the vs-plan report -> History. Phone
 // viewport, per AGENTS.md.
 
@@ -71,12 +71,22 @@ test("Today -> routine -> log sets -> finish -> vs-plan report -> history", asyn
   // The tab bar hides inside the workout (takeover).
   await expect(page.locator("nav.fixed")).toBeHidden();
 
-  // Prescription: target line, Top set label, RIR preselected to the plan.
+  // Prescription: target line, Top set label, planned RIR shown as a non-saved
+  // hint (nothing pressed until tapped).
   const target = page.getByTestId("target-line");
   await expect(target).toContainText("Today");
   await expect(target).toContainText("4-6");
   await expect(target).toContainText("RIR");
   await expect(page.getByTestId("top-set-label")).toHaveText(/top set/i);
+  await expect(page.getByTestId("rir-option-2")).toHaveAttribute(
+    "data-hint",
+    "true",
+  );
+  await expect(
+    page.locator('[data-testid^="rir-option-"][aria-pressed="true"]'),
+  ).toHaveCount(0);
+  // One tap accepts the hint.
+  await page.getByTestId("rir-option-2").click();
   await expect(page.getByTestId("rir-option-2")).toHaveAttribute(
     "aria-pressed",
     "true",

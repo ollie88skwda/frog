@@ -6,7 +6,7 @@ import {
   planFromSnapshot,
   rangeState,
   reportE1rm,
-  rirPreselect,
+  rirHint,
   setTarget,
 } from "./prescription";
 
@@ -39,16 +39,16 @@ describe("rangeState (R8b, C2c overshoot)", () => {
   });
 });
 
-describe("rirPreselect (R10)", () => {
+describe("rirHint (R10)", () => {
   it("uses the midpoint of the plan", () => {
-    expect(rirPreselect(1, 3)).toBe(2);
-    expect(rirPreselect(2, 2)).toBe(2);
-    expect(rirPreselect(0, 1)).toBe(1);
-    expect(rirPreselect(3, 4)).toBe(4);
+    expect(rirHint(1, 3)).toBe(2);
+    expect(rirHint(2, 2)).toBe(2);
+    expect(rirHint(0, 1)).toBe(1);
+    expect(rirHint(3, 4)).toBe(4);
   });
   it("is null with no plan", () => {
-    expect(rirPreselect(null, null)).toBeNull();
-    expect(rirPreselect(undefined, undefined)).toBeNull();
+    expect(rirHint(null, null)).toBeNull();
+    expect(rirHint(undefined, undefined)).toBeNull();
   });
 });
 
@@ -186,5 +186,28 @@ describe("reportE1rm (C2c-e1rm)", () => {
   });
   it("is null without load or reps", () => {
     expect(reportE1rm({ weightKg: null, reps: 5, rir: 1 })).toBeNull();
+  });
+});
+
+describe("blank RIR (no carry-forward)", () => {
+  it("rangeState with no RIR logged still resolves from reps", () => {
+    const r = rangeState({
+      reps: 7,
+      repsMin: 6,
+      repsMax: 8,
+      rir: null,
+      plannedRirMin: 1,
+      plannedRirMax: 3,
+    });
+    expect(r?.kind).toBe("in");
+  });
+  it("driftNudge tolerates sets with blank RIR", () => {
+    expect(() =>
+      driftNudge([
+        { rir: 2, planned: null },
+        { rir: null, planned: null },
+        { rir: null, planned: null },
+      ]),
+    ).not.toThrow();
   });
 });

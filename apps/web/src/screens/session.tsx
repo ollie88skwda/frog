@@ -34,6 +34,7 @@ import {
   groupSetsBySetNo,
   isBarLoaded,
   isConfidentMatch,
+  isWeightRequired,
   kgToLb,
   kmToM,
   LATERALITY,
@@ -125,7 +126,7 @@ import {
   planFromSnapshot,
   rangeState,
   reportE1rm,
-  rirPreselect,
+  rirHint,
   setTarget,
 } from "@/components/session/prescription";
 import { RestStopwatch } from "@/components/session/rest-stopwatch";
@@ -247,7 +248,8 @@ export type SeedSet = {
   durationSec: number | null;
   distanceM: number | null;
   laterality?: Laterality | null;
-  /** Planned RIR for this set (routine target), drives the RIR preselect. */
+  /** Planned RIR for this set (routine target); stored and hinted, never
+   * prefilled. */
   rirMin?: number | null;
   rirMax?: number | null;
 };
@@ -389,11 +391,14 @@ function RirSegmented({
   max,
   onChange,
   side,
+  hint,
 }: {
   min: string;
   max: string;
   onChange: (v: { min: string; max: string }) => void;
   side?: "left" | "right";
+  /** Planned segment, outlined until tapped; never selected by itself. */
+  hint?: number | null;
 }) {
   const selected = rirSegmentOf(min, max);
   return (
@@ -404,6 +409,7 @@ function RirSegmented({
       <div className="flex gap-1">
         {RIR_SEGMENTS.map((v) => {
           const on = selected === v;
+          const hinted = !on && hint === v;
           return (
             <button
               key={v}
@@ -418,7 +424,9 @@ function RirSegmented({
                 on
                   ? "bg-ink text-on-action"
                   : "bg-surface text-soft hover:bg-surface-hover",
+                hinted && "text-ink ring-2 ring-accent ring-inset",
               )}
+              data-hint={hinted ? "true" : undefined}
               data-testid={rirOptionId(v, side)}
             >
               {v === 4 ? "4+" : v}
@@ -3355,6 +3363,7 @@ function ExerciseSpotlight({
           enabledMetrics={enabledMetrics}
           committedGroup={committedGroups[focusedIndex] ?? null}
           barLoaded={barLoaded}
+          weightRequired={isWeightRequired(type, exercise?.equipment)}
           exerciseLaterality={exercise?.laterality ?? null}
           lateralityOverride={lateralityOverride}
           onLateralityOverrideChange={setLateralityOverride}
@@ -3530,6 +3539,7 @@ function Spotlight({
   hasGhost,
   committedGroup,
   barLoaded,
+  weightRequired,
   exerciseLaterality,
   lateralityOverride,
   onLateralityOverrideChange,
@@ -3568,6 +3578,8 @@ function Spotlight({
    * present = editing mode, using the SAME fields/ids as live logging. */
   committedGroup: LoggedSet[] | null;
   barLoaded: boolean;
+  /** A live set can't save without a weight (false for bodyweight/no-load). */
+  weightRequired: boolean;
   exerciseLaterality: string | null;
   lateralityOverride: Laterality | null;
   onLateralityOverrideChange: (l: Laterality | null) => void;
@@ -3679,30 +3691,31 @@ function Spotlight({
     return "";
   };
 
-  const [weight, setWeight] = useState(() => seedFrom("weight"));
+  const [weight, setWeightRaw] = useState(() => seedFrom("weight"));
+  const [weightError, setWeightError] = useState(false);
+  const setWeight = (v: string) => {
+    setWeightError(false);
+    setWeightRaw(v);
+  };
   const [reps, setReps] = useState(() => seedFrom("reps"));
   const [duration, setDuration] = useState(() => seedFrom("duration"));
   const [distance, setDistance] = useState(() => seedFrom("distance"));
-  // Planned RIR for THIS set: the routine seed's own target, else the
-  // exercise-level snapshot (R10). The strip preselects its midpoint so an
-  // on-plan set stays a one-tap log; tapping the segment again clears it.
+  // Planned RIR for THIS set (routine target / exercise snapshot) is stored
+  // with the set for the coach, but never fills the effort strip: each set's
+  // RIR is its own, and blank stays blank (no carry from a previous set or the
+  // plan). Its midpoint is only outlined on the strip so an on-plan set stays
+  // one tap away.
   const plannedRirMin = seed?.rirMin ?? plan?.rirMin ?? null;
   const plannedRirMax = seed?.rirMax ?? plan?.rirMax ?? null;
-  const preselectRir = (() => {
-    if (isEditing || !effort) return null;
-    if ((seed?.setType ?? "normal") === "warmup") return null;
-    return rirPreselect(plannedRirMin, plannedRirMax);
-  })();
-  const preselect = preselectRir != null ? segmentToFields(preselectRir) : null;
+  const rirHintValue =
+    isEditing || (seed?.setType ?? "normal") === "warmup"
+      ? null
+      : rirHint(plannedRirMin, plannedRirMax);
   const [rirMin, setRirMin] = useState(
-    () =>
-      draft?.rirMin ??
-      (left?.rirMin != null ? String(left.rirMin) : (preselect?.min ?? "")),
+    () => draft?.rirMin ?? (left?.rirMin != null ? String(left.rirMin) : ""),
   );
   const [rirMax, setRirMax] = useState(
-    () =>
-      draft?.rirMax ??
-      (left?.rirMax != null ? String(left.rirMax) : (preselect?.max ?? "")),
+    () => draft?.rirMax ?? (left?.rirMax != null ? String(left.rirMax) : ""),
   );
   const [rpe] = useState(
     () => draft?.rpe ?? (left?.rpe != null ? String(left.rpe) : ""),
@@ -3719,10 +3732,10 @@ function Spotlight({
   const [rDuration, setRDuration] = useState(() => draft?.rDuration ?? "");
   const [rDistance, setRDistance] = useState(() => draft?.rDistance ?? "");
   const [rirMin2, setRirMin2] = useState(() =>
-    right?.rirMin != null ? String(right.rirMin) : (preselect?.min ?? ""),
+    right?.rirMin != null ? String(right.rirMin) : "",
   );
   const [rirMax2, setRirMax2] = useState(() =>
-    right?.rirMax != null ? String(right.rirMax) : (preselect?.max ?? ""),
+    right?.rirMax != null ? String(right.rirMax) : "",
   );
   const [rpe2] = useState(() => (right?.rpe != null ? String(right.rpe) : ""));
   // Weight-link (per-side mode): linked = one shared field (weight-field);
@@ -3829,8 +3842,10 @@ function Spotlight({
   // switched to it.
   useEffect(() => {
     if (!voiceFill || isEditing) return;
-    if (f.weight && voiceFill.weightKg != null)
-      setWeight(String(toDisplayWeight(voiceFill.weightKg, unit)));
+    if (f.weight && voiceFill.weightKg != null) {
+      setWeightError(false);
+      setWeightRaw(String(toDisplayWeight(voiceFill.weightKg, unit)));
+    }
     if (f.reps && voiceFill.reps != null) setReps(String(voiceFill.reps));
     onVoiceFillConsumed();
   }, [voiceFill, isEditing, f.weight, f.reps, unit, onVoiceFillConsumed]);
@@ -3915,6 +3930,10 @@ function Spotlight({
       (f.duration && v.durationSec != null) ||
       (f.distance && v.distanceM != null);
     if (!anyPresent) return;
+    if (weightRequired && v.weightKg == null) {
+      setWeightError(true);
+      return;
+    }
     done.current = true;
     clearDraft(seId);
     if (timerRunning) onToggleTimer();
@@ -3950,6 +3969,10 @@ function Spotlight({
   function submitEdit() {
     if (!left) return;
     const v = parseFields();
+    if (weightRequired && v.weightKg == null) {
+      setWeightError(true);
+      return;
+    }
     const parsedRir = rir(rirMin, rirMax);
     const patch: SetPatch = {
       weightKg: f.weight ? v.weightKg : undefined,
@@ -4224,6 +4247,10 @@ function Spotlight({
             readOnly={key === "duration" && timerRunning}
             className="num min-w-0 flex-1 bg-transparent text-center text-[44px] leading-none font-bold text-ink placeholder:text-3xl placeholder:text-faint sm:text-[52px]"
             data-testid={fieldTestId}
+            aria-invalid={key === "weight" && weightError ? true : undefined}
+            aria-describedby={
+              key === "weight" && weightError ? "weight-error" : undefined
+            }
           />
           {unitTxt && (
             <span className="shrink-0 text-sm font-bold text-faint">
@@ -4263,6 +4290,16 @@ function Spotlight({
             </IconButton>
           )}
         </div>
+        {key === "weight" && weightError && (
+          <p
+            id="weight-error"
+            role="alert"
+            className="mb-2 text-center text-xs font-bold text-neg"
+            data-testid="weight-error"
+          >
+            Add a weight to log this set.
+          </p>
+        )}
         {key !== "duration" && (
           <div className="flex gap-1">
             {neg.map((d) => (
@@ -4554,6 +4591,7 @@ function Spotlight({
                 setRirMin(v.min);
                 setRirMax(v.max);
               }}
+              hint={rirHintValue}
             />
           </div>
         </div>
@@ -4568,6 +4606,7 @@ function Spotlight({
               setRirMax(v.max);
             }}
             side="left"
+            hint={rirHintValue}
           />
           <RirSegmented
             min={rirMin2}
@@ -4577,6 +4616,7 @@ function Spotlight({
               setRirMax2(v.max);
             }}
             side="right"
+            hint={rirHintValue}
           />
         </div>
       )}
