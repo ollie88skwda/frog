@@ -170,6 +170,7 @@ export function parseHevyCsv(text: string): ImportedSession[] {
       reps: reps !== null && Number.isNaN(reps) ? null : reps,
       rir: rir !== null && Number.isNaN(rir) ? null : rir,
       note,
+      ...(setType === "warmup" ? { setType: "warmup" } : {}),
       setIndex: Number.parseInt(r[iSetIndex] ?? "0", 10) || 0,
     });
   }

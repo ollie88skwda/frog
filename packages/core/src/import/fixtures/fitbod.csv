@@ -1,0 +1,5 @@
+Date,Exercise,Reps,Weight(lbs),Duration(s),Distance(m),Incline,Resistance,isWarmup,Note,multiplier
+2026-11-11 18:02:11 +0000,Barbell Back Squat,8,135,0,0,0,0,true,,1
+2026-11-11 18:09:40 +0000,Barbell Back Squat,5,225,0,0,0,0,false,,1
+2026-11-11 18:15:02 +0000,Barbell Back Squat,5,225,0,0,0,0,false,,1
+2026-11-11 18:30:20 +0000,Leg Press,12,300,0,0,0,0,false,,1

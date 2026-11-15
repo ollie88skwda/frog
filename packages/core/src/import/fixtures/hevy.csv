@@ -1,0 +1,5 @@
+"title","start_time","end_time","description","exercise_title","superset_id","exercise_notes","set_index","set_type","weight_lbs","reps","distance_miles","duration_seconds","rpe"
+"Push A","12 Nov 2026, 17:30","12 Nov 2026, 18:25","","Bench Press (Barbell)","","",0,"warmup",95,10,,,
+"Push A","12 Nov 2026, 17:30","12 Nov 2026, 18:25","","Bench Press (Barbell)","","",1,"normal",185,6,,,8
+"Push A","12 Nov 2026, 17:30","12 Nov 2026, 18:25","","Bench Press (Barbell)","","",2,"normal",185,5,,,9
+"Push A","12 Nov 2026, 17:30","12 Nov 2026, 18:25","","Overhead Press (Dumbbell)","","",0,"normal",40,10,,,

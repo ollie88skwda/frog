@@ -32,6 +32,7 @@ const ExerciseDetailScreen = lazyRoute(
 );
 const CalendarScreen = lazyRoute(() => import("@/screens/calendar"));
 const MeasuresScreen = lazyRoute(() => import("@/screens/measures"));
+const ImportScreen = lazyRoute(() => import("@/screens/import"));
 const HistoryScreen = lazyRoute(() => import("@/screens/history"));
 const HistoryDetailScreen = lazyRoute(() => import("@/screens/history-detail"));
 const MonthlyReportScreen = lazyRoute(() => import("@/screens/monthly-report"));
@@ -121,6 +122,7 @@ export function App() {
                         element={<ExerciseDetailScreen />}
                       />
                       <Route path="history" element={<HistoryScreen />} />
+                      <Route path="import" element={<ImportScreen />} />
                       <Route
                         path="history/:id"
                         element={<HistoryDetailScreen />}

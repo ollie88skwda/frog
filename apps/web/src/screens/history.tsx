@@ -64,6 +64,13 @@ export default function HistoryScreen() {
                   "Log your first set. The frog will begin taking notes immediately, possibly before you finish.",
                 )}
               </p>
+              <Link
+                to="/import"
+                className="mx-auto mt-4 flex h-10 max-w-64 items-center justify-center rounded-sm bg-secondary px-3 text-sm font-medium text-on-secondary hover:bg-active"
+                data-testid="history-import-link"
+              >
+                Coming from another app?
+              </Link>
             </div>
           }
         >

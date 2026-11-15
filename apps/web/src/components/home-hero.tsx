@@ -7,7 +7,7 @@ import {
 import { Play, Plus } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { DeltaChip } from "@/components/data";
 import {
   type Readiness,
@@ -201,6 +201,13 @@ export function HomeHero() {
         {startError?.from === "empty" && (
           <p className="mt-2 text-xs text-neg">{startError.message}</p>
         )}
+        <Link
+          to="/import"
+          className="mt-3 flex h-10 w-full items-center justify-center rounded-sm bg-secondary/60 text-sm font-medium text-on-secondary hover:bg-secondary"
+          data-testid="hero-import-link"
+        >
+          Coming from another app?
+        </Link>
       </section>
     );
   }
