@@ -8,6 +8,7 @@ import { formatHeroSet, HERO_DURATION_UNIT } from "@frog/core";
 import { Camera, DownloadSimple, ShareNetwork, X } from "@phosphor-icons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { randomTagline, type Tone } from "@/lib/frog-tagline";
 import { useSessionMedia } from "@/lib/media-queries";
 import { resizePhoto } from "@/lib/photo";
@@ -343,7 +344,13 @@ export function ShareSheet({
   // Lazy initializers (not useRef(expr), which re-evaluates its argument on
   // every render even though it only keeps the first result) — sampled/built
   // once per sheet, not every render.
-  const [accent] = useState("#99c195");
+  // F16: the card accent is the night-green token, read from the theme rather
+  // than a raw hex (canvas cannot take a CSS var directly).
+  const [accent] = useState(() =>
+    getComputedStyle(document.documentElement)
+      .getPropertyValue("--green-night-9")
+      .trim(),
+  );
   // Session cards are never "pr"/"streak" kinds, so their tone is "normal"
   // without building the card — building one here just to read `kind` off it
   // would run a full volume + muscle-credit pass and throw the result away.
@@ -453,15 +460,14 @@ export function ShareSheet({
     >
       <div className="flex shrink-0 items-center justify-between px-4 py-3">
         <span className="text-sm font-semibold tracking-tight">Share</span>
-        <button
-          type="button"
+        <IconButton
           onClick={onClose}
           title="Close"
-          className="flex size-10 items-center justify-center text-soft transition-colors duration-150 hover:text-ink"
+          aria-label="Close"
           data-testid="share-close"
         >
           <X className="size-5" />
-        </button>
+        </IconButton>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">

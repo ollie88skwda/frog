@@ -1,8 +1,10 @@
 import {
   APP_NAME,
   type ApiToken,
+  evidenceRule,
   measurementsCsv,
   setsCsv,
+  USER_PREF_DEFAULTS,
   unitLabel,
   type WarmupStep,
 } from "@frog/core";
@@ -14,12 +16,17 @@ import { ImportCard } from "@/components/import-card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { QueryState } from "@/components/ui/query-state";
 import { Row as ListRow } from "@/components/ui/row";
 import { Select } from "@/components/ui/select";
 import { useSignOut } from "@/lib/auth";
 import { useChangelogHasUnseen } from "@/lib/changelog-prefs";
 import { formatDate } from "@/lib/format";
-import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
+import {
+  useResolvedUserPrefs,
+  useUpdateUserPrefs,
+  useUserPrefs,
+} from "@/lib/profile-queries";
 import {
   isIOS,
   pushConfigured,
@@ -61,6 +68,15 @@ function download(filename: string, mime: string, content: string) {
 }
 
 // ── Shared building blocks ──────────────────────────────────────────────────
+
+function Group({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="mt-6">
+      <h2 className="text-xs font-semibold text-soft">{title}</h2>
+      {children}
+    </section>
+  );
+}
 
 function Section({
   title,
@@ -189,29 +205,42 @@ export default function SettingsScreen() {
     <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
       <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
 
-      <UnitsSection />
-      <VoiceSection />
-      <WorkoutsSection />
-      <DisplaySection />
-      <NotificationsSection />
-      <InstallSection />
-      <ExportSection />
-      <ImportCard />
-      <ApiTokensSection />
-      <LearnSection />
-      <ChangelogSection />
+      <Group title="Training">
+        <UnitsSection />
+        <WorkoutsSection />
+        <DisplaySection />
+        <VoiceSection />
+      </Group>
 
-      <Section title="Account">
-        <Button
-          variant="danger"
-          size="sm"
-          className="mt-3"
-          onClick={() => void signOut()}
-          data-testid="sign-out-btn"
-        >
-          Sign out
-        </Button>
-      </Section>
+      <Group title="Coach">
+        <CoachSection />
+      </Group>
+
+      <Group title="Data">
+        <NotificationsSection />
+        <InstallSection />
+        <ExportSection />
+        <ImportCard />
+        <ApiTokensSection />
+      </Group>
+
+      <Group title="Account">
+        <LearnSection />
+        <ChangelogSection />
+        <ReportSection />
+        <Section title="Sign out">
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => void signOut()}
+              data-testid="sign-out-btn"
+            >
+              Sign out
+            </Button>
+          </div>
+        </Section>
+      </Group>
     </div>
   );
 }
@@ -315,10 +344,14 @@ function WorkoutsSection() {
   const [livePr, setLivePr] = useLivePrBanner();
   const [keepAwake, setKeepAwake] = useKeepAwake();
 
+  const { exerciseGrouping: grouping } = useResolvedUserPrefs();
   const previousScope = (prefs?.previousValuesScope ?? "any") as
     | "any"
     | "routine";
-  const includeWarmups = prefs?.includeWarmupsInStats ?? true;
+  // Boss preference (2026-11-13) + R6/R17b: warm-ups are excluded from stats
+  // unless the user opted in; a saved row keeps its own value.
+  const includeWarmups =
+    prefs?.includeWarmupsInStats ?? USER_PREF_DEFAULTS.includeWarmupsInStats;
 
   function onWarmupsInStats(v: boolean) {
     updatePrefs.mutate({ includeWarmupsInStats: v });
@@ -343,6 +376,21 @@ function WorkoutsSection() {
             value={previousScope}
             onChange={(v) => updatePrefs.mutate({ previousValuesScope: v })}
             testid="previous-scope"
+          />
+        </Row>
+
+        <Row
+          label="Exercise grouping"
+          hint={`How the library is organised. Joint action is the ${APP_NAME} default.`}
+        >
+          <Segmented
+            options={[
+              { label: "Joint action", value: "joint_action" as const },
+              { label: "Region", value: "region" as const },
+            ]}
+            value={grouping}
+            onChange={(v) => updatePrefs.mutate({ exerciseGrouping: v })}
+            testid="exercise-grouping"
           />
         </Row>
 
@@ -420,14 +468,14 @@ function WarmupMethodEditor() {
       <div className="flex items-center justify-between">
         <p className="text-xs font-medium">Warm-up method</p>
         {isCustom && (
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="ghost"
             onClick={onReset}
-            className="text-2xs text-soft underline-offset-2 hover:underline"
             data-testid="warmup-reset"
           >
             Reset to default
-          </button>
+          </Button>
         )}
       </div>
       <p className="mt-0.5 text-2xs text-faint">
@@ -524,7 +572,7 @@ function DisplaySection() {
             value={bodyDiagram}
             onChange={(v) => updatePrefs.mutate({ bodyDiagram: v })}
             testid="body-diagram-select"
-            options={[{ value: "neutral", label: "Frog" }]}
+            options={[{ value: "neutral", label: "Default" }]}
           />
         </Row>
       </div>
@@ -790,10 +838,11 @@ function ApiTokensSection() {
   const { t } = useVoice();
   const repo = useRepo();
   const qc = useQueryClient();
-  const { data: tokens = [] } = useQuery({
+  const tokensQ = useQuery({
     queryKey: ["api-tokens"],
     queryFn: () => repo.listApiTokens(),
   });
+  const tokens = tokensQ.data ?? [];
   const [name, setName] = useState("");
   const [plaintext, setPlaintext] = useState<string | null>(null);
 
@@ -841,6 +890,17 @@ function ApiTokensSection() {
           Create
         </Button>
       </form>
+
+      {(tokensQ.isPending || tokensQ.isLoadingError) && (
+        <QueryState
+          isLoading={tokensQ.isPending}
+          isError={tokensQ.isLoadingError}
+          error={tokensQ.error}
+          onRetry={() => void tokensQ.refetch()}
+        >
+          {null}
+        </QueryState>
+      )}
 
       {tokens.length > 0 && (
         <ul className="mt-3 [&>*+*]:mt-0.5 overflow-hidden rounded-sm">
@@ -927,23 +987,23 @@ function TokenRow({
   );
 }
 
-// ── Learn ───────────────────────────────────────────────────────────────────
+// ── How Frog decides ────────────────────────────────────────────────────────
 
 function LearnSection() {
   const { t } = useVoice();
   return (
-    <Section title="Learn">
+    <Section title={`How ${APP_NAME} decides`}>
       <div className="mt-1 [&>*+*]:mt-0.5">
         <Row
-          label="Training tips"
+          label="Rules and evidence"
           hint={t(
-            "The short lessons behind the ⓘ icons, all in one place.",
-            "Every short lesson the frog knows, all in one place.",
+            "Every rule the coach uses, its evidence tier and sources, plus the short lessons behind the ⓘ icons.",
+            "Every rule the frog follows, with how strong the evidence is. Plus the short lessons.",
           )}
         >
           <Link
-            to="/tips"
-            className="flex h-8 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active"
+            to="/you/rules"
+            className="flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active md:h-8"
             data-testid="tips-link"
           >
             Browse
@@ -974,12 +1034,119 @@ function ChangelogSection() {
             )}
             <Link
               to="/changelog"
-              className="flex h-8 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active"
+              className="flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active md:h-8"
               data-testid="changelog-link"
             >
               Browse
             </Link>
           </span>
+        </Row>
+      </div>
+    </Section>
+  );
+}
+
+// ── Coach (F4/F10, redesign 8.10) ───────────────────────────────────────────
+
+// Coach rules a user can switch off individually. Ids are the CoachRuleId
+// values the engine suppresses on (coach/resolve.ts isDismissed); C2c is three
+// engine ids behind one switch. Labels come from the evidence library so the
+// wording here can never drift from the "How Frog decides" screen.
+const COACH_TOGGLES: { label: string; ids: string[]; rule: string }[] = [
+  {
+    label: "Load progression",
+    ids: ["C2c-progress", "C2c-overshoot"],
+    rule: "C2c",
+  },
+  { label: "Stall check", ids: ["C2c-stall", "C2", "C3"], rule: "C2" },
+  { label: "Missed-target notes", ids: ["C1"], rule: "C1" },
+  { label: "Rep-target drift", ids: ["C4", "C5", "C4/C5"], rule: "C4" },
+  { label: "Readiness", ids: ["C7", "C9b", "C9d", "C10"], rule: "C7" },
+  { label: "Deload and restart", ids: ["C14", "C15"], rule: "C14" },
+  { label: "Weekly volume band", ids: ["C11", "C12"], rule: "C11" },
+  { label: "Pre-workout carbs", ids: ["C19"], rule: "C19" },
+];
+
+function CoachSection() {
+  const prefs = useResolvedUserPrefs();
+  const update = useUpdateUserPrefs();
+  const off = new Set(prefs.coachRulesOff);
+
+  function setGroup(ids: string[], on: boolean) {
+    const next = new Set(off);
+    for (const id of ids) {
+      if (on) next.delete(id);
+      else next.add(id);
+    }
+    update.mutate({ coachRulesOff: [...next] });
+  }
+
+  return (
+    <Section
+      title="Coach"
+      hint="Quiet suggestions on Today and in your workout. Nothing changes your plan unless you apply it."
+    >
+      <div className="mt-1 [&>*+*]:mt-0.5">
+        <Row
+          label="Coach suggestions"
+          hint="Master switch for every rule below."
+        >
+          <Toggle
+            on={prefs.coachEnabled}
+            onChange={(v) => update.mutate({ coachEnabled: v })}
+            testid="coach-enabled"
+          />
+        </Row>
+        <Row
+          label="Evidence labels"
+          hint="Show the T1 to T5 badge next to a suggestion."
+        >
+          <Toggle
+            on={prefs.showEvidenceLabels}
+            onChange={(v) => update.mutate({ showEvidenceLabels: v })}
+            testid="evidence-labels"
+          />
+        </Row>
+        {prefs.coachEnabled &&
+          COACH_TOGGLES.map((g) => (
+            <Row
+              key={g.label}
+              label={g.label}
+              hint={evidenceRule(g.rule)?.plain}
+            >
+              <Toggle
+                on={!g.ids.some((id) => off.has(id))}
+                onChange={(v) => setGroup(g.ids, v)}
+                testid={`coach-rule-${g.rule}-${g.label}`}
+              />
+            </Row>
+          ))}
+      </div>
+    </Section>
+  );
+}
+
+// ── Report a problem ────────────────────────────────────────────────────────
+
+const ISSUES_URL = "https://github.com/ollie88skwda/frog/issues/new";
+
+function ReportSection() {
+  return (
+    <Section title="Report a problem">
+      <div className="mt-1">
+        <Row
+          label="Something wrong?"
+          hint="Opens a GitHub issue form. Don't paste personal data."
+        >
+          <a
+            href={`${ISSUES_URL}?title=${encodeURIComponent(`${APP_NAME}: `)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 hover:bg-active md:h-8"
+            data-testid="report-problem"
+          >
+            Report
+          </a>
         </Row>
       </div>
     </Section>

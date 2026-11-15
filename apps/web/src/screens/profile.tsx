@@ -1,4 +1,9 @@
-import { FIRST_WEEKDAY, weekStart } from "@frog/core";
+import {
+  FIRST_WEEKDAY,
+  type Goal,
+  type TrainingStatus,
+  weekStart,
+} from "@frog/core";
 import {
   Barbell,
   CalendarDots,
@@ -27,6 +32,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { ChipGroup, ChipItem } from "@/components/ui/chip";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
 import { rowClass } from "@/components/ui/row";
@@ -102,7 +108,8 @@ export default function ProfileScreen() {
         <Link
           to="/settings"
           title="Settings"
-          className="rounded-sm flex size-9 items-center justify-center bg-translucent text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+          aria-label="Settings"
+          className="rounded-sm flex size-10 items-center justify-center bg-surface-2 text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink md:size-8"
           data-testid="profile-settings"
         >
           <GearSix className="size-4" />
@@ -114,6 +121,11 @@ export default function ProfileScreen() {
         email={email}
         initial={initial}
         bio={prefs?.bio ?? null}
+      />
+
+      <GoalFields
+        goal={prefs?.goal ?? null}
+        status={prefs?.trainingStatus ?? null}
       />
 
       {/* Workout count + streak. */}
@@ -246,6 +258,78 @@ export default function ProfileScreen() {
           </ul>
         )}
       </div>
+    </div>
+  );
+}
+
+// F13: goal + training status unlock the dormant C17 body-rate flags and the
+// builder's starting volume (R11). Both are optional; tapping the active chip
+// clears it. Written through the §9.2 prefs patch.
+const GOALS: { value: Goal; label: string }[] = [
+  { value: "build", label: "Build" },
+  { value: "cut", label: "Cut" },
+  { value: "bulk", label: "Bulk" },
+  { value: "maintain", label: "Maintain" },
+];
+const STATUSES: { value: TrainingStatus; label: string }[] = [
+  { value: "new", label: "New" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "experienced", label: "Experienced" },
+];
+
+function GoalFields({
+  goal,
+  status,
+}: {
+  goal: Goal | null;
+  status: TrainingStatus | null;
+}) {
+  const update = useUpdateUserPrefs();
+  return (
+    <div className="rounded-md mt-4 bg-surface p-4" data-testid="goal-fields">
+      <p className="text-xs font-medium">Goal</p>
+      <ChipGroup
+        className="mt-1.5"
+        value={goal ?? ""}
+        onValueChange={(v) =>
+          update.mutate({ goal: (v || null) as Goal | null })
+        }
+        aria-label="Goal"
+      >
+        {GOALS.map((g) => (
+          <ChipItem
+            key={g.value}
+            value={g.value}
+            data-testid={`goal-${g.value}`}
+          >
+            {g.label}
+          </ChipItem>
+        ))}
+      </ChipGroup>
+      <p className="mt-3 text-xs font-medium">Training experience</p>
+      <ChipGroup
+        className="mt-1.5"
+        value={status ?? ""}
+        onValueChange={(v) =>
+          update.mutate({
+            trainingStatus: (v || null) as TrainingStatus | null,
+          })
+        }
+        aria-label="Training experience"
+      >
+        {STATUSES.map((g) => (
+          <ChipItem
+            key={g.value}
+            value={g.value}
+            data-testid={`status-${g.value}`}
+          >
+            {g.label}
+          </ChipItem>
+        ))}
+      </ChipGroup>
+      <p className="mt-2 text-2xs text-faint">
+        Optional. Weight-rate notes only appear when your goal is cut or bulk.
+      </p>
     </div>
   );
 }

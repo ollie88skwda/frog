@@ -1,3 +1,4 @@
+import { APP_NAME } from "@frog/core";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 // The app's only error boundary, and the floor under every screen: React 19
@@ -31,7 +32,7 @@ export class AppErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error("Frog crashed:", error, info.componentStack);
+    console.error(`${APP_NAME} crashed:`, error, info.componentStack);
   }
 
   render(): ReactNode {
@@ -48,7 +49,7 @@ export class AppErrorBoundary extends Component<Props, State> {
         className="mx-auto flex min-h-dvh max-w-sm flex-col items-center justify-center gap-3 px-6 text-center"
       >
         <p className="text-sm font-semibold tracking-tight">
-          {stale ? "Frog updated — reload" : "Something went wrong"}
+          {stale ? `${APP_NAME} updated, reload` : "Something went wrong"}
         </p>
         <p className="text-xs text-faint">
           {stale
@@ -59,7 +60,7 @@ export class AppErrorBoundary extends Component<Props, State> {
           type="button"
           data-testid="app-error-reload"
           onClick={() => window.location.reload()}
-          className="rounded-sm bg-surface-2 px-4 py-2 text-sm transition-colors duration-100 hover:bg-surface-hover"
+          className="rounded-sm bg-secondary px-4 py-2 text-sm text-on-secondary transition-colors duration-100 hover:bg-active"
         >
           Reload
         </button>

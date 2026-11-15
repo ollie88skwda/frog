@@ -449,7 +449,7 @@ export function ExerciseEditor({
                   : `Matches an existing exercise, "${duplicateOf.name}".`}{" "}
                 <button
                   type="button"
-                  className="underline"
+                  className="rounded-xs bg-secondary px-2 py-1 text-on-secondary underline hover:bg-active"
                   onClick={() => {
                     onOpenChange(false);
                     navigate(`/exercises/${duplicateOf.id}`);
@@ -999,7 +999,7 @@ function Chip({
         type="button"
         title="Remove"
         onClick={onRemove}
-        className="flex size-5 items-center justify-center text-faint hover:text-neg"
+        className="flex size-6 items-center justify-center rounded-xs bg-surface-2 text-faint hover:text-neg"
       >
         <X className="size-3" />
       </button>
