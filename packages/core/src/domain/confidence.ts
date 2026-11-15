@@ -9,7 +9,7 @@
 //
 // Pure and framework-free, unit-tested in confidence.test.ts.
 
-import { isOutlier, robustTrend } from "./progression";
+import { isOutlier } from "./progression";
 import type { ComparableSession } from "./stall";
 import { NOISE_BAND } from "./stall";
 
@@ -403,13 +403,15 @@ export function averageConfidence(scores: ConfidenceScore[]): number | null {
   return Math.round(mean(scores.map((s) => s.pct)));
 }
 
+/** Plain copy line: "62% confident. Log 3 more sessions to firm it up." */
+export function confidenceLine(score: ConfidenceScore): string {
+  return `${score.pct}% confident (${CONFIDENCE_WORD[score.level]})`;
+}
+
 // ── one lift's verdict (Progress, Lift page, Today, share cards) ────────────
 
-/** The claim a lift's status makes whenever the status judged one (a dip from
- * 4 sessions, a trend from 7); a stall (no new best) claims "down" only when
- * the fitted change is at or beyond -10% (the noise band, as robustTrend
- * judges REGRESSING), else "flat". Otherwise the claim with the highest
- * probability wins (a best guess, shown tentatively). */
+/** The claim a lift's status makes. Before a 7-session status exists the claim
+ * with the highest probability wins (a best guess, shown tentatively). */
 export function liftClaim(
   points: ComparableSession[],
   state:
@@ -419,16 +421,13 @@ export function liftClaim(
     | "stalled"
     | "dropped"
     | "restart",
+  n: number,
 ): ClaimDirection | "drop" | null {
-  if (state === "progressing") return "up";
-  if (state === "dropped") return "drop";
-  if (state === "holding") return "flat";
-  if (state === "stalled")
-    return robustTrend(
-      points.map((s) => ({ day: s.at / DAY_MS, e1rm: s.e1rm })),
-    ).verdict === "REGRESSING"
-      ? "down"
-      : "flat";
+  if (n >= 7) {
+    if (state === "progressing") return "up";
+    if (state === "dropped") return "drop";
+    if (state === "stalled" || state === "holding") return "flat";
+  }
   let best: ClaimDirection | null = null;
   let bestP = -1;
   for (const c of ["up", "down", "flat"] as const) {
@@ -453,7 +452,7 @@ export function liftConfidence(
     | "dropped"
     | "restart",
 ): { claim: ClaimDirection | "drop"; score: ConfidenceScore } | null {
-  const claim = liftClaim(window, state);
+  const claim = liftClaim(window, state, window.length);
   if (!claim) return null;
   const score =
     claim === "drop"

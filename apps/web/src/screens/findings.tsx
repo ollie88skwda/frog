@@ -5,7 +5,6 @@ import type {
   TrendFinding,
 } from "@frog/core";
 import {
-  comparableSessions,
   formatVolume,
   formatVolumeNumber,
   formatWeight,
@@ -275,9 +274,7 @@ function TrendRow({
         {trend.score ? (
           <ConfidenceBadge score={trend.score} />
         ) : (
-          <Badge tone="warn">
-            {trend.preBreak ? "Before break" : "Rough estimate"}
-          </Badge>
+          <Badge tone="warn">Rough estimate</Badge>
         )}
         <Badge tone={VERDICT_TONE[trend.verdict]}>{trend.verdict}</Badge>
         <CaretRight className="size-4 text-faint" />
@@ -431,13 +428,10 @@ function TrendSheet({
   const { t } = useVoice();
   const { unit } = useUnit();
 
-  const e1rmPoints = useMemo(() => {
-    const s = sessionTopsByExercise(sessions).get(trend.exerciseId);
-    if (!s) return [];
-    return trend.preBreak
-      ? s.tops.map((p) => ({ x: p.day * DAY_MS, y: p.e1rm }))
-      : comparableSessions(s.comparable).map((p) => ({ x: p.at, y: p.e1rm }));
-  }, [sessions, trend.exerciseId, trend.preBreak]);
+  const tops = useMemo(
+    () => sessionTopsByExercise(sessions).get(trend.exerciseId)?.tops ?? [],
+    [sessions, trend.exerciseId],
+  );
   const volume = useMemo(
     () => sessionVolumeByExercise(sessions).get(trend.exerciseId)?.points ?? [],
     [sessions, trend.exerciseId],
@@ -447,6 +441,7 @@ function TrendSheet({
     [sessions, trend.exerciseId],
   );
 
+  const e1rmPoints = tops.map((p) => ({ x: p.day * DAY_MS, y: p.e1rm }));
   const volumePoints = volume.map((p) => ({ x: p.day * DAY_MS, y: p.kg }));
   const hasVolume = volumePoints.some((p) => p.y > 0);
   const sign = trend.pctChange > 0 ? "+" : "";
@@ -466,12 +461,6 @@ function TrendSheet({
             </span>
             {trend.score && <ConfidenceBadge score={trend.score} showWord />}
           </div>
-          {trend.preBreak && (
-            <p className="text-xs text-attn">
-              Before your break: the trend restarts after 14+ days off, so this
-              is your earlier sessions. Log one more session for a fresh read.
-            </p>
-          )}
           {trend.score && (
             <div className="flex flex-col gap-1">
               <p className="text-xs text-ink">{trend.score.basis}</p>

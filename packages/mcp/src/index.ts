@@ -118,7 +118,7 @@ server.registerTool(
       name.toLowerCase().includes(exercise_name.toLowerCase());
     return text({
       caveat:
-        "Correlation, not causation. e1RM is Brzycki with RIR (sets of 10 or fewer total reps; longer sets get no estimate; blank RIR is treated as 0). Warm-up sets are excluded. Trends appear from 2 sessions as a best guess with a computed confidence percentage (under 50% is tentative, never 100%); a change under 10% is normal swing.",
+        "Correlation, not causation. e1RM is Brzycki with RIR (sets of 10 or fewer total reps; longer sets get no estimate; blank RIR is treated as 0). Warm-up sets are excluded. Trends appear from 2 sessions and are rough estimates until 7 comparable sessions; a change under 10% is normal swing.",
       trends: trends.filter((t) => match(t.exerciseName)),
       countdowns: countdowns.filter((c) => match(c.exerciseName)),
       condition_findings: conditions,

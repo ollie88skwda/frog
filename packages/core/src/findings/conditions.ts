@@ -87,10 +87,9 @@ function candidate(
  * Condition findings: for each numeric session condition, split sessions into
  * two buckets (median split) and compare the top working-set Brzycki e1RM of each exercise. Tonnage is no
  * longer an outcome (it follows session length and exercise choice, not
- * performance). A finding needs >= 3 sessions per bucket, |diff| >= 5%, and
- * a computed confidence of at least 25% (Cohen's d on detrended values and the
- * Benjamini-Hochberg q across the whole family feed the score, not a gate); at
- * most 3 per condition.
+ * performance). A finding needs >= 6 sessions per bucket, |diff| >= 5%,
+ * |Cohen's d| >= 0.8 on detrended values, and a Benjamini-Hochberg q <= 0.1
+ * across the whole family; at most 3 per condition.
  */
 export function conditionFindings(
   sessions: FindingsSessionInput[],

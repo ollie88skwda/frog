@@ -46,7 +46,7 @@ export function TrainFindingsCard() {
         {trend.exerciseName} is{" "}
         <span className="num text-ink">{trend.verdict.toLowerCase()}</span> (
         {trend.pctChange > 0 ? "+" : ""}
-        {trend.pctChange.toFixed(1)}%){trend.preBreak && " before your break"}{" "}
+        {trend.pctChange.toFixed(1)}%){" "}
         {trend.score && <ConfidenceBadge score={trend.score} showWord />}
       </p>
     );

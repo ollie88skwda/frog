@@ -8,7 +8,6 @@ import {
   type ClaimDirection,
   type ComparableSession,
   type ConfidenceScore,
-  comparableSessions,
   creditsFor,
   e1rmOfSet,
   fractionalHardSets,
@@ -136,7 +135,7 @@ export function liftVerdict(series: LiftSeries): LiftVerdict {
   }
   const status = liftStatus(series.points);
   // Before 7 comparable sessions the verdict is rough (C2c-stall).
-  const lc = liftConfidence(comparableSessions(series.points), status.state);
+  const lc = liftConfidence(series.points, status.state);
   return {
     kind: "status",
     status,
@@ -162,15 +161,6 @@ const CLAIM_VERB: Record<ClaimDirection | "drop", string> = {
   drop: "Maybe a dip",
 };
 
-/** 7/6 status words when the score is under 50%: tentative, never fact (section 12). */
-const SOFT_STATE_WORD: Record<LiftStatus["state"], string> = {
-  ...STATE_WORD,
-  progressing: "Maybe progressing",
-  holding: "Maybe holding",
-  stalled: "Maybe stalled",
-  dropped: "Maybe a dip",
-};
-
 /** Short pill text for a verdict; a best guess starts with "Maybe" and carries its % elsewhere. */
 export function verdictWord(v: LiftVerdict): string {
   if (v.kind === "not_estimable") return "No estimate";
@@ -180,7 +170,6 @@ export function verdictWord(v: LiftVerdict): string {
     if (v.claim && v.score) return CLAIM_VERB[v.claim];
     return "Not enough yet";
   }
-  if (v.score?.level === "low") return SOFT_STATE_WORD[v.status.state];
   return STATE_WORD[v.status.state];
 }
 
@@ -278,11 +267,11 @@ export type Contribution = {
 
 /** Weekly fractional hard sets, oldest first, for the last `weeks` 7-day
  * windows that start on or after the first logged session (a week before the
- * user began is not a zero week). */
+ * user began is not a zero week). `muscle` null = all muscles together. */
 export function weeklyHardSets(
   history: RecordsSessionInput[],
   muscles: MuscleByExercise,
-  muscle: string,
+  muscle: string | null,
   now: number,
   rirMax?: number,
   weeks = 6,
@@ -292,11 +281,15 @@ export function weeklyHardSets(
   for (let i = weeks - 1; i >= 0; i--) {
     const to = now - i * 7 * DAY + 1;
     const from = to - 7 * DAY;
-    if (from < first) continue;
+    if (to <= first) continue;
     const r = fractionalHardSets(blocksIn(history, muscles, from, to), {
       rirMax,
     });
-    out.push(r.muscles.find((m) => m.muscle === muscle)?.total ?? 0);
+    out.push(
+      muscle == null
+        ? r.hardSets
+        : (r.muscles.find((m) => m.muscle === muscle)?.total ?? 0),
+    );
   }
   return out;
 }

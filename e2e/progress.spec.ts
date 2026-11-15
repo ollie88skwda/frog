@@ -147,7 +147,7 @@ test("a seeded lift shows in Strength and opens its Lift page", async ({
   await expect(page.getByTestId("lift-bandchart")).toBeVisible();
 });
 
-test("under 7 sessions a verdict is a tentative best guess with a %", async ({
+test("under 7 sessions a verdict reads as rough, never a confident trend", async ({
   page,
 }) => {
   const EX = `Rough Lift ${Date.now()}`;
@@ -155,7 +155,7 @@ test("under 7 sessions a verdict is a tentative best guess with a %", async ({
   await page.goto("/progress?s=strength");
   const body = page.getByTestId("progress-screen");
   await expect(body.getByText(EX, { exact: true }).first()).toBeVisible();
-  await expect(body).toContainText(/Maybe progressing · \d+%/);
+  await expect(body).toContainText(/Rough: 3 of 7/);
 });
 
 test("a condition finding names n and says correlation, not causation", async ({

@@ -2,7 +2,6 @@ import {
   averageConfidence,
   bodyweightAverage7d,
   computeStreak,
-  confidenceLevel,
   FIRST_WEEKDAY,
   muscleLabel,
   roundBodyweightDisplay,
@@ -105,7 +104,7 @@ export function OverviewTiles({
       if (v.kind === "status" && v.score) {
         judged += 1;
         scores.push(v.score);
-        if (v.claim === "up" && v.score.pct >= 50) progressing += 1;
+        if (v.claim === "up") progressing += 1;
       }
     }
     return {
@@ -158,16 +157,18 @@ export function OverviewTiles({
         label="Lifts progressing"
         value={lifts.judged ? `${lifts.progressing}/${lifts.judged}` : "–"}
         basis={
-          !lifts.judged
-            ? "log a lift twice for a first read"
-            : lifts.avg != null && lifts.avg < 50
-              ? "tentative: best guess per lift"
-              : "best guess per lift"
+          lifts.judged
+            ? "best guess per lift"
+            : "log a lift twice for a first read"
         }
         confidence={
           lifts.avg != null && (
             <ConfidenceBadge
-              score={{ pct: lifts.avg, level: confidenceLevel(lifts.avg) }}
+              score={{
+                pct: lifts.avg,
+                level:
+                  lifts.avg < 50 ? "low" : lifts.avg < 80 ? "medium" : "high",
+              }}
             />
           )
         }
@@ -329,23 +330,18 @@ export function VolumeSection({ d, now }: { d: ProgressData; now: number }) {
     : [];
   const weekly = useMemo(
     () =>
-      open
-        ? volumeConfidence(
-            weeklyHardSets(d.history, d.muscles, open, now, d.rirMax),
-          )
-        : null,
+      volumeConfidence(
+        weeklyHardSets(d.history, d.muscles, open, now, d.rirMax),
+      ),
     [d.history, d.muscles, open, now, d.rirMax],
   );
-  const overall = useMemo(() => {
-    const scores = r.rows.flatMap((m) => {
-      const c = volumeConfidence(
-        weeklyHardSets(d.history, d.muscles, m.muscle, now, d.rirMax),
-      );
-      return c ? [c.score] : [];
-    });
-    const pct = averageConfidence(scores);
-    return pct == null ? null : { pct, muscles: scores.length };
-  }, [r.rows, d.history, d.muscles, now, d.rirMax]);
+  const overall = useMemo(
+    () =>
+      volumeConfidence(
+        weeklyHardSets(d.history, d.muscles, null, now, d.rirMax),
+      ),
+    [d.history, d.muscles, now, d.rirMax],
+  );
   return (
     <>
       <div className="flex items-center gap-1 px-4">
@@ -392,13 +388,10 @@ export function VolumeSection({ d, now }: { d: ProgressData; now: number }) {
       </div>
       {overall && (
         <div className="flex items-center gap-2 px-4 pt-2 text-xs text-soft">
-          <ConfidenceBadge
-            score={{ pct: overall.pct, level: confidenceLevel(overall.pct) }}
-            showWord
-          />
+          <ConfidenceBadge score={overall.score} showWord />
           <span>
-            Average over {overall.muscles} muscle
-            {overall.muscles === 1 ? "" : "s"}. Tap a muscle for its own number.
+            {overall.score.n} week{overall.score.n === 1 ? "" : "s"} of data.
+            Tap a muscle for its own number.
           </span>
         </div>
       )}
