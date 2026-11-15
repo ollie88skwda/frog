@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
@@ -53,6 +55,55 @@ function changelogPlugin(): Plugin {
   };
 }
 
+// Self-hosted OCR assets (tesseract.js worker + WASM core + English model),
+// served from /ocr/ so a screenshot import never touches a CDN. Copied from
+// node_modules at dev-server start and build; nothing is committed. Only the
+// simd-lstm core is shipped (every evergreen phone browser supports it) plus
+// the plain lstm fallback.
+const ocrRequire = createRequire(import.meta.url);
+const OCR_CORE_FILES = [
+  "tesseract-core-relaxedsimd-lstm.wasm.js",
+  "tesseract-core-simd-lstm.wasm.js",
+  "tesseract-core-lstm.wasm.js",
+];
+function copyOcrAssets(outDir: string): void {
+  const dest = join(outDir, "ocr");
+  mkdirSync(join(dest, "core"), { recursive: true });
+  mkdirSync(join(dest, "lang"), { recursive: true });
+  const tessDir = dirname(ocrRequire.resolve("tesseract.js/package.json"));
+  copyFileSync(
+    join(tessDir, "dist/worker.min.js"),
+    join(dest, "worker.min.js"),
+  );
+  const coreDir = dirname(
+    createRequire(join(tessDir, "package.json")).resolve(
+      "tesseract.js-core/package.json",
+    ),
+  );
+  for (const f of OCR_CORE_FILES)
+    copyFileSync(join(coreDir, f), join(dest, "core", f));
+  const langDir = dirname(
+    ocrRequire.resolve("@tesseract.js-data/eng/package.json"),
+  );
+  copyFileSync(
+    join(langDir, "4.0.0_best_int/eng.traineddata.gz"),
+    join(dest, "lang/eng.traineddata.gz"),
+  );
+}
+function ocrAssetsPlugin(): Plugin {
+  let root = "";
+  return {
+    name: "frog-ocr-assets",
+    configResolved(c) {
+      root = c.root;
+    },
+    // Stage into public/ocr (gitignored): dev serves it, build copies it to dist.
+    buildStart() {
+      copyOcrAssets(join(root, "public"));
+    },
+  };
+}
+
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 
 export default defineConfig(({ command }) => {
@@ -75,6 +126,7 @@ export default defineConfig(({ command }) => {
       ),
       tailwindcss(),
       changelogPlugin(),
+      ocrAssetsPlugin(),
     ],
     resolve: {
       alias: {

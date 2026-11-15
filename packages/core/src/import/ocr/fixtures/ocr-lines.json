@@ -1,0 +1,642 @@
+{
+  "hevy-light": [
+    {
+      "text": "Push Day",
+      "confidence": 0.96
+    },
+    {
+      "text": "Nov 3, 2026 - 1h 12m",
+      "confidence": 0.93
+    },
+    {
+      "text": "Bench Press (Barbell)",
+      "confidence": 0.96
+    },
+    {
+      "text": "SET WEIGHT & REPS",
+      "confidence": 0.94
+    },
+    {
+      "text": "w 60 kg x 8",
+      "confidence": 0.94
+    },
+    {
+      "text": "1 100 kg x 8",
+      "confidence": 0.95
+    },
+    {
+      "text": "2 102.5 kg x 6",
+      "confidence": 0.92
+    },
+    {
+      "text": "Incline Dumbbell Press",
+      "confidence": 0.96
+    },
+    {
+      "text": "SET WEIGHT & REPS",
+      "confidence": 0.94
+    },
+    {
+      "text": "1 32 kg x 10",
+      "confidence": 0.6
+    },
+    {
+      "text": "2 32kg x9",
+      "confidence": 0.69
+    },
+    {
+      "text": "Triceps Pushdown",
+      "confidence": 0.92
+    },
+    {
+      "text": "SET WEIGHT & REPS",
+      "confidence": 0.94
+    },
+    {
+      "text": "1 35kg x 12",
+      "confidence": 0.95
+    },
+    {
+      "text": "2 35kg x 12",
+      "confidence": 0.95
+    }
+  ],
+  "hevy-dark": [
+    {
+      "text": "Push Day",
+      "confidence": 0.96
+    },
+    {
+      "text": "Nov 3, 2026 - 1h 12m",
+      "confidence": 0.91
+    },
+    {
+      "text": "Bench Press (Barbell)",
+      "confidence": 0.96
+    },
+    {
+      "text": "SET WEIGHT & REPS",
+      "confidence": 0.94
+    },
+    {
+      "text": "w 60 kg x 8",
+      "confidence": 0.93
+    },
+    {
+      "text": "1 100 kg x 8",
+      "confidence": 0.96
+    },
+    {
+      "text": "2 102.5 kg x 6",
+      "confidence": 0.95
+    },
+    {
+      "text": "Incline Dumbbell Press",
+      "confidence": 0.96
+    },
+    {
+      "text": "SET WEIGHT & REPS",
+      "confidence": 0.94
+    },
+    {
+      "text": "1 32kg x 10",
+      "confidence": 0.92
+    },
+    {
+      "text": "2 32kg x 9",
+      "confidence": 0.85
+    },
+    {
+      "text": "Triceps Pushdown",
+      "confidence": 0.91
+    },
+    {
+      "text": "SET WEIGHT & REPS",
+      "confidence": 0.94
+    },
+    {
+      "text": "1 35kg x 12",
+      "confidence": 0.94
+    },
+    {
+      "text": "2 35kg x 12",
+      "confidence": 0.94
+    }
+  ],
+  "strong-light": [
+    {
+      "text": "Leg Day",
+      "confidence": 0.95
+    },
+    {
+      "text": "Friday, Nov 6, 2026 - 58min",
+      "confidence": 0.93
+    },
+    {
+      "text": "Squat (Barbell)",
+      "confidence": 0.96
+    },
+    {
+      "text": "SET PREVIOUS LBS REPS",
+      "confidence": 0.96
+    },
+    {
+      "text": "w 135Ib x5 135 5",
+      "confidence": 0.76
+    },
+    {
+      "text": "1 2251bx5 225 5",
+      "confidence": 0.78
+    },
+    {
+      "text": "2 2251bx5 225 5",
+      "confidence": 0.78
+    },
+    {
+      "text": "3 230Ibx 4 230 4",
+      "confidence": 0.75
+    },
+    {
+      "text": "Romanian Deadlift (Barbell)",
+      "confidence": 0.94
+    },
+    {
+      "text": "SET PREVIOUS LBS REPS",
+      "confidence": 0.96
+    },
+    {
+      "text": "1 1851b x 8 185 8",
+      "confidence": 0.8
+    },
+    {
+      "text": "2 1851b x 8 185 8",
+      "confidence": 0.8
+    },
+    {
+      "text": "Leg Press",
+      "confidence": 0.96
+    },
+    {
+      "text": "SET PREVIOUS LBS REPS",
+      "confidence": 0.96
+    },
+    {
+      "text": "1 360 1b x 12 360 12",
+      "confidence": 0.82
+    },
+    {
+      "text": "2 380 1b x 10 380 10",
+      "confidence": 0.52
+    }
+  ],
+  "strong-dark": [
+    {
+      "text": "Leg Day",
+      "confidence": 0.96
+    },
+    {
+      "text": "Friday, Nov 6, 2026 - 58min",
+      "confidence": 0.93
+    },
+    {
+      "text": "Squat (Barbell)",
+      "confidence": 0.96
+    },
+    {
+      "text": "SET PREVIOUS LBS REPS",
+      "confidence": 0.96
+    },
+    {
+      "text": "w 1351b x5 135 5",
+      "confidence": 0.78
+    },
+    {
+      "text": "1 225Ibx5 225 5",
+      "confidence": 0.77
+    },
+    {
+      "text": "pA 225Ibx5 225 5",
+      "confidence": 0.61
+    },
+    {
+      "text": "3 230Ibx 4 230 4",
+      "confidence": 0.8
+    },
+    {
+      "text": "Romanian Deadlift (Barbell)",
+      "confidence": 0.94
+    },
+    {
+      "text": "SET PREVIOUS LBS REPS",
+      "confidence": 0.96
+    },
+    {
+      "text": "1 1851b x 8 185 8",
+      "confidence": 0.87
+    },
+    {
+      "text": "pA 1851b x 8 185 8",
+      "confidence": 0.77
+    },
+    {
+      "text": "Leg Press",
+      "confidence": 0.95
+    },
+    {
+      "text": "SET PREVIOUS LBS REPS",
+      "confidence": 0.96
+    },
+    {
+      "text": "1 360 Ib x12 360 12",
+      "confidence": 0.71
+    },
+    {
+      "text": "pA 3801b x10 380 10",
+      "confidence": 0.46
+    }
+  ],
+  "fitbod-dark": [
+    {
+      "text": "Upper Body",
+      "confidence": 0.95
+    },
+    {
+      "text": "Nov 9, 2026 - 51 min",
+      "confidence": 0.92
+    },
+    {
+      "text": "Barbell Bench Press",
+      "confidence": 0.96
+    },
+    {
+      "text": "Set 1 10 reps x 135 Ib",
+      "confidence": 0.68
+    },
+    {
+      "text": "Set 2 8 reps x 155 Ib",
+      "confidence": 0.81
+    },
+    {
+      "text": "Set 3 6 reps x 175 Ib",
+      "confidence": 0.81
+    },
+    {
+      "text": "Lat Pulldown",
+      "confidence": 0.96
+    },
+    {
+      "text": "Set 1 12 reps x 120 Ib",
+      "confidence": 0.9
+    },
+    {
+      "text": "Set 2 10 reps x 130 Ib",
+      "confidence": 0.82
+    },
+    {
+      "text": "Seated Cable Row",
+      "confidence": 0.96
+    },
+    {
+      "text": "Set 1 12 reps x 110 Ib",
+      "confidence": 0.7
+    },
+    {
+      "text": "Set 2 12 reps x 110 Ib",
+      "confidence": 0.7
+    }
+  ],
+  "jefit-light": [
+    {
+      "text": "Arms & Abs",
+      "confidence": 0.94
+    },
+    {
+      "text": "11/10/2026 - 44 min",
+      "confidence": 0.87
+    },
+    {
+      "text": "Barbell Curl",
+      "confidence": 0.95
+    },
+    {
+      "text": "Set 1: 60 Ibs x 10",
+      "confidence": 0.93
+    },
+    {
+      "text": "Set 2: 65 Ibs x 10",
+      "confidence": 0.89
+    },
+    {
+      "text": "Set3:70 lbs x 8",
+      "confidence": 0.85
+    },
+    {
+      "text": "Hammer Curl",
+      "confidence": 0.96
+    },
+    {
+      "text": "Set 1: 25 Ibs x 12",
+      "confidence": 0.58
+    },
+    {
+      "text": "Set 2:25 Ibs x 12",
+      "confidence": 0.47
+    },
+    {
+      "text": "Cable Crunch",
+      "confidence": 0.95
+    },
+    {
+      "text": "Set 1: 80 Ibs x 15",
+      "confidence": 0.93
+    },
+    {
+      "text": "Set 2: 80 Ibs x 15",
+      "confidence": 0.84
+    }
+  ],
+  "apple-dark": [
+    {
+      "text": "Traditional Strength",
+      "confidence": 0.96
+    },
+    {
+      "text": "Training",
+      "confidence": 0.96
+    },
+    {
+      "text": "Nov 11, 2026",
+      "confidence": 0.95
+    },
+    {
+      "text": "Workout Time",
+      "confidence": 0.96
+    },
+    {
+      "text": "0:46:08",
+      "confidence": 0.96
+    },
+    {
+      "text": "Active Calories",
+      "confidence": 0.96
+    },
+    {
+      "text": "312CAL",
+      "confidence": 0.91
+    },
+    {
+      "text": "Avg. Heart Rate",
+      "confidence": 0.96
+    },
+    {
+      "text": "128BPM",
+      "confidence": 0.91
+    }
+  ],
+  "notes-light": [
+    {
+      "text": "Gym 11/12/2026",
+      "confidence": 0.96
+    },
+    {
+      "text": "Bench press 3x8 @ 100kg",
+      "confidence": 0.94
+    },
+    {
+      "text": "Overhead press 3x10 @ 60kg",
+      "confidence": 0.93
+    },
+    {
+      "text": "Pull ups 4x8",
+      "confidence": 0.96
+    }
+  ],
+  "hevy-dark-lowres": [
+    {
+      "text": "Push Day",
+      "confidence": 0.96
+    },
+    {
+      "text": "Nov 3, 2026 - 1h 12m",
+      "confidence": 0.66
+    },
+    {
+      "text": "Bench Press (Barbell)",
+      "confidence": 0.96
+    },
+    {
+      "text": "SET WEIGHT & REPS",
+      "confidence": 0.8
+    },
+    {
+      "text": "w 60kg x 8",
+      "confidence": 0.88
+    },
+    {
+      "text": "1 100 kg x 8",
+      "confidence": 0.65
+    },
+    {
+      "text": "2 102.5 kg x 6",
+      "confidence": 0.91
+    },
+    {
+      "text": "Incline Dumbbell Press",
+      "confidence": 0.96
+    },
+    {
+      "text": "SET WEIGHT & REPS",
+      "confidence": 0.8
+    },
+    {
+      "text": "1 32kg x 10",
+      "confidence": 0.88
+    },
+    {
+      "text": "2 32kgx 9",
+      "confidence": 0.63
+    },
+    {
+      "text": "Triceps Pushdown",
+      "confidence": 0.92
+    },
+    {
+      "text": "SET WEIGHT & REPS",
+      "confidence": 0.8
+    },
+    {
+      "text": "1 35kg x 12",
+      "confidence": 0.91
+    },
+    {
+      "text": "2 35kg x 12",
+      "confidence": 0.91
+    }
+  ],
+  "strong-light-lowres": [
+    {
+      "text": "Leg Day",
+      "confidence": 0.96
+    },
+    {
+      "text": "Friday, Nov 6, 2026 - 58min",
+      "confidence": 0.93
+    },
+    {
+      "text": "Squat (Barbell)",
+      "confidence": 0.92
+    },
+    {
+      "text": "SET PREVIOUS Les REPS",
+      "confidence": 0.78
+    },
+    {
+      "text": "w 135bx5 135 5",
+      "confidence": 0.7
+    },
+    {
+      "text": "1 225Ibx5 225 5",
+      "confidence": 0.76
+    },
+    {
+      "text": "2 225Ibx5 225 5",
+      "confidence": 0.76
+    },
+    {
+      "text": "3 230Ibx4 230 4",
+      "confidence": 0.68
+    },
+    {
+      "text": "Romanian Deadlift (Barbell)",
+      "confidence": 0.96
+    },
+    {
+      "text": "SET PREVIOUS Les REPS",
+      "confidence": 0.78
+    },
+    {
+      "text": "1 1851bx 8 185 8",
+      "confidence": 0.74
+    },
+    {
+      "text": "2 1851bx 8 185 8",
+      "confidence": 0.74
+    },
+    {
+      "text": "Leg Press",
+      "confidence": 0.96
+    },
+    {
+      "text": "SET PREVIOUS Les REPS",
+      "confidence": 0.78
+    },
+    {
+      "text": "1 3601b x 12 360 12",
+      "confidence": 0.92
+    },
+    {
+      "text": "2 3801b x10 380 10",
+      "confidence": 0.74
+    }
+  ],
+  "fitbod-dark-lowres": [
+    {
+      "text": "Upper Body",
+      "confidence": 0.96
+    },
+    {
+      "text": "Nov 9, 2026 - 51 min",
+      "confidence": 0.8
+    },
+    {
+      "text": "Barbell Bench Press",
+      "confidence": 0.96
+    },
+    {
+      "text": "Set 1 10 reps x 135 Ib",
+      "confidence": 0.48
+    },
+    {
+      "text": "Set2  8repsx155Ib",
+      "confidence": 0.27
+    },
+    {
+      "text": "Set3  6repsx1751b",
+      "confidence": 0.2
+    },
+    {
+      "text": "Lat Pulldown",
+      "confidence": 0.94
+    },
+    {
+      "text": "Set 1 12reps x 120 Ib",
+      "confidence": 0.57
+    },
+    {
+      "text": "Set2  10repsx1301b",
+      "confidence": 0.55
+    },
+    {
+      "text": "Seated Cable Row",
+      "confidence": 0.95
+    },
+    {
+      "text": "Set 1 12 reps x 110 Ib",
+      "confidence": 0.23
+    },
+    {
+      "text": "Set2  12repsx1101b",
+      "confidence": 0.42
+    }
+  ],
+  "jefit-light-lowres": [
+    {
+      "text": "Arms & Abs",
+      "confidence": 0.94
+    },
+    {
+      "text": "11/10/2026 - 44 min",
+      "confidence": 0.88
+    },
+    {
+      "text": "Barbell Curl",
+      "confidence": 0.96
+    },
+    {
+      "text": "Set 1: 60 Ibs x 10",
+      "confidence": 0.94
+    },
+    {
+      "text": "Set2:65Ibs x 10",
+      "confidence": 0.77
+    },
+    {
+      "text": "Set 3: 70 Ibs x 8",
+      "confidence": 0.83
+    },
+    {
+      "text": "Hammer Curl",
+      "confidence": 0.96
+    },
+    {
+      "text": "Set 1: 25 Ibs x 12",
+      "confidence": 0.94
+    },
+    {
+      "text": "Set 2: 25 Ibs x 12",
+      "confidence": 0.83
+    },
+    {
+      "text": "Cable Crunch",
+      "confidence": 0.96
+    },
+    {
+      "text": "Set 1: 80 Ibs x 15",
+      "confidence": 0.85
+    },
+    {
+      "text": "Set2:80 Ibs x 15",
+      "confidence": 0.61
+    }
+  ]
+}
