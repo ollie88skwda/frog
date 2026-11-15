@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MuscleTarget } from "./anatomy";
+import { e1rmSet } from "./e1rm";
 import {
   creditsFor,
   fractionalHardSets,
@@ -126,5 +127,26 @@ describe("bands", () => {
     expect(sessionDirectCheck(1)).toBe("low");
     expect(sessionDirectCheck(5)).toBe("ok");
     expect(sessionDirectCheck(6)).toBe("high");
+  });
+});
+
+describe("RIR only on set 1 (no carry-forward)", () => {
+  const sets = [
+    set(1, { rirMin: 2, rirMax: 2, weightKg: 100, reps: 6 }),
+    set(2, { rirMin: null, rirMax: null, weightKg: 100, reps: 6 }),
+    set(3, { rirMin: null, rirMax: null, weightKg: 100, reps: 6 }),
+  ];
+  it("blank sets stay hard and are counted as RIR-unknown", () => {
+    expect(hardSetCount(sets)).toEqual({ hard: 3, rirUnknown: 2, excluded: 0 });
+  });
+  it("blank RIR e1RM assumes 0, flags noRir, and never throws", () => {
+    const first = e1rmSet(100, 6, { rirMin: 2, rirMax: 2 });
+    const blank = e1rmSet(100, 6, { rirMin: null, rirMax: null });
+    expect(first.noRir).toBe(false);
+    expect(first.rirUsed).toBe(2);
+    expect(blank.noRir).toBe(true);
+    expect(blank.rirUsed).toBe(0);
+    expect(blank.quality).toBe("assumed_rir0");
+    expect(blank.value).not.toBeNull();
   });
 });

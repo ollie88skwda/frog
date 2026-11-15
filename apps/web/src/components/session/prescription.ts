@@ -126,17 +126,6 @@ export function formatRange(
   return lo === hi ? `${lo}` : `${lo}-${hi}`;
 }
 
-/** RIR strip preselect: the midpoint of the planned range (1-3 -> 2). */
-export function rirPreselect(
-  min: number | null | undefined,
-  max: number | null | undefined,
-): number | null {
-  if (min == null && max == null) return null;
-  const lo = min ?? (max as number);
-  const hi = max ?? lo;
-  return Math.min(4, Math.max(0, Math.round((lo + hi) / 2)));
-}
-
 export type RangeKind = "below" | "in" | "top" | "over";
 export type RangeState = { kind: RangeKind; over: number; label: string };
 
