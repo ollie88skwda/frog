@@ -86,6 +86,16 @@ function isNegated(text: string, at: number): boolean {
   );
 }
 
+function bannedHits(text: string): string[] {
+  const hits: string[] = [];
+  for (const [id, re] of BANNED) {
+    for (const m of text.matchAll(new RegExp(re.source, `${re.flags}g`))) {
+      if (!isNegated(text, m.index)) hits.push(`[${id}] "${m[0]}"`);
+    }
+  }
+  return hits;
+}
+
 function files(path: string): string[] {
   const abs = join(ROOT, path);
   const st = statSync(abs);
@@ -104,11 +114,8 @@ test("shipped copy contains none of the plan's banned claims", () => {
       .split("\n")
       .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
       .join("\n");
-    for (const [id, re] of BANNED) {
-      const m = re.exec(text);
-      if (m && !isNegated(text, m.index))
-        hits.push(`${relative(ROOT, f)}: [${id}] "${m[0]}"`);
-    }
+    for (const hit of bannedHits(text))
+      hits.push(`${relative(ROOT, f)}: ${hit}`);
   }
   expect(hits, hits.join("\n")).toEqual([]);
 });
@@ -120,4 +127,9 @@ test("the guard itself catches a banned sentence", () => {
   expect(BANNED.some(([, re]) => re.test(ok))).toBe(false);
   expect(isNegated("There is no per-session volume ceiling", 12)).toBe(true);
   expect(isNegated("Use a per-session volume ceiling", 6)).toBe(false);
+  expect(
+    bannedHits(
+      "There is no per-session volume ceiling. Keep a per-session cap of 6 sets.",
+    ),
+  ).toEqual(['[R7 per-session volume cap] "per-session cap"']);
 });
