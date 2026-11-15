@@ -1,7 +1,9 @@
+import type { ConfidenceScore } from "@frog/core";
 import { Lightbulb, X } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
 import { Card } from "@/components/ui/card";
 import { IconButton } from "@/components/ui/icon-button";
+import { ConfidenceBadge } from "./confidence-badge";
 import { ConfidenceDots } from "./confidence-dots";
 import type { Confidence, Tier } from "./logic";
 import { TierBadge } from "./tier-badge";
@@ -17,6 +19,7 @@ export function CoachCard({
   reason,
   tier,
   confidence,
+  score,
   onWhy,
   onDismiss,
   action,
@@ -25,7 +28,9 @@ export function CoachCard({
   title: string;
   reason: string;
   tier: Tier;
-  confidence: Confidence;
+  confidence?: Confidence;
+  /** Computed % (preferred over the dots): tap opens the Why sheet. */
+  score?: ConfidenceScore | null;
   onWhy: () => void;
   onDismiss?: () => void;
   action?: ReactNode;
@@ -51,7 +56,11 @@ export function CoachCard({
       </div>
       <div className="flex flex-wrap items-center gap-2 px-(--card-spacing)">
         <TierBadge tier={tier} onClick={onWhy} />
-        <ConfidenceDots confidence={confidence} />
+        {score ? (
+          <ConfidenceBadge score={score} onClick={onWhy} showWord />
+        ) : (
+          confidence && <ConfidenceDots confidence={confidence} />
+        )}
         <button
           type="button"
           onClick={onWhy}

@@ -11,6 +11,7 @@ export * from "./domain/anatomy";
 export * from "./domain/bodyweight";
 export * from "./domain/changelog";
 export * from "./domain/conditions";
+export * from "./domain/confidence";
 export * from "./domain/e1rm";
 export * from "./domain/exercise-share";
 export * from "./domain/exercise-types";

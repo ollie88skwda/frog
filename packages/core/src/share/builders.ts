@@ -262,6 +262,18 @@ export function formatPrValue(
   }
 }
 
+/** The share-card confidence stat: low reads "tentative" so a screenshot never
+ * presents a first guess as a fact. Null when there is no computed score. */
+export function confidenceStat(
+  score: { pct: number; level: "low" | "medium" | "high" } | null | undefined,
+): ShareStat | null {
+  if (!score) return null;
+  return {
+    label: "Confidence",
+    value: `${score.pct}%${score.level === "low" ? " · tentative" : ""}`,
+  };
+}
+
 export function buildPrCard(input: {
   event: PrEvent;
   prTypeLabel: string;
@@ -271,6 +283,7 @@ export function buildPrCard(input: {
   estOneRmKg: number | null;
   sparkline: Array<{ at: number; value: number }>;
   extraPrLabels: string[];
+  confidence?: { pct: number; level: "low" | "medium" | "high" } | null;
   identity: ShareIdentity;
 }): PrCard {
   const { event, unit, distUnit } = input;
@@ -308,6 +321,7 @@ export function buildPrCard(input: {
     estOneRm,
     sparkline: input.sparkline,
     extraPrs: input.extraPrLabels.slice(0, 3),
+    confidence: confidenceStat(input.confidence),
     identity: input.identity,
   };
 }
@@ -455,6 +469,7 @@ export function buildExerciseRecordsCard(input: {
   unit: Unit;
   distUnit: DistUnit;
   sparkline: Array<{ at: number; value: number }>;
+  confidence?: { pct: number; level: "low" | "medium" | "high" } | null;
   identity: ShareIdentity;
 }): ExerciseRecordsCard | null {
   const { records, unit, distUnit } = input;
@@ -505,6 +520,7 @@ export function buildExerciseRecordsCard(input: {
     },
     heroPrType,
     support,
+    confidence: confidenceStat(input.confidence),
     sparkline: input.sparkline,
     identity: input.identity,
   };

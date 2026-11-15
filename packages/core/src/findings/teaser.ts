@@ -1,3 +1,4 @@
+import { liftConfidence } from "../domain/confidence";
 import { robustTrend } from "../domain/progression";
 import { liftStatus, STALL_MIN_SESSIONS } from "../domain/stall";
 import { overRepCapExercises, sessionTopsByExercise } from "./series";
@@ -60,7 +61,10 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
                 : status.state === "holding"
                   ? "PLATEAU"
                   : null;
+      const lc = liftConfidence(comparable, status.state);
       trends.push({
+        score: lc?.score ?? null,
+        claim: lc?.claim ?? null,
         kind: "trend",
         exerciseId,
         exerciseName: name,

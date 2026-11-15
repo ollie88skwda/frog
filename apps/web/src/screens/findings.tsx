@@ -22,6 +22,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { ConfidenceBadge } from "@/components/data";
 import { Badge } from "@/components/ui/badge";
 import {
   type ChartConfig,
@@ -165,8 +166,8 @@ export default function FindingsScreen() {
                       more {c.sessionsNeeded === 1 ? "session" : "sessions"} of{" "}
                       {c.exerciseName}{" "}
                       {t(
-                        "until your first trend",
-                        "before the frog will commit to a trend",
+                        "for a first guess, with a confidence %",
+                        "and the frog will take a (tentative) guess",
                       )}
                     </span>
                     <span className="num text-2xs text-faint">
@@ -185,8 +186,8 @@ export default function FindingsScreen() {
                       more {c.sessionsNeeded === 1 ? "session" : "sessions"}{" "}
                       with {c.conditionName} logged{" "}
                       {t(
-                        "until a correlation",
-                        "before the frog will commit to a correlation",
+                        "for a first guess, with a confidence %",
+                        "and the frog will take a (tentative) guess",
                       )}
                     </span>
                     <span className="num text-2xs text-faint">
@@ -205,8 +206,8 @@ export default function FindingsScreen() {
               </p>
               <p className="mt-1 text-xs text-faint">
                 {t(
-                  "Log sessions with conditions — trends appear from 2 sessions per exercise.",
-                  "A correlation needs roughly 10 sessions before the frog will put its name on it. Keep logging sleep and carbs — it is watching, it is patient, and it has nowhere else to be.",
+                  "Log sessions with conditions. Trends appear from 2 sessions per exercise, each with a confidence percentage.",
+                  "The frog will take a tentative guess after a handful of sessions and say how sure it is. Keep logging sleep and carbs. It is watching and it is patient.",
                 )}
               </p>
             </div>
@@ -270,9 +271,11 @@ function TrendRow({
           {trend.pctChange.toFixed(1)}% · {trend.n}{" "}
           {trend.n === 1 ? "session" : "sessions"}
         </span>
-        <Badge tone={trend.confidence === "low" ? "warn" : "neutral"}>
-          {trend.confidence === "low" ? "Rough estimate" : "Medium confidence"}
-        </Badge>
+        {trend.score ? (
+          <ConfidenceBadge score={trend.score} />
+        ) : (
+          <Badge tone="warn">Rough estimate</Badge>
+        )}
         <Badge tone={VERDICT_TONE[trend.verdict]}>{trend.verdict}</Badge>
         <CaretRight className="size-4 text-faint" />
       </span>
@@ -321,9 +324,9 @@ function ConditionRow({
         </span>
         <CaretRight className="size-4 shrink-0 text-faint" />
       </p>
-      <p className="num mt-0.5 text-2xs text-faint">
-        n = {finding.n.high} high / {finding.n.low} low · {finding.confidence}{" "}
-        confidence · correlation, not causation
+      <p className="num mt-0.5 flex items-center gap-1.5 text-2xs text-faint">
+        <ConfidenceBadge score={finding.score} />n = {finding.n.high} high /{" "}
+        {finding.n.low} low · correlation, not causation
       </p>
     </button>
   );
@@ -454,16 +457,24 @@ function TrendSheet({
             <span className="num text-xs text-soft">
               {sign}
               {trend.pctChange.toFixed(1)}% · n = {trend.n} sessions · ~{weeks}{" "}
-              {weeks === 1 ? "week" : "weeks"} · {trend.confidence} confidence
+              {weeks === 1 ? "week" : "weeks"}
             </span>
+            {trend.score && <ConfidenceBadge score={trend.score} showWord />}
           </div>
-          {trend.confidence === "low" && (
-            <p className="text-2xs text-faint">
-              {t(
-                `Rough estimate — only ${trend.n} sessions, so the chance of error is high. Keep logging to sharpen it.`,
-                `Rough estimate — the frog is guessing from only ${trend.n} sessions, so it could easily be wrong. Keep logging and it will sharpen up.`,
+          {trend.score && (
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-ink">{trend.score.basis}</p>
+              {trend.score.level === "low" && (
+                <p className="text-xs text-attn">
+                  {t(
+                    "Tentative: a first guess, not a fact.",
+                    "Tentative. The frog is guessing and could easily be wrong.",
+                  )}
+                </p>
               )}
-            </p>
+              <p className="text-xs text-soft">{trend.score.raise}</p>
+              <p className="text-2xs text-faint">{trend.score.formula}</p>
+            </div>
           )}
 
           <TrendChart
@@ -676,9 +687,20 @@ function ConditionSheet({
             </div>
           </div>
 
+          <div className="flex flex-col gap-1">
+            <ConfidenceBadge score={finding.score} showWord />
+            <p className="text-xs text-ink">{finding.score.basis}</p>
+            {finding.score.level === "low" && (
+              <p className="text-xs text-attn">
+                Tentative: a first guess, not a fact.
+              </p>
+            )}
+            <p className="text-xs text-soft">{finding.score.raise}</p>
+            <p className="text-2xs text-faint">{finding.score.formula}</p>
+          </div>
           <p className="num text-2xs text-faint">
             n = {finding.n.high} high / {finding.n.low} low ·{" "}
-            {finding.confidence === "medium" ? "Medium" : "Low"} confidence
+            {finding.score.pct}% confident ({finding.score.level})
           </p>
           <p className="text-2xs text-faint">
             {t(

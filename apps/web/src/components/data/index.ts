@@ -1,5 +1,6 @@
 // Append-only barrel (shared hot spot: keep both sides on conflict).
 export { CoachCard } from "./coach-card";
+export { ConfidenceBadge } from "./confidence-badge";
 export { ConfidenceDots } from "./confidence-dots";
 export { DeltaChip } from "./delta-chip";
 export { EmptyState } from "./empty-state";

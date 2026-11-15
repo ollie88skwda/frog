@@ -353,7 +353,9 @@ function supportStatsFor(card: ShareCard): ShareStat[] {
       return card.support;
     case "pr":
       if (card.extraPrs.length > 0) {
-        const base = card.delta ? [card.delta] : [];
+        const base = [card.delta, card.confidence].filter(
+          (s): s is ShareStat => s != null,
+        );
         return [
           ...base,
           ...card.extraPrs
@@ -361,11 +363,13 @@ function supportStatsFor(card: ShareCard): ShareStat[] {
             .map((line) => ({ label: "Also this session", value: line })),
         ];
       }
-      return [card.delta, card.previousBest, card.estOneRm].filter(
-        (s): s is ShareStat => s != null,
-      );
+      return [card.delta, card.confidence, card.previousBest, card.estOneRm]
+        .filter((s): s is ShareStat => s != null)
+        .slice(0, 3);
     case "records":
-      return card.support;
+      return card.confidence
+        ? [card.confidence, ...card.support].slice(0, 3)
+        : card.support;
   }
 }
 

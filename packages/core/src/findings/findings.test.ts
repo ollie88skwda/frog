@@ -183,14 +183,28 @@ describe("conditionFindings", () => {
     expect(conditionFindings(sessions, [SLEEP])).toEqual([]);
   });
 
-  it("stays silent below the per-bucket minimum n (6)", () => {
-    const sessions = Array.from({ length: 10 }, (_, i) => {
+  it("stays silent with fewer than 3 sessions per bucket", () => {
+    const sessions = Array.from({ length: 4 }, (_, i) => {
       const wellSlept = i % 2 === 0;
       return session(i, wellSlept ? 120 : 90, {
         [SLEEP.id]: wellSlept ? 8 : 6,
       });
     });
     expect(conditionFindings(sessions, [SLEEP])).toEqual([]);
+  });
+
+  it("shows a small sample as a tentative, capped confidence instead of hiding it", () => {
+    const sessions = Array.from({ length: 10 }, (_, i) => {
+      const wellSlept = i % 2 === 0;
+      return session(i, wellSlept ? 120 : 90, {
+        [SLEEP.id]: wellSlept ? 8 : 6,
+      });
+    });
+    const [f] = conditionFindings(sessions, [SLEEP]);
+    expect(f).toBeDefined();
+    expect(f.n).toEqual({ high: 5, low: 5 });
+    expect(f.score.pct).toBeLessThanOrEqual(70);
+    expect(f.confidence).toBe("low");
   });
 
   it("ignores sessions without a numeric value for the condition", () => {

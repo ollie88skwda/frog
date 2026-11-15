@@ -1,3 +1,4 @@
+import { conditionConfidence } from "../domain/confidence";
 import { e1rmSet, sessionE1rm } from "../domain/e1rm";
 import { bhAdjust, cohensD, detrend, mean, permutationP } from "./stats";
 import type { ConditionFinding, FindingsSessionInput } from "./types";
@@ -7,12 +8,12 @@ import type { ConditionFinding, FindingsSessionInput } from "./types";
 // across every test in the run, detrended residuals so progression is not read
 // as a "sleep effect", working-set Brzycki e1RM as the outcome, and never a
 // recommendation (C8/C19). Every condition finding is correlation, not causation.
-export const MIN_BUCKET_N = 6;
+export const MIN_BUCKET_N = 3;
+/** Findings below this computed confidence stay out of the list (a coin flip
+ * is not a finding); everything above shows with its percentage. */
+export const MIN_CONFIDENCE_PCT = 25;
 export const MIN_EFFECT_PCT = 5;
-export const MIN_COHEN_D = 0.8;
-export const MAX_Q = 0.1; // BH-adjusted p ceiling
 export const MAX_FINDINGS_PER_CONDITION = 3;
-const MEDIUM_CONFIDENCE_N = 10;
 
 export type ConditionMetricDef = {
   id: string;
@@ -150,23 +151,32 @@ export function conditionFindings(
   // Family-wide multiple-comparison control (all metrics x exercises).
   const q = bhAdjust(candidates.map((c) => c.p));
   const kept = candidates
-    .map((c, i) => ({ c, q: q[i] }))
+    .map((c, i) => {
+      const score = conditionConfidence({
+        nHigh: c.high.length,
+        nLow: c.low.length,
+        effectSize: c.d,
+        q: q[i],
+        conditionName: c.metric.name,
+      });
+      return { c, q: q[i], score };
+    })
     .filter(
-      ({ c, q: qi }) =>
+      ({ c, score }) =>
         Math.abs(c.pctDiff) >= MIN_EFFECT_PCT &&
-        Math.abs(c.d) >= MIN_COHEN_D &&
-        qi <= MAX_Q,
+        score.pct >= MIN_CONFIDENCE_PCT,
     );
 
   const perCondition = new Map<string, number>();
   const findings: ConditionFinding[] = [];
-  for (const { c, q: qi } of kept.sort(
-    (a, b) => Math.abs(b.c.pctDiff) - Math.abs(a.c.pctDiff),
+  for (const { c, q: qi, score } of kept.sort(
+    (a, b) =>
+      b.score.pct - a.score.pct ||
+      Math.abs(b.c.pctDiff) - Math.abs(a.c.pctDiff),
   )) {
     const used = perCondition.get(c.metric.id) ?? 0;
     if (used >= MAX_FINDINGS_PER_CONDITION) continue;
     perCondition.set(c.metric.id, used + 1);
-    const minN = Math.min(c.high.length, c.low.length);
     findings.push({
       kind: "condition",
       conditionId: c.metric.id,
@@ -175,13 +185,15 @@ export function conditionFindings(
       highMean: c.highMean,
       lowMean: c.lowMean,
       pctDiff: c.pctDiff,
-      confidence: minN >= MEDIUM_CONFIDENCE_N ? "medium" : "low",
+      confidence:
+        Math.min(c.high.length, c.low.length) >= 10 ? "medium" : "low",
       n: { high: c.high.length, low: c.low.length },
       effectSize: c.d,
       p: c.p,
       q: qi,
       split: c.split,
       caveat: "correlation_not_causation",
+      score,
     });
   }
   return findings;
