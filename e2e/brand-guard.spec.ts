@@ -11,7 +11,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-for (const path of ["/", "/train", "/library", "/stats", "/settings"])
+for (const path of ["/", "/plan", "/progress", "/you", "/library", "/settings"])
   test(`brand guard ${path}`, async ({ page }) => {
     await page.goto(path);
     await page.waitForLoadState("networkidle");

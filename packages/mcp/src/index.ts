@@ -99,7 +99,7 @@ server.registerTool(
   "get_progression",
   {
     description:
-      "Run the findings engine locally: per-exercise progression verdicts (robust e1RM trend) plus condition correlations. Optionally filter to one exercise by name.",
+      "Run the findings engine locally: per-exercise progression verdicts (robust trend of Brzycki-with-RIR e1RM; warm-up sets excluded) plus condition correlations. Optionally filter to one exercise by name.",
     inputSchema: { exercise_name: z.string().optional() },
   },
   async ({ exercise_name }) => {
@@ -118,7 +118,7 @@ server.registerTool(
       name.toLowerCase().includes(exercise_name.toLowerCase());
     return text({
       caveat:
-        "Correlation, not causation. Trends appear from 2 sessions (low confidence until 6 — a rough estimate).",
+        "Correlation, not causation. e1RM is Brzycki with RIR (sets of 10 or fewer total reps; longer sets get no estimate; blank RIR is treated as 0). Warm-up sets are excluded. Trends appear from 2 sessions and are rough estimates until 7 comparable sessions; a change under 10% is normal swing.",
       trends: trends.filter((t) => match(t.exerciseName)),
       countdowns: countdowns.filter((c) => match(c.exerciseName)),
       condition_findings: conditions,
