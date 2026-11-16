@@ -8,7 +8,7 @@ import {
   parseImportFile,
   parseWorkoutText,
 } from "@frog/core";
-import { FileText, UploadSimple } from "@phosphor-icons/react";
+import { Camera, FileText, UploadSimple } from "@phosphor-icons/react";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { ImportReview, type ReviewSummary } from "@/components/import/review";
@@ -46,12 +46,45 @@ export default function ImportScreen() {
   const [mapping, setMapping] = useState<CsvMapping>({});
   const [csvUnit, setCsvUnit] = useState<"kg" | "lb">(unit);
   const [error, setError] = useState<string | null>(null);
+  const [reading, setReading] = useState<number | null>(null);
+  const shotRef = useRef<HTMLInputElement>(null);
   const [done, setDone] = useState<ReviewSummary | null>(null);
 
   /** The single hand-off into review. OCR calls this too. */
   function showDraft(d: ImportDraft) {
     setDraft(d);
     setError(null);
+  }
+
+  async function onScreenshot(f: File | undefined) {
+    if (!f) return;
+    setError(null);
+    setFile(null);
+    setReading(0);
+    try {
+      // Lazy: the OCR engine + model load only now, from this app's own /ocr/.
+      const { screenshotToImportDraft } = await import(
+        "@/lib/ocr/screenshot-import"
+      );
+      const d = await screenshotToImportDraft(f, unit, setReading);
+      if (d.sessions.length + d.routines.length === 0) {
+        setError(
+          t(
+            "No workout found in that screenshot. Try a sharper one, or copy the text and paste it above.",
+            "The frog squinted and found no workout. Try a sharper shot, or paste the text above.",
+          ),
+        );
+        return;
+      }
+      showDraft(d);
+    } catch (e) {
+      setError(
+        `Could not read that screenshot${e instanceof Error ? `: ${e.message}` : "."}`,
+      );
+    } finally {
+      setReading(null);
+      if (shotRef.current) shotRef.current.value = "";
+    }
   }
 
   function readText() {
@@ -237,7 +270,33 @@ export default function ImportScreen() {
         </Button>
       </section>
 
-      {/* frog-import-ocr: the "Screenshot" option renders here and calls showDraft(). */}
+      <section className="mt-3 rounded-md bg-surface p-4">
+        <h2 className="text-sm font-medium">Screenshot</h2>
+        <p className="mt-1 text-xs text-soft">
+          Pick a workout screenshot from Hevy, Strong, Fitbod, JEFIT or a notes
+          app. It is read on this device and never uploaded or saved.
+        </p>
+        <input
+          ref={shotRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={(e) => void onScreenshot(e.target.files?.[0])}
+          data-testid="import-screenshot-input"
+        />
+        <Button
+          variant="outline"
+          className="mt-3 w-full"
+          disabled={reading !== null}
+          onClick={() => shotRef.current?.click()}
+          data-testid="import-screenshot-btn"
+        >
+          <Camera className="size-4" />
+          {reading === null
+            ? "Choose a screenshot"
+            : `Reading… ${Math.round(reading * 100)}%`}
+        </Button>
+      </section>
 
       {error && (
         <p className="mt-3 text-xs text-neg" data-testid="import-error">

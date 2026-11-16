@@ -8,7 +8,7 @@ import {
   parseScreenshotLines,
   toKg,
 } from "./parse-screenshot";
-import { LOW_CONFIDENCE, type OcrLine } from "./types";
+import { type OcrLine, SCREENSHOT_LOW_CONFIDENCE } from "./types";
 
 // ocr-lines.json is real tesseract output over the committed fixture PNGs
 // (regenerate: bun scripts/ocr/run-ocr.ts), so these tests cover genuine OCR noise.
@@ -61,7 +61,7 @@ describe("OCR noise handling", () => {
   it("flags implausible numbers as low confidence", () => {
     const p = parseScreenshotLines(L("Curl", "Set 1: 9000 kg x 8"));
     expect(p.session.exercises[0].sets[0].confidence).toBeLessThan(
-      LOW_CONFIDENCE,
+      SCREENSHOT_LOW_CONFIDENCE,
     );
   });
 
@@ -71,14 +71,16 @@ describe("OCR noise handling", () => {
       { text: "Set 1: 20 kg x 8", confidence: 0.4 },
     ]);
     expect(p.session.exercises[0].sets[0].confidence).toBeLessThan(
-      LOW_CONFIDENCE,
+      SCREENSHOT_LOW_CONFIDENCE,
     );
   });
 
   it("keeps an unreadable-sets exercise visible with low confidence", () => {
     const p = parseScreenshotLines(L("Leg Press", "#%@ ~~"));
     expect(p.session.exercises[0].sets).toHaveLength(0);
-    expect(p.session.exercises[0].nameConfidence).toBeLessThan(LOW_CONFIDENCE);
+    expect(p.session.exercises[0].nameConfidence).toBeLessThan(
+      SCREENSHOT_LOW_CONFIDENCE,
+    );
   });
 
   it("reads RPE as RIR", () => {

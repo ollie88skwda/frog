@@ -4,13 +4,13 @@
 // a generic "NxM @ W" fallback, and repairs common OCR noise (O/0, l/1, Ib/lb,
 // glued units, comma decimals). The editable review screen is the safety net.
 
+import type { WeightUnit } from "../draft";
 import type {
   OcrLine,
   ScreenshotApp,
   ScreenshotExercise,
   ScreenshotParse,
   ScreenshotSet,
-  WeightUnit,
 } from "./types";
 
 const LB_PER_KG = 2.2046226218;

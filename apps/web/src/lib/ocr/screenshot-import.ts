@@ -1,16 +1,18 @@
-// image -> OCR lines -> parsed rows. The only entry point the import screen
+// image -> OCR lines -> ImportDraft. The only entry point the import screen
 // needs; it is itself lazy-loaded, and pulls tesseract.js in via dynamic import
 // so the engine chunk is fetched only once a screenshot is actually chosen.
-import { parseScreenshotLines, type ScreenshotParse } from "@frog/core";
+// Runs entirely on this device; the image is never uploaded or stored.
+import { type ImportDraft, ocrLinesToDraft, type WeightUnit } from "@frog/core";
 
-export async function parseScreenshotImage(
+export async function screenshotToImportDraft(
   image: Blob,
+  defaultUnit: WeightUnit,
   onProgress?: (fraction: number) => void,
-): Promise<ScreenshotParse> {
+): Promise<ImportDraft> {
   const { createTesseractEngine } = await import("./tesseract-engine");
   const engine = await createTesseractEngine(onProgress);
   try {
-    return parseScreenshotLines(await engine.recognize(image));
+    return ocrLinesToDraft(await engine.recognize(image), defaultUnit);
   } finally {
     await engine.dispose();
   }

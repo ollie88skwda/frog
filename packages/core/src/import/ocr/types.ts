@@ -14,7 +14,7 @@ export interface OcrEngine<I = unknown> {
   recognize(image: I): Promise<OcrLine[]>;
 }
 
-export type WeightUnit = "kg" | "lb";
+import type { WeightUnit } from "../draft";
 
 export type ScreenshotApp =
   | "hevy"
@@ -62,4 +62,4 @@ export type ScreenshotParse = {
 };
 
 /** Rows below this are highlighted on the review screen. */
-export const LOW_CONFIDENCE = 0.7;
+export const SCREENSHOT_LOW_CONFIDENCE = 0.7;
