@@ -59,4 +59,6 @@ export_all.
   the trend over the earlier history is shown, flagged preBreak, with no
   confidence percentage.
 - Condition findings show from 3 sessions per side with a confidence
-  percentage (small samples are capped). They are correlation, not causation.
+  percentage (small samples are capped). A finding whose trend-adjusted
+  effect points the other way from the shown % is dropped. They are
+  correlation, not causation.
