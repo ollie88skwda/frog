@@ -1,6 +1,10 @@
 import { liftConfidence } from "../domain/confidence";
 import { robustTrend } from "../domain/progression";
-import { liftStatus, STALL_MIN_SESSIONS } from "../domain/stall";
+import {
+  comparableSessions,
+  liftStatus,
+  STALL_MIN_SESSIONS,
+} from "../domain/stall";
 import { overRepCapExercises, sessionTopsByExercise } from "./series";
 import type {
   CountdownFinding,
@@ -48,7 +52,7 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
       // the same claim; before that it is only the fitted direction against the
       // 10% noise band.
       const status = liftStatus(comparable);
-      const lc = liftConfidence(comparable, status.state);
+      const lc = liftConfidence(comparableSessions(comparable), status.state);
       const fromStatus: TrendFinding["verdict"] | null =
         status.state === "dropped"
           ? "REGRESSING"
