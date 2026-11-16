@@ -89,6 +89,24 @@ describe("trendConfidence", () => {
   });
 });
 
+describe("trendConfidence raise text", () => {
+  const T1 = [97, 97.5, 98.5, 93, 93.5, 92.5, 87].map((w, i) => ({
+    day: i * 3,
+    e1rm: w * 1.2,
+  }));
+  it("says more sessions would lower an 'up' call the fit contradicts", () => {
+    const s = trendConfidence(T1, "up");
+    expect(s?.level).toBe("low");
+    expect(s?.raise).toBe(
+      "Your fitted trend points the other way from this call, so more sessions like these would lower it, not raise it.",
+    );
+  });
+  it("keeps the log-more advice when the fit agrees with the claim", () => {
+    const s = trendConfidence(T1, "down");
+    expect(s?.raise).not.toMatch(/points the other way/);
+  });
+});
+
 describe("liftConfidence", () => {
   it("returns null for a single session", () => {
     expect(

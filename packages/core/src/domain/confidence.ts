@@ -209,12 +209,20 @@ export function trendConfidence(
   if (fit.n <= 3) p = Math.min(p, FEW_POINTS_CAP);
   const pct = clampPct(p);
   const m = sessionsToTarget(fit, claim);
+  const contradicts =
+    claim === "up"
+      ? fit.change < 0
+      : claim === "down"
+        ? fit.change > 0
+        : Math.abs(fit.change) > NOISE_BAND;
   const raise =
     pct >= RAISE_TARGET * 100
       ? "Already firm. Keep logging so it stays current."
-      : m == null
-        ? "The change is small next to your normal session-to-session swing, so more sessions help slowly. Keep the same lift, RIR logged, steady conditions."
-        : `Log about ${m} more session${m === 1 ? "" : "s"} of this lift to reach ${RAISE_TARGET * 100}% if the pattern holds. Log RIR and keep the same rep range so sessions compare.`;
+      : contradicts
+        ? "Your fitted trend points the other way from this call, so more sessions like these would lower it, not raise it."
+        : m == null
+          ? "The change is small next to your normal session-to-session swing, so more sessions help slowly. Keep the same lift, RIR logged, steady conditions."
+          : `Log about ${m} more session${m === 1 ? "" : "s"} of this lift to reach ${RAISE_TARGET * 100}% if the pattern holds. Log RIR and keep the same rep range so sessions compare.`;
   return {
     kind: "trend",
     pct,
