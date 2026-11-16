@@ -268,11 +268,11 @@ export type Contribution = {
 
 /** Weekly fractional hard sets, oldest first, for the last `weeks` 7-day
  * windows that start on or after the first logged session (a week before the
- * user began is not a zero week). `muscle` null = all muscles together. */
+ * user began is not a zero week). */
 export function weeklyHardSets(
   history: RecordsSessionInput[],
   muscles: MuscleByExercise,
-  muscle: string | null,
+  muscle: string,
   now: number,
   rirMax?: number,
   weeks = 6,
@@ -286,11 +286,7 @@ export function weeklyHardSets(
     const r = fractionalHardSets(blocksIn(history, muscles, from, to), {
       rirMax,
     });
-    out.push(
-      muscle == null
-        ? r.hardSets
-        : (r.muscles.find((m) => m.muscle === muscle)?.total ?? 0),
-    );
+    out.push(r.muscles.find((m) => m.muscle === muscle)?.total ?? 0);
   }
   return out;
 }

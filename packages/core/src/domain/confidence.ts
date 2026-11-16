@@ -406,8 +406,9 @@ export function averageConfidence(scores: ConfidenceScore[]): number | null {
 // ── one lift's verdict (Progress, Lift page, Today, share cards) ────────────
 
 /** The claim a lift's status makes whenever the status judged one (a dip from
- * 4 sessions, a trend from 7); otherwise the claim with the highest
- * probability wins (a best guess, shown tentatively). */
+ * 4 sessions, a trend from 7); a stall (no new best) claims "down" when a real
+ * decline is likelier than holding steady. Otherwise the claim with the
+ * highest probability wins (a best guess, shown tentatively). */
 export function liftClaim(
   points: ComparableSession[],
   state:
@@ -420,10 +421,12 @@ export function liftClaim(
 ): ClaimDirection | "drop" | null {
   if (state === "progressing") return "up";
   if (state === "dropped") return "drop";
-  if (state === "stalled" || state === "holding") return "flat";
+  if (state === "holding") return "flat";
+  const candidates: ClaimDirection[] =
+    state === "stalled" ? ["flat", "down"] : ["up", "down", "flat"];
   let best: ClaimDirection | null = null;
   let bestP = -1;
-  for (const c of ["up", "down", "flat"] as const) {
+  for (const c of candidates) {
     const s = sessionsTrendConfidence(points, c);
     if (s && s.pct > bestP) {
       bestP = s.pct;

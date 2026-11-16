@@ -329,9 +329,11 @@ export function VolumeSection({ d, now }: { d: ProgressData; now: number }) {
     : [];
   const weekly = useMemo(
     () =>
-      volumeConfidence(
-        weeklyHardSets(d.history, d.muscles, open, now, d.rirMax),
-      ),
+      open
+        ? volumeConfidence(
+            weeklyHardSets(d.history, d.muscles, open, now, d.rirMax),
+          )
+        : null,
     [d.history, d.muscles, open, now, d.rirMax],
   );
   const overall = useMemo(() => {
