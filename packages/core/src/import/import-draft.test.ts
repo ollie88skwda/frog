@@ -133,7 +133,20 @@ describe("file importers → ImportDraft", () => {
         "left",
         "right",
       ]);
+      expect(pairSetNos(out[0].exercises[0].sets)).toEqual([0, 0, 1, 1]);
     }
+    // Set 0's left row deleted: R0 stays its own set, not paired with L1.
+    const orphan = {
+      ...bundle,
+      setLogs: bundle.setLogs.map((l) =>
+        l.id === "a" ? { ...l, deletedAt: t } : l,
+      ),
+    };
+    const out = draftToImportedSessions(
+      parseImportFile(JSON.stringify(orphan)).draft,
+      (n) => n,
+    );
+    expect(pairSetNos(out[0].exercises[0].sets)).toEqual([0, 1, 1]);
   });
   it("jefit via generic mapping (unit column wins)", () => {
     const r = parseImportFile(fx("jefit.csv"));
@@ -293,6 +306,14 @@ describe("paste-text parser", () => {
     expect(pairSetNos([L, R, L, R])).toEqual([0, 0, 1, 1]);
     expect(pairSetNos([B, L, R, B])).toEqual([0, 1, 1, 2]);
     expect(pairSetNos([L, L, R])).toEqual([0, 1, 1]);
+    // Exported set numbers win: an orphan R0 never pairs with L1.
+    expect(
+      pairSetNos([
+        { side: "right", setNo: 0 },
+        { side: "left", setNo: 1 },
+        { side: "right", setNo: 1 },
+      ]),
+    ).toEqual([0, 1, 1]);
   });
   it("unit toggle relabels a wrong guess instead of converting", () => {
     const d = parseWorkoutText("Nov 12, 2026\nBench\n1 225 x 5", {

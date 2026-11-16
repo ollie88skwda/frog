@@ -376,6 +376,7 @@ export function parseFrogJson(text: string): ImportedSession[] {
               durationSec: l.durationSec ?? null,
               distanceM: l.distanceM ?? null,
               side: sideOf(l.side),
+              setNo: l.setNo,
             })),
           },
         ];
@@ -450,6 +451,7 @@ export function parseFrogCsv(text: string): ImportedSession[] {
         durationSec: iDur >= 0 ? num(r[iDur]) : null,
         distanceM: iDist >= 0 ? num(r[iDist]) : null,
         side: sideOf(iSide >= 0 ? r[iSide] : undefined),
+        setNo: iNo >= 0 ? num(r[iNo]) : null,
       },
     });
   }

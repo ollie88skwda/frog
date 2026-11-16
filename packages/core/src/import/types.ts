@@ -12,6 +12,8 @@ export type ImportedSet = {
   distanceM?: number | null;
   /** Unilateral half; an L/R pair shares one set_no on insert. */
   side?: SetSide | null;
+  /** Set number from the source (Frog export); pairs L/R rows on insert. */
+  setNo?: number | null;
 };
 
 export type ImportedExercise = { name: string; sets: ImportedSet[] };

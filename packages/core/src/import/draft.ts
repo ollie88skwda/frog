@@ -45,6 +45,7 @@ export type ImportDraftSet = {
   durationSec?: number | null;
   distanceM?: number | null;
   side?: SetSide | null;
+  setNo?: number | null;
   /** 'normal' | 'warmup' | 'failure' | 'drop' (same strings as set_logs). */
   setType: string;
   note: string | null;
@@ -174,6 +175,7 @@ export function draftFromImported(
           durationSec: x.durationSec ?? null,
           distanceM: x.distanceM ?? null,
           side: x.side ?? null,
+          setNo: x.setNo ?? null,
         }),
       ),
     })),
@@ -264,6 +266,7 @@ export function draftToImportedSessions(
               durationSec: x.durationSec ?? null,
               distanceM: x.distanceM ?? null,
               side: x.side ?? null,
+              setNo: x.setNo ?? null,
             })),
           },
         ];
