@@ -102,8 +102,12 @@ describe("trendConfidence raise text", () => {
     );
   });
   it("keeps the log-more advice when the fit agrees with the claim", () => {
-    const s = trendConfidence(T1, "down");
-    expect(s?.raise).not.toMatch(/points the other way/);
+    const s = trendConfidence(
+      [100, 103, 106].map((e1rm, i) => ({ day: i * 3, e1rm })),
+      "up",
+    );
+    expect(s?.pct).toBeLessThan(80);
+    expect(s?.raise).toMatch(/^Log about \d+ more sessions? of this lift/);
   });
 });
 
