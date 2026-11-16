@@ -51,12 +51,25 @@ describe("progressionFindings", () => {
     expect(trends[0].roughVerdict).toBe(false);
   });
 
-  it("an early drop before 7 comparable sessions keeps the fitted, rough verdict (C2c)", () => {
-    const sessions = [100, 100, 100, 100, 85].map((w, i) => session(i, w));
+  it("an early drop before 7 comparable sessions reads as the status's dip, badge and verdict agreeing (C2c)", () => {
+    const sessions = [100, 104, 108, 112, 94].map((w, i) => session(i, w));
     const { trends } = progressionFindings(sessions);
     expect(trends[0].status.state).toBe("dropped");
     expect(trends[0].status.drop.kind).toBe("drop");
-    expect(trends[0].roughVerdict).toBe(true);
+    expect(trends[0].verdict).toBe("REGRESSING");
+    expect(trends[0].claim).toBe("drop");
+    expect(trends[0].roughVerdict).toBe(false);
+  });
+
+  it("a declining 7-session stall reads as REGRESSING with a 'down' claim", () => {
+    const sessions = [100, 99, 97, 95, 93, 91, 89, 87].map((w, i) =>
+      session(i, w),
+    );
+    const { trends } = progressionFindings(sessions);
+    expect(trends[0].status.state).toBe("stalled");
+    expect(trends[0].verdict).toBe("REGRESSING");
+    expect(trends[0].claim).toBe("down");
+    expect(trends[0].score?.pct).toBeGreaterThanOrEqual(50);
   });
 
   it("keeps a high-rep-only exercise visible as not estimable (over 10 total reps)", () => {
