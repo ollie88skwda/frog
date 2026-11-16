@@ -41,3 +41,4 @@ treehouse.toml
 # convex local test signing key + local backend state
 .convex-test/
 .convex/
+apps/web/public/ocr/
