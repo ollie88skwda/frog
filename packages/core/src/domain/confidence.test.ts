@@ -115,6 +115,15 @@ describe("liftConfidence", () => {
     expect(r?.claim).toBe("down");
     expect(r?.score.pct).toBeGreaterThanOrEqual(50);
   });
+  it("a stall declining inside the 10% band stays 'flat'", () => {
+    const w = asComparable(
+      [100, 100, 99, 98, 97, 96, 95, 94].map((e1rm, i) => ({
+        day: i * 3,
+        e1rm,
+      })),
+    );
+    expect(liftConfidence(w, "stalled")?.claim).toBe("flat");
+  });
   it("a level stall still claims 'flat'", () => {
     const r = liftConfidence(asComparable(series(8, 0, 0.01)), "stalled");
     expect(r?.claim).toBe("flat");
