@@ -17,9 +17,12 @@ export function TodayCoachCard() {
   const [why, setWhy] = useState(false);
   const pick = useMemo(() => {
     const sorted = [...d.history].sort((a, b) => b.startedAt - a.startedAt);
+    const seen = new Set<string>();
     for (const s of sorted)
       for (const b of s.exercises) {
-        if (b.exerciseType !== "weight_reps") continue;
+        if (b.exerciseType !== "weight_reps" || seen.has(b.exerciseId))
+          continue;
+        seen.add(b.exerciseId);
         const v = liftVerdict(liftSeries(d.history, b.exerciseId));
         if (v.kind === "status" && v.score && v.claim)
           return { id: b.exerciseId, v };
