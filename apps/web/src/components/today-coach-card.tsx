@@ -26,7 +26,7 @@ export function TodayCoachCard() {
       }
     return null;
   }, [d.history]);
-  if (!pick || pick.v.kind !== "status" || !pick.v.score) return null;
+  if (pick?.v.kind !== "status" || !pick.v.score) return null;
   const { v } = pick;
   const score = v.score;
   if (!score) return null;

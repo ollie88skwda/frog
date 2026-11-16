@@ -13,6 +13,7 @@ import type {
   TrendFinding,
 } from "./types";
 
+const DAY_MS = 86_400_000;
 export const MIN_TREND_SESSIONS = 2;
 
 /** Sessions of an exercise before its trend is labeled confident (medium)
@@ -37,7 +38,15 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
   const countdowns: CountdownFinding[] = [];
   const series = sessionTopsByExercise(sessions);
   for (const [exerciseId, { name, tops, comparable }] of series) {
-    const result = robustTrend(tops);
+    const window = comparableSessions(comparable);
+    // Under 2 sessions since the last break: the rough trend over the full
+    // history stands in, labelled pre-break and unscored.
+    const preBreak = window.length < 2;
+    const result = robustTrend(
+      preBreak
+        ? tops
+        : window.map((s) => ({ day: s.at / DAY_MS, e1rm: s.e1rm })),
+    );
     if (result.verdict === "INSUFFICIENT") {
       countdowns.push({
         kind: "countdown",
@@ -50,9 +59,10 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
       // C2c: whenever the status judged the lift (a dip from 4 comparable
       // sessions, a trend from 7) the verdict is the status and the badge scores
       // the same claim; before that it is only the fitted direction against the
-      // 10% noise band.
+      // 10% noise band. Verdict, % change and score all read the comparable
+      // window (after the last break or target change).
       const status = liftStatus(comparable);
-      const lc = liftConfidence(comparableSessions(comparable), status.state);
+      const lc = liftConfidence(window, status.state);
       const fromStatus: TrendFinding["verdict"] | null =
         status.state === "dropped"
           ? "REGRESSING"
@@ -76,6 +86,7 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
         verdict: fromStatus ?? result.verdict,
         status,
         roughVerdict: fromStatus === null,
+        preBreak,
         pctChange: result.pctChange,
         perMonth: result.perMonth,
         n: result.n,

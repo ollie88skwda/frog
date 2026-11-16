@@ -76,6 +76,37 @@ describe("progressionFindings", () => {
     expect(trends[0].score?.n).toBe(4);
   });
 
+  it("after a break the rough verdict reads the flat post-break window, not the old climb", () => {
+    const before = Array.from({ length: 10 }, (_, i) =>
+      session(i, 100 + i * 3.5),
+    );
+    const after = [132, 131, 132, 131, 132].map((w, i) => ({
+      ...session(100 + i, w),
+      startedAt: (27 + 21 + i * 3) * DAY_MS,
+    }));
+    const { trends } = progressionFindings([...before, ...after]);
+    expect(trends[0].status.n).toBe(5);
+    expect(trends[0].preBreak).toBe(false);
+    expect(trends[0].verdict).toBe("PLATEAU");
+    expect(trends[0].claim).toBe("flat");
+    expect(trends[0].n).toBe(5);
+    expect(Math.abs(trends[0].pctChange)).toBeLessThan(10);
+  });
+
+  it("one session back after a break keeps the pre-break trend, unscored, not a countdown", () => {
+    const before = Array.from({ length: 10 }, (_, i) =>
+      session(i, 100 + i * 3.5),
+    );
+    const back = { ...session(100, 130), startedAt: 48 * DAY_MS };
+    const { trends, countdowns } = progressionFindings([...before, back]);
+    expect(countdowns).toEqual([]);
+    expect(trends).toHaveLength(1);
+    expect(trends[0].preBreak).toBe(true);
+    expect(trends[0].verdict).toBe("PROGRESSING");
+    expect(trends[0].score).toBeNull();
+    expect(trends[0].n).toBe(11);
+  });
+
   it("a 7-session stall declining inside the 10% band stays PLATEAU", () => {
     const sessions = [100, 100, 99, 98, 97, 96, 95, 94].map((w, i) =>
       session(i, w),

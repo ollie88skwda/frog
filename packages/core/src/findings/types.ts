@@ -41,6 +41,9 @@ export type TrendFinding = {
   status: LiftStatus;
   /** True when `verdict` came from the fitted trend, not a 7-session status. */
   roughVerdict: boolean;
+  /** Fewer than 2 comparable sessions since the last break: `verdict`, % change
+   * and n are the rough trend over the full pre-break history, with no score. */
+  preBreak: boolean;
   /** Computed confidence (domain/confidence.ts) that the shown direction is real. */
   score: ConfidenceScore | null;
   /** The direction `score` is about (best guess below 7 sessions). */

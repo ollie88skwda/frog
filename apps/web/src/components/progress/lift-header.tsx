@@ -88,7 +88,11 @@ export function LiftHeader({
         />
         <StatTile
           label="Status"
-          value={<span className="text-lg">{verdictWord(verdict)}</span>}
+          value={
+            <span className="whitespace-normal text-lg">
+              {verdictWord(verdict)}
+            </span>
+          }
           basis={
             verdict.kind === "status" && verdict.rough
               ? verdict.score
@@ -108,6 +112,7 @@ export function LiftHeader({
               {verdict.kind === "status" && verdict.score && (
                 <ConfidenceBadge
                   score={verdict.score}
+                  showWord={verdict.score.level === "low"}
                   onClick={() => setWhy(true)}
                 />
               )}

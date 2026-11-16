@@ -162,6 +162,15 @@ const CLAIM_VERB: Record<ClaimDirection | "drop", string> = {
   drop: "Maybe a dip",
 };
 
+/** 7/6 status words when the score is under 50%: tentative, never fact (section 12). */
+const SOFT_STATE_WORD: Record<LiftStatus["state"], string> = {
+  ...STATE_WORD,
+  progressing: "Maybe progressing",
+  holding: "Maybe holding",
+  stalled: "Maybe stalled",
+  dropped: "Maybe a dip",
+};
+
 /** Short pill text for a verdict; a best guess starts with "Maybe" and carries its % elsewhere. */
 export function verdictWord(v: LiftVerdict): string {
   if (v.kind === "not_estimable") return "No estimate";
@@ -171,6 +180,7 @@ export function verdictWord(v: LiftVerdict): string {
     if (v.claim && v.score) return CLAIM_VERB[v.claim];
     return "Not enough yet";
   }
+  if (v.score?.level === "low") return SOFT_STATE_WORD[v.status.state];
   return STATE_WORD[v.status.state];
 }
 
