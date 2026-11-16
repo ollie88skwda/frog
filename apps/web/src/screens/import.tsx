@@ -19,9 +19,8 @@ import { Select } from "@/components/ui/select";
 import { useUnit } from "@/lib/settings";
 import { useVoice } from "@/lib/voice";
 
-// /import — lazy. Step 1 collects a source (pasted text, a file; the
-// frog-import-ocr "Screenshot" option mounts next to them and just calls
-// `showDraft`), step 2 is the shared <ImportReview>. Everything is parsed on
+// /import — lazy. Step 1 collects a source (pasted text, a file, or a
+// screenshot read by on-device OCR; each just calls `showDraft`), step 2 is the shared <ImportReview>. Everything is parsed on
 // this device; nothing leaves it until the user confirms in review.
 
 const FIELDS: CsvField[] = [
