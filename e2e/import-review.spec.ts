@@ -39,10 +39,7 @@ test("paste text → review → confirm → History", async ({ page }) => {
   await expect(page.getByTestId("review-counts")).toContainText("1 sessions");
   await expect(page.getByTestId("review-counts")).toContainText("2 sets");
   // lb detected from the text; unmatched name becomes a new exercise.
-  await expect(page.getByTestId("review-unit-lb")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(page.getByTestId("review-unit-read")).toContainText("lbs");
   await expect(page.getByText("New exercise").first()).toBeVisible();
   // Nothing written yet.
   expect(await sessionCount(page, title)).toBe(0);

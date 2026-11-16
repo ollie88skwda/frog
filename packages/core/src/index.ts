@@ -51,6 +51,7 @@ export * from "./import/dates";
 export * from "./import/draft";
 export * from "./import/fitbit-sleep";
 export * from "./import/hevy";
+export * from "./import/set-nos";
 export * from "./import/strong";
 export * from "./import/text";
 export * from "./import/types";

@@ -11,6 +11,7 @@ import {
   isLowConfidence,
   setDraftUnit,
 } from "./draft";
+import { pairSetNos } from "./set-nos";
 import { parseSetLine, parseWorkoutText } from "./text";
 
 const fx = (n: string) =>
@@ -123,6 +124,8 @@ describe("file importers → ImportDraft", () => {
     } as unknown as ExportBundle;
     for (const text of [setsCsv(bundle), JSON.stringify(bundle)]) {
       const r = parseImportFile(text);
+      // 2 unilateral sets = 4 rows on 2 set_nos (AGENTS.md: L/R share set_no)
+      expect(draftStats(r.draft).sets).toBe(2);
       const out = draftToImportedSessions(r.draft, (n) => n);
       expect(out[0].exercises[0].sets.map((x) => x.side)).toEqual([
         "left",
@@ -283,6 +286,14 @@ describe("paste-text parser", () => {
     // 185 lb × 0.45359237 kg/lb (international avoirdupois pound)
     expect(out[0].exercises[0].sets[1].weightKg).toBeCloseTo(83.91, 2);
   });
+  it("L/R rows pair onto shared set numbers on insert", () => {
+    const L = { side: "left" };
+    const R = { side: "right" };
+    const B = { side: null };
+    expect(pairSetNos([L, R, L, R])).toEqual([0, 0, 1, 1]);
+    expect(pairSetNos([B, L, R, B])).toEqual([0, 1, 1, 2]);
+    expect(pairSetNos([L, L, R])).toEqual([0, 1, 1]);
+  });
   it("unit toggle relabels a wrong guess instead of converting", () => {
     const d = parseWorkoutText("Nov 12, 2026\nBench\n1 225 x 5", {
       defaultUnit: "kg",
@@ -290,6 +301,7 @@ describe("paste-text parser", () => {
     });
     expect(d.unitDetected).toBe(false);
     const lb = setDraftUnit(d, "lb");
+    expect(lb.unitDetected).toBe(false);
     expect(lb.sessions[0].exercises[0].sets[0].weight).toBe(225);
     const out = draftToImportedSessions(lb, (n) => n);
     // 225 lb × 0.45359237 = 102.058 kg

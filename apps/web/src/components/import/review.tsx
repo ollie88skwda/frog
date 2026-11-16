@@ -505,27 +505,34 @@ export function ImportReview({
           Nothing is saved until you tap Import. Highlighted rows are guesses;
           fix or remove them.
         </p>
-        <div className="mt-3 flex items-center gap-2 text-xs text-soft">
-          <span>Weights are in</span>
-          {(["kg", "lb"] as const).map((u) => (
-            <button
-              key={u}
-              type="button"
-              aria-pressed={draft.unit === u}
-              onClick={() => onDraftChange(setDraftUnit(draft, u))}
-              data-testid={`review-unit-${u}`}
-              className={cn(
-                "h-10 rounded-sm px-3 text-xs font-semibold md:h-8",
-                draft.unit === u
-                  ? "bg-accent-soft text-accent-ink"
-                  : "bg-secondary/60 text-on-secondary",
-              )}
-            >
-              {u}
-            </button>
-          ))}
-          {!draft.unitDetected && <Badge tone="warn">Guessed</Badge>}
-        </div>
+        {draft.unitDetected ? (
+          <p className="mt-3 text-xs text-soft" data-testid="review-unit-read">
+            Weights in {unitLabel(draft.unit)} · Unit read from{" "}
+            {draft.source === "text" ? "text" : "file"}
+          </p>
+        ) : (
+          <div className="mt-3 flex items-center gap-2 text-xs text-soft">
+            <span>Weights are in</span>
+            {(["kg", "lb"] as const).map((u) => (
+              <button
+                key={u}
+                type="button"
+                aria-pressed={draft.unit === u}
+                onClick={() => onDraftChange(setDraftUnit(draft, u))}
+                data-testid={`review-unit-${u}`}
+                className={cn(
+                  "h-10 rounded-sm px-3 text-xs font-semibold md:h-8",
+                  draft.unit === u
+                    ? "bg-accent-soft text-accent-ink"
+                    : "bg-secondary/60 text-on-secondary",
+                )}
+              >
+                {u}
+              </button>
+            ))}
+            <Badge tone="warn">Guessed</Badge>
+          </div>
+        )}
         {draft.notes.map((n) => (
           <p
             key={n}

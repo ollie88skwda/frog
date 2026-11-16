@@ -21,6 +21,7 @@
 import { newId } from "../domain/ids";
 import { kgToLb, lbToKg } from "../domain/units";
 import type { SetSide } from "../repo/types";
+import { physicalSetCount } from "./set-nos";
 import type { ImportedSession } from "./types";
 
 export type ImportSource =
@@ -191,7 +192,7 @@ export const weightToKg = (weight: number | null, unit: WeightUnit) =>
 
 /** Review "Weights are in" toggle: relabels the numbers as typed, no conversion. */
 export const setDraftUnit = (d: ImportDraft, unit: WeightUnit): ImportDraft =>
-  unit === d.unit ? d : { ...d, unit, unitDetected: true };
+  unit === d.unit ? d : { ...d, unit };
 
 export type DuplicateKind = "exact" | "same-day";
 
@@ -278,7 +279,7 @@ export function draftStats(d: ImportDraft) {
   const names = new Set<string>();
   for (const s of d.sessions)
     for (const e of s.exercises) {
-      sets += e.sets.length;
+      sets += physicalSetCount(e.sets);
       names.add(e.rawName.toLowerCase());
     }
   for (const r of d.routines)

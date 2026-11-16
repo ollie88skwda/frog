@@ -2,6 +2,10 @@
 // reads and writes the generic row layer can't express in one call.
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
+import {
+  pairSetNos,
+  physicalSetCount,
+} from "../packages/core/src/import/set-nos";
 import type { Doc } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
@@ -537,16 +541,11 @@ export const importBatch = mutation({
           createdAt: t,
           updatedAt: t,
         });
-        let setNo = -1;
-        let openSide: string | null = null;
-        for (const set of ex.sets) {
+        const setNos = pairSetNos(ex.sets);
+        for (const [i, set] of ex.sets.entries()) {
+          const setNo = setNos[i];
           const side =
             set.side === "left" || set.side === "right" ? set.side : null;
-          if (side && openSide && side !== openSide) openSide = null;
-          else {
-            setNo++;
-            openSide = side;
-          }
           await insertRow(ctx, "set_logs", me, {
             id: crypto.randomUUID(),
             createdAt: t,
@@ -563,8 +562,8 @@ export const importBatch = mutation({
             note: set.note ?? null,
             completed: true,
           });
-          sets++;
         }
+        sets += physicalSetCount(ex.sets);
       }
       imported++;
     }
