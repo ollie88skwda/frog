@@ -97,6 +97,21 @@ describe("liftSeries / liftVerdict (C2c-e1rm)", () => {
     expect(verdictWord(v)).toMatch(/^Maybe /);
     expect(v.kind === "status" && v.score).toBeTruthy();
   });
+  it("softens a 7/6 status word when its confidence is under 50%", () => {
+    // Live test fixture (T-1): one new best keeps the 7/6 rule at
+    // "progressing" while the fitted trend is about -10%, so the up claim
+    // scores low and must not read as fact (section 12).
+    const h = [97, 97.5, 98.5, 93, 93.5, 92.5, 87].map((kg, i) =>
+      sess(`s${i}`, 20 - i, "sq", [set(kg, 5, 2)]),
+    );
+    const v = liftVerdict(liftSeries(h, "sq"));
+    expect(v.kind).toBe("status");
+    if (v.kind !== "status") return;
+    expect(v.rough).toBe(false);
+    expect(v.status.state).toBe("progressing");
+    expect(v.score?.level).toBe("low");
+    expect(verdictWord(v)).toBe("Maybe progressing");
+  });
 });
 
 describe("volumeRows", () => {

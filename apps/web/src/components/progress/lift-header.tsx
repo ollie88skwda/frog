@@ -108,6 +108,7 @@ export function LiftHeader({
               {verdict.kind === "status" && verdict.score && (
                 <ConfidenceBadge
                   score={verdict.score}
+                  showWord={verdict.score.level === "low"}
                   onClick={() => setWhy(true)}
                 />
               )}
