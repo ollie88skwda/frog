@@ -82,6 +82,7 @@ describe("liftSeries / liftVerdict (C2c-e1rm)", () => {
     expect(v.status.n).toBe(4);
     expect(verdictWord(v)).toMatch(/^Maybe /);
     expect(v.score?.pct).toBeGreaterThan(0);
+    expect(v.score?.n).toBe(4);
     const band = noiseBand(v.status.baselineMedian);
     // 100 kg x5 @2 RIR -> Brzycki 100*36/(37-7) = 120
     expect(band?.lo).toBeCloseTo(108, 1);

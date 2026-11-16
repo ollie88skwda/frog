@@ -403,15 +403,11 @@ export function averageConfidence(scores: ConfidenceScore[]): number | null {
   return Math.round(mean(scores.map((s) => s.pct)));
 }
 
-/** Plain copy line: "62% confident. Log 3 more sessions to firm it up." */
-export function confidenceLine(score: ConfidenceScore): string {
-  return `${score.pct}% confident (${CONFIDENCE_WORD[score.level]})`;
-}
-
 // ── one lift's verdict (Progress, Lift page, Today, share cards) ────────────
 
-/** The claim a lift's status makes. Before a 7-session status exists the claim
- * with the highest probability wins (a best guess, shown tentatively). */
+/** The claim a lift's status makes whenever the status judged one (a dip from
+ * 4 sessions, a trend from 7); otherwise the claim with the highest
+ * probability wins (a best guess, shown tentatively). */
 export function liftClaim(
   points: ComparableSession[],
   state:
@@ -421,13 +417,10 @@ export function liftClaim(
     | "stalled"
     | "dropped"
     | "restart",
-  n: number,
 ): ClaimDirection | "drop" | null {
-  if (n >= 7) {
-    if (state === "progressing") return "up";
-    if (state === "dropped") return "drop";
-    if (state === "stalled" || state === "holding") return "flat";
-  }
+  if (state === "progressing") return "up";
+  if (state === "dropped") return "drop";
+  if (state === "stalled" || state === "holding") return "flat";
   let best: ClaimDirection | null = null;
   let bestP = -1;
   for (const c of ["up", "down", "flat"] as const) {
@@ -452,7 +445,7 @@ export function liftConfidence(
     | "dropped"
     | "restart",
 ): { claim: ClaimDirection | "drop"; score: ConfidenceScore } | null {
-  const claim = liftClaim(window, state, window.length);
+  const claim = liftClaim(window, state);
   if (!claim) return null;
   const score =
     claim === "drop"

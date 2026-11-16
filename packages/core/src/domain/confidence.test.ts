@@ -104,6 +104,12 @@ describe("liftConfidence", () => {
     const r = liftConfidence(asComparable(series(8, 0, 0.01)), "stalled");
     expect(r?.claim).toBe("flat");
   });
+  it("honours a dip the status found before 7 sessions", () => {
+    const w = asComparable([...series(4, 0, 0.01), { day: 12, e1rm: 80 }]);
+    const r = liftConfidence(w, "dropped");
+    expect(r?.claim).toBe("drop");
+    expect(r?.score).toEqual(dropConfidence(w));
+  });
 });
 
 describe("dropConfidence", () => {

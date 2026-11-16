@@ -92,7 +92,9 @@ export function LiftHeader({
           basis={
             verdict.kind === "status" && verdict.rough
               ? verdict.score
-                ? "tentative: tap the % for what raises it"
+                ? verdict.score.level === "low"
+                  ? "tentative: tap the % for what raises it"
+                  : "best guess: tap the % for what raises it"
                 : "log one more session to compare"
               : verdict.kind === "status"
                 ? "7+ comparable sessions · beta"
