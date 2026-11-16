@@ -104,6 +104,28 @@ describe("liftConfidence", () => {
     const r = liftConfidence(asComparable(series(8, 0, 0.01)), "stalled");
     expect(r?.claim).toBe("flat");
   });
+  it("a stall on a clear decline claims 'down', not a near-zero 'flat'", () => {
+    const w = asComparable(
+      [100, 99, 97, 95, 93, 91, 89, 87].map((e1rm, i) => ({
+        day: i * 3,
+        e1rm,
+      })),
+    );
+    const r = liftConfidence(w, "stalled");
+    expect(r?.claim).toBe("down");
+    expect(r?.score.pct).toBeGreaterThanOrEqual(50);
+  });
+  it("a level stall still claims 'flat'", () => {
+    const r = liftConfidence(asComparable(series(8, 0, 0.01)), "stalled");
+    expect(r?.claim).toBe("flat");
+    expect(r?.score.pct).toBeGreaterThanOrEqual(50);
+  });
+  it("honours a dip the status found before 7 sessions", () => {
+    const w = asComparable([...series(4, 0, 0.01), { day: 12, e1rm: 80 }]);
+    const r = liftConfidence(w, "dropped");
+    expect(r?.claim).toBe("drop");
+    expect(r?.score).toEqual(dropConfidence(w));
+  });
 });
 
 describe("dropConfidence", () => {
