@@ -26,14 +26,6 @@ import {
   type WeightUnit,
 } from "./draft";
 
-export type TextLayout =
-  | "auto"
-  | "hevy"
-  | "strong"
-  | "fitbod"
-  | "jefit"
-  | "apple";
-
 export type ParseTextOptions = {
   /** The user's own unit, used when the text states none. */
   defaultUnit?: WeightUnit;
@@ -107,6 +99,7 @@ export function parseSetLine(raw: string): RawSet | null {
   let line = raw.trim().replace(/[–—]/g, "-");
   if (!line || line.length > 90) return null;
   let setType = "normal";
+  let indexed = false;
   // leading set index: "1", "Set 1", "1.", "1)", "#1" ; warm-up marker "W"
   const lead = /^(?:set\s*)?#?(\d{1,2})\s*[:.)-]?\s+(?=\S)/i.exec(line);
   const wlead = /^(?:w|warm[- ]?up)\s*[:.)-]?\s+(?=\d|bw|bodyweight)/i.exec(
@@ -125,8 +118,10 @@ export function parseSetLine(raw: string): RawSet | null {
     if (
       !new RegExp(`^\\d+\\s*${X}\\s*\\d+\\s*(?:@|$)`).test(line) ||
       new RegExp(`^${NUM}\\s*${UNIT}?\\s*${X}`).test(after)
-    )
+    ) {
       line = after;
+      indexed = true;
+    }
   }
   const { rest, rir } = extractRpe(line);
   line = rest.replace(/\s+/g, " ").trim();
@@ -139,19 +134,17 @@ export function parseSetLine(raw: string): RawSet | null {
     `^${NUM}\\s*${UNIT}?\\s*${X}\\s*(\\d{1,3})(?:\\s*reps?)?\\s*(?:[-,;].*)?$`,
     "i",
   ).exec(line);
-  if (
-    m &&
-    !(
-      unitOf(m[2]) === null &&
-      Number.isInteger(toNum(m[1])) &&
-      toNum(m[1]) <= 12
-    )
-  ) {
+  const smallBare =
+    m != null &&
+    unitOf(m[2]) === null &&
+    Number.isInteger(toNum(m[1])) &&
+    toNum(m[1]) <= 12;
+  if (m && (!smallBare || indexed)) {
     const unit = unitOf(m[2]);
     const weight = toNum(m[1]);
     const reps = Number(m[3]);
     const f: string[] = [];
-    let c = unit ? 1 : 0.85;
+    let c = unit ? 1 : smallBare ? 0.7 : 0.85;
     if (!unit) f.push("Unit not stated");
     if (reps > 60) {
       c = 0.5;
@@ -281,17 +274,6 @@ export function parseSetLine(raw: string): RawSet | null {
   }
   // N sets × M reps [@ weight]: "3x8", "4 sets x 6 reps @ 80kg" (routine / grouped)
   m = new RegExp(
-    `(\\d{1,2})\\s*(?:sets?\\s*)?${X}\\s*(\\d{1,3})(?:\\s*-\\s*(\\d{1,3}))?(?:\\s*reps?)?(?:\\s*(?:@|at|with)\\s*${NUM}\\s*${UNIT}?)?\\s*$`,
-    "i",
-  ).exec(line);
-  if (
-    m &&
-    /^\s*(\d|sets?\b)/i.test(line.slice(m.index === 0 ? 0 : line.length)) ===
-      false
-  ) {
-    // fallthrough guard handled below
-  }
-  m = new RegExp(
     `^(\\d{1,2})\\s*(?:sets?\\s*)?${X}\\s*(\\d{1,3})(?:\\s*-\\s*\\d{1,3})?(?:\\s*reps?)?(?:\\s*(?:@|at|with)\\s*${NUM}\\s*${UNIT}?)?\\s*$`,
     "i",
   ).exec(line);
@@ -305,7 +287,7 @@ export function parseSetLine(raw: string): RawSet | null {
         rir,
         setType,
         count,
-        confidence: m[3] && m[4] ? 0.9 : 0.8,
+        confidence: 0.7,
         flags: ["Sets grouped on one line"],
         prescription: true,
       };
@@ -345,21 +327,8 @@ function isNoise(line: string): boolean {
   );
 }
 
-const LAYOUT_HINTS: [TextLayout, RegExp][] = [
-  ["fitbod", /fitbod|\bmuscle recovery\b|\bworkout log\b/i],
-  ["jefit", /jefit|\bmy log\b|\bbelongs? session\b/i],
-  ["hevy", /\bhevy\b|\bbest set\b/i],
-  ["strong", /\bstrong\b|\bprevious\b.*\bkg\b/i],
-  [
-    "apple",
-    /active calories|traditional strength training|functional strength training|\bapple fitness\b|\bmove ring\b/i,
-  ],
-];
-
-export function detectTextLayout(text: string): TextLayout {
-  for (const [l, re] of LAYOUT_HINTS) if (re.test(text)) return l;
-  return "auto";
-}
+const APPLE_HINT =
+  /active calories|traditional strength training|functional strength training|\bapple fitness\b|\bmove ring\b/i;
 
 /** "0:45:12" / "45:12" / "1h 05m" / "45 min" → ms */
 function parseDurationMs(s: string): number | null {
@@ -385,7 +354,7 @@ export function parseWorkoutText(
   text: string,
   opts: ParseTextOptions = {},
 ): ImportDraft {
-  const layout = detectTextLayout(text);
+  const apple = APPLE_HINT.test(text);
   const lines = text
     .replace(/\r/g, "")
     .split("\n")
@@ -539,7 +508,7 @@ export function parseWorkoutText(
       continue;
     if (isNoise(line)) continue;
 
-    if (APPLE_TYPES.test(line) && layout === "apple") {
+    if (APPLE_TYPES.test(line) && apple) {
       cur.session.title = line;
       continue;
     }
@@ -617,10 +586,10 @@ export function parseWorkoutText(
       w.session.startedAt == null ? 0.6 : 1,
     );
     if (w.session.startedAt == null) w.session.flags.push("No date found");
-    if (layout === "apple" && w.session.exercises.length === 0) {
+    if (apple && w.session.exercises.length === 0) {
       w.session.confidence = Math.min(w.session.confidence, 0.5);
       w.session.flags.push(
-        "Apple Fitness summaries have no sets; add them in review",
+        "Apple Fitness summaries have no exercise names, so this imports as a session without sets",
       );
     }
   }
@@ -646,7 +615,7 @@ export function parseWorkoutText(
             parsed.exercises.find((p) => p.rawName === e.rawName)?.repsMax ??
             null,
           weight: e.sets[0]?.weight ?? null,
-          confidence: e.confidence,
+          confidence: 1,
         })),
       ),
     });

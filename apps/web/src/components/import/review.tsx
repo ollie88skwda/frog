@@ -1,5 +1,4 @@
 import {
-  convertDraftUnit,
   draftStats,
   draftToImportedSessions,
   type Exercise,
@@ -14,8 +13,10 @@ import {
   isLowConfidence,
   matchExerciseName,
   type NewRoutineInput,
+  setDraftUnit,
   unitLabel,
   type WeightUnit,
+  weightToKg,
 } from "@frog/core";
 import { Plus, Trash } from "@phosphor-icons/react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -77,6 +78,46 @@ function toLocalInput(ms: number | null): string {
 
 const LOW = "bg-attn-soft";
 
+const numText = (n: number | null) => (n == null ? "" : String(n));
+
+/** Keeps the typed text (so "102." survives) and commits each parseable value. */
+function NumField({
+  value,
+  label,
+  className,
+  onCommit,
+}: {
+  value: number | null;
+  label: string;
+  className: string;
+  onCommit: (n: number | null) => void;
+}) {
+  const [text, setText] = useState(numText(value));
+  const [shown, setShown] = useState(value);
+  if (value !== shown) {
+    setShown(value);
+    setText(numText(value));
+  }
+  return (
+    <Input
+      aria-label={label}
+      inputMode="decimal"
+      className={className}
+      value={text}
+      placeholder="–"
+      onChange={(e) => {
+        const t = e.target.value;
+        setText(t);
+        const v = t.trim().replace(",", ".");
+        const n = v === "" ? null : Number(v);
+        if (n != null && Number.isNaN(n)) return;
+        setShown(n);
+        onCommit(n);
+      }}
+    />
+  );
+}
+
 function SetRow({
   set,
   unit,
@@ -95,22 +136,11 @@ function SetRow({
     key: "weight" | "reps" | "rir",
     width: string,
   ) => (
-    <Input
-      aria-label={label}
-      inputMode="decimal"
+    <NumField
+      value={value}
+      label={label}
       className={cn("num", width, low && "bg-transparent")}
-      value={value ?? ""}
-      placeholder="–"
-      onChange={(e) => {
-        const v = e.target.value.replace(",", ".");
-        onChange({
-          ...set,
-          [key]:
-            v === "" ? null : Number.isNaN(Number(v)) ? set[key] : Number(v),
-          confidence: 1,
-          flags: [],
-        });
-      }}
+      onCommit={(n) => onChange({ ...set, [key]: n, confidence: 1, flags: [] })}
     />
   );
   return (
@@ -122,6 +152,10 @@ function SetRow({
       <div className="flex items-center gap-1.5">
         {set.setType === "warmup" ? (
           <Badge className="w-9 justify-center">W</Badge>
+        ) : set.side ? (
+          <Badge className="w-9 justify-center">
+            {set.side === "left" ? "L" : "R"}
+          </Badge>
         ) : (
           <span className="w-9 shrink-0" />
         )}
@@ -440,12 +474,7 @@ export function ImportReview({
               setNo: n,
               targetReps: e.reps,
               targetRepsMax: e.repsMax,
-              targetWeightKg:
-                e.weight == null
-                  ? null
-                  : draft.unit === "lb"
-                    ? Math.round(e.weight * 0.45359237 * 100) / 100
-                    : e.weight,
+              targetWeightKg: weightToKg(e.weight, draft.unit),
             })),
           });
         }
@@ -483,7 +512,7 @@ export function ImportReview({
               key={u}
               type="button"
               aria-pressed={draft.unit === u}
-              onClick={() => onDraftChange(convertDraftUnit(draft, u))}
+              onClick={() => onDraftChange(setDraftUnit(draft, u))}
               data-testid={`review-unit-${u}`}
               className={cn(
                 "h-10 rounded-sm px-3 text-xs font-semibold md:h-8",

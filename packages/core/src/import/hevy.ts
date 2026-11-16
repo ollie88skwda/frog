@@ -39,8 +39,8 @@ export function parseHevyDate(raw: string): number | null {
   ).getTime();
 }
 
-/** Minimal RFC-4180 CSV parser (quoted fields, embedded commas/newlines/quotes). */
-export function parseCsv(text: string): string[][] {
+/** Minimal RFC-4180 CSV parser (quoted fields, embedded delimiters/newlines/quotes). */
+export function parseCsv(text: string, delimiter = ","): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
@@ -61,7 +61,7 @@ export function parseCsv(text: string): string[][] {
       }
     } else if (c === '"') {
       inQuotes = true;
-    } else if (c === ",") {
+    } else if (c === delimiter) {
       row.push(field);
       field = "";
     } else if (c === "\n" || c === "\r") {

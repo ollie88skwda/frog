@@ -20,6 +20,7 @@
 
 import { newId } from "../domain/ids";
 import { kgToLb, lbToKg } from "../domain/units";
+import type { SetSide } from "../repo/types";
 import type { ImportedSession } from "./types";
 
 export type ImportSource =
@@ -42,6 +43,7 @@ export type ImportDraftSet = {
   rir: number | null;
   durationSec?: number | null;
   distanceM?: number | null;
+  side?: SetSide | null;
   /** 'normal' | 'warmup' | 'failure' | 'drop' (same strings as set_logs). */
   setType: string;
   note: string | null;
@@ -170,6 +172,7 @@ export function draftFromImported(
           setType: x.setType ?? "normal",
           durationSec: x.durationSec ?? null,
           distanceM: x.distanceM ?? null,
+          side: x.side ?? null,
         }),
       ),
     })),
@@ -186,38 +189,9 @@ const round = (n: number, dp = 2) => {
 export const weightToKg = (weight: number | null, unit: WeightUnit) =>
   weight == null ? null : round(unit === "lb" ? lbToKg(weight) : weight);
 
-/** Changes a draft's unit and converts every weight (review "Unit" toggle). */
-export function convertDraftUnit(
-  d: ImportDraft,
-  unit: WeightUnit,
-): ImportDraft {
-  if (unit === d.unit) return d;
-  const conv = (w: number | null) =>
-    w == null
-      ? null
-      : round(
-          unit === "lb"
-            ? kgToLb(weightToKg(w, d.unit) ?? 0)
-            : (weightToKg(w, d.unit) ?? 0),
-          1,
-        );
-  return {
-    ...d,
-    unit,
-    unitDetected: true,
-    sessions: d.sessions.map((s) => ({
-      ...s,
-      exercises: s.exercises.map((e) => ({
-        ...e,
-        sets: e.sets.map((x) => ({ ...x, weight: conv(x.weight) })),
-      })),
-    })),
-    routines: d.routines.map((r) => ({
-      ...r,
-      exercises: r.exercises.map((e) => ({ ...e, weight: conv(e.weight) })),
-    })),
-  };
-}
+/** Review "Weights are in" toggle: relabels the numbers as typed, no conversion. */
+export const setDraftUnit = (d: ImportDraft, unit: WeightUnit): ImportDraft =>
+  unit === d.unit ? d : { ...d, unit, unitDetected: true };
 
 export type DuplicateKind = "exact" | "same-day";
 
@@ -288,6 +262,7 @@ export function draftToImportedSessions(
               setType: x.setType,
               durationSec: x.durationSec ?? null,
               distanceM: x.distanceM ?? null,
+              side: x.side ?? null,
             })),
           },
         ];

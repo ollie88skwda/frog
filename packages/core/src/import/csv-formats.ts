@@ -4,8 +4,8 @@
 
 import { rirFromRpe } from "../domain/e1rm";
 import { newId } from "../domain/ids";
-import { lbToKg } from "../domain/units";
-import type { ExportBundle } from "../repo/types";
+import { kgToLb, lbToKg } from "../domain/units";
+import type { ExportBundle, SetSide } from "../repo/types";
 import { parseLooseDate } from "./dates";
 import {
   draftFromImported,
@@ -45,17 +45,13 @@ function sniffDelimiter(text: string): string {
 }
 
 function rowsOf(text: string): string[][] {
-  const d = sniffDelimiter(text);
-  if (d === ",") return parseCsv(text);
-  // The shared RFC-4180 parser is comma-only; swapping delimiters is safe
-  // unless a quoted field holds the delimiter, rare in these exports.
-  return parseCsv(text.replaceAll(d, ","));
+  return parseCsv(text, sniffDelimiter(text));
 }
 
 // ---------------------------------------------------------------- Fitbod
 
-/** "2026-06-19 16:42:03 +0000" → { ms (true instant), day (as written) }. */
-function parseFitbodDate(raw: string): { ms: number; day: string } | null {
+/** "2026-06-19 16:42:03 +0000" → true instant in ms. */
+function parseFitbodDate(raw: string): number | null {
   const m = raw
     .trim()
     .match(
@@ -80,7 +76,7 @@ function parseFitbodDate(raw: string): { ms: number; day: string } | null {
           (Number(tz.slice(1, 3)) * 60 + Number(tz.slice(-2)));
     ms = Date.UTC(...parts) - off * 60_000;
   } else ms = new Date(...parts).getTime();
-  return Number.isFinite(ms) ? { ms, day: `${y}-${mo}-${d}` } : null;
+  return Number.isFinite(ms) ? ms : null;
 }
 
 export function parseFitbodCsv(text: string): ImportedSession[] {
@@ -108,15 +104,16 @@ export function parseFitbodCsv(text: string): ImportedSession[] {
     }
   >();
   for (const r of rows.slice(1)) {
-    const d = parseFitbodDate(r[iDate] ?? "");
+    const ms = parseFitbodDate(r[iDate] ?? "");
     const name = (r[iEx] ?? "").trim();
-    if (!d || !name) continue;
-    let day = byDay.get(d.day);
+    if (ms == null || !name) continue;
+    const key = new Date(ms).toDateString();
+    let day = byDay.get(key);
     if (!day) {
-      day = { startedAt: d.ms, order: [], ex: new Map() };
-      byDay.set(d.day, day);
+      day = { startedAt: ms, order: [], ex: new Map() };
+      byDay.set(key, day);
     }
-    day.startedAt = Math.min(day.startedAt, d.ms);
+    day.startedAt = Math.min(day.startedAt, ms);
     const w = iW >= 0 ? num(r[iW]) : null;
     const reps = iReps >= 0 ? num(r[iReps]) : null;
     const dur = iDur >= 0 ? num(r[iDur]) : null;
@@ -293,7 +290,7 @@ export function genericCsvToDraft(
           ? w
           : rowUnit === "lb"
             ? Math.round(lbToKg(w) * 100) / 100
-            : Math.round((w / 0.45359237) * 10) / 10;
+            : Math.round(kgToLb(w) * 10) / 10;
     let ex = s.exercises.find((e) => e.rawName === name);
     if (!ex) {
       ex = { id: newId(), rawName: name, sets: [], confidence: 1 };
@@ -335,13 +332,17 @@ export function genericCsvToDraft(
 
 type Bundleish = Partial<ExportBundle>;
 
+const sideOf = (raw: string | null | undefined): SetSide | null => {
+  const t = (raw ?? "").trim();
+  return t === "left" || t === "right" ? t : null;
+};
+
 /** Frog's JSON export (Settings > Data > Export) → sessions. */
 export function parseFrogJson(text: string): ImportedSession[] {
   const b = JSON.parse(text) as Bundleish;
   if (!Array.isArray(b.sessions) || !Array.isArray(b.setLogs))
     throw new Error("not a Frog export: missing sessions / setLogs");
   const exName = new Map((b.exercises ?? []).map((e) => [e.id, e.name]));
-  const seById = new Map((b.sessionExercises ?? []).map((x) => [x.id, x]));
   const logs = new Map<string, NonNullable<Bundleish["setLogs"]>>();
   for (const l of b.setLogs) {
     if (l.deletedAt != null) continue;
@@ -355,7 +356,6 @@ export function parseFrogJson(text: string): ImportedSession[] {
     const ses = (b.sessionExercises ?? [])
       .filter((x) => x.sessionId === s.id && x.deletedAt == null)
       .sort((a, c) => a.orderIndex - c.orderIndex);
-    void seById;
     out.push({
       title: s.title ?? null,
       startedAt: s.startedAt,
@@ -375,6 +375,7 @@ export function parseFrogJson(text: string): ImportedSession[] {
               setType: l.setType,
               durationSec: l.durationSec ?? null,
               distanceM: l.distanceM ?? null,
+              side: sideOf(l.side),
             })),
           },
         ];
@@ -384,25 +385,27 @@ export function parseFrogJson(text: string): ImportedSession[] {
   return out.sort((a, c) => a.startedAt - c.startedAt);
 }
 
-/** Frog sets.csv (ISO start, weight_kg, one row per set; side rows stay separate sets). */
+/** Frog sets.csv (ISO start, weight_kg, one row per set; L/R rows keep their side). */
 export function parseFrogCsv(text: string): ImportedSession[] {
   const rows = rowsOf(text);
   if (rows.length < 2) return [];
   const h = rows[0].map(norm);
   const c = (n: string) => h.indexOf(n);
-  const [iT, iTitle, iEx, iNo, iType, iW, iR, iDur, iDist, iRir, iNote] = [
-    "session started at",
-    "session title",
-    "exercise",
-    "set no",
-    "set type",
-    "weight kg",
-    "reps",
-    "duration sec",
-    "distance m",
-    "rir",
-    "note",
-  ].map(c);
+  const [iT, iTitle, iEx, iNo, iSide, iType, iW, iR, iDur, iDist, iRir, iNote] =
+    [
+      "session started at",
+      "session title",
+      "exercise",
+      "set no",
+      "side",
+      "set type",
+      "weight kg",
+      "reps",
+      "duration sec",
+      "distance m",
+      "rir",
+      "note",
+    ].map(c);
   if (iT < 0 || iEx < 0) return [];
   const sessions = new Map<
     number,
@@ -446,6 +449,7 @@ export function parseFrogCsv(text: string): ImportedSession[] {
         setType: iType >= 0 ? (r[iType] ?? "").trim() || "normal" : "normal",
         durationSec: iDur >= 0 ? num(r[iDur]) : null,
         distanceM: iDist >= 0 ? num(r[iDist]) : null,
+        side: sideOf(iSide >= 0 ? r[iSide] : undefined),
       },
     });
   }

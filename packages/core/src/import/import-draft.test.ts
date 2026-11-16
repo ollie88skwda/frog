@@ -1,13 +1,15 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { setsCsv } from "../export/csv";
+import type { ExportBundle } from "../repo/types";
 import { parseImportFile } from "./csv-formats";
 import { parseLooseDate } from "./dates";
 import {
-  convertDraftUnit,
   draftStats,
   draftToImportedSessions,
   findDuplicateSessions,
   isLowConfidence,
+  setDraftUnit,
 } from "./draft";
 import { parseSetLine, parseWorkoutText } from "./text";
 
@@ -49,6 +51,86 @@ describe("file importers → ImportDraft", () => {
     ]);
     const out = draftToImportedSessions(r.draft, (n) => n);
     expect(out[0].exercises[0].sets[1].weightKg).toBeCloseTo(102.06, 1);
+  });
+  it("fitbod: a workout across UTC midnight stays one session", () => {
+    const csv = [
+      "Date,Exercise,Reps,Weight(lbs),Duration(s),Distance(m),Incline,Resistance,isWarmup,Note,multiplier",
+      "2026-11-11 23:50:00 +0000,Squat,5,225,0,0,0,0,false,,1",
+      "2026-11-12 00:10:00 +0000,Squat,5,225,0,0,0,0,false,,1",
+    ].join("\n");
+    // 6:50–7:10 pm in New York: one evening workout.
+    const tz = process.env.TZ;
+    process.env.TZ = "America/New_York";
+    try {
+      expect(parseImportFile(csv).draft.sessions).toHaveLength(1);
+    } finally {
+      process.env.TZ = tz;
+    }
+  });
+  it("semicolon csv keeps comma decimals inside one field", () => {
+    const r = parseImportFile(
+      "Day;Lift;Load;Repetitions;Comment\n14/11/2026;Squat;62,5;8;ok, felt good",
+      { defaultUnit: "kg", now: NOW },
+    );
+    const set = r.draft.sessions[0].exercises[0].sets[0];
+    expect([set.weight, set.reps, set.note]).toEqual([
+      62.5,
+      8,
+      "ok, felt good",
+    ]);
+  });
+  it("frog export round-trip keeps an L/R pair as one unilateral set", () => {
+    const t = Date.UTC(2026, 10, 12, 17, 0);
+    const row = { createdAt: t, updatedAt: t, deletedAt: null };
+    const log = (id: string, setNo: number, side: "left" | "right" | null) => ({
+      ...row,
+      id,
+      sessionExerciseId: "se1",
+      setNo,
+      side,
+      setType: "normal",
+      weightKg: 20,
+      reps: 10,
+      durationSec: null,
+      distanceM: null,
+      rir: null,
+      note: null,
+    });
+    const bundle = {
+      schemaVersion: 3,
+      exportedAt: t,
+      exercises: [{ ...row, id: "ex1", name: "DB Row" }],
+      machines: [],
+      metrics: [],
+      sessions: [
+        { ...row, id: "s1", title: "Pull", startedAt: t, endedAt: null },
+      ],
+      sessionExercises: [
+        {
+          ...row,
+          id: "se1",
+          sessionId: "s1",
+          exerciseId: "ex1",
+          orderIndex: 0,
+        },
+      ],
+      setLogs: [
+        log("a", 0, "left"),
+        log("b", 0, "right"),
+        log("c", 1, "left"),
+        log("d", 1, "right"),
+      ],
+    } as unknown as ExportBundle;
+    for (const text of [setsCsv(bundle), JSON.stringify(bundle)]) {
+      const r = parseImportFile(text);
+      const out = draftToImportedSessions(r.draft, (n) => n);
+      expect(out[0].exercises[0].sets.map((x) => x.side)).toEqual([
+        "left",
+        "right",
+        "left",
+        "right",
+      ]);
+    }
   });
   it("jefit via generic mapping (unit column wins)", () => {
     const r = parseImportFile(fx("jefit.csv"));
@@ -193,14 +275,37 @@ describe("paste-text parser", () => {
       expect(flat(d).find((e) => e.name === ex)?.sets).toEqual(sets);
     });
   }
-  it("detects units and flips them", () => {
+  it("detects units", () => {
     const d = parseWorkoutText(fx("text-hevy.txt"), { now: NOW });
     expect(d.unit).toBe("lb");
     expect(d.unitDetected).toBe(true);
-    const kg = convertDraftUnit(d, "kg");
-    expect(kg.sessions[0].exercises[0].sets[1].weight).toBeCloseTo(83.9, 1);
     const out = draftToImportedSessions(d, (n) => n);
-    expect(out[0].exercises[0].sets[1].weightKg).toBeCloseTo(83.91, 1);
+    // 185 lb × 0.45359237 kg/lb (international avoirdupois pound)
+    expect(out[0].exercises[0].sets[1].weightKg).toBeCloseTo(83.91, 2);
+  });
+  it("unit toggle relabels a wrong guess instead of converting", () => {
+    const d = parseWorkoutText("Nov 12, 2026\nBench\n1 225 x 5", {
+      defaultUnit: "kg",
+      now: NOW,
+    });
+    expect(d.unitDetected).toBe(false);
+    const lb = setDraftUnit(d, "lb");
+    expect(lb.sessions[0].exercises[0].sets[0].weight).toBe(225);
+    const out = draftToImportedSessions(lb, (n) => n);
+    // 225 lb × 0.45359237 = 102.058 kg
+    expect(out[0].exercises[0].sets[0].weightKg).toBeCloseTo(102.06, 2);
+  });
+  it("an indexed row with a small bare weight is one low-confidence set", () => {
+    const d = parseWorkoutText(
+      "Nov 12, 2026\nLateral Raise\n1 10 x 12\n2 10 x 12",
+      { now: NOW },
+    );
+    const sets = d.sessions[0].exercises[0].sets;
+    expect(sets.map((x) => [x.weight, x.reps])).toEqual([
+      [10, 12],
+      [10, 12],
+    ]);
+    expect(sets.every((x) => isLowConfidence(x.confidence))).toBe(true);
   });
   it("title, date and time", () => {
     const d = parseWorkoutText(fx("text-strong.txt"), { now: NOW });

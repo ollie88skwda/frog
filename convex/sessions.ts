@@ -537,13 +537,23 @@ export const importBatch = mutation({
           createdAt: t,
           updatedAt: t,
         });
-        for (const [setNo, set] of ex.sets.entries()) {
+        let setNo = -1;
+        let openSide: string | null = null;
+        for (const set of ex.sets) {
+          const side =
+            set.side === "left" || set.side === "right" ? set.side : null;
+          if (side && openSide && side !== openSide) openSide = null;
+          else {
+            setNo++;
+            openSide = side;
+          }
           await insertRow(ctx, "set_logs", me, {
             id: crypto.randomUUID(),
             createdAt: t,
             updatedAt: t,
             sessionExerciseId: seId,
             setNo,
+            side,
             setType: set.setType ?? "normal",
             weightKg: set.weightKg ?? null,
             reps: set.reps ?? null,
