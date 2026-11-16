@@ -76,6 +76,22 @@ describe("progressionFindings", () => {
     expect(trends[0].score?.n).toBe(4);
   });
 
+  it("after a break the rough verdict reads the flat post-break window, not the old climb", () => {
+    const before = Array.from({ length: 10 }, (_, i) =>
+      session(i, 100 + i * 3.5),
+    );
+    const after = [132, 131, 132, 131, 132].map((w, i) => ({
+      ...session(100 + i, w),
+      startedAt: (27 + 21 + i * 3) * DAY_MS,
+    }));
+    const { trends } = progressionFindings([...before, ...after]);
+    expect(trends[0].status.n).toBe(5);
+    expect(trends[0].verdict).toBe("PLATEAU");
+    expect(trends[0].claim).toBe("flat");
+    expect(trends[0].n).toBe(5);
+    expect(Math.abs(trends[0].pctChange)).toBeLessThan(10);
+  });
+
   it("a 7-session stall declining inside the 10% band stays PLATEAU", () => {
     const sessions = [100, 100, 99, 98, 97, 96, 95, 94].map((w, i) =>
       session(i, w),
