@@ -414,6 +414,34 @@ describe("paste-text parser", () => {
     expect(parseSetLine("Bench Press")).toBeNull();
     expect(parseSetLine("Wed, Nov 12, 2026")).toBeNull();
   });
+  it("month-prefixed exercise names are not dates", () => {
+    const d = parseWorkoutText(
+      "Nov 12, 2026\nDecline 3 x 10\nMarching Lunge 3 x 12\nBench\n1 100 kg x 5",
+      { now: NOW },
+    );
+    expect(d.sessions).toHaveLength(1);
+    expect(d.sessions[0].startedAt).toBe(new Date(2026, 10, 12, 12).getTime());
+    expect(d.sessions[0].exercises.map((e) => e.rawName)).toEqual([
+      "Decline",
+      "Marching Lunge",
+      "Bench",
+    ]);
+    expect(parseLooseDate("3 Decline Push Ups")).toBeNull();
+    expect(parseLooseDate("November 12, 2026")?.ms).toBe(
+      new Date(2026, 10, 12, 12).getTime(),
+    );
+  });
+  it("an unplaced lettered line is reported, not dropped", () => {
+    const d = parseWorkoutText(
+      "Nov 12, 2026\nBench\n1 100 kg x 5\nfelt strong\nSquat\n1 120 kg x 5",
+      { now: NOW },
+    );
+    expect(d.unparsed).toContain("felt strong");
+    expect(d.sessions[0].exercises.map((e) => e.rawName)).toEqual([
+      "Bench",
+      "Squat",
+    ]);
+  });
   it("never invents sets from empty/garbage text", () => {
     const d = parseWorkoutText("hello\n\n???", { now: NOW });
     expect(d.sessions.flatMap((s) => s.exercises)).toHaveLength(0);

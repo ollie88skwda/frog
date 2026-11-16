@@ -76,6 +76,7 @@ export default function ImportScreen() {
     try {
       const body = await f.text();
       if (/\.txt$/i.test(f.name) || f.type === "text/plain") {
+        setFile(null);
         setText(body);
         const d = parseWorkoutText(body, { defaultUnit: unit });
         if (d.sessions.length + d.routines.length === 0)

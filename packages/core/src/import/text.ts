@@ -15,7 +15,7 @@ import { newId } from "../domain/ids";
 import { sameExerciseName } from "../domain/match-exercise";
 import { kgToLb, lbToKg } from "../domain/units";
 import { parseRoutineText } from "../generator/parse-routine";
-import { parseLooseDate } from "./dates";
+import { MONTH_WORD, parseLooseDate } from "./dates";
 import {
   emptyDraft,
   exerciseConfidence,
@@ -297,18 +297,20 @@ export function parseSetLine(raw: string): RawSet | null {
 
 const WEEKDAYS =
   /\b(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)[a-z]*\b\.?,?/gi;
+const DAY_MONTH = new RegExp(
+  `\\d{1,2}(?:st|nd|rd|th)?\\s+${MONTH_WORD},?(?:\\s+\\d{4})?`,
+  "gi",
+);
+const MONTH_DAY = new RegExp(
+  `\\b${MONTH_WORD}\\s+\\d{1,2}(?:st|nd|rd|th)?,?(?:\\s+\\d{4})?`,
+  "gi",
+);
 /** The words left on a date line once the date, time and weekday are removed. */
 function dateLineTitle(line: string): string | null {
   const t = line
     .replace(/\d{4}-\d{2}-\d{2}|\d{1,2}[/.]\d{1,2}[/.]\d{2,4}/g, " ")
-    .replace(
-      /\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?(?:\s+\d{4})?/gi,
-      " ",
-    )
-    .replace(
-      /(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?,?(?:\s+\d{4})?/gi,
-      " ",
-    )
+    .replace(DAY_MONTH, " ")
+    .replace(MONTH_DAY, " ")
     .replace(/\d{1,2}:\d{2}(?::\d{2})?\s*(?:am|pm)?/gi, " ")
     .replace(WEEKDAYS, " ")
     .replace(/\b(at|on)\b/gi, " ")
@@ -517,13 +519,14 @@ export function parseWorkoutText(
       // A lettered line is either the session title (first one, with another
       // name line or a date still to come) or an exercise name. Keep the
       // earlier candidate as title when two name lines arrive back to back.
-      if (
-        pending &&
-        !cur.exercise &&
-        !cur.session.title &&
-        cur.session.exercises.length === 0
-      ) {
-        cur.session.title = pending;
+      if (pending) {
+        if (
+          !cur.exercise &&
+          !cur.session.title &&
+          cur.session.exercises.length === 0
+        )
+          cur.session.title = pending;
+        else unparsed.push(pending);
       }
       pending = line.replace(/^\d+[.)]\s*/, "").replace(/\s*[:：]\s*$/, "");
       cur.exercise = null;

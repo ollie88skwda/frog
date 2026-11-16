@@ -14,13 +14,16 @@ const MONTHS = "jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec";
 const MONTH_IDX: Record<string, number> = Object.fromEntries(
   MONTHS.split("|").map((m, i) => [m, i]),
 );
+/** A real month spelling ("Nov", "Nov.", "November"), never "Decline". */
+export const MONTH_WORD =
+  "(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\b\\.?";
 const TIME_RE = /(\d{1,2}):(\d{2})(?::\d{2})?(?:\.\d+)?\s*(am|pm)?/i;
 const DAY_MONTH_RE = new RegExp(
-  `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTHS})[a-z]*\\.?,?(?:\\s+(\\d{4}))?`,
+  `\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH_WORD}),?(?:\\s+(\\d{4}))?`,
   "i",
 );
 const MONTH_DAY_RE = new RegExp(
-  `\\b(${MONTHS})[a-z]*\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b,?(?:\\s+(\\d{4}))?`,
+  `\\b(${MONTH_WORD})\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b,?(?:\\s+(\\d{4}))?`,
   "i",
 );
 const ISO_RE = /\b(\d{4})-(\d{2})-(\d{2})\b/;
@@ -70,10 +73,10 @@ export function parseLooseDate(
     d = Number(iso[3]);
   } else if (dm) {
     d = Number(dm[1]);
-    mo = MONTH_IDX[dm[2].toLowerCase()];
+    mo = MONTH_IDX[dm[2].slice(0, 3).toLowerCase()];
     y = dm[3] ? Number(dm[3]) : null;
   } else if (md) {
-    mo = MONTH_IDX[md[1].toLowerCase()];
+    mo = MONTH_IDX[md[1].slice(0, 3).toLowerCase()];
     d = Number(md[2]);
     y = md[3] ? Number(md[3]) : null;
   } else if (num) {
