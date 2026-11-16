@@ -165,7 +165,7 @@ One exercise performed within one session, ordered.
 | side | text? | `'left' \| 'right' \| null`. Null = the whole set (bilateral, alternating, and every row logged before this column existed). |
 | weight_kg | real? | canonical kg |
 | reps | integer? | |
-| rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null. Session logging leaves it null now (it writes the range pair instead); the Strong/Hevy CSV importers are the only remaining writers |
+| rir | integer? | legacy scalar reps-in-reserve; read-compat fallback when rir_min/rir_max are both null. Session logging leaves it null now (it writes the range pair instead); the importers (`sessions:importBatch`) are the only remaining writers |
 | rir_min / rir_max | integer? | logged RIR range; the session screen's `Spotlight` component (`session.tsx`) writes it from a segmented 0/1/2/3/4+ pick (`min === max`, or `max` empty for "4+") — see DECISIONS.md 2026-08-12 |
 | planned_rir_min / planned_rir_max | integer? | planned RIR of the seeded set this row was committed from (redesign §9.1/§9.7); absent on older rows |
 | rpe | real? | 1–10 perceived exertion (halves allowed) |
