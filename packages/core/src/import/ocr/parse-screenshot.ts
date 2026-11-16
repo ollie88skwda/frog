@@ -495,7 +495,9 @@ export function parseScreenshotLines(lines: OcrLine[]): ScreenshotParse {
       date,
       dateAmbiguous,
       durationMin,
-      exercises: app === "apple" ? [] : exercises.filter((e) => e.rawName),
+      exercises: exercises.filter(
+        (e) => e.rawName && (app !== "apple" || e.sets.length > 0),
+      ),
     },
     unit: majority(units),
     unparsed,

@@ -77,7 +77,7 @@ export function screenshotToDraft(
     );
   if (session.dateAmbiguous)
     draft.notes.push(
-      "The date looked like 03/04/2026; month-first was assumed. Check the date.",
+      "The day and month could be either way round; month-first was assumed. Check the date.",
     );
   return draft;
 }

@@ -44,6 +44,26 @@ describe("parseScreenshotLines on OCR'd synthetic fixtures", () => {
     expect(p.session.durationMin).toBe(46);
     expect(p.session.exercises).toEqual([]);
   });
+
+  it("keeps real set rows when Apple words appear on the screen", () => {
+    const p = parseScreenshotLines(
+      [
+        "Upper Body",
+        "Nov 9, 2026 - 51 min",
+        "Active Calories 310",
+        "Barbell Bench Press",
+        "Set 1 10 reps x 135 lb",
+        "Set 2 8 reps x 155 lb",
+      ].map((text) => ({ text, confidence: 0.9 })),
+    );
+    expect(p.session.exercises.map((e) => e.rawName)).toEqual([
+      "Barbell Bench Press",
+    ]);
+    expect(p.session.exercises[0].sets.map((s) => [s.reps, s.weight])).toEqual([
+      [10, 135],
+      [8, 155],
+    ]);
+  });
 });
 
 describe("OCR noise handling", () => {
