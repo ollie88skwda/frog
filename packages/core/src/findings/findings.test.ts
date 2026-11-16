@@ -61,6 +61,21 @@ describe("progressionFindings", () => {
     expect(trends[0].roughVerdict).toBe(false);
   });
 
+  it("after a 14-day break the dip is scored on the post-break window only", () => {
+    const before = Array.from({ length: 10 }, (_, i) =>
+      session(i, 100 + i * 2),
+    );
+    const after = [110, 110, 110, 95].map((w, i) => ({
+      ...session(100 + i, w),
+      startedAt: (27 + 21 + i * 3) * DAY_MS,
+    }));
+    const { trends } = progressionFindings([...before, ...after]);
+    expect(trends[0].status.state).toBe("dropped");
+    expect(trends[0].status.n).toBe(4);
+    expect(trends[0].claim).toBe("drop");
+    expect(trends[0].score?.n).toBe(4);
+  });
+
   it("a 7-session stall declining inside the 10% band stays PLATEAU", () => {
     const sessions = [100, 100, 99, 98, 97, 96, 95, 94].map((w, i) =>
       session(i, w),
