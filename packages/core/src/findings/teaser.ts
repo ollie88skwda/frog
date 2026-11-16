@@ -13,6 +13,7 @@ import type {
   TrendFinding,
 } from "./types";
 
+const DAY_MS = 86_400_000;
 export const MIN_TREND_SESSIONS = 2;
 
 /** Sessions of an exercise before its trend is labeled confident (medium)
@@ -36,23 +37,27 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
   const trends: TrendFinding[] = [];
   const countdowns: CountdownFinding[] = [];
   const series = sessionTopsByExercise(sessions);
-  for (const [exerciseId, { name, tops, comparable }] of series) {
-    const result = robustTrend(tops);
+  for (const [exerciseId, { name, comparable }] of series) {
+    const window = comparableSessions(comparable);
+    const result = robustTrend(
+      window.map((s) => ({ day: s.at / DAY_MS, e1rm: s.e1rm })),
+    );
     if (result.verdict === "INSUFFICIENT") {
       countdowns.push({
         kind: "countdown",
         exerciseId,
         exerciseName: name,
-        sessionsLogged: tops.length,
-        sessionsNeeded: MIN_TREND_SESSIONS - tops.length,
+        sessionsLogged: window.length,
+        sessionsNeeded: MIN_TREND_SESSIONS - window.length,
       });
     } else {
       // C2c: whenever the status judged the lift (a dip from 4 comparable
       // sessions, a trend from 7) the verdict is the status and the badge scores
       // the same claim; before that it is only the fitted direction against the
-      // 10% noise band.
+      // 10% noise band. Verdict, % change and score all read the comparable
+      // window (after the last break or target change).
       const status = liftStatus(comparable);
-      const lc = liftConfidence(comparableSessions(comparable), status.state);
+      const lc = liftConfidence(window, status.state);
       const fromStatus: TrendFinding["verdict"] | null =
         status.state === "dropped"
           ? "REGRESSING"
