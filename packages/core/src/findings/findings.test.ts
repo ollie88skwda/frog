@@ -284,6 +284,16 @@ describe("conditionFindings", () => {
     expect(f.confidence).toBe("low");
   });
 
+  it("drops a finding whose detrended effect points the other way from the shown %", () => {
+    const sessions = Array.from({ length: 8 }, (_, i) => {
+      const highSleep = i < 4;
+      return session(i, 100 + i * 4 + (highSleep ? 1.5 : 0), {
+        [SLEEP.id]: highSleep ? 8 : 6,
+      });
+    });
+    expect(conditionFindings(sessions, [SLEEP])).toEqual([]);
+  });
+
   it("ignores sessions without a numeric value for the condition", () => {
     const sessions = Array.from({ length: 24 }, (_, i) => {
       const wellSlept = i % 2 === 0;

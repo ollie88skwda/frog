@@ -87,7 +87,8 @@ function candidate(
  * Condition findings: for each numeric session condition, split sessions into
  * two buckets (median split) and compare the top working-set Brzycki e1RM of each exercise. Tonnage is no
  * longer an outcome (it follows session length and exercise choice, not
- * performance). A finding needs >= 3 sessions per bucket, |diff| >= 5%, and
+ * performance). A finding needs >= 3 sessions per bucket, |diff| >= 5%, a
+ * detrended Cohen's d pointing the same way as the raw diff, and
  * a computed confidence of at least 25% (Cohen's d on detrended values and the
  * Benjamini-Hochberg q across the whole family feed the score, not a gate); at
  * most 3 per condition.
@@ -165,6 +166,7 @@ export function conditionFindings(
     .filter(
       ({ c, score }) =>
         Math.abs(c.pctDiff) >= MIN_EFFECT_PCT &&
+        Math.sign(c.d) === Math.sign(c.pctDiff) &&
         score.pct >= MIN_CONFIDENCE_PCT,
     );
 
