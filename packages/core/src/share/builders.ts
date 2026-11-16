@@ -6,6 +6,7 @@
 
 import type { MuscleRegion } from "../domain/anatomy";
 import { MUSCLE_REGION_LABELS } from "../domain/anatomy";
+import type { ClaimDirection, ConfidenceLevel } from "../domain/confidence";
 import type { ExerciseType } from "../domain/exercise-types";
 import { fractionalHardSets } from "../domain/hard-sets";
 import {
@@ -262,15 +263,30 @@ export function formatPrValue(
   }
 }
 
-/** The share-card confidence stat: low reads "tentative" so a screenshot never
- * presents a first guess as a fact. Null when there is no computed score. */
+/** A lift's computed confidence and the trend claim it is about. */
+export type ShareConfidence = {
+  pct: number;
+  level: ConfidenceLevel;
+  claim: ClaimDirection | "drop";
+};
+
+const CLAIM_SHARE_WORD: Record<ShareConfidence["claim"], string> = {
+  up: "up",
+  down: "down",
+  flat: "holding",
+  drop: "dip",
+};
+
+/** The share-card confidence stat names the claim it scores ("Trend: holding
+ * 92%"); low reads "tentative" so a screenshot never presents a first guess as
+ * a fact. Null when there is no computed score. */
 export function confidenceStat(
-  score: { pct: number; level: "low" | "medium" | "high" } | null | undefined,
+  score: ShareConfidence | null | undefined,
 ): ShareStat | null {
   if (!score) return null;
   return {
-    label: "Confidence",
-    value: `${score.pct}%${score.level === "low" ? " · tentative" : ""}`,
+    label: "Trend",
+    value: `${CLAIM_SHARE_WORD[score.claim]} ${score.pct}%${score.level === "low" ? " · tentative" : ""}`,
   };
 }
 
@@ -283,7 +299,7 @@ export function buildPrCard(input: {
   estOneRmKg: number | null;
   sparkline: Array<{ at: number; value: number }>;
   extraPrLabels: string[];
-  confidence?: { pct: number; level: "low" | "medium" | "high" } | null;
+  confidence?: ShareConfidence | null;
   identity: ShareIdentity;
 }): PrCard {
   const { event, unit, distUnit } = input;
@@ -469,7 +485,7 @@ export function buildExerciseRecordsCard(input: {
   unit: Unit;
   distUnit: DistUnit;
   sparkline: Array<{ at: number; value: number }>;
-  confidence?: { pct: number; level: "low" | "medium" | "high" } | null;
+  confidence?: ShareConfidence | null;
   identity: ShareIdentity;
 }): ExerciseRecordsCard | null {
   const { records, unit, distUnit } = input;

@@ -1,7 +1,6 @@
 import {
   ACTION_RATINGS,
   buildExerciseRecordsCard,
-  type ConfidenceScore,
   EQUIPMENT_LABELS,
   EXERCISE_TYPE_LABELS,
   type Exercise,
@@ -20,6 +19,7 @@ import {
   type RecordsSessionInput,
   type RecordsSetInput,
   ratingsForExercise,
+  type ShareConfidence,
   toDisplayDistance,
   toDisplayWeight,
   topRecordValue,
@@ -251,7 +251,9 @@ function SummaryTab({
   const liftScore = useMemo(() => {
     if (type !== "weight_reps") return null;
     const v = liftVerdict(liftSeries(sessions, exercise.id));
-    return v.kind === "status" ? v.score : null;
+    return v.kind === "status" && v.score && v.claim
+      ? { ...v.score, claim: v.claim }
+      : null;
   }, [sessions, exercise.id, type]);
 
   // Per-session scalar for the active metric, over sessions in the range that
@@ -441,7 +443,7 @@ function RecordsPanel({
   distUnit,
   sparkline,
 }: {
-  confidence: ConfidenceScore | null;
+  confidence: ShareConfidence | null;
   type: ExerciseType;
   exerciseName: string;
   records: ExerciseRecords | undefined;

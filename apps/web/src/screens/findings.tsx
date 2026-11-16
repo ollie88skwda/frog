@@ -273,7 +273,10 @@ function TrendRow({
           {trend.n === 1 ? "session" : "sessions"}
         </span>
         {trend.score ? (
-          <ConfidenceBadge score={trend.score} />
+          <ConfidenceBadge
+            score={trend.score}
+            showWord={trend.score.level === "low"}
+          />
         ) : (
           <Badge tone="warn">
             {trend.preBreak ? "Before break" : "Rough estimate"}
@@ -328,8 +331,12 @@ function ConditionRow({
         <CaretRight className="size-4 shrink-0 text-faint" />
       </p>
       <p className="num mt-0.5 flex items-center gap-1.5 text-2xs text-faint">
-        <ConfidenceBadge score={finding.score} />n = {finding.n.high} high /{" "}
-        {finding.n.low} low · correlation, not causation
+        <ConfidenceBadge
+          score={finding.score}
+          showWord={finding.score.level === "low"}
+        />
+        n = {finding.n.high} high / {finding.n.low} low · correlation, not
+        causation
       </p>
     </button>
   );

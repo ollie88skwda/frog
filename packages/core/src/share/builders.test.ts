@@ -243,6 +243,46 @@ describe("buildPrCard", () => {
     expect(card.estOneRm).toEqual({ label: "Est. 1RM", value: "123 kg" });
   });
 
+  it("names the trend claim its confidence scores, tentative under 50%", () => {
+    const base = {
+      event: {
+        prType: "heaviest_weight" as const,
+        value: 110,
+        previous: 100,
+        sessionId: "s",
+        at: Date.now(),
+        exerciseId: "bench",
+      },
+      prTypeLabel: "Heaviest weight",
+      exerciseName: "Bench Press",
+      unit: "kg" as const,
+      distUnit: "km" as const,
+      estOneRmKg: null,
+      sparkline: [],
+      extraPrLabels: [],
+      identity: IDENTITY,
+    };
+    expect(
+      buildPrCard({
+        ...base,
+        confidence: { pct: 92, level: "high", claim: "flat" },
+      }).confidence,
+    ).toEqual({ label: "Trend", value: "holding 92%" });
+    expect(
+      buildPrCard({
+        ...base,
+        confidence: { pct: 81, level: "high", claim: "up" },
+      }).confidence,
+    ).toEqual({ label: "Trend", value: "up 81%" });
+    expect(
+      buildPrCard({
+        ...base,
+        confidence: { pct: 42, level: "low", claim: "down" },
+      }).confidence,
+    ).toEqual({ label: "Trend", value: "down 42% · tentative" });
+    expect(buildPrCard(base).confidence).toBeNull();
+  });
+
   it("omits delta/previous when this is the exercise's first-ever entry for that PR type", () => {
     const card = buildPrCard({
       event: {

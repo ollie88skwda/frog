@@ -626,7 +626,10 @@ export function LabSection() {
                 </span>
               </span>
               <span className="num flex items-center gap-1.5 text-2xs text-soft">
-                <ConfidenceBadge score={c.score} />
+                <ConfidenceBadge
+                  score={c.score}
+                  showWord={c.score.level === "low"}
+                />
                 n={c.n.high} high / {c.n.low} low · correlation, not causation
                 <TierBadge tier={5} />
               </span>

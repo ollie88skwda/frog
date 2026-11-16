@@ -408,12 +408,14 @@ function paintSupport(
     ctx.font = `600 ${labelSize}px ${FONT_SANS}`;
     ctx.fillText(s.label.toUpperCase(), x, labelY);
     ctx.fillStyle = p.ink;
-    ctx.font = `700 ${valueSize}px ${FONT_MONO}`;
-    ctx.fillText(
-      clip(ctx, s.value, colW - sp(frame, 0.02) * frame.w),
-      x,
-      valueY,
-    );
+    const maxW = colW - sp(frame, 0.02) * frame.w;
+    let size = valueSize;
+    ctx.font = `700 ${size}px ${FONT_MONO}`;
+    while (size > valueSize * 0.6 && ctx.measureText(s.value).width > maxW) {
+      size -= 1;
+      ctx.font = `700 ${size}px ${FONT_MONO}`;
+    }
+    ctx.fillText(clip(ctx, s.value, maxW), x, valueY);
   });
 
   return valueY + sp(frame, 0.06) * frame.w;

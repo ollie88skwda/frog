@@ -255,7 +255,9 @@ export function PostSaveSummary({
     const v = liftVerdict(
       liftSeries(recordsData?.history ?? [], heroPrEvent.exerciseId),
     );
-    return v.kind === "status" ? v.score : null;
+    return v.kind === "status" && v.score && v.claim
+      ? { ...v.score, claim: v.claim }
+      : null;
   }, [heroPrEvent, recordsData]);
   const prSource: ShareSource | null = useMemo(() => {
     if (!heroPrEvent) return null;
