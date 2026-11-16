@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 
-// M12: Strong CSV import — two-phase parse-preview → import, mirroring Hevy.
+// M12: Strong CSV import — file → shared review screen → confirm.
 // Asserts the round-trip lands sessions in history with lb→kg conversion and
 // the warm-up set type carried through.
 
@@ -33,23 +33,17 @@ ${fmt(d1)},${push},1h 10m,Bench Press (Barbell),1,100,kg,5,8,,,,,
 ${fmt(d2)},${pull},45m,Deadlift (Barbell),1,315,lbs,3,,,,,,
 `;
 
-  await page.goto("/settings");
-  await page.getByTestId("import-strong-input").setInputFiles({
+  await page.goto("/import");
+  await page.getByTestId("import-file-input").setInputFiles({
     name: "strong.csv",
     mimeType: "text/csv",
     buffer: Buffer.from(csv),
   });
 
-  // Preview counts before importing.
-  await expect(page.getByTestId("import-strong-status")).toContainText(
-    "2 sessions",
-  );
-
-  await page.getByTestId("import-strong-btn").click();
-  // Default register is frog: the done line reads "Recorded: 2 sessions (…)".
-  await expect(page.getByTestId("import-strong-status")).toContainText(
-    "Recorded: 2 sessions",
-  );
+  // Shared review screen, then confirm.
+  await expect(page.getByTestId("review-counts")).toContainText("2 sessions");
+  await page.getByTestId("review-confirm").click();
+  await expect(page.getByTestId("import-done")).toBeVisible();
 
   // Server truth: warm-up set type preserved + deadlift 315 lb → ~142.9 kg.
   const result = await page.evaluate(
