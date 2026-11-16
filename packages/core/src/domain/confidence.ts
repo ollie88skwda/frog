@@ -9,7 +9,7 @@
 //
 // Pure and framework-free, unit-tested in confidence.test.ts.
 
-import { isOutlier } from "./progression";
+import { isOutlier, robustTrend } from "./progression";
 import type { ComparableSession } from "./stall";
 import { NOISE_BAND } from "./stall";
 
@@ -406,9 +406,10 @@ export function averageConfidence(scores: ConfidenceScore[]): number | null {
 // ── one lift's verdict (Progress, Lift page, Today, share cards) ────────────
 
 /** The claim a lift's status makes whenever the status judged one (a dip from
- * 4 sessions, a trend from 7); a stall (no new best) claims "down" when a real
- * decline is likelier than holding steady. Otherwise the claim with the
- * highest probability wins (a best guess, shown tentatively). */
+ * 4 sessions, a trend from 7); a stall (no new best) claims "down" only when
+ * the fitted change is at or beyond -10% (the noise band, as robustTrend
+ * judges REGRESSING), else "flat". Otherwise the claim with the highest
+ * probability wins (a best guess, shown tentatively). */
 export function liftClaim(
   points: ComparableSession[],
   state:
@@ -422,11 +423,15 @@ export function liftClaim(
   if (state === "progressing") return "up";
   if (state === "dropped") return "drop";
   if (state === "holding") return "flat";
-  const candidates: ClaimDirection[] =
-    state === "stalled" ? ["flat", "down"] : ["up", "down", "flat"];
+  if (state === "stalled")
+    return robustTrend(
+      points.map((s) => ({ day: s.at / DAY_MS, e1rm: s.e1rm })),
+    ).verdict === "REGRESSING"
+      ? "down"
+      : "flat";
   let best: ClaimDirection | null = null;
   let bestP = -1;
-  for (const c of candidates) {
+  for (const c of ["up", "down", "flat"] as const) {
     const s = sessionsTrendConfidence(points, c);
     if (s && s.pct > bestP) {
       bestP = s.pct;

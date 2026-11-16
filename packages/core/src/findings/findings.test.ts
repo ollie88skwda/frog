@@ -61,6 +61,16 @@ describe("progressionFindings", () => {
     expect(trends[0].roughVerdict).toBe(false);
   });
 
+  it("a 7-session stall declining inside the 10% band stays PLATEAU", () => {
+    const sessions = [100, 100, 99, 98, 97, 96, 95, 94].map((w, i) =>
+      session(i, w),
+    );
+    const { trends } = progressionFindings(sessions);
+    expect(trends[0].status.state).toBe("stalled");
+    expect(trends[0].verdict).toBe("PLATEAU");
+    expect(trends[0].claim).toBe("flat");
+  });
+
   it("a declining 7-session stall reads as REGRESSING with a 'down' claim", () => {
     const sessions = [100, 99, 97, 95, 93, 91, 89, 87].map((w, i) =>
       session(i, w),
