@@ -408,8 +408,9 @@ export function averageConfidence(scores: ConfidenceScore[]): number | null {
 /** The claim a lift's status makes whenever the status judged one (a dip from
  * 4 sessions, a trend from 7); a stall (no new best) claims "down" only when
  * the fitted change is at or beyond -10% (the noise band, as robustTrend
- * judges REGRESSING), else "flat". Otherwise the claim with the highest
- * probability wins (a best guess, shown tentatively). */
+ * judges REGRESSING), else "flat". Otherwise the best guess (shown
+ * tentatively) is the fitted direction against the same 10% band: "up" or
+ * "down" only beyond it, "flat" inside it. */
 export function liftClaim(
   points: ComparableSession[],
   state:
@@ -423,22 +424,13 @@ export function liftClaim(
   if (state === "progressing") return "up";
   if (state === "dropped") return "drop";
   if (state === "holding") return "flat";
-  if (state === "stalled")
-    return robustTrend(
-      points.map((s) => ({ day: s.at / DAY_MS, e1rm: s.e1rm })),
-    ).verdict === "REGRESSING"
-      ? "down"
-      : "flat";
-  let best: ClaimDirection | null = null;
-  let bestP = -1;
-  for (const c of ["up", "down", "flat"] as const) {
-    const s = sessionsTrendConfidence(points, c);
-    if (s && s.pct > bestP) {
-      bestP = s.pct;
-      best = c;
-    }
-  }
-  return best;
+  const { verdict } = robustTrend(
+    points.map((s) => ({ day: s.at / DAY_MS, e1rm: s.e1rm })),
+  );
+  if (verdict === "INSUFFICIENT") return null;
+  if (verdict === "REGRESSING") return "down";
+  if (verdict === "PROGRESSING" && state !== "stalled") return "up";
+  return "flat";
 }
 
 /** Confidence for a lift's verdict from its comparable window. Null with fewer

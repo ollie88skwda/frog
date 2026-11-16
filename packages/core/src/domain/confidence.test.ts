@@ -115,6 +115,18 @@ describe("liftConfidence", () => {
     expect(r?.claim).toBe("down");
     expect(r?.score.pct).toBeGreaterThanOrEqual(50);
   });
+  it("a steady +6% before 7 sessions is a 'flat' best guess, not 'up'", () => {
+    const w = asComparable(
+      [100, 101, 102, 104, 106].map((e1rm, i) => ({ day: i * 3, e1rm })),
+    );
+    expect(liftConfidence(w, "insufficient")?.claim).toBe("flat");
+  });
+  it("a +20% climb before 7 sessions is an 'up' best guess", () => {
+    const w = asComparable(
+      [100, 105, 110, 115, 120].map((e1rm, i) => ({ day: i * 3, e1rm })),
+    );
+    expect(liftConfidence(w, "insufficient")?.claim).toBe("up");
+  });
   it("a stall declining inside the 10% band stays 'flat'", () => {
     const w = asComparable(
       [100, 100, 99, 98, 97, 96, 95, 94].map((e1rm, i) => ({

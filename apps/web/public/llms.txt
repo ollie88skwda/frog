@@ -55,6 +55,8 @@ export_all.
 - A change under 10% is normal swing, not progress or regression. Verdicts
   show from 2 sessions as a best guess with a computed confidence percentage
   (never 100%); under 50% is labelled tentative. The 7-session stall check
-  still gives the firm call.
+  still gives the firm call. With fewer than 2 sessions since a 14+ day break,
+  the trend over the earlier history is shown, flagged preBreak, with no
+  confidence percentage.
 - Condition findings show from 3 sessions per side with a confidence
   percentage (small samples are capped). They are correlation, not causation.

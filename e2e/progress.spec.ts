@@ -151,7 +151,7 @@ test("under 7 sessions a verdict is a tentative best guess with a %", async ({
   page,
 }) => {
   const EX = `Rough Lift ${Date.now()}`;
-  await seedLift(page, EX, 3);
+  await seedLift(page, EX, 3, { weights: [100, 110, 120] });
   await page.goto("/progress?s=strength");
   const body = page.getByTestId("progress-screen");
   await expect(body.getByText(EX, { exact: true }).first()).toBeVisible();

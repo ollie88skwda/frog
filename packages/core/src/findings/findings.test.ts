@@ -107,6 +107,14 @@ describe("progressionFindings", () => {
     expect(trends[0].n).toBe(11);
   });
 
+  it("a steady +6% before 7 sessions reads PLATEAU with a matching 'flat' claim", () => {
+    const sessions = [100, 101, 102, 104, 106].map((w, i) => session(i, w));
+    const { trends } = progressionFindings(sessions);
+    expect(trends[0].roughVerdict).toBe(true);
+    expect(trends[0].verdict).toBe("PLATEAU");
+    expect(trends[0].claim).toBe("flat");
+  });
+
   it("a 7-session stall declining inside the 10% band stays PLATEAU", () => {
     const sessions = [100, 100, 99, 98, 97, 96, 95, 94].map((w, i) =>
       session(i, w),
