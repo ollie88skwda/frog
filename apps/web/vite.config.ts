@@ -58,8 +58,8 @@ function changelogPlugin(): Plugin {
 // Self-hosted OCR assets (tesseract.js worker + WASM core + English model),
 // served from /ocr/ so a screenshot import never touches a CDN. Copied from
 // node_modules at dev-server start and build; nothing is committed. Only the
-// simd-lstm core is shipped (every evergreen phone browser supports it) plus
-// the plain lstm fallback.
+// LSTM cores ship (relaxedsimd, simd, and the plain fallback); tesseract.js
+// picks the best one the browser supports.
 const ocrRequire = createRequire(import.meta.url);
 const OCR_CORE_FILES = [
   "tesseract-core-relaxedsimd-lstm.wasm.js",

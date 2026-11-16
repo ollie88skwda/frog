@@ -48,6 +48,8 @@ export type ScreenshotSession = {
   title: string | null;
   /** ISO yyyy-mm-dd when a date was readable. */
   date: string | null;
+  /** Numeric d/m/y with both parts <= 12: month-first was assumed. */
+  dateAmbiguous: boolean;
   durationMin: number | null;
   exercises: ScreenshotExercise[];
 };
@@ -60,6 +62,3 @@ export type ScreenshotParse = {
   /** Non-blank lines that yielded nothing, in source order. */
   unparsed: string[];
 };
-
-/** Rows below this are highlighted on the review screen. */
-export const SCREENSHOT_LOW_CONFIDENCE = 0.7;

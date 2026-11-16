@@ -13,12 +13,6 @@ import type {
   ScreenshotSet,
 } from "./types";
 
-const LB_PER_KG = 2.2046226218;
-
-export function toKg(weight: number, unit: WeightUnit): number {
-  return unit === "kg" ? weight : Math.round((weight / LB_PER_KG) * 100) / 100;
-}
-
 const NUM = "(\\d+(?:[.,]\\d+)?)";
 const UNIT = "(kg|lbs?|lb)";
 
@@ -260,29 +254,34 @@ function iso(y: number, mo: number, d: number): string | null {
   return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }
 
-export function parseDate(text: string): string | null {
+export type ParsedDate = { date: string; ambiguous: boolean };
+
+export function parseDate(text: string): ParsedDate | null {
+  const sure = (date: string | null) =>
+    date ? { date, ambiguous: false } : null;
   let m = /\b(20\d\d)-(\d{1,2})-(\d{1,2})\b/.exec(text);
-  if (m) return iso(+m[1], +m[2], +m[3]);
+  if (m) return sure(iso(+m[1], +m[2], +m[3]));
   m = /\b([A-Za-z]{3})[a-z]*\.? (\d{1,2})(?:st|nd|rd|th)?,? (20\d\d)\b/.exec(
     text,
   );
   if (m) {
     const mo = MONTHS.indexOf(m[1].toLowerCase());
-    if (mo >= 0) return iso(+m[3], mo + 1, +m[2]);
+    if (mo >= 0) return sure(iso(+m[3], mo + 1, +m[2]));
   }
   m = /\b(\d{1,2})(?:st|nd|rd|th)? ([A-Za-z]{3})[a-z]*\.?,? (20\d\d)\b/.exec(
     text,
   );
   if (m) {
     const mo = MONTHS.indexOf(m[2].toLowerCase());
-    if (mo >= 0) return iso(+m[3], mo + 1, +m[1]);
+    if (mo >= 0) return sure(iso(+m[3], mo + 1, +m[1]));
   }
   m = /\b(\d{1,2})\/(\d{1,2})\/(20\d\d)\b/.exec(text);
   if (m) {
     const a = +m[1];
     const b = +m[2];
     // month-first unless the first number can only be a day
-    return a > 12 ? iso(+m[3], b, a) : iso(+m[3], a, b);
+    const date = a > 12 ? iso(+m[3], b, a) : iso(+m[3], a, b);
+    return date ? { date, ambiguous: a <= 12 && b <= 12 && a !== b } : null;
   }
   return null;
 }
@@ -348,6 +347,7 @@ export function parseScreenshotLines(lines: OcrLine[]): ScreenshotParse {
   const unparsed: string[] = [];
   const preface: { text: string; conf: number }[] = [];
   let date: string | null = null;
+  let dateAmbiguous = false;
   let durationMin: number | null = null;
   let table: TableMode = null;
   let title: string | null = null;
@@ -363,7 +363,8 @@ export function parseScreenshotLines(lines: OcrLine[]): ScreenshotParse {
     }
     const d = parseDate(text);
     if (d && !date) {
-      date = d;
+      date = d.date;
+      dateAmbiguous = d.ambiguous;
       const dur = parseDurationMin(text);
       if (dur !== null && durationMin === null) durationMin = dur;
       // "Gym 11/12/2026": whatever lettered text is left is the title.
@@ -492,8 +493,9 @@ export function parseScreenshotLines(lines: OcrLine[]): ScreenshotParse {
     session: {
       title: title || null,
       date,
+      dateAmbiguous,
       durationMin,
-      exercises: exercises.filter((e) => e.rawName),
+      exercises: app === "apple" ? [] : exercises.filter((e) => e.rawName),
     },
     unit: majority(units),
     unparsed,

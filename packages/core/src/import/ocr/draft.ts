@@ -1,34 +1,29 @@
 // ScreenshotParse -> ImportDraft (the shared review screen's input). OCR rows
-// keep their own confidence; a parse that found no exercises falls back to the
+// keep their own confidence; a parse that found no set rows falls back to the
 // shared paste-text parser so layouts the screenshot parser doesn't know still
 // get a second chance.
 import { newId } from "../../domain/ids";
+import { kgToLb, lbToKg } from "../../domain/units";
 import {
   emptyDraft,
   exerciseConfidence,
   type ImportDraft,
   importDraftSet,
+  isLowConfidence,
   type WeightUnit,
 } from "../draft";
 import { parseWorkoutText } from "../text";
 import { parseScreenshotLines } from "./parse-screenshot";
-import {
-  type OcrLine,
-  SCREENSHOT_LOW_CONFIDENCE,
-  type ScreenshotParse,
-} from "./types";
+import type { OcrLine, ScreenshotParse } from "./types";
 
 export function screenshotToDraft(
   parse: ScreenshotParse,
   defaultUnit: WeightUnit = "kg",
 ): ImportDraft {
   const { session } = parse;
-  const draft = emptyDraft(
-    "text",
-    parse.unit ?? defaultUnit,
-    parse.unit !== null,
-  );
-  if (session.exercises.length === 0) return draft;
+  const unit = parse.unit ?? defaultUnit;
+  const draft = emptyDraft("text", unit, parse.unit !== null);
+  if (!session.exercises.some((e) => e.sets.length > 0)) return draft;
   let startedAt: number | null = null;
   if (session.date) {
     const [y, m, d] = session.date.split("-").map(Number);
@@ -37,13 +32,17 @@ export function screenshotToDraft(
   const exercises = session.exercises.map((e) => {
     const sets = e.sets.map((s) =>
       importDraftSet({
-        weight: s.weight,
+        weight:
+          s.unit && s.unit !== unit && s.weight !== null
+            ? Math.round(
+                (unit === "lb" ? kgToLb(s.weight) : lbToKg(s.weight)) * 10,
+              ) / 10
+            : s.weight,
         reps: s.reps,
         rir: s.rir,
         setType: s.warmup ? "warmup" : "normal",
         confidence: s.confidence,
-        flags:
-          s.confidence < SCREENSHOT_LOW_CONFIDENCE ? ["Check this row"] : [],
+        flags: isLowConfidence(s.confidence) ? ["Check this row"] : [],
         raw: s.raw,
       }),
     );
@@ -70,6 +69,16 @@ export function screenshotToDraft(
   });
   draft.unparsed = parse.unparsed;
   draft.notes.push("Read from a screenshot on this device. Check every row.");
+  if (
+    session.exercises.some((e) => e.sets.some((s) => s.unit && s.unit !== unit))
+  )
+    draft.notes.push(
+      "Both kg and lb appeared; weights were converted to the majority unit.",
+    );
+  if (session.dateAmbiguous)
+    draft.notes.push(
+      "The date looked like 03/04/2026; month-first was assumed. Check the date.",
+    );
   return draft;
 }
 
@@ -84,6 +93,7 @@ export function ocrLinesToDraft(
     defaultUnit,
     ocr: true,
   });
+  fallback.sessions = fallback.sessions.filter((x) => x.exercises.length > 0);
   if (fallback.sessions.length + fallback.routines.length > 0) {
     fallback.notes.push(
       "Read from a screenshot on this device. Check every row.",

@@ -1,14 +1,14 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { FIXTURES } from "../../../../../scripts/ocr/fixtures";
+import { isLowConfidence } from "../draft";
 import { scoreParse } from "./accuracy";
 import {
   parseDate,
   parseDurationMin,
   parseScreenshotLines,
-  toKg,
 } from "./parse-screenshot";
-import { type OcrLine, SCREENSHOT_LOW_CONFIDENCE } from "./types";
+import type { OcrLine } from "./types";
 
 // ocr-lines.json is real tesseract output over the committed fixture PNGs
 // (regenerate: bun scripts/ocr/run-ocr.ts), so these tests cover genuine OCR noise.
@@ -42,6 +42,7 @@ describe("parseScreenshotLines on OCR'd synthetic fixtures", () => {
     expect(p.app).toBe("apple");
     expect(p.session.date).toBe("2026-11-11");
     expect(p.session.durationMin).toBe(46);
+    expect(p.session.exercises).toEqual([]);
   });
 });
 
@@ -60,8 +61,8 @@ describe("OCR noise handling", () => {
 
   it("flags implausible numbers as low confidence", () => {
     const p = parseScreenshotLines(L("Curl", "Set 1: 9000 kg x 8"));
-    expect(p.session.exercises[0].sets[0].confidence).toBeLessThan(
-      SCREENSHOT_LOW_CONFIDENCE,
+    expect(isLowConfidence(p.session.exercises[0].sets[0].confidence)).toBe(
+      true,
     );
   });
 
@@ -70,17 +71,15 @@ describe("OCR noise handling", () => {
       { text: "Curl", confidence: 0.9 },
       { text: "Set 1: 20 kg x 8", confidence: 0.4 },
     ]);
-    expect(p.session.exercises[0].sets[0].confidence).toBeLessThan(
-      SCREENSHOT_LOW_CONFIDENCE,
+    expect(isLowConfidence(p.session.exercises[0].sets[0].confidence)).toBe(
+      true,
     );
   });
 
   it("keeps an unreadable-sets exercise visible with low confidence", () => {
     const p = parseScreenshotLines(L("Leg Press", "#%@ ~~"));
     expect(p.session.exercises[0].sets).toHaveLength(0);
-    expect(p.session.exercises[0].nameConfidence).toBeLessThan(
-      SCREENSHOT_LOW_CONFIDENCE,
-    );
+    expect(isLowConfidence(p.session.exercises[0].nameConfidence)).toBe(true);
   });
 
   it("reads RPE as RIR", () => {
@@ -102,19 +101,20 @@ describe("OCR noise handling", () => {
 
 describe("helpers", () => {
   it("parses dates", () => {
-    expect(parseDate("Nov 3, 2026")).toBe("2026-11-03");
-    expect(parseDate("3 November 2026")).toBe("2026-11-03");
-    expect(parseDate("2026-11-03")).toBe("2026-11-03");
-    expect(parseDate("13/11/2026")).toBe("2026-11-13");
+    const sure = (date: string) => ({ date, ambiguous: false });
+    expect(parseDate("Nov 3, 2026")).toEqual(sure("2026-11-03"));
+    expect(parseDate("3 November 2026")).toEqual(sure("2026-11-03"));
+    expect(parseDate("2026-11-03")).toEqual(sure("2026-11-03"));
+    expect(parseDate("13/11/2026")).toEqual(sure("2026-11-13"));
+    expect(parseDate("05/11/2026")).toEqual({
+      date: "2026-05-11",
+      ambiguous: true,
+    });
     expect(parseDate("hello")).toBeNull();
   });
   it("parses durations", () => {
     expect(parseDurationMin("1h 12m")).toBe(72);
     expect(parseDurationMin("58min")).toBe(58);
     expect(parseDurationMin("Workout Time 0:46:08")).toBe(46);
-  });
-  it("converts lb to kg", () => {
-    expect(toKg(225, "lb")).toBeCloseTo(102.06, 1);
-    expect(toKg(100, "kg")).toBe(100);
   });
 });

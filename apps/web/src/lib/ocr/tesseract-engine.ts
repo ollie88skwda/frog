@@ -1,7 +1,7 @@
 // Browser OCR engine (tesseract.js, WASM) behind the framework-free OcrEngine
 // contract. Lives only in a lazy chunk on the import screen. Worker, WASM core
-// and English model are self-hosted from /ocr/ (copied by scripts/copy-ocr-assets
-// via the vite plugin) — no CDN, nothing about the image leaves the device, and
+// and English model are self-hosted from /ocr/ (copied by the frog-ocr-assets
+// plugin in apps/web/vite.config.ts) — no CDN, nothing about the image leaves the device, and
 // the image is never stored (tesseract's IndexedDB cache is disabled).
 import type { OcrEngine, OcrLine } from "@frog/core";
 import { createWorker, type Worker } from "tesseract.js";

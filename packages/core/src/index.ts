@@ -51,13 +51,8 @@ export * from "./import/dates";
 export * from "./import/draft";
 export * from "./import/fitbit-sleep";
 export * from "./import/hevy";
-export * from "./import/ocr/accuracy";
 export * from "./import/ocr/draft";
-export {
-  parseDurationMin,
-  parseScreenshotLines,
-  toKg,
-} from "./import/ocr/parse-screenshot";
+export { parseScreenshotLines } from "./import/ocr/parse-screenshot";
 export * from "./import/ocr/types";
 export * from "./import/set-nos";
 export * from "./import/strong";
