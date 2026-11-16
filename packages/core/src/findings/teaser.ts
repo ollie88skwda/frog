@@ -37,18 +37,23 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
   const trends: TrendFinding[] = [];
   const countdowns: CountdownFinding[] = [];
   const series = sessionTopsByExercise(sessions);
-  for (const [exerciseId, { name, comparable }] of series) {
+  for (const [exerciseId, { name, tops, comparable }] of series) {
     const window = comparableSessions(comparable);
+    // Under 2 sessions since the last break: the rough trend over the full
+    // history stands in, labelled pre-break and unscored.
+    const preBreak = window.length < 2;
     const result = robustTrend(
-      window.map((s) => ({ day: s.at / DAY_MS, e1rm: s.e1rm })),
+      preBreak
+        ? tops
+        : window.map((s) => ({ day: s.at / DAY_MS, e1rm: s.e1rm })),
     );
     if (result.verdict === "INSUFFICIENT") {
       countdowns.push({
         kind: "countdown",
         exerciseId,
         exerciseName: name,
-        sessionsLogged: window.length,
-        sessionsNeeded: MIN_TREND_SESSIONS - window.length,
+        sessionsLogged: tops.length,
+        sessionsNeeded: MIN_TREND_SESSIONS - tops.length,
       });
     } else {
       // C2c: whenever the status judged the lift (a dip from 4 comparable
@@ -81,6 +86,7 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
         verdict: fromStatus ?? result.verdict,
         status,
         roughVerdict: fromStatus === null,
+        preBreak,
         pctChange: result.pctChange,
         perMonth: result.perMonth,
         n: result.n,
