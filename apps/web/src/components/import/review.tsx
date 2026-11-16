@@ -140,7 +140,15 @@ function SetRow({
       value={value}
       label={label}
       className={cn("num", width, low && "bg-transparent")}
-      onCommit={(n) => onChange({ ...set, [key]: n, confidence: 1, flags: [] })}
+      onCommit={(n) =>
+        onChange({
+          ...set,
+          [key]: n,
+          ...(key === "rir" ? { rirMin: null, rirMax: null, rpe: null } : {}),
+          confidence: 1,
+          flags: [],
+        })
+      }
     />
   );
   return (
@@ -246,6 +254,7 @@ function ExerciseBlock({
   ex,
   unit,
   resolution,
+  inLibrary,
   onResolve,
   onCreate,
   onPickOpen,
@@ -255,6 +264,8 @@ function ExerciseBlock({
   ex: ImportDraftExercise;
   unit: WeightUnit;
   resolution: Resolution;
+  /** Raw name already names a library exercise, so "new" would merge into it. */
+  inLibrary: boolean;
   onResolve: (r: Resolution) => void;
   onCreate: () => void;
   onPickOpen: () => void;
@@ -298,13 +309,15 @@ function ExerciseBlock({
           Pick existing
         </Button>
         {resolution.kind === "match" ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onResolve({ kind: "create" })}
-          >
-            Add as new instead
-          </Button>
+          !inLibrary && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onResolve({ kind: "create" })}
+            >
+              Add as new instead
+            </Button>
+          )
         ) : (
           <Button
             size="sm"
@@ -630,6 +643,9 @@ export function ImportReview({
                 ex={e}
                 unit={draft.unit}
                 resolution={resolve(e.rawName)}
+                inLibrary={exercises.some(
+                  (x) => norm(x.name) === norm(e.rawName),
+                )}
                 onResolve={(r) => setResolution(e.rawName, r)}
                 onCreate={() => setCreatingFor(e.rawName)}
                 onPickOpen={() => setPickFor(e.rawName)}

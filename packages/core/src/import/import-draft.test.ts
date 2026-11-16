@@ -95,6 +95,9 @@ describe("file importers → ImportDraft", () => {
       durationSec: null,
       distanceM: null,
       rir: null,
+      rirMin: 1,
+      rirMax: 2,
+      rpe: 8.5,
       note: null,
     });
     const bundle = {
@@ -134,6 +137,13 @@ describe("file importers → ImportDraft", () => {
         "right",
       ]);
       expect(pairSetNos(out[0].exercises[0].sets)).toEqual([0, 0, 1, 1]);
+      // RIR is logged as a range (rir null, rirMin/rirMax set): keep it.
+      expect(out[0].exercises[0].sets[0]).toMatchObject({
+        rir: 1,
+        rirMin: 1,
+        rirMax: 2,
+        rpe: 8.5,
+      });
     }
     // Set 0's left row deleted: R0 stays its own set, not paired with L1.
     const orphan = {
@@ -387,6 +397,26 @@ describe("paste-text parser", () => {
     expect(flat(d)[0].sets.map((s) => [s.at(0), s.at(1)])).toEqual([
       [140, 5],
       [140, 5],
+    ]);
+  });
+  it("spelled-out grouped sets parse", () => {
+    expect(parseSetLine("4 sets x 6 reps @ 80kg")).toMatchObject({
+      count: 4,
+      reps: 6,
+      weight: 80,
+      unit: "kg",
+    });
+    const d = parseWorkoutText(
+      "Push\nBench\n4 sets x 6 reps @ 80kg\nSquat 3 sets x 5 reps",
+      {
+        now: NOW,
+      },
+    );
+    expect(
+      d.routines[0].exercises.map((e) => [e.rawName, e.sets, e.reps]),
+    ).toEqual([
+      ["Bench", 4, 6],
+      ["Squat", 3, 5],
     ]);
   });
   it("parseSetLine shapes", () => {

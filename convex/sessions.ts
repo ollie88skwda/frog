@@ -559,6 +559,9 @@ export const importBatch = mutation({
             durationSec: set.durationSec ?? null,
             distanceM: set.distanceM ?? null,
             rir: set.rir ?? null,
+            rirMin: set.rirMin ?? null,
+            rirMax: set.rirMax ?? null,
+            rpe: set.rpe ?? null,
             note: set.note ?? null,
             completed: true,
           });

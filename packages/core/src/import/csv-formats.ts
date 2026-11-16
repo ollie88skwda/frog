@@ -370,7 +370,10 @@ export function parseFrogJson(text: string): ImportedSession[] {
             sets: sets.map((l) => ({
               weightKg: l.weightKg ?? null,
               reps: l.reps ?? null,
-              rir: l.rir ?? null,
+              rir: l.rir ?? l.rirMin ?? null,
+              rirMin: l.rirMin ?? null,
+              rirMax: l.rirMax ?? null,
+              rpe: l.rpe ?? null,
               note: l.note ?? null,
               setType: l.setType,
               durationSec: l.durationSec ?? null,
@@ -392,21 +395,39 @@ export function parseFrogCsv(text: string): ImportedSession[] {
   if (rows.length < 2) return [];
   const h = rows[0].map(norm);
   const c = (n: string) => h.indexOf(n);
-  const [iT, iTitle, iEx, iNo, iSide, iType, iW, iR, iDur, iDist, iRir, iNote] =
-    [
-      "session started at",
-      "session title",
-      "exercise",
-      "set no",
-      "side",
-      "set type",
-      "weight kg",
-      "reps",
-      "duration sec",
-      "distance m",
-      "rir",
-      "note",
-    ].map(c);
+  const [
+    iT,
+    iTitle,
+    iEx,
+    iNo,
+    iSide,
+    iType,
+    iW,
+    iR,
+    iDur,
+    iDist,
+    iRir,
+    iRirMin,
+    iRirMax,
+    iRpe,
+    iNote,
+  ] = [
+    "session started at",
+    "session title",
+    "exercise",
+    "set no",
+    "side",
+    "set type",
+    "weight kg",
+    "reps",
+    "duration sec",
+    "distance m",
+    "rir",
+    "rir min",
+    "rir max",
+    "rpe",
+    "note",
+  ].map(c);
   if (iT < 0 || iEx < 0) return [];
   const sessions = new Map<
     number,
@@ -440,12 +461,16 @@ export function parseFrogCsv(text: string): ImportedSession[] {
       s.ex.set(name, list);
       s.order.push(name);
     }
+    const rirMin = iRirMin >= 0 ? num(r[iRirMin]) : null;
     list.push({
       no: iNo >= 0 ? (num(r[iNo]) ?? 0) : list.length,
       set: {
         weightKg: iW >= 0 ? num(r[iW]) : null,
         reps: iR >= 0 ? num(r[iR]) : null,
-        rir: iRir >= 0 ? num(r[iRir]) : null,
+        rir: (iRir >= 0 ? num(r[iRir]) : null) ?? rirMin,
+        rirMin,
+        rirMax: iRirMax >= 0 ? num(r[iRirMax]) : null,
+        rpe: iRpe >= 0 ? num(r[iRpe]) : null,
         note: iNote >= 0 ? (r[iNote] ?? "").trim() || null : null,
         setType: iType >= 0 ? (r[iType] ?? "").trim() || "normal" : "normal",
         durationSec: iDur >= 0 ? num(r[iDur]) : null,

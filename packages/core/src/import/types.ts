@@ -14,6 +14,10 @@ export type ImportedSet = {
   side?: SetSide | null;
   /** Set number from the source (Frog export); pairs L/R rows on insert. */
   setNo?: number | null;
+  /** Frog's RIR range and RPE, carried so an export round-trip keeps them. */
+  rirMin?: number | null;
+  rirMax?: number | null;
+  rpe?: number | null;
 };
 
 export type ImportedExercise = { name: string; sets: ImportedSet[] };

@@ -116,8 +116,9 @@ export function parseSetLine(raw: string): RawSet | null {
     // avoid eating the "3" of "3 x 8" as an index
     const after = line.slice(lead[0].length);
     if (
-      !new RegExp(`^\\d+\\s*${X}\\s*\\d+\\s*(?:@|$)`).test(line) ||
-      new RegExp(`^${NUM}\\s*${UNIT}?\\s*${X}`).test(after)
+      !/^sets?\b/i.test(after) &&
+      (!new RegExp(`^\\d+\\s*${X}\\s*\\d+\\s*(?:@|$)`).test(line) ||
+        new RegExp(`^${NUM}\\s*${UNIT}?\\s*${X}`).test(after))
     ) {
       line = after;
       indexed = true;
