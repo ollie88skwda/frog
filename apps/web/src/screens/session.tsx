@@ -115,6 +115,8 @@ import {
   filterExercises,
 } from "@/components/exercise-filter";
 import { InfoTip } from "@/components/lesson";
+import { logLabel, weightStep } from "@/components/session/entry";
+import { ScrubSurface, Stepper } from "@/components/session/entry-tile";
 import { MachineChip } from "@/components/session/machine-chip";
 import { PlateSheet } from "@/components/session/plate-sheet";
 import { PrBanner, type PrBannerData } from "@/components/session/pr-banner";
@@ -4150,6 +4152,11 @@ function Spotlight({
     isUnilateral,
   ]);
 
+  function stepFor(key: FieldKey): number {
+    if (key === "weight") return weightStep(unit);
+    return 1;
+  }
+
   function fieldRow(key: FieldKey) {
     const value =
       key === "weight"
@@ -4221,41 +4228,61 @@ function Spotlight({
         </div>
         <div
           className={cn(
-            "rounded-sm mt-1.5 mb-2 flex items-center justify-center gap-2 bg-surface px-2.5 py-2",
+            "rounded-sm mt-1.5 mb-2 flex items-center justify-center gap-2 bg-surface px-1.5 py-1.5",
             beat && "bg-bg",
           )}
         >
-          <input
-            inputMode={
-              key === "duration"
-                ? "text"
-                : key === "reps"
-                  ? "numeric"
-                  : "decimal"
-            }
-            value={value}
-            placeholder={seedPlaceholder(key)}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.preventDefault();
-            }}
-            onFocus={() => {
-              // Rest auto-stops the moment the next set's input is touched
-              // (R3 locked decision) — manual Stop is the other trigger.
-              if (restStartedAt != null) onStopRest();
-            }}
-            readOnly={key === "duration" && timerRunning}
-            className="num min-w-0 flex-1 bg-transparent text-center text-[44px] leading-none font-bold text-ink placeholder:text-3xl placeholder:text-faint sm:text-[52px]"
-            data-testid={fieldTestId}
-            aria-invalid={key === "weight" && weightError ? true : undefined}
-            aria-describedby={
-              key === "weight" && weightError ? "weight-error" : undefined
-            }
-          />
-          {unitTxt && (
-            <span className="shrink-0 text-sm font-bold text-faint">
-              {unitTxt}
-            </span>
+          {key !== "duration" && (
+            <Stepper
+              dir={-1}
+              label={`Decrease ${label}`}
+              step={stepFor(key)}
+              onStep={(d) => bump(key, d)}
+              testId={`${key}-step-minus`}
+            />
+          )}
+          <ScrubSurface step={stepFor(key)} onStep={(d) => bump(key, d)}>
+            <input
+              inputMode={
+                key === "duration"
+                  ? "text"
+                  : key === "reps"
+                    ? "numeric"
+                    : "decimal"
+              }
+              value={value}
+              placeholder={seedPlaceholder(key)}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.preventDefault();
+              }}
+              onFocus={() => {
+                // Rest auto-stops the moment the next set's input is touched
+                // (R3 locked decision) — manual Stop is the other trigger.
+                if (restStartedAt != null) onStopRest();
+              }}
+              readOnly={key === "duration" && timerRunning}
+              className="num min-w-0 flex-1 bg-transparent text-center text-[40px] leading-none font-bold text-ink placeholder:text-3xl placeholder:text-faint sm:text-[52px]"
+              data-testid={fieldTestId}
+              aria-invalid={key === "weight" && weightError ? true : undefined}
+              aria-describedby={
+                key === "weight" && weightError ? "weight-error" : undefined
+              }
+            />
+            {unitTxt && (
+              <span className="shrink-0 text-sm font-bold text-faint">
+                {unitTxt}
+              </span>
+            )}
+          </ScrubSurface>
+          {key !== "duration" && (
+            <Stepper
+              dir={1}
+              label={`Increase ${label}`}
+              step={stepFor(key)}
+              onStep={(d) => bump(key, d)}
+              testId={`${key}-step-plus`}
+            />
           )}
           {key === "duration" ? (
             <IconButton
@@ -4308,7 +4335,7 @@ function Spotlight({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => bump(key, d)}
-                className="rounded-sm num h-10 flex-1 bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
+                className="rounded-sm num h-11 flex-1 bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
                 data-testid={`${adjustPrefix}-${d}`}
               >
                 {d}
@@ -4321,7 +4348,7 @@ function Spotlight({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => bump(key, d)}
-                className="rounded-sm num h-10 flex-1 bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
+                className="rounded-sm num h-11 flex-1 bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
                 data-testid={`${adjustPrefix}-${d}`}
               >
                 +{d}
@@ -4638,9 +4665,13 @@ function Spotlight({
           >
             {isEditing
               ? "Save"
-              : isUnilateral
-                ? `Log set ${index + 1} · ᴸ + ᴿ`
-                : `Log set ${index + 1}`}
+              : logLabel({
+                  weight,
+                  reps,
+                  weightUnit: f.weight ? unitLabel(unit) : null,
+                  setNo: index + 1,
+                  unilateral: isUnilateral,
+                })}
           </Button>
         )}
       </div>

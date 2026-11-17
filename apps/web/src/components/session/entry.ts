@@ -1,0 +1,45 @@
+// Pure logic for the set-entry tiles ("scrub tiles", 2026-11-16): step sizes,
+// drag-to-scrub maths, long-press acceleration and the Log button label.
+
+export type EntryUnit = "kg" | "lb";
+
+/** Smallest weight plate jump per unit (2.5 kg / 5 lb). */
+export function weightStep(unit: EntryUnit): number {
+  return unit === "lb" ? 5 : 2.5;
+}
+
+/** Applies `delta` to a text value; never below 0, rounded to 2dp. */
+export function stepValue(current: string, delta: number): string {
+  const base = Number.parseFloat(current || "0") || 0;
+  return String(Math.max(0, Math.round((base + delta) * 100) / 100));
+}
+
+/** Whole steps implied by a horizontal drag; truncates toward zero. */
+export function scrubSteps(dxPx: number, pxPerStep = 18): number {
+  return Math.trunc(dxPx / pxPerStep);
+}
+
+/** Long-press repeat: multiplier grows the longer the button is held. */
+export function holdMultiplier(repeats: number): number {
+  if (repeats >= 20) return 10;
+  if (repeats >= 8) return 4;
+  return 1;
+}
+
+/** "Log 80 kg × 8" — the button says exactly what it will write. */
+export function logLabel(opts: {
+  weight: string;
+  reps: string;
+  weightUnit: string | null;
+  setNo: number;
+  unilateral: boolean;
+}): string {
+  const w = opts.weight.trim();
+  const r = opts.reps.trim();
+  const parts: string[] = [];
+  if (opts.weightUnit && w) parts.push(`${w} ${opts.weightUnit}`);
+  if (r) parts.push(r);
+  const side = opts.unilateral ? " · ᴸ + ᴿ" : "";
+  if (!parts.length) return `Log set ${opts.setNo}${side}`;
+  return `Log ${parts.join(" × ")}${side}`;
+}
