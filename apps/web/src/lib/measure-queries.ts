@@ -84,6 +84,17 @@ export function useUpsertMeasurement() {
       });
       return { prev };
     },
+    // Adopt the server id for the optimistic row as soon as the server answers
+    // (values stay, a newer optimistic edit may be in flight): a later
+    // mutation's cancelQueries can drop the settle refetch, and a delete must
+    // target the real id.
+    onSuccess: (row) => {
+      qc.setQueryData<Measurement[]>(KEY, (old = []) =>
+        old.map((m) =>
+          m.measuredOn === row.measuredOn ? { ...m, id: row.id } : m,
+        ),
+      );
+    },
     onError: (_e, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(KEY, ctx.prev);
     },

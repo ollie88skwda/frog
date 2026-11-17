@@ -354,7 +354,10 @@ function Trends({
   onEdit: (d: string) => void;
 }) {
   const del = useDeleteMeasurement();
-  const [confirmId, setConfirmId] = useState<string | null>(null);
+  // Keyed by day (one entry per day), not id: the optimistic row's client id
+  // is swapped for the server id, which must not remount the row or drop the
+  // open confirm.
+  const [confirmDay, setConfirmDay] = useState<string | null>(null);
 
   // Entries carrying the selected metric, with its display value attached.
   const rows = useMemo(() => {
@@ -448,7 +451,7 @@ function Trends({
         <ul className="[&>*+*]:mt-0.5">
           {rows.map(({ m, value }) => (
             <li
-              key={m.id}
+              key={m.measuredOn}
               className="flex items-center"
               data-testid={`measure-row-${m.measuredOn}`}
             >
@@ -464,14 +467,14 @@ function Trends({
                   {value} {suffix}
                 </span>
               </button>
-              {confirmId === m.id ? (
+              {confirmDay === m.measuredOn ? (
                 <span className="flex shrink-0 items-center gap-1 px-2">
                   <Button
                     variant="danger"
                     size="sm"
                     onClick={() => {
                       del.mutate(m.id);
-                      setConfirmId(null);
+                      setConfirmDay(null);
                     }}
                     data-testid={`measure-delete-confirm-${m.measuredOn}`}
                   >
@@ -480,7 +483,7 @@ function Trends({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setConfirmId(null)}
+                    onClick={() => setConfirmDay(null)}
                   >
                     Cancel
                   </Button>
@@ -490,7 +493,7 @@ function Trends({
                   danger
                   title="Delete entry"
                   aria-label="Delete entry"
-                  onClick={() => setConfirmId(m.id)}
+                  onClick={() => setConfirmDay(m.measuredOn)}
                   data-testid={`measure-delete-${m.measuredOn}`}
                 >
                   <Trash className="size-4" />
