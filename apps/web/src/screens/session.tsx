@@ -93,7 +93,9 @@ import {
 } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  type Dispatch,
   type TouchEvent as ReactTouchEvent,
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -115,6 +117,8 @@ import {
   filterExercises,
 } from "@/components/exercise-filter";
 import { InfoTip } from "@/components/lesson";
+import { fieldStep, logLabel, stepValue } from "@/components/session/entry";
+import { ScrubSurface, Stepper } from "@/components/session/entry-tile";
 import { MachineChip } from "@/components/session/machine-chip";
 import { PlateSheet } from "@/components/session/plate-sheet";
 import { PrBanner, type PrBannerData } from "@/components/session/pr-banner";
@@ -4040,36 +4044,21 @@ function Spotlight({
     delta: number,
     side: "left" | "right" = "left",
   ) {
-    const setters: Record<FieldKey, (v: string) => void> = {
-      weight: side === "left" ? setWeight : setWeight2,
+    const setters: Record<FieldKey, Dispatch<SetStateAction<string>>> = {
+      weight: side === "left" ? setWeightRaw : setWeight2,
       reps: side === "left" ? setReps : setReps2,
       duration: side === "left" ? setDuration : setRDuration,
       distance: side === "left" ? setDistance : setRDistance,
     };
-    const current =
-      kind === "weight"
-        ? side === "left"
-          ? weight
-          : weight2 || weight
-        : kind === "reps"
-          ? side === "left"
-            ? reps
-            : reps2 || reps
-          : kind === "duration"
-            ? side === "left"
-              ? duration
-              : rDuration || duration
-            : side === "left"
-              ? distance
-              : rDistance || distance;
-    if (kind === "duration") {
-      const sec = Math.max(0, (parseDuration(current) ?? 0) + delta);
-      setters.duration(formatMMSS(sec));
-      return;
-    }
-    const base = Number.parseFloat(current || "0") || 0;
-    const next = Math.max(0, Math.round((base + delta) * 100) / 100);
-    setters[kind](String(next));
+    const fallback =
+      side === "left" ? "" : { weight, reps, duration, distance }[kind];
+    if (kind === "weight" && side === "left") setWeightError(false);
+    setters[kind]((prev) => {
+      const current = prev || fallback;
+      if (kind === "duration")
+        return formatMMSS(Math.max(0, (parseDuration(current) ?? 0) + delta));
+      return stepValue(current, delta);
+    });
   }
 
   // Comparison header + "beat" tint per row, against last time (ghost).
@@ -4221,41 +4210,64 @@ function Spotlight({
         </div>
         <div
           className={cn(
-            "rounded-sm mt-1.5 mb-2 flex items-center justify-center gap-2 bg-surface px-2.5 py-2",
+            "rounded-sm mt-1.5 mb-2 flex items-center justify-center gap-2 bg-surface px-1.5 py-1.5",
             beat && "bg-bg",
           )}
         >
-          <input
-            inputMode={
-              key === "duration"
-                ? "text"
-                : key === "reps"
-                  ? "numeric"
-                  : "decimal"
-            }
-            value={value}
-            placeholder={seedPlaceholder(key)}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.preventDefault();
-            }}
-            onFocus={() => {
-              // Rest auto-stops the moment the next set's input is touched
-              // (R3 locked decision) — manual Stop is the other trigger.
-              if (restStartedAt != null) onStopRest();
-            }}
-            readOnly={key === "duration" && timerRunning}
-            className="num min-w-0 flex-1 bg-transparent text-center text-[44px] leading-none font-bold text-ink placeholder:text-3xl placeholder:text-faint sm:text-[52px]"
-            data-testid={fieldTestId}
-            aria-invalid={key === "weight" && weightError ? true : undefined}
-            aria-describedby={
-              key === "weight" && weightError ? "weight-error" : undefined
-            }
-          />
-          {unitTxt && (
-            <span className="shrink-0 text-sm font-bold text-faint">
-              {unitTxt}
-            </span>
+          {key !== "duration" && (
+            <Stepper
+              dir={-1}
+              label={`Decrease ${label}`}
+              step={fieldStep(key, unit)}
+              onStep={(d) => bump(key, d)}
+              testId={`${key}-step-minus`}
+            />
+          )}
+          <ScrubSurface
+            step={key === "duration" ? 1 : fieldStep(key, unit)}
+            onStep={(d) => bump(key, d)}
+          >
+            <input
+              inputMode={
+                key === "duration"
+                  ? "text"
+                  : key === "reps"
+                    ? "numeric"
+                    : "decimal"
+              }
+              value={value}
+              placeholder={seedPlaceholder(key)}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.preventDefault();
+              }}
+              onFocus={() => {
+                // Rest auto-stops the moment the next set's input is touched
+                // (R3 locked decision) — manual Stop is the other trigger.
+                if (restStartedAt != null) onStopRest();
+              }}
+              readOnly={key === "duration" && timerRunning}
+              className="num min-w-0 flex-1 bg-transparent text-center text-[40px] leading-none font-bold text-ink placeholder:text-3xl placeholder:text-faint sm:text-[52px]"
+              data-testid={fieldTestId}
+              aria-invalid={key === "weight" && weightError ? true : undefined}
+              aria-describedby={
+                key === "weight" && weightError ? "weight-error" : undefined
+              }
+            />
+            {unitTxt && (
+              <span className="shrink-0 text-sm font-bold text-faint">
+                {unitTxt}
+              </span>
+            )}
+          </ScrubSurface>
+          {key !== "duration" && (
+            <Stepper
+              dir={1}
+              label={`Increase ${label}`}
+              step={fieldStep(key, unit)}
+              onStep={(d) => bump(key, d)}
+              testId={`${key}-step-plus`}
+            />
           )}
           {key === "duration" ? (
             <IconButton
@@ -4308,7 +4320,7 @@ function Spotlight({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => bump(key, d)}
-                className="rounded-sm num h-10 flex-1 bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
+                className="rounded-sm num h-11 flex-1 bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
                 data-testid={`${adjustPrefix}-${d}`}
               >
                 {d}
@@ -4321,7 +4333,7 @@ function Spotlight({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => bump(key, d)}
-                className="rounded-sm num h-10 flex-1 bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
+                className="rounded-sm num h-11 flex-1 bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
                 data-testid={`${adjustPrefix}-${d}`}
               >
                 +{d}
@@ -4638,9 +4650,15 @@ function Spotlight({
           >
             {isEditing
               ? "Save"
-              : isUnilateral
-                ? `Log set ${index + 1} · ᴸ + ᴿ`
-                : `Log set ${index + 1}`}
+              : logLabel({
+                  weight,
+                  reps,
+                  weightUnit: f.weight ? unitLabel(unit) : null,
+                  setNo: index + 1,
+                  unilateral: isUnilateral,
+                  rightWeight: weightLinked ? "" : weight2,
+                  rightReps: reps2,
+                })}
           </Button>
         )}
       </div>

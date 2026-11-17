@@ -1,0 +1,63 @@
+import { describe, expect, it } from "vitest";
+import { fieldStep, logLabel, scrubSteps, stepValue } from "./entry";
+
+describe("entry logic", () => {
+  // Step sizes come from the set-entry spec: 2.5 kg / 5 lb plates, 1 rep,
+  // 0.1 km/mi distance.
+  it("steps each field by its spec increment", () => {
+    expect(fieldStep("weight", "kg")).toBe(2.5);
+    expect(fieldStep("weight", "lb")).toBe(5);
+    expect(fieldStep("reps", "kg")).toBe(1);
+    expect(fieldStep("distance", "lb")).toBe(0.1);
+  });
+  it("steps values, clamped at 0", () => {
+    expect(stepValue("80", 2.5)).toBe("82.5");
+    expect(stepValue("", 1)).toBe("1");
+    expect(stepValue("1", -2)).toBe("0");
+    expect(stepValue("0.1", 0.2)).toBe("0.3");
+  });
+  it("repeated steps compose from the previous value", () => {
+    let v = "80";
+    for (let i = 0; i < 3; i++) v = stepValue(v, 5);
+    expect(v).toBe("95");
+    let d = "5";
+    for (let i = 0; i < 3; i++) d = stepValue(d, 0.1);
+    expect(d).toBe("5.3");
+  });
+  it("scrub truncates toward zero", () => {
+    expect(scrubSteps(17)).toBe(0);
+    expect(scrubSteps(37)).toBe(2);
+    expect(scrubSteps(-37)).toBe(-2);
+  });
+  it("labels the log button", () => {
+    const base = { weightUnit: "kg", setNo: 3, unilateral: false };
+    expect(logLabel({ ...base, weight: "80", reps: "8" })).toBe(
+      "Log 80 kg × 8",
+    );
+    expect(logLabel({ ...base, weight: "", reps: "" })).toBe("Log set 3");
+    expect(
+      logLabel({ ...base, weightUnit: null, weight: "", reps: "12" }),
+    ).toBe("Log 12");
+  });
+  it("labels unilateral sets with both sides only when they differ", () => {
+    const base = { weightUnit: "kg", setNo: 1, unilateral: true };
+    expect(logLabel({ ...base, weight: "40", reps: "8" })).toBe(
+      "Log 40 kg × 8 · ᴸ + ᴿ",
+    );
+    expect(logLabel({ ...base, weight: "40", reps: "8", rightReps: "8" })).toBe(
+      "Log 40 kg × 8 · ᴸ + ᴿ",
+    );
+    expect(logLabel({ ...base, weight: "40", reps: "8", rightReps: "6" })).toBe(
+      "Log 40 kg × 8/6 · ᴸ + ᴿ",
+    );
+    expect(
+      logLabel({
+        ...base,
+        weight: "40",
+        reps: "8",
+        rightWeight: "35",
+        rightReps: "6",
+      }),
+    ).toBe("Log 40/35 kg × 8/6 · ᴸ + ᴿ");
+  });
+});
