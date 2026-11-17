@@ -8,6 +8,16 @@ export function weightStep(unit: EntryUnit): number {
   return unit === "lb" ? 5 : 2.5;
 }
 
+/** Stepper/scrub increment per field: weight by plate, reps by 1, distance by 0.1. */
+export function fieldStep(
+  key: "weight" | "reps" | "distance",
+  unit: EntryUnit,
+): number {
+  if (key === "weight") return weightStep(unit);
+  if (key === "distance") return 0.1;
+  return 1;
+}
+
 /** Applies `delta` to a text value; never below 0, rounded to 2dp. */
 export function stepValue(current: string, delta: number): string {
   const base = Number.parseFloat(current || "0") || 0;
@@ -26,19 +36,32 @@ export function holdMultiplier(repeats: number): number {
   return 1;
 }
 
-/** "Log 80 kg × 8" — the button says exactly what it will write. */
+function pair(left: string, right: string): string {
+  return right && right !== left ? `${left}/${right}` : left;
+}
+
+/**
+ * "Log 80 kg × 8" — the button says exactly what it will write. Unilateral
+ * sets show both sides when they differ ("Log 40/35 kg × 8/6"); an empty right
+ * value falls back to the left one, as saving does.
+ */
 export function logLabel(opts: {
   weight: string;
   reps: string;
   weightUnit: string | null;
   setNo: number;
   unilateral: boolean;
+  rightWeight?: string;
+  rightReps?: string;
 }): string {
   const w = opts.weight.trim();
   const r = opts.reps.trim();
+  const w2 = opts.unilateral ? (opts.rightWeight ?? "").trim() || w : w;
+  const r2 = opts.unilateral ? (opts.rightReps ?? "").trim() || r : r;
   const parts: string[] = [];
-  if (opts.weightUnit && w) parts.push(`${w} ${opts.weightUnit}`);
-  if (r) parts.push(r);
+  if (opts.weightUnit && (w || w2))
+    parts.push(`${pair(w || "–", w2)} ${opts.weightUnit}`);
+  if (r || r2) parts.push(pair(r || "–", r2));
   const side = opts.unilateral ? " · ᴸ + ᴿ" : "";
   if (!parts.length) return `Log set ${opts.setNo}${side}`;
   return `Log ${parts.join(" × ")}${side}`;

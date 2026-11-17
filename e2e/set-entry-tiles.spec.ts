@@ -26,7 +26,20 @@ test("steppers move weight by the unit step (5 lb default) and reps by 1, and Lo
   await expect(page.getByTestId("set-number")).toHaveText("Set 2");
 });
 
-test("390x844 entry screenshots", async ({ page }) => {
+test("holding + repeats and builds on the previous value", async ({ page }) => {
+  test.setTimeout(60_000);
+  await startSessionWith(page, await makeExercise(page, "Hold"));
+  await page.getByTestId("weight-field").fill("80");
+  await page.getByTestId("weight-step-plus").hover();
+  await page.mouse.down();
+  await page.waitForTimeout(1_000);
+  await page.mouse.up();
+  const held = Number(await page.getByTestId("weight-field").inputValue());
+  expect(held).toBeGreaterThanOrEqual(100);
+  expect(held % 5).toBe(0);
+});
+
+test("390x844 entry screenshots", async ({ page }, testInfo) => {
   test.setTimeout(60_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await startSessionWith(page, await makeExercise(page, "Shots"));
@@ -41,7 +54,7 @@ test("390x844 entry screenshots", async ({ page }) => {
       mode,
     );
     await page.screenshot({
-      path: `/tmp/frog-input-convex/entry-${mode}.png`,
+      path: testInfo.outputPath(`entry-${mode}.png`),
     });
   }
 });

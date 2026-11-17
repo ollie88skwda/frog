@@ -93,7 +93,9 @@ import {
 } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  type Dispatch,
   type TouchEvent as ReactTouchEvent,
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -115,7 +117,7 @@ import {
   filterExercises,
 } from "@/components/exercise-filter";
 import { InfoTip } from "@/components/lesson";
-import { logLabel, weightStep } from "@/components/session/entry";
+import { fieldStep, logLabel, stepValue } from "@/components/session/entry";
 import { ScrubSurface, Stepper } from "@/components/session/entry-tile";
 import { MachineChip } from "@/components/session/machine-chip";
 import { PlateSheet } from "@/components/session/plate-sheet";
@@ -4042,36 +4044,21 @@ function Spotlight({
     delta: number,
     side: "left" | "right" = "left",
   ) {
-    const setters: Record<FieldKey, (v: string) => void> = {
-      weight: side === "left" ? setWeight : setWeight2,
+    const setters: Record<FieldKey, Dispatch<SetStateAction<string>>> = {
+      weight: side === "left" ? setWeightRaw : setWeight2,
       reps: side === "left" ? setReps : setReps2,
       duration: side === "left" ? setDuration : setRDuration,
       distance: side === "left" ? setDistance : setRDistance,
     };
-    const current =
-      kind === "weight"
-        ? side === "left"
-          ? weight
-          : weight2 || weight
-        : kind === "reps"
-          ? side === "left"
-            ? reps
-            : reps2 || reps
-          : kind === "duration"
-            ? side === "left"
-              ? duration
-              : rDuration || duration
-            : side === "left"
-              ? distance
-              : rDistance || distance;
-    if (kind === "duration") {
-      const sec = Math.max(0, (parseDuration(current) ?? 0) + delta);
-      setters.duration(formatMMSS(sec));
-      return;
-    }
-    const base = Number.parseFloat(current || "0") || 0;
-    const next = Math.max(0, Math.round((base + delta) * 100) / 100);
-    setters[kind](String(next));
+    const fallback =
+      side === "left" ? "" : { weight, reps, duration, distance }[kind];
+    if (kind === "weight" && side === "left") setWeightError(false);
+    setters[kind]((prev) => {
+      const current = prev || fallback;
+      if (kind === "duration")
+        return formatMMSS(Math.max(0, (parseDuration(current) ?? 0) + delta));
+      return stepValue(current, delta);
+    });
   }
 
   // Comparison header + "beat" tint per row, against last time (ghost).
@@ -4152,11 +4139,6 @@ function Spotlight({
     isUnilateral,
   ]);
 
-  function stepFor(key: FieldKey): number {
-    if (key === "weight") return weightStep(unit);
-    return 1;
-  }
-
   function fieldRow(key: FieldKey) {
     const value =
       key === "weight"
@@ -4236,12 +4218,15 @@ function Spotlight({
             <Stepper
               dir={-1}
               label={`Decrease ${label}`}
-              step={stepFor(key)}
+              step={fieldStep(key, unit)}
               onStep={(d) => bump(key, d)}
               testId={`${key}-step-minus`}
             />
           )}
-          <ScrubSurface step={stepFor(key)} onStep={(d) => bump(key, d)}>
+          <ScrubSurface
+            step={key === "duration" ? 1 : fieldStep(key, unit)}
+            onStep={(d) => bump(key, d)}
+          >
             <input
               inputMode={
                 key === "duration"
@@ -4279,7 +4264,7 @@ function Spotlight({
             <Stepper
               dir={1}
               label={`Increase ${label}`}
-              step={stepFor(key)}
+              step={fieldStep(key, unit)}
               onStep={(d) => bump(key, d)}
               testId={`${key}-step-plus`}
             />
@@ -4671,6 +4656,8 @@ function Spotlight({
                   weightUnit: f.weight ? unitLabel(unit) : null,
                   setNo: index + 1,
                   unilateral: isUnilateral,
+                  rightWeight: weightLinked ? "" : weight2,
+                  rightReps: reps2,
                 })}
           </Button>
         )}
