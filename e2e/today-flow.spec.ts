@@ -86,6 +86,7 @@ test("Today -> routine -> log sets -> finish -> vs-plan report -> history", asyn
     page.locator('[data-testid^="rir-option-"][aria-pressed="true"]'),
   ).toHaveCount(0);
   // One tap accepts the hint.
+  await page.getByTestId("rir-column").click();
   await page.getByTestId("rir-option-2").click();
   await expect(page.getByTestId("rir-option-2")).toHaveAttribute(
     "aria-pressed",
@@ -98,7 +99,6 @@ test("Today -> routine -> log sets -> finish -> vs-plan report -> history", asyn
   await page.getByTestId("log-set").click();
   await expect(page.getByTestId("range-chip")).toHaveText("top of range");
   await expect(page.getByTestId("set-result")).toContainText("e1RM");
-  await expect(page.getByTestId("live-strip")).toContainText("1 hard set");
 
   // Over 10 total reps: a plain line, never an invented estimate.
   await page.getByTestId("weight-field").fill("60");
@@ -109,6 +109,7 @@ test("Today -> routine -> log sets -> finish -> vs-plan report -> history", asyn
   );
 
   // Finish -> vs-plan report -> history.
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await expect(page.getByTestId("finish-save")).toBeEnabled();
   await page.getByTestId("finish-save").click();

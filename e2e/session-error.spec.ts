@@ -47,7 +47,7 @@ test("a failed session-exercises load shows an error, never a blank screen", asy
   await page.unroute("**/api/query?fn=sessions:detail*");
   await page.getByTestId("session-retry").click();
   await expect(page.getByTestId("session-error")).not.toBeVisible();
-  await expect(page.getByTestId("session-finish")).toBeVisible();
+  await expect(page.getByTestId("session-menu")).toBeVisible();
 });
 
 test("a failed exercise load in the in-session picker shows an error, not an empty library", async ({

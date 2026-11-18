@@ -29,7 +29,9 @@ test("a brand-new exercise's first set opens empty, with no last-time row", asyn
 
   await expect(page.getByTestId("weight-field")).toHaveValue("");
   await expect(page.getByTestId("reps-field")).toHaveValue("");
-  await expect(page.getByTestId("last-time-row")).toBeHidden();
+  await expect(page.getByTestId("weight-compare")).toContainText(
+    "no last data",
+  );
 });
 
 test("opening a set pre-fills from last session's same set index, with no user action", async ({
@@ -48,8 +50,7 @@ test("opening a set pre-fills from last session's same set index, with no user a
   await startSessionWith(page, EX);
   await expect(page.getByTestId("weight-field")).toHaveValue("80");
   await expect(page.getByTestId("reps-field")).toHaveValue("10");
-  await expect(page.getByTestId("last-time-row")).toContainText("80");
-  await expect(page.getByTestId("last-time-row")).toContainText("10");
+  await expect(page.getByTestId("set-mark-0")).toBeVisible();
 
   // Committing set 0 advances to set 1, pre-filled from session 1's set 1.
   await logSet(page);
@@ -71,49 +72,44 @@ test("both fields accept direct typing at any time, with no preliminary tap", as
   await expect(page.getByTestId("reps-field")).toHaveValue("12");
 });
 
-test("weight-adjust and reps-adjust mutate the field immediately, no dialog", async ({
+test("the weight and reps rulers mutate the field immediately, no dialog", async ({
   page,
 }) => {
   const EX = await makeExercise(page, "SpotlightAdjust");
   await startSessionWith(page, EX);
 
   await page.getByTestId("weight-field").fill("100");
-  await page.getByTestId("weight-adjust-5").click();
+  await page.getByTestId("weight-ruler").focus();
+  await page.keyboard.press("ArrowRight");
   await expect(page.getByTestId("weight-field")).toHaveValue("105");
-  await page.getByTestId("weight-adjust-2.5").click();
-  await expect(page.getByTestId("weight-field")).toHaveValue("107.5");
-  await page.getByTestId("weight-adjust--2.5").click();
-  await expect(page.getByTestId("weight-field")).toHaveValue("105");
-  await page.getByTestId("weight-adjust--5").click();
-  await expect(page.getByTestId("weight-field")).toHaveValue("100");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await expect(page.getByTestId("weight-field")).toHaveValue("95");
 
   await page.getByTestId("reps-field").fill("5");
-  await page.getByTestId("reps-adjust-1").click();
+  await page.getByTestId("reps-ruler").focus();
+  await page.keyboard.press("ArrowRight");
   await expect(page.getByTestId("reps-field")).toHaveValue("6");
-  await page.getByTestId("reps-adjust-2").click();
-  await expect(page.getByTestId("reps-field")).toHaveValue("8");
-  await page.getByTestId("reps-adjust--1").click();
-  await expect(page.getByTestId("reps-field")).toHaveValue("7");
-  await page.getByTestId("reps-adjust--2").click();
+  await page.keyboard.press("ArrowLeft");
   await expect(page.getByTestId("reps-field")).toHaveValue("5");
 
-  // No dialog/sheet opened by any of the above.
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
-test("weight and reps never go below zero, however many times a jump is pressed", async ({
+test("weight and reps never go below zero, however far the ruler is nudged", async ({
   page,
 }) => {
   const EX = await makeExercise(page, "SpotlightFloor");
   await startSessionWith(page, EX);
 
   await page.getByTestId("weight-field").fill("8");
-  for (let i = 0; i < 4; i++)
-    await page.getByTestId("weight-adjust--5").click();
+  await page.getByTestId("weight-ruler").focus();
+  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowLeft");
   expect(await fieldValue(page, "weight-field")).toBeGreaterThanOrEqual(0);
 
   await page.getByTestId("reps-field").fill("1");
-  for (let i = 0; i < 4; i++) await page.getByTestId("reps-adjust--2").click();
+  await page.getByTestId("reps-ruler").focus();
+  for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowLeft");
   expect(await fieldValue(page, "reps-field")).toBeGreaterThanOrEqual(0);
 });
 
@@ -138,13 +134,14 @@ test("beating last session's value flips data-beat true and states the gain", as
   );
 
   // Push weight above last session's value.
-  await page.getByTestId("weight-adjust-5").click();
+  await page.getByTestId("weight-ruler").focus();
+  await page.keyboard.press("ArrowRight");
   await expect(weightRow).toHaveAttribute("data-beat", "true");
   await expect(page.getByTestId("weight-compare")).toContainText("+5");
 
   // Drop back below last session's value.
-  await page.getByTestId("weight-adjust--5").click();
-  await page.getByTestId("weight-adjust--5").click();
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
   await expect(weightRow).toHaveAttribute("data-beat", "false");
   await expect(page.getByTestId("weight-compare")).not.toContainText(
     /same as last/i,
@@ -166,7 +163,9 @@ test("reps-compare mirrors the same beat/same/below contract independently of we
     .filter({ has: page.getByTestId("reps-compare") });
   await expect(page.getByTestId("reps-compare")).toContainText(/same as last/i);
 
-  await page.getByTestId("reps-adjust-1").click();
+  await page.getByTestId("reps-field").focus();
+  await page.getByTestId("reps-ruler").focus();
+  await page.keyboard.press("ArrowRight");
   await expect(repsRow).toHaveAttribute("data-beat", "true");
   await expect(page.getByTestId("reps-compare")).toContainText("+1");
 });
@@ -182,6 +181,7 @@ test("typing values and switching exercises does not commit a set (Log is the on
 
   // Add a second exercise (pre-Spotlight surface, unchanged by this
   // contract) and switch to it via the header sheet, without pressing Log.
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("open-exercise-picker").click();
   await page.getByTestId(`pick-exercise-${OTHER}`).click();
   await page.getByTestId("exercise-header").click();

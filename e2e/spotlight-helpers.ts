@@ -52,6 +52,7 @@ export async function logBilateralSet(
  * lookup for the next session's spotlight reads whatever's landed server-
  * side, and a page.goto right behind an in-flight finish write can abort it). */
 export async function finishSession(page: Page) {
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).toHaveURL(/\/history\//);

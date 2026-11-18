@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-test("the header shows name + position, and the edge rail is present", async ({
+test("the header shows name + position, and the numbered tabs are present", async ({
   page,
 }) => {
   // EdgeDots renders nothing for a single-exercise session (session.tsx:
@@ -24,12 +24,13 @@ test("the header shows name + position, and the edge rail is present", async ({
   const EX = await makeExercise(page, "NavHeader");
   const OTHER = await makeExercise(page, "NavHeaderOther");
   await startSessionWith(page, EX);
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("open-exercise-picker").click();
   await page.getByTestId(`pick-exercise-${OTHER}`).click();
 
   await expect(page.getByTestId("exercise-name")).toHaveText(OTHER);
   await expect(page.getByTestId("exercise-position")).toContainText("2");
-  await expect(page.getByTestId("exercise-edge-rail")).toBeVisible();
+  await expect(page.getByTestId("exercise-tabs")).toBeVisible();
 });
 
 test("tapping the header opens the exercise sheet listing every exercise in the session", async ({
@@ -38,6 +39,7 @@ test("tapping the header opens the exercise sheet listing every exercise in the 
   const A = await makeExercise(page, "NavSheetA");
   const B = await makeExercise(page, "NavSheetB");
   await startSessionWith(page, A);
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("open-exercise-picker").click();
   await page.getByTestId(`pick-exercise-${B}`).click();
 
@@ -53,6 +55,7 @@ test("picking a row in the exercise sheet switches the spotlight to that exercis
   const A = await makeExercise(page, "NavSwitchA");
   const B = await makeExercise(page, "NavSwitchB");
   await startSessionWith(page, A);
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("open-exercise-picker").click();
   await page.getByTestId(`pick-exercise-${B}`).click();
   await expect(page.getByTestId("exercise-name")).toHaveText(B);
@@ -71,6 +74,8 @@ test("exercise-position advances and a logged set on one exercise doesn't bleed 
   const B = await makeExercise(page, "NavPositionB");
   await startSessionWith(page, A);
   await logBilateralSet(page, "50", "10");
+
+  await page.getByTestId("session-menu").click();
 
   await page.getByTestId("open-exercise-picker").click();
   await page.getByTestId(`pick-exercise-${B}`).click();

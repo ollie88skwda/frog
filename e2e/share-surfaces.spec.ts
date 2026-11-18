@@ -92,6 +92,7 @@ async function logSession(
       "done",
     );
   }
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page.getByTestId("post-save-summary")).toBeVisible();
@@ -237,6 +238,7 @@ test("one layout engine paints every frame × ground of a session card", async (
   await stress.click();
   await expect(page.getByTestId("conditions-chip")).toContainText("stress 4");
   await page.keyboard.press("Escape"); // close the conditions sheet
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page.getByTestId("post-save-summary")).toBeVisible();

@@ -514,10 +514,12 @@
 
 /* Prevent mobile zoom on input focus: iOS auto-zooms any focused control whose
    font-size is < 16px (pinch-zoom stays enabled; see e2e/input-zoom.spec.ts).
-   Scoped to coarse pointers so desktop keeps its denser sizing. */
+   Scoped to coarse pointers so desktop keeps its denser sizing. Inputs that
+   are already 16px+ (the live-set weight/reps numbers) opt out with
+   data-big-input, since the rule exists only to stop the zoom. */
 @layer utilities {
   @media (pointer: coarse) {
-    input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+    input:not([type="file"]):not([type="checkbox"]):not([type="radio"]):not([data-big-input]),
     textarea,
     select {
       font-size: 16px !important;

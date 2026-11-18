@@ -78,6 +78,8 @@ import {
   CaretDown,
   CaretRight,
   Check,
+  ClockCounterClockwise,
+  DotsThree,
   Flame,
   LinkSimple,
   MagnifyingGlass,
@@ -85,6 +87,7 @@ import {
   Microphone,
   Notebook,
   Pause,
+  PencilSimple,
   Play,
   Plus,
   Square,
@@ -141,6 +144,12 @@ import {
 } from "@/components/session-photos";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
@@ -1450,30 +1459,28 @@ export default function SessionScreen() {
         </div>
       )}
 
-      {/* 1. Session line — name, elapsed clock, Finish. */}
+      {/* 1. Top bar — the one clock, voice, and a ⋯ menu (Finish lives here). */}
       <header className="sticky top-0 z-10 bg-bg">
-        <div className="mx-auto flex h-12 max-w-2xl items-center justify-between gap-3 px-4">
-          <h1 className="min-w-0 truncate text-base font-semibold tracking-tight">
-            {session?.title ?? "Session"}
-          </h1>
+        <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-3 px-3">
+          <h1 className="sr-only">{session?.title ?? "Session"}</h1>
+          {session && (
+            <SessionDurationControl
+              startedAt={session.startedAt}
+              endedAt={session.endedAt}
+              paused={paused}
+              pausedMs={pausedMs}
+              pauseStartedAt={pauseStartedAt}
+              onTogglePause={togglePause}
+              onEditStart={(ms) => {
+                void repo.updateSessionStartedAt(sessionId, ms);
+                qc.setQueryData<Session | null>(
+                  ["session", sessionId],
+                  (old) => (old ? { ...old, startedAt: ms } : old),
+                );
+              }}
+            />
+          )}
           <div className="flex shrink-0 items-center gap-2">
-            {session && (
-              <SessionDurationControl
-                startedAt={session.startedAt}
-                endedAt={session.endedAt}
-                paused={paused}
-                pausedMs={pausedMs}
-                pauseStartedAt={pauseStartedAt}
-                onTogglePause={togglePause}
-                onEditStart={(ms) => {
-                  void repo.updateSessionStartedAt(sessionId, ms);
-                  qc.setQueryData<Session | null>(
-                    ["session", sessionId],
-                    (old) => (old ? { ...old, startedAt: ms } : old),
-                  );
-                }}
-              />
-            )}
             {speechSupported && (
               <span className="relative flex items-center">
                 <Button
@@ -1497,15 +1504,41 @@ export default function SessionScreen() {
                 </span>
               </span>
             )}
-            <Button
-              size="lg"
-              onClick={() => setFinishOpen(true)}
-              title="Finish session"
-              data-testid="session-finish"
-            >
-              <Square className="size-3" />
-              Finish
-            </Button>
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <IconButton title="Session menu" data-testid="session-menu">
+                  <DotsThree weight="bold" className="size-5" />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                {activeBlock && (
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      navigate(`/exercises/${activeBlock.exerciseId}`)
+                    }
+                    data-testid="session-menu-history"
+                  >
+                    <ClockCounterClockwise className="size-4" />
+                    History
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  onSelect={() => setPicking(true)}
+                  data-testid="open-exercise-picker"
+                >
+                  <Plus className="size-4" />
+                  Add exercise
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  danger
+                  onSelect={() => setFinishOpen(true)}
+                  data-testid="session-finish"
+                >
+                  <Square className="size-4" />
+                  Finish workout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
@@ -1528,37 +1561,7 @@ export default function SessionScreen() {
           />
         </span>
       </div>
-      {/* Live strip (§8.2): this session's hard sets per muscle (R6, R7). */}
-      <div
-        className="mx-auto flex max-w-2xl items-center gap-2 overflow-x-auto px-4 pb-1.5"
-        data-testid="live-strip"
-      >
-        <p
-          className="num shrink-0 text-xs font-semibold text-ink"
-          data-testid="session-stats"
-        >
-          {live.hardSets} hard {live.hardSets === 1 ? "set" : "sets"}
-        </p>
-        {live.muscles
-          .filter((m) => m.total > 0)
-          .slice(0, 8)
-          .map((m) => (
-            <span
-              key={m.muscle}
-              className="num shrink-0 rounded-xs bg-surface-2 px-1.5 py-0.5 text-2xs text-soft"
-            >
-              {muscleLabel(m.muscle).toLowerCase()}{" "}
-              {Math.round(m.total * 10) / 10}
-            </span>
-          ))}
-        {live.noRirSets > 0 && (
-          <span className="shrink-0 text-2xs text-faint">
-            {live.noRirSets} without RIR
-          </span>
-        )}
-      </div>
-
-      <div className="mx-auto flex max-w-2xl flex-col">
+      <div className="mx-auto flex max-w-2xl flex-col pb-[420px]">
         {activeBlock ? (
           <ExerciseSpotlight
             key={activeBlock.seId}
@@ -1613,19 +1616,6 @@ export default function SessionScreen() {
             <p className="text-center text-sm text-faint">No exercises yet.</p>
           </div>
         )}
-
-        <div className="px-4 pb-24">
-          <Button
-            variant="outline"
-            size="lg"
-            className="mt-3 w-full"
-            onClick={() => setPicking(true)}
-            data-testid="open-exercise-picker"
-          >
-            <Plus className="size-4" />
-            Add exercise
-          </Button>
-        </div>
       </div>
 
       <ExerciseSwitcher
@@ -2435,49 +2425,92 @@ type Mark = {
   onTap?: () => void;
 };
 
-function MarksBand({ marks }: { marks: Mark[] }) {
+function rirLabel(r: {
+  rirMin?: number | null;
+  rirMax?: number | null;
+  rir?: number | null;
+}): string {
+  const lo = r.rirMin ?? r.rir ?? null;
+  const hi = r.rirMax ?? r.rir ?? null;
+  if (lo == null && hi == null) return "";
+  const a = lo ?? (hi as number);
+  const b = hi ?? a;
+  return a === b ? `RIR ${a}` : `RIR ${a}-${b}`;
+}
+
+// v8 set list: one 48px row per set (done / warm-up / current "Now" / planned),
+// tap a row to open that set in the entry panel. Same set-mark-* test hooks as
+// the old marks band.
+function SetRows({
+  marks,
+  rows,
+}: {
+  marks: Mark[];
+  rows: { text: string; lastText: string; rirText: string; hasNote: boolean }[];
+}) {
   return (
-    <div className="flex" data-testid="marks-band">
-      {marks.map((m, i) => (
-        <button
-          // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
-          key={`${m.kind}-${i}`}
-          type="button"
-          disabled={!m.onTap}
-          onClick={m.onTap}
-          className={cn(
-            "relative min-w-0 flex-1 pt-2 pb-4 text-center text-base leading-none",
-            m.kind === "done" && "text-accent-ink",
-            m.kind === "warmup" && "text-warn",
-            m.kind === "todo" && "text-disabled",
-            m.kind === "current" && "bg-ink text-on-action",
-          )}
-          data-testid={`set-mark-${i}`}
-        >
-          <span data-testid={`set-mark-${i}-state`} data-state={m.kind}>
-            {m.kind === "current" ? "●" : m.kind === "todo" ? "○" : "✓"}
-          </span>
-          {m.paired && (
+    <div className="flex flex-col px-3" data-testid="marks-band">
+      {marks.map((m, i) => {
+        const r = rows[i];
+        return (
+          <button
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
+            key={`${m.kind}-${i}`}
+            type="button"
+            disabled={!m.onTap}
+            onClick={m.onTap}
+            className={cn(
+              "rounded-md relative grid min-h-12 w-full grid-cols-[28px_1fr_auto] items-center gap-2 px-2.5 text-left text-[17px]",
+              m.kind === "current" && "bg-accent-soft",
+              m.kind === "todo" && "text-faint",
+            )}
+            data-testid={`set-mark-${i}`}
+          >
             <span
-              data-testid={`set-mark-${i}-side-tag`}
-              className="absolute right-0 bottom-0.5 left-0 text-2xs leading-none font-bold text-faint"
+              className={cn(
+                "rounded-sm num flex size-6 items-center justify-center text-xs font-semibold",
+                m.kind === "current"
+                  ? "bg-accent text-ink"
+                  : m.kind === "todo"
+                    ? "bg-surface-2 text-soft"
+                    : "bg-accent-soft text-accent-ink",
+                m.kind === "warmup" && "bg-surface-2 text-warn",
+              )}
+              data-testid={`set-mark-${i}-state`}
+              data-state={m.kind}
             >
-              ᴸᴿ
+              {m.kind === "warmup" ? "W" : i + 1}
             </span>
-          )}
-          {m.kind === "warmup" && (
-            <span className="absolute right-0 bottom-0.5 left-0 text-2xs leading-none font-bold text-faint">
-              W
+            <span className="num min-w-0 truncate font-semibold">
+              {m.kind === "current"
+                ? "Now"
+                : m.kind === "todo"
+                  ? r.lastText || "Planned"
+                  : r.text}
+              {m.paired && (
+                <span
+                  data-testid={`set-mark-${i}-side-tag`}
+                  className="ml-1.5 text-2xs font-bold text-faint"
+                >
+                  ᴸᴿ
+                </span>
+              )}
+              {m.pr && (
+                <Medal
+                  className="ml-1.5 inline size-3.5 text-accent-ink"
+                  data-testid={`set-mark-${i}-medal`}
+                />
+              )}
             </span>
-          )}
-          {m.pr && (
-            <Medal
-              className="absolute top-0.5 right-0.5 size-2.5 text-accent-ink"
-              data-testid={`set-mark-${i}-medal`}
-            />
-          )}
-        </button>
-      ))}
+            <span className="num flex items-center gap-2 text-sm text-faint">
+              {m.kind === "current" && r.lastText
+                ? `last ${r.lastText}`
+                : r.rirText}
+              {r.hasNote && <Notebook className="size-4 text-accent-ink" />}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -3215,10 +3248,8 @@ function ExerciseSpotlight({
 
   return (
     <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      <EdgeDots total={total} position={position} />
-
       {/* 2. Exercise header. */}
-      <header className="px-4 pt-3 pb-2.5" data-testid={`block-${block.name}`}>
+      <header className="px-5 pt-1 pb-2" data-testid={`block-${block.name}`}>
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -3226,9 +3257,8 @@ function ExerciseSpotlight({
             className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
             data-testid="exercise-header"
           >
-            <ExerciseThumb imageUrl={exercise?.imageUrl} name={block.name} />
             <span
-              className="min-w-0 truncate text-2xl font-bold tracking-tight"
+              className="min-w-0 truncate text-[28px] leading-tight font-bold tracking-tight"
               data-testid="exercise-name"
             >
               {block.name}
@@ -3256,41 +3286,43 @@ function ExerciseSpotlight({
           />
         </div>
         {tabs.length > 1 && (
-          <div
-            className="mt-2 flex gap-1.5 overflow-x-auto"
-            data-testid="exercise-tabs"
-          >
-            {tabs.map((tab, i) => {
-              const current = i === position - 1;
-              return (
-                <button
-                  key={tab.seId}
-                  type="button"
-                  onClick={() => onJump(tab.seId)}
-                  aria-label={`${tab.name}${tab.sets ? `, ${tab.sets} sets logged` : ""}`}
-                  aria-current={current ? "true" : undefined}
-                  data-testid={`exercise-tab-${i}`}
-                  className={cn(
-                    "rounded-md flex h-14 w-32 shrink-0 flex-col items-start justify-center gap-0.5 px-3 text-left transition-colors duration-100",
-                    current
-                      ? "bg-accent text-accent-fg"
-                      : tab.done
-                        ? "bg-accent-soft text-accent-ink"
-                        : "bg-surface-2 text-soft",
-                  )}
-                >
-                  <span className="w-full truncate text-xs leading-tight font-semibold">
-                    {tab.name}
-                  </span>
-                  <span className="num flex items-center gap-1 text-2xs leading-none opacity-80">
-                    {tab.done && !current && <Check className="size-3" />}
-                    {tab.sets === 0
-                      ? "Not started"
-                      : `${tab.sets} ${tab.sets === 1 ? "set" : "sets"}`}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="mt-2 flex items-center gap-1">
+            <div
+              className="flex min-w-0 flex-1 gap-1 overflow-x-auto"
+              data-testid="exercise-tabs"
+            >
+              {tabs.map((tab, i) => {
+                const current = i === position - 1;
+                return (
+                  <button
+                    key={tab.seId}
+                    type="button"
+                    onClick={() => onJump(tab.seId)}
+                    aria-label={`${tab.name}${tab.sets ? `, ${tab.sets} sets logged` : ""}`}
+                    aria-current={current ? "true" : undefined}
+                    data-testid={`exercise-tab-${i}`}
+                    className={cn(
+                      "rounded-sm num flex h-11 w-11 shrink-0 items-center justify-center text-sm font-semibold transition-colors duration-100",
+                      current
+                        ? "bg-accent text-ink"
+                        : tab.done
+                          ? "bg-accent-soft text-accent-ink"
+                          : "bg-surface-2 text-soft",
+                    )}
+                  >
+                    {tab.done && !current ? (
+                      <Check className="size-4" />
+                    ) : (
+                      i + 1
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="num shrink-0 pl-2 text-sm text-soft">
+              {countSets(block.committed)}/
+              {Math.max(seedSets.length, countSets(block.committed) + 1)} sets
+            </span>
           </div>
         )}
         <div className="mt-1 flex min-w-0 items-center gap-2">
@@ -3371,7 +3403,24 @@ function ExerciseSpotlight({
       </header>
 
       {/* 3. Set band. */}
-      <MarksBand marks={marks} />
+      <SetRows
+        marks={marks}
+        rows={marks.map((m, i) => {
+          const g = committedGroups[i];
+          const text = g
+            ? fieldsFor(type)
+                .map((k) => fieldText(k, g[0], blockUnit, distUnit))
+                .filter((t) => t !== "—")
+                .join(" × ")
+            : "";
+          const lastText = fieldsFor(type)
+            .map((k) => fieldText(k, ghostFor(ghost, i), blockUnit, distUnit))
+            .filter((t) => t !== "—")
+            .join(" × ");
+          const rirText = g ? rirLabel(g[0]) : "";
+          return { text, lastText, rirText, hasNote: !!g?.some((r) => r.note) };
+        })}
+      />
 
       {/* 4 + 5. The spotlight + action zone — one persistent spotlight, live
           or focused on a committed set via a marks-band tap (never a second
@@ -3813,6 +3862,9 @@ function Spotlight({
   // this set already carries a value for one); `metricDraft` is their raw
   // text, parsed by type at commit.
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [activeCol, setActiveCol] = useState<"weight" | "reps" | "rir">(
+    "weight",
+  );
   const [note, setNote] = useState(
     () => draft?.note ?? (isEditing ? (left?.note ?? "") : ""),
   );
@@ -4421,9 +4473,408 @@ function Spotlight({
 
   const primaryFields = fields.filter((k) => k !== "reps" || !isUnilateral);
 
+  const detailsDialog = (
+    <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+      <DialogContent title={`Set ${index + 1} details`}>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-1.5">
+            <span className="text-2xs font-bold tracking-widest text-faint uppercase">
+              RIR
+            </span>
+            <InfoTip lessonId="rir" />
+          </div>
+          <label className="flex flex-col gap-1">
+            <span className="text-2xs font-bold tracking-widest text-faint uppercase">
+              Note
+            </span>
+            <Textarea
+              rows={3}
+              placeholder="// note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              data-testid={`set-${index}-note`}
+              className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
+            />
+          </label>
+          {enabledMetrics
+            .filter((m) => extras.has(m.id))
+            .map((m) => (
+              <div key={m.id} className="flex flex-col gap-1">
+                <span className="text-2xs font-bold tracking-widest text-faint uppercase">
+                  {m.name}
+                </span>
+                {m.type === "checkbox" ? (
+                  <input
+                    type="checkbox"
+                    checked={metricDraft[m.id] === "true"}
+                    onChange={(e) =>
+                      setMetricDraft((d) => ({
+                        ...d,
+                        [m.id]: e.target.checked ? "true" : "",
+                      }))
+                    }
+                    className="size-4 justify-self-start accent-(--color-accent-mark)"
+                    data-testid={`set-${index}-metric-${m.id}`}
+                  />
+                ) : (
+                  <Input
+                    inputMode={m.type === "text" ? undefined : "decimal"}
+                    placeholder={m.type === "text" ? m.name : "0"}
+                    value={metricDraft[m.id] ?? ""}
+                    onChange={(e) =>
+                      setMetricDraft((d) => ({
+                        ...d,
+                        [m.id]: e.target.value,
+                      }))
+                    }
+                    autoFocus={lastAdded === m.id}
+                    className="num"
+                    data-testid={`set-${index}-metric-${m.id}`}
+                  />
+                )}
+              </div>
+            ))}
+          {enabledMetrics.some((m) => !extras.has(m.id)) && (
+            <div className="flex flex-wrap gap-1.5 pt-3">
+              {enabledMetrics
+                .filter((m) => !extras.has(m.id))
+                .map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => toggleExtra(m.id)}
+                    data-testid={`set-${index}-add-${m.id}`}
+                    className="rounded-sm flex items-center gap-1 bg-surface-2 px-2.5 py-1 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+                  >
+                    <Plus className="size-3" />
+                    {m.name}
+                  </button>
+                ))}
+            </div>
+          )}
+          {barLoaded && (
+            <button
+              type="button"
+              onClick={() => {
+                setDetailsOpen(false);
+                onOpenPlates(
+                  weight.trim() === "" ? null : Number.parseFloat(weight),
+                );
+              }}
+              data-testid={`set-${index}-plates`}
+              className="flex items-center gap-2 pt-3 text-left text-xs text-soft transition-colors duration-150 hover:text-ink"
+            >
+              <Calculator className="size-3.5" />
+              Plate calculator
+            </button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   const currentReps = Number.parseInt(reps, 10);
   const restLabel =
     left?.restSec != null ? formatDurationSeconds(left.restSec * 1000) : null;
+
+  const simple =
+    f.weight && f.reps && !f.duration && !f.distance && !isUnilateral;
+  if (simple) {
+    const wCmp = comparison("weight", weight);
+    const rCmp = comparison("reps", reps);
+    const ghostW =
+      ghost.weightKg != null ? toDisplayWeight(ghost.weightKg, unit) : null;
+    const ghostR = ghost.reps ?? null;
+    const rirSel = rirSegmentOf(rirMin, rirMax);
+    const wUnit = weightLabel(type, unitLabel(unit));
+    const cols: {
+      key: "weight" | "reps" | "rir";
+      beat: boolean;
+    }[] = [
+      { key: "weight", beat: wCmp.state === "up" },
+      { key: "reps", beat: rCmp.state === "up" },
+      ...(effort ? [{ key: "rir" as const, beat: false }] : []),
+    ];
+    return (
+      <div
+        className="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-2xl rounded-t-lg bg-surface px-2 pt-2"
+        data-testid="entry-panel"
+      >
+        <span className="sr-only" />
+        <div className="flex min-h-11 items-center gap-2 px-2">
+          <span
+            className="text-sm font-semibold text-soft"
+            data-testid="set-number"
+          >
+            Set {index + 1}
+          </span>
+          {topSet && setType !== "warmup" && (
+            <span
+              className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-bold tracking-widest text-accent-ink uppercase"
+              data-testid="top-set-label"
+            >
+              Top set
+            </span>
+          )}
+          {setType === "warmup" && (
+            <span className="rounded-xs bg-secondary px-1.5 py-0.5 text-2xs font-bold tracking-widest text-warn uppercase">
+              Warm-up
+            </span>
+          )}
+          {isEditing && restLabel && (
+            <span
+              className="num text-2xs text-faint"
+              data-testid={`set-rest-stamp-${index}`}
+            >
+              rested {restLabel}
+            </span>
+          )}
+          <span className="ml-auto flex items-center gap-1">
+            <IconButton
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setDetailsOpen(true)}
+              title="Set note and details"
+              data-testid={`set-${index}-more`}
+            >
+              <PencilSimple className="size-4" />
+            </IconButton>
+            <SetActionsMenu
+              isWarmup={setType === "warmup"}
+              onToggleWarmup={() => {
+                const next = setType === "warmup" ? "normal" : "warmup";
+                setSetType(next);
+                if (isEditing) onSaveType({ setType: next });
+              }}
+              isUnilateral={isUnilateral}
+              onToggleUnilateral={() => {
+                const next = !isUnilateral;
+                if (isEditing) {
+                  onSetLaterality(next);
+                } else {
+                  setIsUnilateral(next);
+                  onLateralityOverrideChange(next ? "unilateral" : "bilateral");
+                }
+              }}
+              onDelete={isEditing ? onDeleteCommitted : null}
+            />
+          </span>
+        </div>
+
+        <div className="flex">
+          {cols.map(({ key, beat }) => {
+            const on = activeCol === key;
+            const label =
+              key === "weight" ? "Weight" : key === "reps" ? "Reps" : "RIR";
+            return (
+              <div
+                key={key}
+                className={cn(
+                  "relative flex min-h-[76px] flex-1 flex-col items-center gap-0.5 px-1 pt-1 pb-2",
+                  on ? "text-ink" : "text-faint",
+                )}
+                data-beat={key === "rir" ? undefined : beat ? "true" : "false"}
+              >
+                {key === "rir" ? (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setActiveCol("rir")}
+                    className="num min-h-11 leading-none font-bold tracking-tight"
+                    style={{ fontSize: 44 }}
+                    data-testid="rir-column"
+                    aria-label={`RIR ${rirSel ?? "not set"}`}
+                  >
+                    {rirSel == null ? "–" : rirSel === 4 ? "4+" : rirSel}
+                  </button>
+                ) : (
+                  <span className="flex items-baseline justify-center">
+                    <input
+                      inputMode={key === "weight" ? "decimal" : "numeric"}
+                      data-big-input
+                      value={key === "weight" ? weight : reps}
+                      placeholder={seedPlaceholder(key)}
+                      onChange={(e) =>
+                        key === "weight"
+                          ? setWeight(e.target.value)
+                          : setReps(e.target.value)
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
+                      onFocus={() => {
+                        setActiveCol(key);
+                        if (restStartedAt != null) onStopRest();
+                      }}
+                      size={Math.max(
+                        2,
+                        (key === "weight" ? weight : reps).length,
+                      )}
+                      className="num min-h-11 min-w-0 bg-transparent text-center leading-none font-bold tracking-tight outline-none placeholder:text-faint"
+                      style={{
+                        fontSize: 44,
+                        width: `${Math.max(2, (key === "weight" ? weight : reps).length) + 0.4}ch`,
+                      }}
+                      data-testid={
+                        key === "weight" ? "weight-field" : "reps-field"
+                      }
+                      aria-label={label}
+                      aria-invalid={
+                        key === "weight" && weightError ? true : undefined
+                      }
+                    />
+                    {key === "weight" && (
+                      <small className="text-[13px] font-semibold">
+                        {wUnit}
+                      </small>
+                    )}
+                  </span>
+                )}
+                <span className="num flex items-center gap-1 text-xs text-soft">
+                  {label}
+                  {key === "weight" && barLoaded && (
+                    <>
+                      {" · "}
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() =>
+                          onOpenPlates(
+                            weight.trim() === ""
+                              ? null
+                              : Number.parseFloat(weight),
+                          )
+                        }
+                        className="min-h-6 underline underline-offset-2"
+                        data-testid="set-plates"
+                      >
+                        plates
+                      </button>
+                    </>
+                  )}
+                </span>
+                {key !== "rir" && (
+                  <span
+                    className={cn(
+                      "num text-2xs font-semibold",
+                      (key === "weight" ? wCmp : rCmp).state === "up" &&
+                        "text-accent-ink",
+                      (key === "weight" ? wCmp : rCmp).state === "down" &&
+                        "text-warn",
+                      ((key === "weight" ? wCmp : rCmp).state === "same" ||
+                        (key === "weight" ? wCmp : rCmp).state === "none") &&
+                        "text-faint",
+                    )}
+                    data-testid={
+                      key === "weight" ? "weight-compare" : "reps-compare"
+                    }
+                  >
+                    {(key === "weight" ? wCmp : rCmp).text}
+                  </span>
+                )}
+                {on && (
+                  <span className="absolute inset-x-4 bottom-0 h-[3px] rounded-t-xs bg-accent-ink" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {weightError && (
+          <p
+            id="weight-error"
+            role="alert"
+            className="pt-1 text-center text-xs font-bold text-neg"
+            data-testid="weight-error"
+          >
+            Add a weight to log this set.
+          </p>
+        )}
+
+        <div className="rounded-sm mt-1 bg-bg">
+          {activeCol === "weight" && (
+            <Ruler
+              value={Number.parseFloat(weight) || 0}
+              min={0}
+              max={unit === "lb" ? 1000 : 500}
+              step={fieldStep("weight", unit)}
+              majorEvery={4}
+              pxPerStep={14}
+              ghost={ghostW}
+              label="Weight ruler"
+              unit={wUnit}
+              testId="weight-ruler"
+              onStart={() => {
+                if (restStartedAt != null) onStopRest();
+              }}
+              onChange={(v) => setWeight(String(v))}
+            />
+          )}
+          {activeCol === "reps" && (
+            <Ruler
+              value={Number.parseFloat(reps) || 0}
+              min={0}
+              max={100}
+              step={1}
+              majorEvery={5}
+              pxPerStep={22}
+              ghost={ghostR}
+              label="Reps ruler"
+              unit="reps"
+              testId="reps-ruler"
+              onStart={() => {
+                if (restStartedAt != null) onStopRest();
+              }}
+              onChange={(v) => setReps(String(v))}
+            />
+          )}
+          {effort && (
+            <div className={cn("p-2", activeCol !== "rir" && "hidden")}>
+              <RirSegmented
+                min={rirMin}
+                max={rirMax}
+                onChange={(v) => {
+                  setRirMin(v.min);
+                  setRirMax(v.max);
+                }}
+                hint={rirHintValue}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="px-1 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          {restStartedAt != null ? (
+            <RestStopwatch
+              startedAt={restStartedAt}
+              setNumber={index + 1}
+              onStop={onStopRest}
+            />
+          ) : (
+            <Button
+              size="lg"
+              className="h-14 w-full rounded-lg bg-accent text-lg font-bold text-ink hover:bg-accent md:h-14"
+              onClick={submit}
+              data-testid="log-set"
+            >
+              <Check className="size-5" />
+              {isEditing
+                ? "Save"
+                : logLabel({
+                    weight,
+                    reps,
+                    weightUnit: unitLabel(unit),
+                    setNo: index + 1,
+                    unilateral: false,
+                    rightWeight: "",
+                    rightReps: "",
+                  })}
+            </Button>
+          )}
+        </div>
+        {detailsDialog}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2.5 px-4 pt-2.5 pb-4">
@@ -4732,108 +5183,7 @@ function Spotlight({
         )}
       </div>
 
-      {/* Set details sheet (`set-{index}-more`): the four things the hero row
-          has no room for — the RIR InfoTip (always shown, per tips.spec.ts),
-          a per-set note, opt-in custom metrics, and the plate calculator.
-          Nothing here is required to log a set — it's all optional detail
-          reachable without leaving the row. */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent title={`Set ${index + 1} details`}>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="text-2xs font-bold tracking-widest text-faint uppercase">
-                RIR
-              </span>
-              <InfoTip lessonId="rir" />
-            </div>
-            <label className="flex flex-col gap-1">
-              <span className="text-2xs font-bold tracking-widest text-faint uppercase">
-                Note
-              </span>
-              <Textarea
-                rows={3}
-                placeholder="// note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                data-testid={`set-${index}-note`}
-                className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
-              />
-            </label>
-            {enabledMetrics
-              .filter((m) => extras.has(m.id))
-              .map((m) => (
-                <div key={m.id} className="flex flex-col gap-1">
-                  <span className="text-2xs font-bold tracking-widest text-faint uppercase">
-                    {m.name}
-                  </span>
-                  {m.type === "checkbox" ? (
-                    <input
-                      type="checkbox"
-                      checked={metricDraft[m.id] === "true"}
-                      onChange={(e) =>
-                        setMetricDraft((d) => ({
-                          ...d,
-                          [m.id]: e.target.checked ? "true" : "",
-                        }))
-                      }
-                      className="size-4 justify-self-start accent-(--color-accent-mark)"
-                      data-testid={`set-${index}-metric-${m.id}`}
-                    />
-                  ) : (
-                    <Input
-                      inputMode={m.type === "text" ? undefined : "decimal"}
-                      placeholder={m.type === "text" ? m.name : "0"}
-                      value={metricDraft[m.id] ?? ""}
-                      onChange={(e) =>
-                        setMetricDraft((d) => ({
-                          ...d,
-                          [m.id]: e.target.value,
-                        }))
-                      }
-                      autoFocus={lastAdded === m.id}
-                      className="num"
-                      data-testid={`set-${index}-metric-${m.id}`}
-                    />
-                  )}
-                </div>
-              ))}
-            {enabledMetrics.some((m) => !extras.has(m.id)) && (
-              <div className="flex flex-wrap gap-1.5 pt-3">
-                {enabledMetrics
-                  .filter((m) => !extras.has(m.id))
-                  .map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => toggleExtra(m.id)}
-                      data-testid={`set-${index}-add-${m.id}`}
-                      className="rounded-sm flex items-center gap-1 bg-surface-2 px-2.5 py-1 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
-                    >
-                      <Plus className="size-3" />
-                      {m.name}
-                    </button>
-                  ))}
-              </div>
-            )}
-            {barLoaded && (
-              <button
-                type="button"
-                onClick={() => {
-                  setDetailsOpen(false);
-                  onOpenPlates(
-                    weight.trim() === "" ? null : Number.parseFloat(weight),
-                  );
-                }}
-                data-testid={`set-${index}-plates`}
-                className="flex items-center gap-2 pt-3 text-left text-xs text-soft transition-colors duration-150 hover:text-ink"
-              >
-                <Calculator className="size-3.5" />
-                Plate calculator
-              </button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {detailsDialog}
     </div>
   );
 }

@@ -52,6 +52,7 @@ test("session picker over the full library opens interactive under 2s", async ({
   // still catches a real regression (ungated per-row queries were ~10×).
   const timeOpen = async () => {
     const t0 = await page.evaluate(() => performance.now());
+    await page.getByTestId("session-menu").click();
     await page.getByTestId("open-exercise-picker").click();
     await search.waitFor();
     await page.locator('[data-testid^="pick-exercise-"]').first().waitFor();

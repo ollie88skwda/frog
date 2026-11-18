@@ -114,6 +114,7 @@ test("no superset or drop-set control exists anywhere in the session screen", as
   const A = await makeExercise(page, "NoSSControlGlobalA");
   const B = await makeExercise(page, "NoSSControlGlobalB");
   await startSessionWith(page, A);
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("open-exercise-picker").click();
   await page.getByTestId(`pick-exercise-${B}`).click();
 

@@ -138,6 +138,7 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   );
 
   // Finish with Update Routine Values ON (default).
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await expect(page.getByTestId("finish-summary")).toBeVisible();
   await expect(page.getByTestId("finish-update-values")).toBeChecked();

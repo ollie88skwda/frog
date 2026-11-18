@@ -24,6 +24,7 @@ test("a session carrying legacy superset + drop-set data still renders on reload
 
   await startSessionWith(page, A);
   await logBilateralSet(page, "80", "8");
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("open-exercise-picker").click();
   await page.getByTestId(`pick-exercise-${B}`).click();
   await logBilateralSet(page, "60", "10");
