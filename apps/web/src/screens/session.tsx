@@ -1585,6 +1585,8 @@ export default function SessionScreen() {
             tabs={blocks.map((b) => ({
               seId: b.seId,
               done: countSets(b.committed) > 0,
+              name: b.name,
+              sets: countSets(b.committed),
             }))}
             onJump={setActiveSeId}
             prSetIds={prSetIds}
@@ -2864,7 +2866,7 @@ function ExerciseSpotlight({
   onRemoveBlock: () => void;
   onOpenSwitcher: () => void;
   onSwipe: (delta: -1 | 1) => void;
-  tabs: { seId: string; done: boolean }[];
+  tabs: { seId: string; done: boolean; name: string; sets: number }[];
   onJump: (seId: string) => void;
   prSetIds: Set<string>;
   prSnapshot: Map<string, ExerciseRecords> | null;
@@ -3265,11 +3267,11 @@ function ExerciseSpotlight({
                   key={tab.seId}
                   type="button"
                   onClick={() => onJump(tab.seId)}
-                  aria-label={`Exercise ${i + 1}${tab.done ? ", has logged sets" : ""}`}
+                  aria-label={`${tab.name}${tab.sets ? `, ${tab.sets} sets logged` : ""}`}
                   aria-current={current ? "true" : undefined}
                   data-testid={`exercise-tab-${i}`}
                   className={cn(
-                    "rounded-sm num flex size-11 shrink-0 items-center justify-center text-sm font-semibold transition-colors duration-100",
+                    "rounded-md flex h-14 w-32 shrink-0 flex-col items-start justify-center gap-0.5 px-3 text-left transition-colors duration-100",
                     current
                       ? "bg-accent text-accent-fg"
                       : tab.done
@@ -3277,7 +3279,15 @@ function ExerciseSpotlight({
                         : "bg-surface-2 text-soft",
                   )}
                 >
-                  {tab.done && !current ? <Check className="size-4" /> : i + 1}
+                  <span className="w-full truncate text-xs leading-tight font-semibold">
+                    {tab.name}
+                  </span>
+                  <span className="num flex items-center gap-1 text-2xs leading-none opacity-80">
+                    {tab.done && !current && <Check className="size-3" />}
+                    {tab.sets === 0
+                      ? "Not started"
+                      : `${tab.sets} ${tab.sets === 1 ? "set" : "sets"}`}
+                  </span>
                 </button>
               );
             })}
