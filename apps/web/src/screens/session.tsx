@@ -134,6 +134,7 @@ import {
   setTarget,
 } from "@/components/session/prescription";
 import { RestStopwatch } from "@/components/session/rest-stopwatch";
+import { Ruler } from "@/components/session/ruler";
 import {
   FinishPhotoStrip,
   type PendingPhoto,
@@ -1581,6 +1582,11 @@ export default function SessionScreen() {
             onRemoveBlock={() => removeBlock(activeBlock.seId)}
             onOpenSwitcher={() => setSwitcherOpen(true)}
             onSwipe={gotoOffset}
+            tabs={blocks.map((b) => ({
+              seId: b.seId,
+              done: countSets(b.committed) > 0,
+            }))}
+            onJump={setActiveSeId}
             prSetIds={prSetIds}
             prSnapshot={prSnapshot}
             voiceFill={voiceFill?.seId === activeBlock.seId ? voiceFill : null}
@@ -2822,6 +2828,8 @@ function ExerciseSpotlight({
   onRemoveBlock,
   onOpenSwitcher,
   onSwipe,
+  tabs,
+  onJump,
   prSetIds,
   prSnapshot,
   voiceFill,
@@ -2856,6 +2864,8 @@ function ExerciseSpotlight({
   onRemoveBlock: () => void;
   onOpenSwitcher: () => void;
   onSwipe: (delta: -1 | 1) => void;
+  tabs: { seId: string; done: boolean }[];
+  onJump: (seId: string) => void;
   prSetIds: Set<string>;
   prSnapshot: Map<string, ExerciseRecords> | null;
   voiceFill: { weightKg: number | null; reps: number | null } | null;
@@ -3216,7 +3226,7 @@ function ExerciseSpotlight({
           >
             <ExerciseThumb imageUrl={exercise?.imageUrl} name={block.name} />
             <span
-              className="min-w-0 truncate text-xl font-bold tracking-tight"
+              className="min-w-0 truncate text-2xl font-bold tracking-tight"
               data-testid="exercise-name"
             >
               {block.name}
@@ -3243,6 +3253,36 @@ function ExerciseSpotlight({
             busy={copying || copyError != null}
           />
         </div>
+        {tabs.length > 1 && (
+          <div
+            className="mt-2 flex gap-1.5 overflow-x-auto"
+            data-testid="exercise-tabs"
+          >
+            {tabs.map((tab, i) => {
+              const current = i === position - 1;
+              return (
+                <button
+                  key={tab.seId}
+                  type="button"
+                  onClick={() => onJump(tab.seId)}
+                  aria-label={`Exercise ${i + 1}${tab.done ? ", has logged sets" : ""}`}
+                  aria-current={current ? "true" : undefined}
+                  data-testid={`exercise-tab-${i}`}
+                  className={cn(
+                    "rounded-sm num flex size-11 shrink-0 items-center justify-center text-sm font-semibold transition-colors duration-100",
+                    current
+                      ? "bg-accent text-accent-fg"
+                      : tab.done
+                        ? "bg-accent-soft text-accent-ink"
+                        : "bg-surface-2 text-soft",
+                  )}
+                >
+                  {tab.done && !current ? <Check className="size-4" /> : i + 1}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <div className="mt-1 flex min-w-0 items-center gap-2">
           <span
             className="num shrink-0 text-2xs text-faint"
@@ -4302,6 +4342,25 @@ function Spotlight({
             </IconButton>
           )}
         </div>
+        {(key === "weight" || key === "reps") && (
+          <div className="mb-2" data-testid={`${key}-ruler-wrap`}>
+            <Ruler
+              value={Number.parseFloat(value) || 0}
+              min={0}
+              max={key === "weight" ? (unit === "lb" ? 1000 : 500) : 100}
+              step={fieldStep(key, unit)}
+              majorEvery={key === "weight" ? (unit === "lb" ? 4 : 4) : 5}
+              pxPerStep={key === "weight" ? 14 : 22}
+              label={`${label} ruler`}
+              unit={unitTxt}
+              testId={`${key}-ruler`}
+              onStart={() => {
+                if (restStartedAt != null) onStopRest();
+              }}
+              onChange={(v) => setValue(String(v))}
+            />
+          </div>
+        )}
         {key === "weight" && weightError && (
           <p
             id="weight-error"

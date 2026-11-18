@@ -66,3 +66,19 @@ export function logLabel(opts: {
   if (!parts.length) return `Log set ${opts.setNo}${side}`;
   return `Log ${parts.join(" × ")}${side}`;
 }
+
+/** Snaps `v` to the nearest `step` multiple and clamps to [min, max]; 2dp. */
+export function snapToStep(
+  v: number,
+  step: number,
+  min: number,
+  max: number,
+): number {
+  const snapped = Math.round(v / step) * step;
+  return Math.round(Math.min(max, Math.max(min, snapped)) * 100) / 100;
+}
+
+/** Ruler detent: whether the tick at `index` (steps from zero) is a major tick. */
+export function isMajorTick(index: number, majorEvery: number): boolean {
+  return index % majorEvery === 0;
+}
