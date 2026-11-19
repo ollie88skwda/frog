@@ -48,7 +48,7 @@ export function RestStopwatch({
         type="button"
         onClick={onStop}
         title={`Resting after set ${setNumber} — tap to stop`}
-        className="rounded-sm num flex h-11 items-center gap-2 bg-accent-soft px-3 text-[15px] font-semibold text-accent-ink"
+        className="rounded-sm num flex h-11 items-center gap-2 bg-accent-soft px-3 text-sm font-semibold text-accent-ink"
         data-testid="rest-stopwatch"
       >
         <span

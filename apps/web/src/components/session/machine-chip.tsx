@@ -57,7 +57,7 @@ export function MachineChip({
         disabled={disabled}
         onClick={() => setOpen(true)}
         title={machine ? "Change machine" : "Pick the machine you're on"}
-        className="max-w-full self-start"
+        className="h-11 max-w-full self-start md:h-11"
         data-testid="exercise-machine-chip"
       >
         {machine && <Wrench className="size-3.5 shrink-0" />}

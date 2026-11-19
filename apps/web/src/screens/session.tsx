@@ -74,6 +74,7 @@ import {
   weightLabel,
 } from "@frog/core";
 import {
+  ArrowCounterClockwise,
   Calculator,
   CaretDown,
   CaretRight,
@@ -91,6 +92,7 @@ import {
   PencilSimple,
   Play,
   Plus,
+  SlidersHorizontal,
   Square,
   Trash,
   Wrench,
@@ -149,6 +151,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { IconButton } from "@/components/ui/icon-button";
@@ -393,6 +396,10 @@ function fieldText(
 // ── RIR / RPE: shared effort controls (locked decision — segmented RIR,
 // compact RPE, both single-value, replacing the old free min/max range) ─────
 
+// The screen's quiet square controls (menus, note, clock): 44px, one resting
+// fill that reads on the page and on the entry panel in both modes.
+const CHROME_BTN = "size-11 bg-secondary text-ink hover:bg-active md:size-11";
+
 const RIR_SEGMENTS = [0, 1, 2, 3, 4] as const;
 
 // Contract testid for one RIR segment: value ∈ 0,1,2,3,4plus ("rir-option-{value}",
@@ -408,20 +415,25 @@ function RirSegmented({
   onChange,
   side,
   hint,
+  bare,
 }: {
   min: string;
   max: string;
   onChange: (v: { min: string; max: string }) => void;
   side?: "left" | "right";
+  /** No "RIR" caption: the entry panel's column already labels it. */
+  bare?: boolean;
   /** Planned segment, outlined until tapped; never selected by itself. */
   hint?: number | null;
 }) {
   const selected = rirSegmentOf(min, max);
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-2xs font-medium tracking-widest text-faint uppercase">
-        RIR
-      </span>
+      {!bare && (
+        <span className="text-2xs font-medium tracking-widest text-soft uppercase">
+          RIR
+        </span>
+      )}
       <div className="flex gap-1">
         {RIR_SEGMENTS.map((v) => {
           const on = selected === v;
@@ -436,11 +448,11 @@ function RirSegmented({
               }
               aria-pressed={on}
               className={cn(
-                "rounded-sm num h-10 flex-1 text-sm font-semibold transition-colors duration-100",
+                "num h-11 flex-1 rounded-sm text-sm font-semibold transition-colors duration-100",
                 on
-                  ? "bg-ink text-on-action"
-                  : "bg-surface text-soft hover:bg-surface-hover",
-                hinted && "text-ink ring-2 ring-accent ring-inset",
+                  ? "bg-action text-on-action"
+                  : "bg-secondary text-ink hover:bg-active",
+                hinted && "ring-2 ring-accent-ink ring-inset",
               )}
               data-hint={hinted ? "true" : undefined}
               data-testid={rirOptionId(v, side)}
@@ -1469,7 +1481,7 @@ export default function SessionScreen() {
 
       {/* 1. Top bar — the one clock, voice, and a ⋯ menu (Finish lives here). */}
       <header className="sticky top-0 z-10 bg-bg">
-        <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-3 px-3">
+        <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-2 px-4">
           <h1 className="sr-only">{session?.title ?? "Session"}</h1>
           {rest && activeBlock && rest.seId === activeBlock.seId ? (
             <RestStopwatch
@@ -1501,17 +1513,18 @@ export default function SessionScreen() {
                 <Button
                   variant={listening ? "primary" : "outline"}
                   size="icon-lg"
+                  className="size-11"
                   onClick={listening ? stopListening : startListening}
                   title={listening ? "Stop listening" : "Log a set by voice"}
                   aria-pressed={listening}
                   data-testid="voice-log-mic"
                 >
-                  <Microphone className="size-4" />
+                  <Microphone className="size-5" />
                 </Button>
                 <span
                   role="status"
                   className={cn(
-                    "absolute top-full right-0 z-20 mt-1 whitespace-nowrap text-2xs text-faint",
+                    "absolute top-full right-0 z-20 mt-1 whitespace-nowrap text-2xs text-soft",
                     micMessage && "floating px-2 py-1",
                   )}
                 >
@@ -1521,13 +1534,18 @@ export default function SessionScreen() {
             )}
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
-                <IconButton title="Session menu" data-testid="session-menu">
-                  <DotsThree weight="bold" className="size-5" />
+                <IconButton
+                  title="Session menu"
+                  className={CHROME_BTN}
+                  data-testid="session-menu"
+                >
+                  <DotsThree weight="bold" className="size-6" />
                 </IconButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56">
                 {activeBlock && (
                   <DropdownMenuItem
+                    className="min-h-11"
                     onSelect={() =>
                       navigate(`/exercises/${activeBlock.exerciseId}`)
                     }
@@ -1538,6 +1556,7 @@ export default function SessionScreen() {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
+                  className="min-h-11"
                   onSelect={() => setPicking(true)}
                   data-testid="open-exercise-picker"
                 >
@@ -1545,6 +1564,7 @@ export default function SessionScreen() {
                   Add exercise
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  className="min-h-11"
                   onSelect={() => setConditionsOpen(true)}
                   data-testid="conditions-chip"
                 >
@@ -1553,6 +1573,7 @@ export default function SessionScreen() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   danger
+                  className="min-h-11"
                   onSelect={() => setFinishOpen(true)}
                   data-testid="session-finish"
                 >
@@ -1610,7 +1631,7 @@ export default function SessionScreen() {
           />
         ) : (
           <div className="flex flex-col items-center gap-3 px-4 py-16">
-            <p className="text-center text-sm text-faint">No exercises yet.</p>
+            <p className="text-center text-sm text-soft">No exercises yet.</p>
           </div>
         )}
       </div>
@@ -2416,7 +2437,7 @@ function WarmupDialog({
   );
 }
 
-type MarkState = "done" | "warmup" | "current" | "todo";
+type MarkState = "done" | "warmup" | "current";
 type Mark = {
   kind: MarkState;
   paired: boolean;
@@ -2437,9 +2458,9 @@ function rirLabel(r: {
   return a === b ? `RIR ${a}` : `RIR ${a}-${b}`;
 }
 
-// v8 set list: one 48px row per set (done / warm-up / current "Now" / planned),
-// tap a row to open that set in the entry panel. Same set-mark-* test hooks as
-// the old marks band.
+// Set list: one 48px card per logged set plus the current "Now" row; tap a row
+// to open that set in the entry panel. Planned sets are never drawn. Same
+// set-mark-* test hooks as the old marks band.
 function SetRows({
   marks,
   rows,
@@ -2448,9 +2469,10 @@ function SetRows({
   rows: { text: string; lastText: string; rirText: string; hasNote: boolean }[];
 }) {
   return (
-    <div className="flex flex-col px-3" data-testid="marks-band">
+    <div className="flex flex-col gap-1 px-4" data-testid="marks-band">
       {marks.map((m, i) => {
         const r = rows[i];
+        const now = m.kind === "current";
         return (
           <button
             // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
@@ -2459,53 +2481,47 @@ function SetRows({
             disabled={!m.onTap}
             onClick={m.onTap}
             className={cn(
-              "rounded-md relative grid min-h-12 w-full grid-cols-[28px_1fr_auto] items-center gap-2 px-2.5 text-left text-[17px]",
-              m.kind === "current" && "bg-accent-soft",
-              m.kind === "todo" && "text-faint",
+              "grid min-h-12 w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 text-left text-[17px] text-ink transition-colors duration-100",
+              now ? "bg-accent-soft" : "bg-surface hover:bg-surface-hover",
             )}
             data-testid={`set-mark-${i}`}
           >
             <span
               className={cn(
-                "rounded-sm num flex size-6 items-center justify-center text-xs font-semibold",
-                m.kind === "current"
-                  ? "bg-accent text-ink"
-                  : m.kind === "todo"
-                    ? "bg-surface-2 text-soft"
+                "num flex size-6 items-center justify-center rounded-sm text-xs font-semibold",
+                now
+                  ? "bg-accent text-on-accent"
+                  : m.kind === "warmup"
+                    ? "bg-surface-2 text-warn"
                     : "bg-accent-soft text-accent-ink",
-                m.kind === "warmup" && "bg-surface-2 text-warn",
               )}
               data-testid={`set-mark-${i}-state`}
               data-state={m.kind}
             >
               {m.kind === "warmup" ? "W" : i + 1}
             </span>
-            <span className="num min-w-0 truncate font-semibold">
-              {m.kind === "current"
-                ? "Now"
-                : m.kind === "todo"
-                  ? r.lastText || "Planned"
-                  : r.text}
+            <span className="num flex min-w-0 items-center gap-1.5 font-semibold">
+              <span className="min-w-0 truncate">{now ? "Now" : r.text}</span>
               {m.paired && (
                 <span
                   data-testid={`set-mark-${i}-side-tag`}
-                  className="ml-1.5 text-2xs font-bold text-faint"
+                  className="shrink-0 text-2xs font-bold text-soft"
                 >
                   ᴸᴿ
                 </span>
               )}
               {m.pr && (
                 <Medal
-                  className="ml-1.5 inline size-3.5 text-accent-ink"
+                  className="size-4 shrink-0 text-accent-ink"
                   data-testid={`set-mark-${i}-medal`}
                 />
               )}
             </span>
-            <span className="num flex items-center gap-2 text-sm text-faint">
-              {m.kind === "current" && r.lastText
-                ? `last ${r.lastText}`
-                : r.rirText}
-              {r.hasNote && <Notebook className="size-4 text-accent-ink" />}
+            <span className="num flex items-center gap-2 text-sm text-soft">
+              {now ? (r.lastText ? `last ${r.lastText}` : "") : r.rirText}
+              {r.hasNote && (
+                <Notebook className="size-4 shrink-0 text-accent-ink" />
+              )}
             </span>
           </button>
         );
@@ -2546,111 +2562,88 @@ function ExerciseSettingsMenu({
   onAddWarmup: (displayWeight: number) => void;
   busy: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const [warmupOpen, setWarmupOpen] = useState(false);
   const currentLaterality: Laterality =
     laterality === "unilateral" ? "unilateral" : "bilateral";
   return (
-    <span className="relative">
-      <IconButton
-        onClick={() => setOpen((o) => !o)}
-        title="Exercise options"
-        data-testid={`block-${blockName}-menu`}
-      >
-        <Wrench className="size-4" />
-      </IconButton>
-      {open && (
-        <>
-          <button
-            type="button"
-            aria-label="Close menu"
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-10 cursor-default"
-          />
-          <div
-            className="floating absolute top-full right-0 z-20 mt-1 max-h-80 min-w-56 overflow-y-auto py-1"
-            data-testid={`block-${blockName}-menu-popup`}
+    <>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <IconButton
+            title="Exercise options"
+            className={CHROME_BTN}
+            data-testid={`block-${blockName}-menu`}
           >
-            {warmupEligible && (
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  setWarmupOpen(true);
-                }}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
-                data-testid={`block-${blockName}-warmup`}
-              >
-                <Flame className="size-3.5 shrink-0 text-warn" />
-                Add warm-up sets
-              </button>
-            )}
-            {showUnitOverride && (
-              <>
-                <p className="px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
-                  Weight unit
-                </p>
-                {[
-                  { value: "kg" as const, label: "kg" },
-                  { value: "lb" as const, label: "lbs" },
-                  { value: null, label: `Default (${unitLabel(globalUnit)})` },
-                ].map((o) => (
-                  <button
-                    key={o.label}
-                    type="button"
-                    onClick={() => {
-                      setOpen(false);
-                      onSetUnitOverride(o.value);
-                    }}
-                    className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
-                    data-testid={`block-${blockName}-unit-${o.value ?? "default"}`}
-                  >
-                    {o.label}
-                    {unitOverride === o.value && (
-                      <Check className="size-3.5 shrink-0 text-accent-ink" />
-                    )}
-                  </button>
-                ))}
-              </>
-            )}
-            <p className="px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
-              Default laterality
-            </p>
-            {LATERALITY.map((l) => (
-              <button
-                key={l}
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  onLateralityChange(l);
-                }}
-                disabled={busy}
-                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50"
-                data-testid={`block-${blockName}-laterality-${l}`}
-              >
-                {LATERALITY_LABELS[l]}
-                {currentLaterality === l && (
-                  <Check className="size-3.5 shrink-0 text-accent-ink" />
-                )}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                onRemoveBlock();
-              }}
-              disabled={busy}
-              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg disabled:cursor-default disabled:opacity-50"
-              data-testid={`remove-block-${blockName}`}
+            <SlidersHorizontal className="size-5" />
+          </IconButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="max-h-[min(26rem,var(--radix-dropdown-menu-content-available-height))] w-60 overflow-y-auto"
+          data-testid={`block-${blockName}-menu-popup`}
+        >
+          {warmupEligible && (
+            <DropdownMenuItem
+              className="min-h-11"
+              onSelect={() => setWarmupOpen(true)}
+              data-testid={`block-${blockName}-warmup`}
             >
-              <Trash className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
-              Remove exercise
-            </button>
-          </div>
-        </>
-      )}
+              <Flame className="size-4 shrink-0 text-warn" />
+              Add warm-up sets
+            </DropdownMenuItem>
+          )}
+          {showUnitOverride && (
+            <>
+              <DropdownMenuLabel className="pt-2.5 font-semibold tracking-widest text-soft uppercase">
+                Weight unit
+              </DropdownMenuLabel>
+              {[
+                { value: "kg" as const, label: "kg" },
+                { value: "lb" as const, label: "lbs" },
+                { value: null, label: `Default (${unitLabel(globalUnit)})` },
+              ].map((o) => (
+                <DropdownMenuItem
+                  key={o.label}
+                  className="min-h-11 justify-between"
+                  onSelect={() => onSetUnitOverride(o.value)}
+                  data-testid={`block-${blockName}-unit-${o.value ?? "default"}`}
+                >
+                  {o.label}
+                  {unitOverride === o.value && (
+                    <Check className="size-4 shrink-0 text-accent-ink" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
+          <DropdownMenuLabel className="pt-2.5 font-semibold tracking-widest text-soft uppercase">
+            Default laterality
+          </DropdownMenuLabel>
+          {LATERALITY.map((l) => (
+            <DropdownMenuItem
+              key={l}
+              className="min-h-11 justify-between"
+              disabled={busy}
+              onSelect={() => onLateralityChange(l)}
+              data-testid={`block-${blockName}-laterality-${l}`}
+            >
+              {LATERALITY_LABELS[l]}
+              {currentLaterality === l && (
+                <Check className="size-4 shrink-0 text-accent-ink" />
+              )}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuItem
+            danger
+            className="mt-1 min-h-11"
+            disabled={busy}
+            onSelect={onRemoveBlock}
+            data-testid={`remove-block-${blockName}`}
+          >
+            <Trash className="size-4 shrink-0" />
+            Remove exercise
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <WarmupDialog
         open={warmupOpen}
         onOpenChange={setWarmupOpen}
@@ -2659,7 +2652,7 @@ function ExerciseSettingsMenu({
         prefill={heaviestDisplay}
         onInsert={onAddWarmup}
       />
-    </span>
+    </>
   );
 }
 
@@ -2688,10 +2681,10 @@ function SetActionsMenu({
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => setOpen((o) => !o)}
         title="Set options"
-        className="rounded-sm flex size-9 shrink-0 items-center justify-center bg-surface-2 text-lg font-bold text-soft"
+        className="flex size-11 shrink-0 items-center justify-center rounded-sm bg-secondary text-ink transition-colors duration-100 hover:bg-active"
         data-testid="set-type-menu"
       >
-        ⋯
+        <DotsThree weight="bold" className="size-6" />
       </button>
       {open && (
         <>
@@ -2706,7 +2699,7 @@ function SetActionsMenu({
             }}
             className="fixed inset-0 z-10 cursor-default"
           />
-          <div className="floating absolute top-full right-0 z-20 mt-1 min-w-52 py-1">
+          <div className="floating absolute top-full right-0 z-20 mt-1 min-w-60 p-1">
             <button
               type="button"
               onMouseDown={(e) => e.preventDefault()}
@@ -2714,14 +2707,14 @@ function SetActionsMenu({
                 onToggleWarmup();
                 setOpen(false);
               }}
-              className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+              className="flex min-h-11 w-full items-center justify-between gap-2 rounded-sm px-3 text-left text-sm text-ink transition-colors duration-100 hover:bg-surface-hover"
               data-testid="set-type-warmup"
             >
               <span className="flex items-center gap-2">
-                <Flame className="size-3.5 shrink-0 text-warn" />
+                <Flame className="size-4 shrink-0 text-warn" />
                 Make it a warm-up
               </span>
-              {isWarmup && <Check className="size-3.5 text-accent-ink" />}
+              {isWarmup && <Check className="size-4 text-accent-ink" />}
             </button>
             <button
               type="button"
@@ -2730,11 +2723,11 @@ function SetActionsMenu({
                 onToggleUnilateral();
                 setOpen(false);
               }}
-              className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+              className="flex min-h-11 w-full items-center justify-between gap-2 rounded-sm px-3 text-left text-sm text-ink transition-colors duration-100 hover:bg-surface-hover"
               data-testid="set-type-perside"
             >
               <span>Log left/right separately</span>
-              {isUnilateral && <Check className="size-3.5 text-accent-ink" />}
+              {isUnilateral && <Check className="size-4 text-accent-ink" />}
             </button>
             {onDelete && (
               <button
@@ -2749,10 +2742,10 @@ function SetActionsMenu({
                     setConfirmDelete(true);
                   }
                 }}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-neg transition-colors duration-150 hover:bg-surface-hover"
+                className="flex min-h-11 w-full items-center gap-2 rounded-sm px-3 text-left text-sm text-neg transition-colors duration-100 hover:bg-surface-hover"
                 data-testid="set-type-delete"
               >
-                <Trash className="size-3.5 shrink-0" />
+                <Trash className="size-4 shrink-0" />
                 {confirmDelete ? "Confirm delete" : "Delete set"}
               </button>
             )}
@@ -2800,10 +2793,10 @@ function TargetLine({
       <button
         type="button"
         onClick={onWhy}
-        className="rounded-sm num flex min-h-10 w-full items-center gap-2 bg-surface px-2.5 text-left text-sm font-semibold text-ink md:min-h-8"
+        className="num flex min-h-11 w-full items-center gap-2 rounded-md bg-surface px-3 text-left text-sm font-semibold text-ink"
         data-testid="target-line"
       >
-        <span className="text-2xs font-bold tracking-widest text-faint uppercase">
+        <span className="text-2xs font-bold tracking-widest text-soft uppercase">
           {plan.isDeload ? "Deload" : "Today"}
         </span>
         <span className="min-w-0 truncate">
@@ -3190,15 +3183,13 @@ function ExerciseSpotlight({
         pr: group.some((r) => prSetIds.has(r.id)),
         onTap: () => setManualFocus(i),
       });
-    } else if (i === activeIndex) {
+    } else {
       marks.push({
         kind: "current",
         paired: false,
         pr: false,
         onTap: focusLive,
       });
-    } else {
-      marks.push({ kind: "todo", paired: false, pr: false });
     }
   }
 
@@ -3225,16 +3216,16 @@ function ExerciseSpotlight({
       onTouchEnd={onTouchEnd}
     >
       {/* 2. Exercise header. */}
-      <header className="px-5 pt-1 pb-2" data-testid={`block-${block.name}`}>
-        <div className="flex items-center gap-2">
+      <header className="px-4 pt-1 pb-3" data-testid={`block-${block.name}`}>
+        <div className="flex items-center">
           <button
             type="button"
             onClick={onOpenSwitcher}
-            className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+            className="flex min-h-11 min-w-0 flex-1 items-center text-left"
             data-testid="exercise-header"
           >
             <span
-              className="min-w-0 truncate text-[28px] leading-tight font-bold tracking-tight"
+              className="line-clamp-2 min-w-0 text-[28px] leading-[1.15] font-bold tracking-tight text-balance"
               data-testid="exercise-name"
             >
               {block.name}
@@ -3258,7 +3249,7 @@ function ExerciseSpotlight({
             toDisplayWeight(gw, blockUnit) + fieldStep("weight", blockUnit);
           return (
             <p
-              className="flex gap-1.5 pt-2.5 text-[13px] text-soft"
+              className="flex gap-1.5 pt-0.5 text-[13px] text-soft"
               data-testid="goal-line"
             >
               Goal
@@ -3328,196 +3319,9 @@ function ExerciseSpotlight({
         })}
       />
 
-      <div
-        className="flex flex-col gap-1 px-3 pt-2"
-        data-testid="exercise-extras"
-      >
-        {exercise?.notes ? (
-          <button
-            type="button"
-            onClick={() => setSetupOpen(true)}
-            className="rounded-md flex min-h-12 w-full items-center gap-3 bg-surface pr-1.5 pl-3.5 text-left text-sm text-soft"
-            data-testid="setup-row"
-          >
-            <Wrench className="size-5 shrink-0 text-accent-ink" />
-            <span className="min-w-0 flex-1 truncate">
-              <b className="mr-1.5 font-semibold text-ink">Setup &amp; form</b>
-              {exercise.notes}
-            </span>
-            <span className="grid size-11 place-items-center text-faint">
-              <CaretRight className="size-4" />
-            </span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setSetupOpen(true)}
-            className="rounded-md flex min-h-11 w-full items-center gap-2 px-3.5 text-left text-sm font-medium text-faint hover:bg-surface"
-            data-testid="setup-add"
-          >
-            <Plus className="size-4" />
-            Add setup or form notes
-          </button>
-        )}
-        <div className="flex flex-wrap items-center gap-2 px-1 pt-1">
-          {avgRestSec != null && (
-            <span
-              className="num shrink-0 text-2xs text-faint"
-              title="Average rest between sets of this exercise"
-              data-testid={`block-${block.name}-rest-avg`}
-            >
-              rest {formatRest(avgRestSec)} avg
-            </span>
-          )}
-          <MachineChip
-            machine={machine ?? null}
-            blockName={block.name}
-            disabled={copying}
-            onPick={(machineId) => editOrCopy({ machineId })}
-          />
-          {override && (
-            <button
-              type="button"
-              onClick={() =>
-                setWeightUnit.mutate({
-                  exerciseId: block.exerciseId,
-                  unit: null,
-                })
-              }
-              className="rounded-sm num shrink-0 bg-surface-2 px-1.5 py-0.5 text-2xs text-faint"
-              title="Using a per-exercise weight unit override — tap to clear"
-              data-testid={`block-${block.name}-unit-clear`}
-            >
-              {unitLabel(override)} only
-            </button>
-          )}
-          <ExerciseSettingsMenu
-            blockName={block.name}
-            unit={blockUnit}
-            showUnitOverride={TYPE_FIELDS[type].weight}
-            unitOverride={override}
-            globalUnit={unit}
-            onSetUnitOverride={(u) =>
-              setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
-            }
-            warmupEligible={warmupEligible}
-            heaviestDisplay={
-              heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
-            }
-            laterality={exercise?.laterality ?? null}
-            onLateralityChange={(l) => editOrCopy({ laterality: l })}
-            onRemoveBlock={onRemoveBlock}
-            onAddWarmup={(w) => onAddWarmup(blockUnit === "lb" ? lbToKg(w) : w)}
-            busy={copying || copyError != null}
-          />
-        </div>
-      </div>
-      <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
-        <DialogContent title="Setup & form">
-          <Textarea
-            rows={4}
-            placeholder="Seat height, grip, cues, left knee…"
-            value={setupDraft}
-            onChange={(e) => setSetupDraft(e.target.value)}
-            data-testid="setup-notes"
-            className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint"
-          />
-          <Button
-            className="mt-3 w-full"
-            onClick={() => {
-              editOrCopy({ notes: setupDraft.trim() || null });
-              setSetupOpen(false);
-            }}
-            data-testid="setup-save"
-          >
-            Save
-          </Button>
-        </DialogContent>
-      </Dialog>
-
-      {/* 4 + 5. The spotlight + action zone — one persistent spotlight, live
-          or focused on a committed set via a marks-band tap (never a second
-          modal copy of the same fields; testid-contract.md).
-
-          Held back on its FIRST paint until the ghost query settles when
-          it's the live (not-yet-logged) set that's showing: Spotlight fills
-          weight/reps from `ghost` once, via a useState initializer, on
-          mount — mounting it while the query is still loading would freeze
-          the fields at "no last time" even after the real ghost data lands,
-          which is exactly the bug this guards ("opens already filled, no
-          user action" has to be true the instant it's visible, not after a
-          blank flash). Editing an already-committed set never depends on
-          ghost — its values come straight from `committedGroup`. */}
-      {committedGroups[focusedIndex] == null && ghostLoading ? (
-        <p
-          className="px-4 py-10 text-center text-xs text-faint"
-          data-testid="spotlight-loading"
-        >
-          Loading…
-        </p>
-      ) : (
-        <Spotlight
-          key={`${block.seId}-${focusedIndex}-${seedNonce}-${
-            committedGroups[focusedIndex]?.map((r) => r.id).join(",") ?? "live"
-          }`}
-          seId={block.seId}
-          index={focusedIndex}
-          unit={blockUnit}
-          distUnit={distUnit}
-          type={type}
-          seed={seedSets[focusedIndex]}
-          plan={plan}
-          topSet={
-            committedGroups
-              .slice(0, focusedIndex)
-              .every((g) => g[0].setType === "warmup") &&
-            (plan?.firstSetMax ?? mechanic === "compound")
-          }
-          nextSeedType={seedSets[focusedIndex + 1]?.setType ?? null}
-          ghost={ghostFor(ghost, focusedIndex)}
-          hasGhost={ghost.length > 0}
-          enabledMetrics={enabledMetrics}
-          committedGroup={committedGroups[focusedIndex] ?? null}
-          barLoaded={barLoaded}
-          weightRequired={isWeightRequired(type, exercise?.equipment)}
-          exerciseLaterality={exercise?.laterality ?? null}
-          lateralityOverride={lateralityOverride}
-          onLateralityOverrideChange={setLateralityOverride}
-          onOpenPlates={(target) => {
-            setPlateTarget(target);
-            setPlateOpen(true);
-          }}
-          timerRunning={timerRunning}
-          timerStartedAt={timerStartedAt}
-          onToggleTimer={onToggleTimer}
-          restStartedAt={focusedIndex === activeIndex ? restStartedAt : null}
-          onStopRest={onStopRest}
-          onCommit={onCommit}
-          onSaveCommitted={(setId, patch) => onSaveSet(setId, patch)}
-          onSaveType={(patch) => {
-            const group = committedGroups[focusedIndex];
-            if (group) for (const r of group) onSaveSet(r.id, patch);
-          }}
-          onDeleteCommitted={() => {
-            const group = committedGroups[focusedIndex];
-            if (group) for (const r of group) onRemoveSet(r.id);
-            focusLive();
-          }}
-          onSetLaterality={(unilateral) => {
-            const group = committedGroups[focusedIndex];
-            if (group) onSetLaterality(block.seId, type, group[0], unilateral);
-          }}
-          onFocusLive={focusLive}
-          exerciseId={block.exerciseId}
-          prSnapshot={prSnapshot}
-          voiceFill={voiceFill}
-          onVoiceFillConsumed={onVoiceFillConsumed}
-        />
-      )}
-
       {(lastState || nudge || directThis) && (
         <div
-          className="flex flex-col gap-1.5 px-4 pb-3"
+          className="flex flex-col gap-1.5 px-4 pt-3"
           data-testid="set-result"
         >
           {lastState && lastWorking && (
@@ -3585,6 +3389,195 @@ function ExerciseSpotlight({
             </p>
           )}
         </div>
+      )}
+
+      <div
+        className="flex flex-col gap-1 px-4 pt-3 pb-4"
+        data-testid="exercise-extras"
+      >
+        {exercise?.notes ? (
+          <button
+            type="button"
+            onClick={() => setSetupOpen(true)}
+            className="flex min-h-12 w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm text-soft transition-colors duration-100 hover:bg-surface-hover"
+            data-testid="setup-row"
+          >
+            <Wrench className="size-5 shrink-0 text-accent-ink" />
+            <span className="min-w-0 flex-1 truncate">
+              <b className="mr-1.5 font-semibold text-ink">Setup &amp; form</b>
+              {exercise.notes}
+            </span>
+            <CaretRight className="size-4 shrink-0 text-soft" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setSetupOpen(true)}
+            className="flex min-h-12 w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
+            data-testid="setup-add"
+          >
+            <Plus className="size-5 shrink-0 text-soft" />
+            Add setup or form notes
+          </button>
+        )}
+        <div className="flex min-h-11 flex-wrap items-center gap-2">
+          <MachineChip
+            machine={machine ?? null}
+            blockName={block.name}
+            disabled={copying}
+            onPick={(machineId) => editOrCopy({ machineId })}
+          />
+          {override && (
+            <button
+              type="button"
+              onClick={() =>
+                setWeightUnit.mutate({
+                  exerciseId: block.exerciseId,
+                  unit: null,
+                })
+              }
+              className="num flex h-11 shrink-0 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-ink transition-colors duration-100 hover:bg-active"
+              title="Using a per-exercise weight unit override — tap to clear"
+              data-testid={`block-${block.name}-unit-clear`}
+            >
+              {unitLabel(override)} only
+            </button>
+          )}
+          {avgRestSec != null && (
+            <span
+              className="num shrink-0 text-xs text-soft"
+              title="Average rest between sets of this exercise"
+              data-testid={`block-${block.name}-rest-avg`}
+            >
+              rest {formatRest(avgRestSec)} avg
+            </span>
+          )}
+          <span className="ml-auto flex">
+            <ExerciseSettingsMenu
+              blockName={block.name}
+              unit={blockUnit}
+              showUnitOverride={TYPE_FIELDS[type].weight}
+              unitOverride={override}
+              globalUnit={unit}
+              onSetUnitOverride={(u) =>
+                setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
+              }
+              warmupEligible={warmupEligible}
+              heaviestDisplay={
+                heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
+              }
+              laterality={exercise?.laterality ?? null}
+              onLateralityChange={(l) => editOrCopy({ laterality: l })}
+              onRemoveBlock={onRemoveBlock}
+              onAddWarmup={(w) =>
+                onAddWarmup(blockUnit === "lb" ? lbToKg(w) : w)
+              }
+              busy={copying || copyError != null}
+            />
+          </span>
+        </div>
+      </div>
+      <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
+        <DialogContent title="Setup & form">
+          <Textarea
+            rows={4}
+            placeholder="Seat height, grip, cues, left knee…"
+            value={setupDraft}
+            onChange={(e) => setSetupDraft(e.target.value)}
+            data-testid="setup-notes"
+            className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint"
+          />
+          <Button
+            className="mt-3 w-full"
+            onClick={() => {
+              editOrCopy({ notes: setupDraft.trim() || null });
+              setSetupOpen(false);
+            }}
+            data-testid="setup-save"
+          >
+            Save
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* 4 + 5. The spotlight + action zone — one persistent spotlight, live
+          or focused on a committed set via a marks-band tap (never a second
+          modal copy of the same fields; testid-contract.md).
+
+          Held back on its FIRST paint until the ghost query settles when
+          it's the live (not-yet-logged) set that's showing: Spotlight fills
+          weight/reps from `ghost` once, via a useState initializer, on
+          mount — mounting it while the query is still loading would freeze
+          the fields at "no last time" even after the real ghost data lands,
+          which is exactly the bug this guards ("opens already filled, no
+          user action" has to be true the instant it's visible, not after a
+          blank flash). Editing an already-committed set never depends on
+          ghost — its values come straight from `committedGroup`. */}
+      {committedGroups[focusedIndex] == null && ghostLoading ? (
+        <p
+          className="px-4 py-10 text-center text-xs text-soft"
+          data-testid="spotlight-loading"
+        >
+          Loading…
+        </p>
+      ) : (
+        <Spotlight
+          key={`${block.seId}-${focusedIndex}-${seedNonce}-${
+            committedGroups[focusedIndex]?.map((r) => r.id).join(",") ?? "live"
+          }`}
+          seId={block.seId}
+          index={focusedIndex}
+          unit={blockUnit}
+          distUnit={distUnit}
+          type={type}
+          seed={seedSets[focusedIndex]}
+          plan={plan}
+          topSet={
+            committedGroups
+              .slice(0, focusedIndex)
+              .every((g) => g[0].setType === "warmup") &&
+            (plan?.firstSetMax ?? mechanic === "compound")
+          }
+          nextSeedType={seedSets[focusedIndex + 1]?.setType ?? null}
+          ghost={ghostFor(ghost, focusedIndex)}
+          hasGhost={ghost.length > 0}
+          enabledMetrics={enabledMetrics}
+          committedGroup={committedGroups[focusedIndex] ?? null}
+          barLoaded={barLoaded}
+          weightRequired={isWeightRequired(type, exercise?.equipment)}
+          exerciseLaterality={exercise?.laterality ?? null}
+          lateralityOverride={lateralityOverride}
+          onLateralityOverrideChange={setLateralityOverride}
+          onOpenPlates={(target) => {
+            setPlateTarget(target);
+            setPlateOpen(true);
+          }}
+          timerRunning={timerRunning}
+          timerStartedAt={timerStartedAt}
+          onToggleTimer={onToggleTimer}
+          restStartedAt={focusedIndex === activeIndex ? restStartedAt : null}
+          onStopRest={onStopRest}
+          onCommit={onCommit}
+          onSaveCommitted={(setId, patch) => onSaveSet(setId, patch)}
+          onSaveType={(patch) => {
+            const group = committedGroups[focusedIndex];
+            if (group) for (const r of group) onSaveSet(r.id, patch);
+          }}
+          onDeleteCommitted={() => {
+            const group = committedGroups[focusedIndex];
+            if (group) for (const r of group) onRemoveSet(r.id);
+            focusLive();
+          }}
+          onSetLaterality={(unilateral) => {
+            const group = committedGroups[focusedIndex];
+            if (group) onSetLaterality(block.seId, type, group[0], unilateral);
+          }}
+          onFocusLive={focusLive}
+          exerciseId={block.exerciseId}
+          prSnapshot={prSnapshot}
+          voiceFill={voiceFill}
+          onVoiceFillConsumed={onVoiceFillConsumed}
+        />
       )}
 
       <EvidenceSheet
@@ -4293,7 +4286,7 @@ function Spotlight({
         data-beat={beat ? "true" : "false"}
       >
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-2xs font-bold tracking-widest text-faint uppercase">
+          <span className="text-2xs font-bold tracking-widest text-soft uppercase">
             {isUnilateral && key === "weight" ? `${label} · both sides` : label}
           </span>
           <span
@@ -4301,7 +4294,8 @@ function Spotlight({
               "num text-xs font-bold",
               cmp.state === "up" && "text-accent-ink",
               cmp.state === "down" && "text-warn",
-              (cmp.state === "same" || cmp.state === "none") && "text-faint",
+              (cmp.state === "same" || cmp.state === "none") &&
+                "font-normal text-soft",
             )}
             data-testid={compareTestId}
           >
@@ -4355,7 +4349,7 @@ function Spotlight({
               }
             />
             {unitTxt && (
-              <span className="shrink-0 text-sm font-bold text-faint">
+              <span className="shrink-0 text-sm font-semibold text-soft">
                 {unitTxt}
               </span>
             )}
@@ -4377,13 +4371,17 @@ function Spotlight({
                 onToggleTimer();
               }}
               title={timerRunning ? "Stop timer" : "Start timer"}
-              className={cn(timerRunning && "bg-accent text-accent-fg")}
+              className={cn(
+                CHROME_BTN,
+                timerRunning &&
+                  "bg-accent text-accent-fg hover:bg-accent-hover",
+              )}
               data-testid="set-timer"
             >
               {timerRunning ? (
-                <Square className="size-3.5" />
+                <Square className="size-4" weight="fill" />
               ) : (
-                <Play className="size-3.5" />
+                <Play className="size-4" weight="fill" />
               )}
             </IconButton>
           ) : null}
@@ -4396,9 +4394,10 @@ function Spotlight({
                 )
               }
               title="Plate calculator"
+              className={CHROME_BTN}
               data-testid="set-plates"
             >
-              <Calculator className="size-3.5" />
+              <Calculator className="size-5" />
             </IconButton>
           )}
         </div>
@@ -4585,6 +4584,10 @@ function Spotlight({
     const ghostR = ghost.reps ?? null;
     const rirSel = rirSegmentOf(rirMin, rirMax);
     const wUnit = weightLabel(type, unitLabel(unit));
+    // One size for all three numbers: 44px until the longest would outgrow a
+    // third of a 390 column ("102.5 lbs").
+    const longest = Math.max(weight.length, reps.length);
+    const fontSize = longest <= 4 ? 44 : longest === 5 ? 40 : 32;
     const cols: {
       key: "weight" | "reps" | "rir";
       beat: boolean;
@@ -4595,13 +4598,12 @@ function Spotlight({
     ];
     return (
       <div
-        className="sticky bottom-0 z-10 mt-auto rounded-t-lg bg-surface px-2 pt-2"
+        className="sticky bottom-0 z-10 mt-auto rounded-t-lg bg-surface px-4 pt-2"
         data-testid="entry-panel"
       >
-        <span className="sr-only" />
-        <div className="flex min-h-11 items-center gap-2 px-2">
+        <div className="flex min-h-11 items-center gap-2">
           <span
-            className="text-sm font-semibold text-soft"
+            className="num text-sm font-semibold text-soft"
             data-testid="set-number"
           >
             Set {index + 1}
@@ -4621,20 +4623,21 @@ function Spotlight({
           )}
           {isEditing && restLabel && (
             <span
-              className="num text-2xs text-faint"
+              className="num text-2xs text-soft"
               data-testid={`set-rest-stamp-${index}`}
             >
               rested {restLabel}
             </span>
           )}
-          <span className="ml-auto flex items-center gap-1">
+          <span className="ml-auto flex items-center gap-2">
             <IconButton
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => setDetailsOpen(true)}
               title="Set note and details"
+              className={CHROME_BTN}
               data-testid={`set-${index}-more`}
             >
-              <PencilSimple className="size-4" />
+              <PencilSimple className="size-5" />
             </IconButton>
             <SetActionsMenu
               isWarmup={setType === "warmup"}
@@ -4658,17 +4661,23 @@ function Spotlight({
           </span>
         </div>
 
-        <div className="flex">
+        {/* Equal columns; each number sits on its column's centre line. The
+            unit hangs off the number in a zero-width box, so it never pushes
+            the number off centre, and the input covers the whole column so
+            the tap target is the column, not the glyphs. */}
+        <div className="grid auto-cols-fr grid-flow-col">
           {cols.map(({ key, beat }) => {
             const on = activeCol === key;
             const label =
               key === "weight" ? "Weight" : key === "reps" ? "Reps" : "RIR";
+            const text = key === "weight" ? weight : key === "reps" ? reps : "";
+            const cmp = key === "weight" ? wCmp : rCmp;
             return (
               <div
                 key={key}
                 className={cn(
-                  "relative flex min-h-[76px] flex-1 flex-col items-center gap-0.5 px-1 pt-1 pb-2",
-                  on ? "text-ink" : "text-faint",
+                  "relative flex min-w-0 flex-col items-center pb-2.5",
+                  on ? "text-ink" : "text-soft",
                 )}
                 data-beat={key === "rir" ? undefined : beat ? "true" : "false"}
               >
@@ -4677,19 +4686,19 @@ function Spotlight({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => setActiveCol("rir")}
-                    className="num min-h-11 leading-none font-bold tracking-tight"
-                    style={{ fontSize: 44 }}
+                    className="num h-12 w-full text-center leading-none font-bold tracking-tight"
+                    style={{ fontSize }}
                     data-testid="rir-column"
                     aria-label={`RIR ${rirSel ?? "not set"}`}
                   >
                     {rirSel == null ? "–" : rirSel === 4 ? "4+" : rirSel}
                   </button>
                 ) : (
-                  <span className="flex items-baseline justify-center">
+                  <span className="relative flex h-12 w-full items-center justify-center">
                     <input
                       inputMode={key === "weight" ? "decimal" : "numeric"}
                       data-big-input
-                      value={key === "weight" ? weight : reps}
+                      value={text}
                       placeholder={seedPlaceholder(key)}
                       onChange={(e) =>
                         key === "weight"
@@ -4703,15 +4712,8 @@ function Spotlight({
                         setActiveCol(key);
                         if (restStartedAt != null) onStopRest();
                       }}
-                      size={Math.max(
-                        2,
-                        (key === "weight" ? weight : reps).length,
-                      )}
-                      className="num min-h-11 min-w-0 bg-transparent text-center leading-none font-bold tracking-tight outline-none placeholder:text-faint"
-                      style={{
-                        fontSize: 44,
-                        width: `${Math.max(2, (key === "weight" ? weight : reps).length) + 0.4}ch`,
-                      }}
+                      className="peer num absolute inset-0 size-full min-w-0 bg-transparent p-0 text-center leading-none font-bold tracking-tight outline-none"
+                      style={{ fontSize }}
                       data-testid={
                         key === "weight" ? "weight-field" : "reps-field"
                       }
@@ -4720,57 +4722,63 @@ function Spotlight({
                         key === "weight" && weightError ? true : undefined
                       }
                     />
-                    {key === "weight" && (
-                      <small className="text-[13px] font-semibold">
-                        {wUnit}
-                      </small>
-                    )}
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "num leading-none font-bold tracking-tight whitespace-pre peer-focus:invisible",
+                        text !== "" && "invisible",
+                      )}
+                      style={{ fontSize }}
+                    >
+                      {text === "" ? "–" : text}
+                      {key === "weight" && (
+                        <span className="visible inline-block w-0 whitespace-nowrap">
+                          <small className="pl-1 text-[13px] font-semibold tracking-normal text-soft">
+                            {wUnit}
+                          </small>
+                        </span>
+                      )}
+                    </span>
                   </span>
                 )}
-                <span className="num flex items-center gap-1 text-xs text-soft">
+                <span className="flex h-7 items-center justify-center gap-1.5 text-xs font-semibold text-soft">
                   {label}
                   {key === "weight" && barLoaded && (
-                    <>
-                      {" · "}
-                      <button
-                        type="button"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() =>
-                          onOpenPlates(
-                            weight.trim() === ""
-                              ? null
-                              : Number.parseFloat(weight),
-                          )
-                        }
-                        className="min-h-6 underline underline-offset-2"
-                        data-testid="set-plates"
-                      >
-                        plates
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() =>
+                        onOpenPlates(
+                          weight.trim() === ""
+                            ? null
+                            : Number.parseFloat(weight),
+                        )
+                      }
+                      className="relative flex h-7 items-center rounded-sm bg-secondary px-2 text-xs font-semibold text-ink transition-colors duration-100 after:absolute after:-inset-x-1 after:-inset-y-2 hover:bg-active"
+                      data-testid="set-plates"
+                    >
+                      plates
+                    </button>
                   )}
                 </span>
                 {key !== "rir" && (
                   <span
                     className={cn(
-                      "num text-2xs font-semibold",
-                      (key === "weight" ? wCmp : rCmp).state === "up" &&
-                        "text-accent-ink",
-                      (key === "weight" ? wCmp : rCmp).state === "down" &&
-                        "text-warn",
-                      ((key === "weight" ? wCmp : rCmp).state === "same" ||
-                        (key === "weight" ? wCmp : rCmp).state === "none") &&
-                        "text-faint",
+                      "num min-h-4 px-1 text-center text-2xs leading-4 font-semibold text-balance",
+                      cmp.state === "up" && "text-accent-ink",
+                      cmp.state === "down" && "text-warn",
+                      (cmp.state === "same" || cmp.state === "none") &&
+                        "font-normal text-soft",
                     )}
                     data-testid={
                       key === "weight" ? "weight-compare" : "reps-compare"
                     }
                   >
-                    {(key === "weight" ? wCmp : rCmp).text}
+                    {cmp.text}
                   </span>
                 )}
                 {on && (
-                  <span className="absolute inset-x-4 bottom-0 h-[3px] rounded-t-xs bg-accent-ink" />
+                  <span className="absolute inset-x-4 bottom-0 h-[3px] rounded-xs bg-accent-ink" />
                 )}
               </div>
             );
@@ -4781,14 +4789,14 @@ function Spotlight({
           <p
             id="weight-error"
             role="alert"
-            className="pt-1 text-center text-xs font-bold text-neg"
+            className="pt-2 text-center text-xs font-bold text-neg"
             data-testid="weight-error"
           >
             Add a weight to log this set.
           </p>
         )}
 
-        <div className="rounded-sm mt-1 bg-bg">
+        <div className="mt-2 rounded-sm bg-surface-2 dark:bg-bg">
           {activeCol === "weight" && (
             <Ruler
               value={Number.parseFloat(weight) || 0}
@@ -4827,8 +4835,9 @@ function Spotlight({
             />
           )}
           {effort && (
-            <div className={cn("p-2", activeCol !== "rir" && "hidden")}>
+            <div className={cn("p-1.5", activeCol !== "rir" && "hidden")}>
               <RirSegmented
+                bare
                 min={rirMin}
                 max={rirMax}
                 onChange={(v) => {
@@ -4841,14 +4850,14 @@ function Spotlight({
           )}
         </div>
 
-        <div className="px-1 pt-3 pb-[max(2.125rem,env(safe-area-inset-bottom))]">
+        <div className="pt-3 pb-[max(2.125rem,env(safe-area-inset-bottom))]">
           <Button
             size="lg"
-            className="h-[60px] w-full rounded-lg bg-ink text-[19px] font-bold text-bg hover:bg-ink/90 dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover md:h-[60px]"
+            className="h-[60px] w-full rounded-lg bg-action text-[19px] font-bold text-on-action hover:bg-action-hover md:h-[60px] dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover"
             onClick={submit}
             data-testid="log-set"
           >
-            <Check className="size-5" />
+            <Check className="size-5" weight="bold" />
             {isEditing
               ? "Save"
               : logLabel({
@@ -4868,10 +4877,13 @@ function Spotlight({
   }
 
   return (
-    <div className="flex flex-col gap-2.5 px-4 pt-2.5 pb-4">
-      <div className="flex items-center gap-2">
+    <div
+      className="mt-auto flex flex-col gap-3 rounded-t-lg bg-surface px-4 pt-2 pb-[max(2.125rem,env(safe-area-inset-bottom))]"
+      data-testid="entry-panel"
+    >
+      <div className="flex min-h-11 items-center gap-2">
         <span
-          className="text-xl font-bold tracking-tight"
+          className="num text-sm font-semibold text-soft"
           data-testid="set-number"
         >
           Set {index + 1}
@@ -4896,23 +4908,22 @@ function Spotlight({
         )}
         {isEditing && restLabel && (
           <span
-            className="num text-2xs text-faint"
+            className="num text-2xs text-soft"
             data-testid={`set-rest-stamp-${index}`}
           >
             rested {restLabel}
           </span>
         )}
-        <span className="ml-auto flex items-center gap-1.5">
-          <button
-            type="button"
+        <span className="ml-auto flex items-center gap-2">
+          <IconButton
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setDetailsOpen(true)}
-            title="Set details"
-            className="rounded-sm flex size-9 shrink-0 items-center justify-center bg-surface-2 text-soft"
+            title="Set note and details"
+            className={CHROME_BTN}
             data-testid={`set-${index}-more`}
           >
-            <Notebook className="size-4" />
-          </button>
+            <PencilSimple className="size-5" />
+          </IconButton>
           <SetActionsMenu
             isWarmup={setType === "warmup"}
             onToggleWarmup={() => {
@@ -4937,7 +4948,7 @@ function Spotlight({
 
       {hasGhost && !isEditing && (
         <div
-          className="rounded-sm flex items-center gap-2.5 bg-surface px-2.5 py-2"
+          className="flex items-center gap-3 rounded-md bg-bg p-2"
           data-testid="last-time-row"
         >
           <button
@@ -4945,13 +4956,13 @@ function Spotlight({
             onMouseDown={(e) => e.preventDefault()}
             onClick={resetToLastTime}
             title="Reset to last time's values"
-            className="flex size-7 shrink-0 items-center justify-center bg-bg text-sm text-soft"
+            className="flex size-11 shrink-0 items-center justify-center rounded-sm bg-surface text-ink transition-colors duration-100 hover:bg-surface-hover"
             data-testid="last-time-reset"
           >
-            ↺
+            <ArrowCounterClockwise className="size-5" />
           </button>
           <span className="min-w-0 flex-1">
-            <span className="block text-2xs font-bold tracking-widest text-faint uppercase">
+            <span className="block text-2xs font-bold tracking-widest text-soft uppercase">
               Last time
             </span>
             <span className="num block text-base font-bold">
@@ -4968,12 +4979,12 @@ function Spotlight({
             <button
               type="button"
               onClick={() => setWeightLinked((v) => !v)}
-              className="rounded-sm self-start bg-surface-2 px-1.5 py-0.5 text-2xs font-semibold text-faint"
+              className="flex min-h-11 items-center self-start rounded-sm bg-secondary px-3 text-xs font-semibold text-ink transition-colors duration-100 hover:bg-active"
               data-testid="weight-link-toggle"
             >
               {weightLinked ? (
                 <>
-                  <LinkSimple className="mr-1 inline size-3" />
+                  <LinkSimple className="mr-1.5 inline size-4" />
                   Linked · tap to set sides separately
                 </>
               ) : (
@@ -4981,8 +4992,8 @@ function Spotlight({
               )}
             </button>
             {!weightLinked && (
-              <div className="rounded-md bg-bg p-2">
-                <div className="rounded-xs flex items-center justify-center bg-surface px-2 py-1">
+              <div className="rounded-md bg-bg p-2.5">
+                <div className="flex h-12 items-center justify-center rounded-sm bg-surface px-2">
                   <input
                     inputMode="decimal"
                     value={weight2}
@@ -4999,7 +5010,7 @@ function Spotlight({
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => bump("weight", d, "right")}
-                      className="rounded-sm num h-8 flex-1 bg-surface text-xs font-bold text-soft"
+                      className="num h-11 flex-1 rounded-sm bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
                       data-testid={`weight-adjust-${d}-right`}
                     >
                       {d}
@@ -5011,7 +5022,7 @@ function Spotlight({
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => bump("weight", d, "right")}
-                      className="rounded-sm num h-8 flex-1 bg-accent-soft text-xs font-bold text-accent-ink"
+                      className="num h-11 flex-1 rounded-sm bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
                       data-testid={`weight-adjust-${d}-right`}
                     >
                       +{d}
@@ -5038,8 +5049,8 @@ function Spotlight({
           </div>
           <div className="grid grid-cols-2 gap-2">
             {(["left", "right"] as const).map((side) => (
-              <div key={side} className="rounded-md bg-bg p-1.5">
-                <div className="rounded-xs flex items-center justify-center bg-surface px-2 py-1">
+              <div key={side} className="rounded-md bg-bg p-2.5">
+                <div className="flex h-12 items-center justify-center rounded-sm bg-surface px-2">
                   <input
                     inputMode="numeric"
                     value={side === "left" ? reps : reps2}
@@ -5061,7 +5072,7 @@ function Spotlight({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => bump("reps", -1, side)}
-                    className="rounded-sm num h-8 flex-1 bg-surface text-xs font-bold text-soft"
+                    className="num h-11 flex-1 rounded-sm bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
                     data-testid={`reps-adjust--1-${side}`}
                   >
                     −1
@@ -5070,7 +5081,7 @@ function Spotlight({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => bump("reps", 1, side)}
-                    className="rounded-sm num h-8 flex-1 bg-accent-soft text-xs font-bold text-accent-ink"
+                    className="num h-11 flex-1 rounded-sm bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
                     data-testid={`reps-adjust-1-${side}`}
                   >
                     +1
@@ -5145,13 +5156,14 @@ function Spotlight({
       )}
 
       {/* 5. Action zone. */}
-      <div className="mt-1">
+      <div className="pt-1">
         <Button
           size="lg"
-          className="h-13 w-full text-base font-bold md:h-13"
+          className="h-[60px] w-full rounded-lg bg-action text-[19px] font-bold text-on-action hover:bg-action-hover md:h-[60px] dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover"
           onClick={submit}
           data-testid="log-set"
         >
+          <Check className="size-5" weight="bold" />
           {isEditing
             ? "Save"
             : logLabel({
@@ -5216,10 +5228,10 @@ function SessionDurationControl({
         onClick={() => setOpen((o) => !o)}
         title="Duration · pause / edit start"
         className={cn(
-          "num flex h-11 items-center gap-2 rounded-sm px-3 text-[15px] font-semibold transition-colors duration-100",
+          "num flex h-11 items-center gap-2 rounded-sm px-3 text-sm font-semibold transition-colors duration-100",
           paused
             ? "bg-accent-soft text-accent-ink"
-            : "text-soft hover:bg-surface-hover",
+            : "bg-secondary text-ink hover:bg-active",
         )}
         data-testid="session-clock"
       >
@@ -5235,11 +5247,11 @@ function SessionDurationControl({
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-10 cursor-default"
           />
-          <div className="floating absolute top-full right-0 z-20 mt-1 min-w-52 p-2">
+          <div className="floating absolute top-full left-0 z-20 mt-1 min-w-56 p-2">
             <Button
               variant="outline"
               size="sm"
-              className="w-full"
+              className="h-11 w-full text-sm"
               onClick={() => {
                 onTogglePause();
                 setOpen(false);
@@ -5259,12 +5271,12 @@ function SessionDurationControl({
               )}
             </Button>
             <div className="mt-2 flex flex-col gap-1">
-              <span className="text-2xs font-medium tracking-wide text-faint uppercase">
+              <span className="text-2xs font-medium tracking-wide text-soft uppercase">
                 Start
               </span>
               <Input
                 type="datetime-local"
-                className="num"
+                className="num h-11"
                 value={toLocalInput(startedAt)}
                 onChange={(e) => {
                   const ms = new Date(e.target.value).getTime();

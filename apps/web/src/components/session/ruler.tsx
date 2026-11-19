@@ -69,9 +69,12 @@ export function Ruler(props: Props) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     const css = getComputedStyle(cv);
-    const minor = css.getPropertyValue("--color-text-disabled").trim();
+    // Labels are 12px text (4.5:1), so step 11 like the major ticks; minor
+    // ticks are non-text marks (3:1) on step 10. Step 9 (disabled) failed
+    // both on the tinted well.
+    const minor = css.getPropertyValue("--chart-tick").trim();
     const major = css.getPropertyValue("--color-text-secondary").trim();
-    const faintInk = css.getPropertyValue("--color-text-disabled").trim();
+    const faintInk = major;
     const accent = css.getPropertyValue("--color-accent-mark").trim();
     const half = Math.ceil(w / 2 / pps) + 2;
     const centre = Math.round(pos / p.step);
@@ -87,9 +90,12 @@ export function Ruler(props: Props) {
         !isMajor && p.midEvery != null && isMajorTick(k, p.midEvery);
       const th = isMajor ? h * 0.7 : isMid ? h * 0.5 : h * 0.3;
       const d = Math.min(1, Math.abs(x - w / 2) / (w / 2));
-      ctx.globalAlpha = Math.max(0.1, 1 - d * d * 0.9);
+      // Full strength across the middle 70%, so every tick and label a thumb
+      // can reach reads at its token contrast; only the outer edges fade.
+      const fade = Math.max(0, (d - 0.7) / 0.3);
+      ctx.globalAlpha = Math.max(0.1, 1 - fade * fade * 0.9);
       ctx.strokeStyle = isMajor || isMid ? major : minor;
-      ctx.lineWidth = isMajor ? 2 : 1.5;
+      ctx.lineWidth = isMajor ? 2 : isMid ? 1.5 : 1;
       ctx.beginPath();
       ctx.moveTo(x, h);
       ctx.lineTo(x, h - th);
@@ -232,14 +238,14 @@ export function Ruler(props: Props) {
       aria-valuetext={`${props.value}${unit ? ` ${unit}` : ""}`}
       data-testid={testId}
       className={cn(
-        "rounded-sm block h-[52px] w-full cursor-ew-resize bg-bg outline-offset-2 select-none",
+        "block h-14 w-full cursor-ew-resize rounded-sm outline-offset-2 select-none",
       )}
       style={{
         touchAction: "pan-y",
         WebkitMaskImage:
-          "linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent)",
+          "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)",
         maskImage:
-          "linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent)",
+          "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)",
       }}
       onKeyDown={(e) => {
         const k = e.key;
