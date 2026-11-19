@@ -106,7 +106,7 @@ import {
   useState,
 } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { ExerciseRibbon, ExerciseThumb } from "@/components/anatomy-ui";
+import { ExerciseRibbon } from "@/components/anatomy-ui";
 import { ConditionsChip } from "@/components/conditions";
 import {
   DeltaChip,
@@ -1561,7 +1561,7 @@ export default function SessionScreen() {
           />
         </span>
       </div>
-      <div className="mx-auto flex max-w-2xl flex-col pb-[420px]">
+      <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-2xl flex-col">
         {activeBlock ? (
           <ExerciseSpotlight
             key={activeBlock.seId}
@@ -1585,13 +1585,6 @@ export default function SessionScreen() {
             onRemoveBlock={() => removeBlock(activeBlock.seId)}
             onOpenSwitcher={() => setSwitcherOpen(true)}
             onSwipe={gotoOffset}
-            tabs={blocks.map((b) => ({
-              seId: b.seId,
-              done: countSets(b.committed) > 0,
-              name: b.name,
-              sets: countSets(b.committed),
-            }))}
-            onJump={setActiveSeId}
             prSetIds={prSetIds}
             prSnapshot={prSnapshot}
             voiceFill={voiceFill?.seId === activeBlock.seId ? voiceFill : null}
@@ -1622,7 +1615,6 @@ export default function SessionScreen() {
         open={switcherOpen}
         onOpenChange={setSwitcherOpen}
         blocks={blocks}
-        seedFor={seedFor}
         activeSeId={activeBlock?.seId ?? null}
         onJump={(id) => {
           setActiveSeId(id);
@@ -2258,7 +2250,6 @@ function ExerciseSwitcher({
   open,
   onOpenChange,
   blocks,
-  seedFor,
   activeSeId,
   onJump,
   onAddExercise,
@@ -2267,7 +2258,6 @@ function ExerciseSwitcher({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   blocks: BlockState[];
-  seedFor: (block: BlockState) => SeedSet[];
   activeSeId: string | null;
   onJump: (seId: string) => void;
   onAddExercise: () => void;
@@ -2278,9 +2268,7 @@ function ExerciseSwitcher({
       <DialogContent title="Switch exercise" className="md:max-w-md">
         <ul className="flex flex-col" data-testid="exercise-sheet">
           {blocks.map((b, i) => {
-            const planned = seedFor(b).length;
             const done = countSets(b.committed);
-            const complete = planned > 0 && done >= planned;
             return (
               <li
                 key={b.seId}
@@ -2301,12 +2289,13 @@ function ExerciseSwitcher({
                   <span
                     className={cn(
                       "num shrink-0 text-xs tabular-nums",
-                      complete ? "text-accent-ink" : "text-faint",
+                      done > 0 ? "text-accent-ink" : "text-faint",
                     )}
                     data-testid={`switcher-progress-${b.name}`}
                   >
-                    {planned > 0 ? `${done}/${planned}` : done}
-                    {complete ? " ✓" : ""}
+                    {done === 0
+                      ? "Empty"
+                      : `${done} ${done === 1 ? "set" : "sets"}`}
                   </span>
                   <CaretRight className="size-3.5 shrink-0 text-faint" />
                 </button>
@@ -2511,31 +2500,6 @@ function SetRows({
           </button>
         );
       })}
-    </div>
-  );
-}
-
-// ── Edge dots (position indicator down the right edge) ─────────────────────
-
-function EdgeDots({ total, position }: { total: number; position: number }) {
-  if (total <= 1) return null;
-  return (
-    <div
-      className="pointer-events-none fixed top-1/2 right-1 z-10 flex -translate-y-1/2 flex-col items-center gap-1.5"
-      data-testid="exercise-edge-rail"
-    >
-      {Array.from({ length: total }, (_, i) => (
-        <span
-          // biome-ignore lint/suspicious/noArrayIndexKey: fixed-count position rail, no other identity per dot
-          key={`dot-${i}`}
-          className={cn(
-            "size-1 shrink-0",
-            i < position - 1 && "bg-accent",
-            i === position - 1 && "size-2 bg-ink",
-            i > position - 1 && "bg-active",
-          )}
-        />
-      ))}
     </div>
   );
 }
@@ -2863,8 +2827,6 @@ function ExerciseSpotlight({
   onRemoveBlock,
   onOpenSwitcher,
   onSwipe,
-  tabs,
-  onJump,
   prSetIds,
   prSnapshot,
   voiceFill,
@@ -2899,8 +2861,6 @@ function ExerciseSpotlight({
   onRemoveBlock: () => void;
   onOpenSwitcher: () => void;
   onSwipe: (delta: -1 | 1) => void;
-  tabs: { seId: string; done: boolean; name: string; sets: number }[];
-  onJump: (seId: string) => void;
   prSetIds: Set<string>;
   prSnapshot: Map<string, ExerciseRecords> | null;
   voiceFill: { weightKg: number | null; reps: number | null } | null;
@@ -3207,7 +3167,7 @@ function ExerciseSpotlight({
     .filter((c) => c.kind === "direct")
     .map((c) => sessionMuscles[c.muscle])
     .find((m) => m != null && sessionDirectCheck(m.direct) === "high");
-  const totalMarks = Math.max(committedGroups.length + 1, seedSets.length + 1);
+  const totalMarks = committedGroups.length + 1;
   const marks: Mark[] = [];
   for (let i = 0; i < totalMarks; i++) {
     if (i < committedGroups.length) {
@@ -3247,7 +3207,11 @@ function ExerciseSpotlight({
   }
 
   return (
-    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div
+      className="flex flex-1 flex-col"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       {/* 2. Exercise header. */}
       <header className="px-5 pt-1 pb-2" data-testid={`block-${block.name}`}>
         <div className="flex items-center gap-2">
@@ -3285,46 +3249,6 @@ function ExerciseSpotlight({
             busy={copying || copyError != null}
           />
         </div>
-        {tabs.length > 1 && (
-          <div className="mt-2 flex items-center gap-1">
-            <div
-              className="flex min-w-0 flex-1 gap-1 overflow-x-auto"
-              data-testid="exercise-tabs"
-            >
-              {tabs.map((tab, i) => {
-                const current = i === position - 1;
-                return (
-                  <button
-                    key={tab.seId}
-                    type="button"
-                    onClick={() => onJump(tab.seId)}
-                    aria-label={`${tab.name}${tab.sets ? `, ${tab.sets} sets logged` : ""}`}
-                    aria-current={current ? "true" : undefined}
-                    data-testid={`exercise-tab-${i}`}
-                    className={cn(
-                      "rounded-sm num flex h-11 w-11 shrink-0 items-center justify-center text-sm font-semibold transition-colors duration-100",
-                      current
-                        ? "bg-accent text-ink"
-                        : tab.done
-                          ? "bg-accent-soft text-accent-ink"
-                          : "bg-surface-2 text-soft",
-                    )}
-                  >
-                    {tab.done && !current ? (
-                      <Check className="size-4" />
-                    ) : (
-                      i + 1
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <span className="num shrink-0 pl-2 text-sm text-soft">
-              {countSets(block.committed)}/
-              {Math.max(seedSets.length, countSets(block.committed) + 1)} sets
-            </span>
-          </div>
-        )}
         <div className="mt-1 flex min-w-0 items-center gap-2">
           <span
             className="num shrink-0 text-2xs text-faint"
@@ -3405,7 +3329,7 @@ function ExerciseSpotlight({
       {/* 3. Set band. */}
       <SetRows
         marks={marks}
-        rows={marks.map((m, i) => {
+        rows={marks.map((_m, i) => {
           const g = committedGroups[i];
           const text = g
             ? fieldsFor(type)
@@ -3762,26 +3686,11 @@ function Spotlight({
   };
   // Routine/copy-workout target, shown as a placeholder only — never a
   // silent fill — when there's no ghost (last-time) value for this field.
+  // Blank means blank: with no last-time data a field shows nothing, not the
+  // routine target (boss, 2026-11-18).
   const seedPlaceholder = (
-    kind: "weight" | "reps" | "duration" | "distance",
-  ): string | undefined => {
-    if (isEditing || !seed) return undefined;
-    if (kind === "weight")
-      return seed.weightKg != null
-        ? String(toDisplayWeight(seed.weightKg, unit))
-        : undefined;
-    if (kind === "reps") {
-      if (seed.repsMax != null) return `${seed.reps ?? ""}–${seed.repsMax}`;
-      return seed.reps != null ? String(seed.reps) : undefined;
-    }
-    if (kind === "duration")
-      return seed.durationSec != null
-        ? formatMMSS(seed.durationSec)
-        : undefined;
-    return seed.distanceM != null
-      ? String(toDisplayDistance(seed.distanceM, distUnit))
-      : undefined;
-  };
+    _kind: "weight" | "reps" | "duration" | "distance",
+  ): string | undefined => undefined;
   const seedRightReps = () => {
     if (isEditing) return right?.reps != null ? String(right.reps) : "";
     return draft?.rReps ?? "";
@@ -4597,7 +4506,7 @@ function Spotlight({
     ];
     return (
       <div
-        className="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-2xl rounded-t-lg bg-surface px-2 pt-2"
+        className="sticky bottom-0 z-10 mt-auto rounded-t-lg bg-surface px-2 pt-2"
         data-testid="entry-panel"
       >
         <span className="sr-only" />

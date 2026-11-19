@@ -15,7 +15,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-test("the header shows name + position, and the numbered tabs are present", async ({
+test("the header shows name + position, and the title opens the exercise list", async ({
   page,
 }) => {
   // EdgeDots renders nothing for a single-exercise session (session.tsx:
@@ -30,7 +30,7 @@ test("the header shows name + position, and the numbered tabs are present", asyn
 
   await expect(page.getByTestId("exercise-name")).toHaveText(OTHER);
   await expect(page.getByTestId("exercise-position")).toContainText("2");
-  await expect(page.getByTestId("exercise-tabs")).toBeVisible();
+  await expect(page.getByTestId("exercise-header")).toBeVisible();
 });
 
 test("tapping the header opens the exercise sheet listing every exercise in the session", async ({
