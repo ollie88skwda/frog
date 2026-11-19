@@ -52,6 +52,7 @@ export function Ruler(props: Props) {
     drag: false,
     lastX: 0,
     lastT: 0,
+    moved: 0,
     emitted: props.value,
     raf: 0,
     w: 320,
@@ -209,10 +210,12 @@ export function Ruler(props: Props) {
   useEffect(() => {
     const st = s.current;
     if (st.drag) return;
-    cancelAnimationFrame(st.raf);
-    st.vel = 0;
-    st.pos = props.value;
-    st.emitted = props.value;
+    if (props.value !== st.emitted) {
+      cancelAnimationFrame(st.raf);
+      st.vel = 0;
+      st.pos = props.value;
+      st.emitted = props.value;
+    }
     draw();
   }, [props.value, props.min, props.max, props.step, props.ghost]);
 
@@ -261,6 +264,7 @@ export function Ruler(props: Props) {
         cancelAnimationFrame(st.raf);
         st.drag = true;
         st.vel = 0;
+        st.moved = 0;
         st.lastX = e.clientX;
         st.lastT = performance.now();
         e.currentTarget.setPointerCapture(e.pointerId);
@@ -271,7 +275,9 @@ export function Ruler(props: Props) {
         if (!st.drag) return;
         const now = performance.now();
         const dx = e.clientX - st.lastX;
+        if (st.moved < 4 && Math.abs(dx) < 4) return;
         const dt = Math.max(1, now - st.lastT);
+        st.moved += Math.abs(dx);
         setPos(st.pos - (dx / pps) * live.current.step);
         st.vel = st.vel * 0.6 + (-dx / dt) * 0.4;
         st.lastX = e.clientX;
@@ -281,13 +287,26 @@ export function Ruler(props: Props) {
         const st = s.current;
         if (!st.drag) return;
         st.drag = false;
+        if (st.moved < 4) {
+          st.pos = st.emitted;
+          draw();
+          return;
+        }
         if (performance.now() - st.lastT > 80) st.vel = 0;
         settle();
       }}
       onPointerCancel={() => {
-        s.current.drag = false;
+        const st = s.current;
+        st.drag = false;
+        if (st.moved < 4) {
+          st.pos = st.emitted;
+          draw();
+          return;
+        }
         settle();
       }}
+      onTouchStart={(e) => e.stopPropagation()}
+      onTouchEnd={(e) => e.stopPropagation()}
     />
   );
 }

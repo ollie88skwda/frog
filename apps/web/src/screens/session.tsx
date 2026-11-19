@@ -3142,7 +3142,7 @@ function ExerciseSpotlight({
   const mechanic = exercise?.mechanic ?? null;
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
-  const [setupDraft, setSetupDraft] = useState(exercise?.notes ?? "");
+  const [setupDraft, setSetupDraft] = useState("");
   const working = committedGroups
     .flatMap((g, i) => (g[0].setType === "warmup" ? [] : [{ g, i }]))
     .map(({ g, i }, j) => ({
@@ -3248,7 +3248,7 @@ function ExerciseSpotlight({
               null,
             );
             const gr = ghost.find((g) => g.weightKg === gw)?.reps ?? null;
-            if (gw == null || !TYPE_FIELDS[type].weight) return null;
+            if (plan || gw == null || !TYPE_FIELDS[type].weight) return null;
             const next =
               toDisplayWeight(gw, blockUnit) + fieldStep("weight", blockUnit);
             return (
@@ -3414,33 +3414,41 @@ function ExerciseSpotlight({
           className="flex flex-col gap-1 px-4 pt-[clamp(4px,1.2dvh,12px)] pb-[clamp(8px,1.6dvh,16px)]"
           data-testid="exercise-extras"
         >
-          {exercise?.notes ? (
-            <button
-              type="button"
-              onClick={() => setSetupOpen(true)}
-              className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm text-soft transition-colors duration-100 hover:bg-surface-hover"
-              data-testid="setup-row"
-            >
-              <Wrench className="size-5 shrink-0 text-accent-ink" />
-              <span className="min-w-0 flex-1 truncate">
-                <b className="mr-1.5 font-semibold text-ink">
-                  Setup &amp; form
-                </b>
-                {exercise.notes}
-              </span>
-              <CaretRight className="size-4 shrink-0 text-soft" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setSetupOpen(true)}
-              className="flex min-h-[clamp(40px,5.2dvh,44px)] w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
-              data-testid="setup-add"
-            >
-              <Plus className="size-5 shrink-0 text-soft" />
-              Add setup or form notes
-            </button>
-          )}
+          {exercise?.isCustom &&
+            exercise.ownerId !== null &&
+            (exercise.notes ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSetupDraft(exercise.notes ?? "");
+                  setSetupOpen(true);
+                }}
+                className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm text-soft transition-colors duration-100 hover:bg-surface-hover"
+                data-testid="setup-row"
+              >
+                <Wrench className="size-5 shrink-0 text-accent-ink" />
+                <span className="min-w-0 flex-1 truncate">
+                  <b className="mr-1.5 font-semibold text-ink">
+                    Setup &amp; form
+                  </b>
+                  {exercise.notes}
+                </span>
+                <CaretRight className="size-4 shrink-0 text-soft" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setSetupDraft("");
+                  setSetupOpen(true);
+                }}
+                className="flex min-h-[clamp(40px,5.2dvh,44px)] w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
+                data-testid="setup-add"
+              >
+                <Plus className="size-5 shrink-0 text-soft" />
+                Add setup or form notes
+              </button>
+            ))}
           <div className="flex min-h-[clamp(40px,5.2dvh,44px)] flex-wrap items-center gap-2">
             <MachineChip
               machine={machine ?? null}
@@ -3767,9 +3775,7 @@ function Spotlight({
         : "";
     }
     // Contract: a value FILLS the field only from an uncommitted draft or
-    // last time's own performance (ghost) — never from the routine target,
-    // which is placeholder-only (seedPlaceholder below) when there's no
-    // ghost to prefill from.
+    // last time's own performance (ghost) — never from the routine target.
     if (kind === "weight") {
       if (draft?.weight) return draft.weight;
       if (ghost.weightKg != null)
@@ -3791,13 +3797,6 @@ function Spotlight({
       return String(toDisplayDistance(ghost.distanceM, distUnit));
     return "";
   };
-  // Routine/copy-workout target, shown as a placeholder only — never a
-  // silent fill — when there's no ghost (last-time) value for this field.
-  // Blank means blank: with no last-time data a field shows nothing, not the
-  // routine target (boss, 2026-11-18).
-  const seedPlaceholder = (
-    _kind: "weight" | "reps" | "duration" | "distance",
-  ): string | undefined => undefined;
   const seedRightReps = () => {
     if (isEditing) return right?.reps != null ? String(right.reps) : "";
     return draft?.rReps ?? "";
@@ -4355,7 +4354,6 @@ function Spotlight({
                     : "decimal"
               }
               value={value}
-              placeholder={seedPlaceholder(key)}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") e.preventDefault();
@@ -4434,7 +4432,7 @@ function Spotlight({
               min={0}
               max={key === "weight" ? (unit === "lb" ? 1000 : 500) : 100}
               step={fieldStep(key, unit)}
-              majorEvery={key === "weight" ? (unit === "lb" ? 4 : 4) : 5}
+              majorEvery={key === "weight" ? 4 : 5}
               pxPerStep={key === "weight" ? 14 : 22}
               label={`${label} ruler`}
               unit={unitTxt}
@@ -4730,7 +4728,6 @@ function Spotlight({
                       inputMode={key === "weight" ? "decimal" : "numeric"}
                       data-big-input
                       value={text}
-                      placeholder={seedPlaceholder(key)}
                       onChange={(e) =>
                         key === "weight"
                           ? setWeight(e.target.value)
