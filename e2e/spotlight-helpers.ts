@@ -82,3 +82,19 @@ export async function fieldValue(page: Page, testId: string): Promise<number> {
   const v = await page.getByTestId(testId).inputValue();
   return Number.parseFloat(v);
 }
+
+/** Opens the conditions dialog via the session ⋯ menu. */
+export async function openConditions(page: Page) {
+  await page.getByTestId("session-menu").click();
+  await page.getByTestId("conditions-chip").click();
+}
+
+/** Asserts the ⋯ menu's conditions row text, then closes the menu. */
+export async function expectConditionsText(page: Page, text: string) {
+  await page.keyboard.press("Escape"); // close an open conditions dialog
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByTestId("session-menu").click();
+  await expect(page.getByTestId("conditions-chip")).toContainText(text);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("conditions-chip")).toHaveCount(0);
+}

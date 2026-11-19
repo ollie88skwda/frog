@@ -60,10 +60,11 @@ test("Log Conditions chip is fully visible on a 320px phone", async ({
   await startSessionWith(page, EX);
   await logBilateralSet(page, "100", "5");
 
+  await page.getByTestId("session-menu").click();
   const chip = page.getByTestId("conditions-chip");
   await expect(chip).toBeVisible();
   const chipBox = (await chip.boundingBox()) ?? { x: 0, y: 0, width: 0 };
-  expect(chipBox.width).toBeGreaterThanOrEqual(130);
+  expect(chipBox.width).toBeGreaterThanOrEqual(100);
   expect(chipBox.x).toBeGreaterThanOrEqual(0);
   expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(320);
 

@@ -78,6 +78,7 @@ import {
   CaretDown,
   CaretRight,
   Check,
+  Clock,
   ClockCounterClockwise,
   DotsThree,
   Flame,
@@ -180,6 +181,7 @@ import {
   type Unit,
   useUnit,
 } from "@/lib/settings";
+import { sessionConditionsLine } from "@/lib/share/conditions";
 import { compareToLast, rirSegmentOf, segmentToFields } from "@/lib/spotlight";
 import { cn } from "@/lib/utils";
 import { useVoice, voice } from "@/lib/voice";
@@ -462,6 +464,11 @@ export default function SessionScreen() {
   const { t } = useVoice();
   const sessionQuery = useSession(sessionId);
   const session = sessionQuery.data;
+  const { data: allMetrics = [] } = useMetrics();
+  const conditionsSummary = sessionConditionsLine(
+    session?.conditionValues ?? {},
+    allMetrics.filter((m) => m.scope === "session"),
+  );
   const sessionLoaded = session !== undefined;
   const {
     data: restored,
@@ -477,6 +484,7 @@ export default function SessionScreen() {
   const [blocks, setBlocks] = useState<BlockState[] | null>(null);
   const [picking, setPicking] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [conditionsOpen, setConditionsOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [activeSeId, setActiveSeId] = useState<string | null>(null);
   const copySeed = (location.state as { seed?: Record<string, SeedSet[]> })
@@ -1463,7 +1471,14 @@ export default function SessionScreen() {
       <header className="sticky top-0 z-10 bg-bg">
         <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-3 px-3">
           <h1 className="sr-only">{session?.title ?? "Session"}</h1>
-          {session && (
+          {rest && activeBlock && rest.seId === activeBlock.seId ? (
+            <RestStopwatch
+              compact
+              startedAt={rest.state.startedAt}
+              setNumber={countSets(activeBlock.committed)}
+              onStop={dismissRest}
+            />
+          ) : session ? (
             <SessionDurationControl
               startedAt={session.startedAt}
               endedAt={session.endedAt}
@@ -1479,7 +1494,7 @@ export default function SessionScreen() {
                 );
               }}
             />
-          )}
+          ) : null}
           <div className="flex shrink-0 items-center gap-2">
             {speechSupported && (
               <span className="relative flex items-center">
@@ -1530,6 +1545,13 @@ export default function SessionScreen() {
                   Add exercise
                 </DropdownMenuItem>
                 <DropdownMenuItem
+                  onSelect={() => setConditionsOpen(true)}
+                  data-testid="conditions-chip"
+                >
+                  <Notebook className="size-4" />
+                  {conditionsSummary ?? "Log conditions"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
                   danger
                   onSelect={() => setFinishOpen(true)}
                   data-testid="session-finish"
@@ -1543,24 +1565,6 @@ export default function SessionScreen() {
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1.5">
-        <div className="min-w-max flex-1">
-          <ConditionsChip sessionId={sessionId} />
-        </div>
-        {/* F15: failed/queued summary; per-set dots live under the set card. */}
-        <span className="flex shrink-0 items-center gap-1.5">
-          <SaveDot
-            state={
-              failedSetCount > 0
-                ? "failed"
-                : Object.keys(queuedSets).length > 0
-                  ? "queued"
-                  : "saved"
-            }
-            onRetry={retryFailedSets}
-          />
-        </span>
-      </div>
       <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-2xl flex-col">
         {activeBlock ? (
           <ExerciseSpotlight
@@ -1611,6 +1615,12 @@ export default function SessionScreen() {
         )}
       </div>
 
+      <ConditionsChip
+        sessionId={sessionId}
+        open={conditionsOpen}
+        onOpenChange={setConditionsOpen}
+        hideTrigger
+      />
       <ExerciseSwitcher
         open={switcherOpen}
         onOpenChange={setSwitcherOpen}
@@ -3138,6 +3148,8 @@ function ExerciseSpotlight({
   );
   const mechanic = exercise?.mechanic ?? null;
   const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupDraft, setSetupDraft] = useState(exercise?.notes ?? "");
   const working = committedGroups
     .flatMap((g, i) => (g[0].setType === "warmup" ? [] : [{ g, i }]))
     .map(({ g, i }, j) => ({
@@ -3227,67 +3239,37 @@ function ExerciseSpotlight({
             >
               {block.name}
             </span>
-            <CaretDown className="size-3 shrink-0 text-faint" />
           </button>
-          <ExerciseSettingsMenu
-            blockName={block.name}
-            unit={blockUnit}
-            showUnitOverride={TYPE_FIELDS[type].weight}
-            unitOverride={override}
-            globalUnit={unit}
-            onSetUnitOverride={(u) =>
-              setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
-            }
-            warmupEligible={warmupEligible}
-            heaviestDisplay={
-              heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
-            }
-            laterality={exercise?.laterality ?? null}
-            onLateralityChange={(l) => editOrCopy({ laterality: l })}
-            onRemoveBlock={onRemoveBlock}
-            onAddWarmup={(w) => onAddWarmup(blockUnit === "lb" ? lbToKg(w) : w)}
-            busy={copying || copyError != null}
-          />
         </div>
-        <div className="mt-1 flex min-w-0 items-center gap-2">
-          <span
-            className="num shrink-0 text-2xs text-faint"
-            data-testid="exercise-position"
-          >
-            {position} of {total}
-          </span>
-          {avgRestSec != null && (
-            <span
-              className="num shrink-0 text-2xs text-faint"
-              title="Average rest between sets of this exercise"
-              data-testid={`block-${block.name}-rest-avg`}
+        <span className="sr-only" data-testid="exercise-position">
+          {position} of {total}
+        </span>
+        {(() => {
+          const gw = ghost.reduce<number | null>(
+            (max, g) =>
+              g.weightKg != null && (max == null || g.weightKg > max)
+                ? g.weightKg
+                : max,
+            null,
+          );
+          const gr = ghost.find((g) => g.weightKg === gw)?.reps ?? null;
+          if (gw == null || !TYPE_FIELDS[type].weight) return null;
+          const next =
+            toDisplayWeight(gw, blockUnit) + fieldStep("weight", blockUnit);
+          return (
+            <p
+              className="flex gap-1.5 pt-2.5 text-[13px] text-soft"
+              data-testid="goal-line"
             >
-              rest {formatRest(avgRestSec)} avg
-            </span>
-          )}
-          <MachineChip
-            machine={machine ?? null}
-            blockName={block.name}
-            disabled={copying}
-            onPick={(machineId) => editOrCopy({ machineId })}
-          />
-          {override && (
-            <button
-              type="button"
-              onClick={() =>
-                setWeightUnit.mutate({
-                  exerciseId: block.exerciseId,
-                  unit: null,
-                })
-              }
-              className="rounded-sm num shrink-0 bg-surface-2 px-1.5 py-0.5 text-2xs text-faint"
-              title="Using a per-exercise weight unit override — tap to clear"
-              data-testid={`block-${block.name}-unit-clear`}
-            >
-              {unitLabel(override)} only
-            </button>
-          )}
-        </div>
+              Goal
+              <b className="num font-semibold text-accent-ink">
+                {next} {unitLabel(blockUnit)}
+                {gr != null ? ` × ${gr}` : ""}
+              </b>
+              · beat last time
+            </p>
+          );
+        })()}
         {plan && (
           <TargetLine
             plan={plan}
@@ -3345,6 +3327,113 @@ function ExerciseSpotlight({
           return { text, lastText, rirText, hasNote: !!g?.some((r) => r.note) };
         })}
       />
+
+      <div
+        className="flex flex-col gap-1 px-3 pt-2"
+        data-testid="exercise-extras"
+      >
+        {exercise?.notes ? (
+          <button
+            type="button"
+            onClick={() => setSetupOpen(true)}
+            className="rounded-md flex min-h-12 w-full items-center gap-3 bg-surface pr-1.5 pl-3.5 text-left text-sm text-soft"
+            data-testid="setup-row"
+          >
+            <Wrench className="size-5 shrink-0 text-accent-ink" />
+            <span className="min-w-0 flex-1 truncate">
+              <b className="mr-1.5 font-semibold text-ink">Setup &amp; form</b>
+              {exercise.notes}
+            </span>
+            <span className="grid size-11 place-items-center text-faint">
+              <CaretRight className="size-4" />
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setSetupOpen(true)}
+            className="rounded-md flex min-h-11 w-full items-center gap-2 px-3.5 text-left text-sm font-medium text-faint hover:bg-surface"
+            data-testid="setup-add"
+          >
+            <Plus className="size-4" />
+            Add setup or form notes
+          </button>
+        )}
+        <div className="flex flex-wrap items-center gap-2 px-1 pt-1">
+          {avgRestSec != null && (
+            <span
+              className="num shrink-0 text-2xs text-faint"
+              title="Average rest between sets of this exercise"
+              data-testid={`block-${block.name}-rest-avg`}
+            >
+              rest {formatRest(avgRestSec)} avg
+            </span>
+          )}
+          <MachineChip
+            machine={machine ?? null}
+            blockName={block.name}
+            disabled={copying}
+            onPick={(machineId) => editOrCopy({ machineId })}
+          />
+          {override && (
+            <button
+              type="button"
+              onClick={() =>
+                setWeightUnit.mutate({
+                  exerciseId: block.exerciseId,
+                  unit: null,
+                })
+              }
+              className="rounded-sm num shrink-0 bg-surface-2 px-1.5 py-0.5 text-2xs text-faint"
+              title="Using a per-exercise weight unit override — tap to clear"
+              data-testid={`block-${block.name}-unit-clear`}
+            >
+              {unitLabel(override)} only
+            </button>
+          )}
+          <ExerciseSettingsMenu
+            blockName={block.name}
+            unit={blockUnit}
+            showUnitOverride={TYPE_FIELDS[type].weight}
+            unitOverride={override}
+            globalUnit={unit}
+            onSetUnitOverride={(u) =>
+              setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
+            }
+            warmupEligible={warmupEligible}
+            heaviestDisplay={
+              heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
+            }
+            laterality={exercise?.laterality ?? null}
+            onLateralityChange={(l) => editOrCopy({ laterality: l })}
+            onRemoveBlock={onRemoveBlock}
+            onAddWarmup={(w) => onAddWarmup(blockUnit === "lb" ? lbToKg(w) : w)}
+            busy={copying || copyError != null}
+          />
+        </div>
+      </div>
+      <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
+        <DialogContent title="Setup & form">
+          <Textarea
+            rows={4}
+            placeholder="Seat height, grip, cues, left knee…"
+            value={setupDraft}
+            onChange={(e) => setSetupDraft(e.target.value)}
+            data-testid="setup-notes"
+            className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint"
+          />
+          <Button
+            className="mt-3 w-full"
+            onClick={() => {
+              editOrCopy({ notes: setupDraft.trim() || null });
+              setSetupOpen(false);
+            }}
+            data-testid="setup-save"
+          >
+            Save
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       {/* 4 + 5. The spotlight + action zone — one persistent spotlight, live
           or focused on a committed set via a marks-band tap (never a second
@@ -4706,8 +4795,9 @@ function Spotlight({
               min={0}
               max={unit === "lb" ? 1000 : 500}
               step={fieldStep("weight", unit)}
-              majorEvery={4}
-              pxPerStep={14}
+              majorEvery={unit === "lb" ? 10 : 20}
+              midEvery={unit === "lb" ? 2 : 4}
+              pxPerStep={10}
               ghost={ghostW}
               label="Weight ruler"
               unit={wUnit}
@@ -4751,34 +4841,26 @@ function Spotlight({
           )}
         </div>
 
-        <div className="px-1 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-          {restStartedAt != null ? (
-            <RestStopwatch
-              startedAt={restStartedAt}
-              setNumber={index + 1}
-              onStop={onStopRest}
-            />
-          ) : (
-            <Button
-              size="lg"
-              className="h-14 w-full rounded-lg bg-accent text-lg font-bold text-ink hover:bg-accent md:h-14"
-              onClick={submit}
-              data-testid="log-set"
-            >
-              <Check className="size-5" />
-              {isEditing
-                ? "Save"
-                : logLabel({
-                    weight,
-                    reps,
-                    weightUnit: unitLabel(unit),
-                    setNo: index + 1,
-                    unilateral: false,
-                    rightWeight: "",
-                    rightReps: "",
-                  })}
-            </Button>
-          )}
+        <div className="px-1 pt-3 pb-[max(2.125rem,env(safe-area-inset-bottom))]">
+          <Button
+            size="lg"
+            className="h-[60px] w-full rounded-lg bg-ink text-[19px] font-bold text-bg hover:bg-ink/90 dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover md:h-[60px]"
+            onClick={submit}
+            data-testid="log-set"
+          >
+            <Check className="size-5" />
+            {isEditing
+              ? "Save"
+              : logLabel({
+                  weight,
+                  reps,
+                  weightUnit: unitLabel(unit),
+                  setNo: index + 1,
+                  unilateral: false,
+                  rightWeight: "",
+                  rightReps: "",
+                })}
+          </Button>
         </div>
         {detailsDialog}
       </div>
@@ -5064,32 +5146,24 @@ function Spotlight({
 
       {/* 5. Action zone. */}
       <div className="mt-1">
-        {restStartedAt != null ? (
-          <RestStopwatch
-            startedAt={restStartedAt}
-            setNumber={index + 1}
-            onStop={onStopRest}
-          />
-        ) : (
-          <Button
-            size="lg"
-            className="h-13 w-full text-base font-bold md:h-13"
-            onClick={submit}
-            data-testid="log-set"
-          >
-            {isEditing
-              ? "Save"
-              : logLabel({
-                  weight,
-                  reps,
-                  weightUnit: f.weight ? unitLabel(unit) : null,
-                  setNo: index + 1,
-                  unilateral: isUnilateral,
-                  rightWeight: weightLinked ? "" : weight2,
-                  rightReps: reps2,
-                })}
-          </Button>
-        )}
+        <Button
+          size="lg"
+          className="h-13 w-full text-base font-bold md:h-13"
+          onClick={submit}
+          data-testid="log-set"
+        >
+          {isEditing
+            ? "Save"
+            : logLabel({
+                weight,
+                reps,
+                weightUnit: f.weight ? unitLabel(unit) : null,
+                setNo: index + 1,
+                unilateral: isUnilateral,
+                rightWeight: weightLinked ? "" : weight2,
+                rightReps: reps2,
+              })}
+        </Button>
       </div>
 
       {detailsDialog}
@@ -5098,6 +5172,14 @@ function Spotlight({
 }
 
 // ── Session duration / pause control (unchanged) ────────────────────────────
+
+function clockText(ms: number): string {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = String(t % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
+}
 
 function SessionDurationControl({
   startedAt,
@@ -5134,15 +5216,15 @@ function SessionDurationControl({
         onClick={() => setOpen((o) => !o)}
         title="Duration · pause / edit start"
         className={cn(
-          "num flex h-8 items-center gap-1 rounded-sm px-1.5 text-xs transition-colors duration-100",
+          "num flex h-11 items-center gap-2 rounded-sm px-3 text-[15px] font-semibold transition-colors duration-100",
           paused
             ? "bg-accent-soft text-accent-ink"
             : "text-soft hover:bg-surface-hover",
         )}
         data-testid="session-clock"
       >
-        {paused && <Pause className="size-3.5" />}
-        {formatDurationSeconds(duration)}
+        {paused ? <Pause className="size-5" /> : <Clock className="size-5" />}
+        {clockText(duration)}
       </button>
       {open && (
         <>

@@ -8,6 +8,7 @@ import {
   waitForExercise,
   waitForSessionNotes,
 } from "./helpers";
+import { expectConditionsText, openConditions } from "./spotlight-helpers";
 
 // P4 round-trips: session conditions (tracked defaults, auto-save, notes,
 // custom typed conditions, stop-tracking) and a custom set-scope metric.
@@ -61,7 +62,7 @@ test("tracked defaults (Sleep, Stress) auto-save with no Save button", async ({
   await expect(page).toHaveURL(/\/session\//);
   await dismissPicker(page);
 
-  await page.getByTestId("conditions-chip").click();
+  await openConditions(page);
 
   // Sleep + Stress are pre-loaded as tracked defaults — no preset-picking needed.
   const sleep = page.getByTestId(`condition-input-${SLEEP_ID}`);
@@ -74,13 +75,14 @@ test("tracked defaults (Sleep, Stress) auto-save with no Save button", async ({
 
   // There is no Save button — everything auto-saves.
   await expect(page.getByTestId("conditions-save-btn")).toHaveCount(0);
-  await expect(page.getByTestId("conditions-chip")).toContainText("7.5h");
-  await expect(page.getByTestId("conditions-chip")).toContainText("stress 4");
+  await expectConditionsText(page, "7.5h");
+  await expectConditionsText(page, "stress 4");
 
   // Reload: values restore from the server.
   await page.reload();
-  await expect(page.getByTestId("conditions-chip")).toContainText("7.5h");
-  await expect(page.getByTestId("conditions-chip")).toContainText("stress 4");
+  await dismissPicker(page);
+  await expectConditionsText(page, "7.5h");
+  await expectConditionsText(page, "stress 4");
 });
 
 test("session notes auto-save and round-trip", async ({ page }) => {
@@ -90,7 +92,7 @@ test("session notes auto-save and round-trip", async ({ page }) => {
   await expect(page).toHaveURL(/\/session\//);
   await dismissPicker(page);
 
-  await page.getByTestId("conditions-chip").click();
+  await openConditions(page);
   const notes = page.getByTestId("condition-notes");
   await notes.fill(NOTE);
   await notes.blur();
@@ -99,7 +101,7 @@ test("session notes auto-save and round-trip", async ({ page }) => {
   // Reopen after reload: the note restored from the server.
   await page.reload();
   await dismissPicker(page); // empty session re-opens the picker on load
-  await page.getByTestId("conditions-chip").click();
+  await openConditions(page);
   await expect(page.getByTestId("condition-notes")).toHaveValue(NOTE);
 });
 
@@ -112,7 +114,7 @@ test("create a custom number condition with a unit; value round-trips", async ({
   await expect(page).toHaveURL(/\/session\//);
   await dismissPicker(page);
 
-  await page.getByTestId("conditions-chip").click();
+  await openConditions(page);
   await page.getByTestId("condition-add-input").fill(NAME);
   await page.getByTestId("condition-type-number").click();
   await page.getByTestId("condition-unit-input").fill("ml");
@@ -123,7 +125,7 @@ test("create a custom number condition with a unit; value round-trips", async ({
   await expect(field).toBeVisible();
   await field.fill("500");
   await field.blur();
-  await expect(page.getByTestId("conditions-chip")).toContainText("500ml");
+  await expectConditionsText(page, "500ml");
 
   // The chip updates optimistically; the write to sessions.condition_values is
   // a background mutation, so reloading before it lands drops the value. Poll
@@ -146,7 +148,8 @@ test("create a custom number condition with a unit; value round-trips", async ({
 
   // Reload: custom condition + value restore from the server.
   await page.reload();
-  await expect(page.getByTestId("conditions-chip")).toContainText("500ml");
+  await dismissPicker(page);
+  await expectConditionsText(page, "500ml");
 });
 
 test("stop tracking a default hides it from future sessions", async ({
@@ -157,7 +160,7 @@ test("stop tracking a default hides it from future sessions", async ({
   await dismissPicker(page);
 
   // Untrack Sleep via its row menu.
-  await page.getByTestId("conditions-chip").click();
+  await openConditions(page);
   await expect(page.getByTestId(`condition-input-${SLEEP_ID}`)).toBeVisible();
   await page.getByTestId(`condition-menu-${SLEEP_ID}`).click();
   await page.getByTestId(`condition-untrack-${SLEEP_ID}`).click();
@@ -179,7 +182,7 @@ test("stop tracking a default hides it from future sessions", async ({
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await dismissPicker(page);
-  await page.getByTestId("conditions-chip").click();
+  await openConditions(page);
   await expect(page.getByTestId(`condition-scale-${STRESS_ID}`)).toBeVisible();
   await expect(page.getByTestId(`condition-input-${SLEEP_ID}`)).toHaveCount(0);
 });

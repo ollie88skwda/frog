@@ -27,6 +27,8 @@ type Props = {
   step: number;
   /** A major (taller, labelled) tick every N steps. */
   majorEvery: number;
+  /** A mid-height tick every N steps (optional). */
+  midEvery?: number;
   /** Pixels between adjacent ticks. */
   pxPerStep?: number;
   /** Last time's value, drawn as a small dot on the ruler. */
@@ -69,28 +71,34 @@ export function Ruler(props: Props) {
     const css = getComputedStyle(cv);
     const minor = css.getPropertyValue("--color-text-disabled").trim();
     const major = css.getPropertyValue("--color-text-secondary").trim();
+    const faintInk = css.getPropertyValue("--color-text-disabled").trim();
     const accent = css.getPropertyValue("--color-accent-mark").trim();
     const half = Math.ceil(w / 2 / pps) + 2;
     const centre = Math.round(pos / p.step);
     ctx.lineCap = "round";
     ctx.textAlign = "center";
-    ctx.font = "600 11px Geologica, system-ui, sans-serif";
+    ctx.font = "600 12px Geologica, system-ui, sans-serif";
     for (let k = centre - half; k <= centre + half; k++) {
       const val = k * p.step;
       if (val < p.min - 1e-9 || val > p.max + 1e-9) continue;
       const x = w / 2 + ((val - pos) / p.step) * pps;
       const isMajor = isMajorTick(k, p.majorEvery);
-      const th = isMajor ? h * 0.52 : h * 0.3;
-      ctx.strokeStyle = isMajor ? major : minor;
+      const isMid =
+        !isMajor && p.midEvery != null && isMajorTick(k, p.midEvery);
+      const th = isMajor ? h * 0.7 : isMid ? h * 0.5 : h * 0.3;
+      const d = Math.min(1, Math.abs(x - w / 2) / (w / 2));
+      ctx.globalAlpha = Math.max(0.1, 1 - d * d * 0.9);
+      ctx.strokeStyle = isMajor || isMid ? major : minor;
       ctx.lineWidth = isMajor ? 2 : 1.5;
       ctx.beginPath();
-      ctx.moveTo(x, h - 4);
-      ctx.lineTo(x, h - 4 - th);
+      ctx.moveTo(x, h);
+      ctx.lineTo(x, h - th);
       ctx.stroke();
       if (isMajor) {
-        ctx.fillStyle = minor;
-        ctx.fillText(String(Math.round(val * 100) / 100), x, h - 10 - th);
+        ctx.fillStyle = faintInk;
+        ctx.fillText(String(Math.round(val * 100) / 100), x, h - th - 6);
       }
+      ctx.globalAlpha = 1;
     }
     if (p.ghost != null) {
       const gx = w / 2 + ((p.ghost - pos) / p.step) * pps;
@@ -224,7 +232,7 @@ export function Ruler(props: Props) {
       aria-valuetext={`${props.value}${unit ? ` ${unit}` : ""}`}
       data-testid={testId}
       className={cn(
-        "rounded-sm block h-14 w-full cursor-ew-resize bg-bg outline-offset-2 select-none",
+        "rounded-sm block h-[52px] w-full cursor-ew-resize bg-bg outline-offset-2 select-none",
       )}
       style={{
         touchAction: "pan-y",
