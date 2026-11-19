@@ -3318,6 +3318,16 @@ function ExerciseSpotlight({
           return { text, lastText, rirText, hasNote: !!g?.some((r) => r.note) };
         })}
       />
+      <div className="px-3 pt-1">
+        <button
+          type="button"
+          onClick={focusLive}
+          className="rounded-md flex min-h-11 w-full items-center gap-2 bg-surface-2/60 pl-[46px] text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-2"
+          data-testid="add-set"
+        >
+          + Add a set
+        </button>
+      </div>
 
       {(lastState || nudge || directThis) && (
         <div
