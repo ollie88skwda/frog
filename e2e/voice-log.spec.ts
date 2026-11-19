@@ -176,6 +176,7 @@ test("an unmatched name opens the in-session picker, and a blocked mic says so",
   // this session…"), not the whole library — OTHER needs to already be in
   // the session for voice-pick-${OTHER} to exist.
   await startSession(page, EX);
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("open-exercise-picker").click();
   await page.getByTestId(`pick-exercise-${OTHER}`).click();
   await expect(page.getByTestId("exercise-name")).toHaveText(OTHER);

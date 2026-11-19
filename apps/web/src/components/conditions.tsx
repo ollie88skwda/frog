@@ -102,7 +102,18 @@ const eyebrow = "text-2xs font-medium uppercase tracking-widest text-faint";
  * user adds any typed condition, writes freeform notes, and everything
  * auto-saves optimistically. There is no Save button.
  */
-export function ConditionsChip({ sessionId }: { sessionId: string }) {
+export function ConditionsChip({
+  sessionId,
+  open: openProp,
+  onOpenChange,
+  hideTrigger = false,
+}: {
+  sessionId: string;
+  /** Controlled mode: the session menu opens the dialog itself. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
+}) {
   const { data: session } = useSession(sessionId);
   const { data: metrics = [] } = useMetrics();
   const { data: prefs = [] } = useTrackedConditions();
@@ -112,7 +123,9 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
   const setTracked = useSetConditionTracked();
   const deleteMetric = useDeleteMetric();
 
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = onOpenChange ?? setOpenState;
   const [query, setQuery] = useState("");
   const [newType, setNewType] = useState<MetricType>("number");
   const [newUnit, setNewUnit] = useState("");
@@ -231,16 +244,18 @@ export function ConditionsChip({ sessionId }: { sessionId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <button
-          type="button"
-          data-testid="conditions-chip"
-          className="num flex h-8 max-w-full items-center gap-2 truncate rounded-sm bg-translucent px-2 text-xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
-        >
-          <ClipboardText className="size-4 shrink-0" />
-          <span className="truncate">{summary ?? "Log conditions"}</span>
-        </button>
-      </DialogTrigger>
+      {!hideTrigger && (
+        <DialogTrigger asChild>
+          <button
+            type="button"
+            data-testid="conditions-chip"
+            className="num flex h-8 max-w-full items-center gap-2 truncate rounded-sm bg-translucent px-2 text-xs text-soft transition-colors duration-150 ease-(--ease-out-quad) hover:bg-surface-hover hover:text-ink"
+          >
+            <ClipboardText className="size-4 shrink-0" />
+            <span className="truncate">{summary ?? "Log conditions"}</span>
+          </button>
+        </DialogTrigger>
+      )}
       <DialogContent title="Conditions" className="md:max-w-lg">
         <div className="flex flex-col gap-5">
           {/* Tracked ------------------------------------------------------- */}

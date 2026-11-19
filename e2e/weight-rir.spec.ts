@@ -83,8 +83,10 @@ test("RIR on set 1 only leaves sets 2-3 blank in history", async ({ page }) => {
   for (let i = 0; i < 3; i++) {
     await page.getByTestId("weight-field").fill("100");
     await page.getByTestId("reps-field").fill("6");
-    if (i === 0) await page.getByTestId("rir-option-2").click();
-    else
+    if (i === 0) {
+      await page.getByTestId("rir-column").click();
+      await page.getByTestId("rir-option-2").click();
+    } else
       await expect(page.getByTestId("rir-option-2")).not.toHaveAttribute(
         "aria-pressed",
         "true",
@@ -95,6 +97,8 @@ test("RIR on set 1 only leaves sets 2-3 blank in history", async ({ page }) => {
       "done",
     );
   }
+
+  await page.getByTestId("session-menu").click();
 
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
@@ -170,6 +174,7 @@ test("planned RIR is an outlined hint: untouched saves blank, tapping it saves t
   );
   await page.getByTestId("weight-field").fill("100");
   await page.getByTestId("reps-field").fill("6");
+  await page.getByTestId("rir-column").click();
   await page.getByTestId("rir-option-2").click();
   await expect(page.getByTestId("rir-option-2")).toHaveAttribute(
     "aria-pressed",
@@ -180,6 +185,8 @@ test("planned RIR is an outlined hint: untouched saves blank, tapping it saves t
     "data-state",
     "done",
   );
+
+  await page.getByTestId("session-menu").click();
 
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();

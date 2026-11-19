@@ -54,6 +54,8 @@ test("beating a prior session raises the PR banner + medal; first log never PRs"
   // session 2 fetches from the DB).
   await expect.poll(() => setLogCount(page)).toBeGreaterThan(0);
 
+  await page.getByTestId("session-menu").click();
+
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).toHaveURL(/\/history\//);

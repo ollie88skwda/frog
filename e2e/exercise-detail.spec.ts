@@ -44,6 +44,7 @@ async function logSessionWith(
     await logSet(page, i, sets[i][0], sets[i][1]);
   }
   // Finish → save the workout (opens the finish overlay, then confirms).
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).not.toHaveURL(/\/session\//);

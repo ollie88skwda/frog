@@ -8,6 +8,7 @@ import {
   signIn,
   waitForExercise,
 } from "./helpers";
+import { expectConditionsText, openConditions } from "./spotlight-helpers";
 
 // Seed ids of the globally-seeded conditions (seed-ids.ts). The strip test
 // below records the Stress scale, NOT the Sleep input: the earlier
@@ -92,6 +93,7 @@ async function logSession(
       "done",
     );
   }
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page.getByTestId("post-save-summary")).toBeVisible();
@@ -231,12 +233,12 @@ test("one layout engine paints every frame × ground of a session card", async (
   // Record a condition so the card's lab-report strip has data to paint
   // (the strip only renders when the session recorded something). Stress is
   // used rather than Sleep — see the STRESS_ID comment above.
-  await page.getByTestId("conditions-chip").click();
+  await openConditions(page);
   const stress = page.getByTestId(`condition-scale-${STRESS_ID}-4`);
   await expect(stress).toBeVisible();
   await stress.click();
-  await expect(page.getByTestId("conditions-chip")).toContainText("stress 4");
-  await page.keyboard.press("Escape"); // close the conditions sheet
+  await expectConditionsText(page, "stress 4");
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page.getByTestId("post-save-summary")).toBeVisible();

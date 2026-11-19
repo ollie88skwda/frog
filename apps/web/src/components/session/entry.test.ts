@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { fieldStep, logLabel, scrubSteps, stepValue } from "./entry";
+import {
+  fieldStep,
+  isMajorTick,
+  logLabel,
+  scrubSteps,
+  snapToStep,
+  stepValue,
+} from "./entry";
 
 describe("entry logic", () => {
   // Step sizes come from the set-entry spec: 2.5 kg / 5 lb plates, 1 rep,
@@ -59,5 +66,17 @@ describe("entry logic", () => {
         rightReps: "6",
       }),
     ).toBe("Log 40/35 kg × 8/6 · ᴸ + ᴿ");
+  });
+  it("snaps to the nearest step and clamps to the range", () => {
+    expect(snapToStep(81.3, 2.5, 0, 500)).toBe(82.5);
+    expect(snapToStep(81.2, 2.5, 0, 500)).toBe(80);
+    expect(snapToStep(-4, 2.5, 0, 500)).toBe(0);
+    expect(snapToStep(900, 5, 0, 500)).toBe(500);
+    expect(snapToStep(7.4, 1, 0, 100)).toBe(7);
+  });
+  it("marks every nth tick as major", () => {
+    expect(isMajorTick(0, 8)).toBe(true);
+    expect(isMajorTick(8, 8)).toBe(true);
+    expect(isMajorTick(7, 8)).toBe(false);
   });
 });
