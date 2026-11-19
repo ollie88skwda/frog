@@ -431,7 +431,7 @@ function RirSegmented({
     <div className="flex flex-col gap-1">
       {!bare && (
         <span className="text-2xs font-medium tracking-widest text-soft uppercase">
-          RIR
+          RIR{side ? ` · ${side}` : ""}
         </span>
       )}
       <div className="flex gap-1">
@@ -3318,11 +3318,11 @@ function ExerciseSpotlight({
           return { text, lastText, rirText, hasNote: !!g?.some((r) => r.note) };
         })}
       />
-      <div className="px-3 pt-1">
+      <div className="px-4 pt-1">
         <button
           type="button"
           onClick={focusLive}
-          className="rounded-md flex min-h-11 w-full items-center gap-2 bg-surface-2/60 pl-[46px] text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-2"
+          className="flex min-h-11 w-full items-center gap-2 rounded-md bg-surface-2/60 pl-12 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-2"
           data-testid="add-set"
         >
           + Add a set
@@ -3498,7 +3498,7 @@ function ExerciseSpotlight({
             className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint"
           />
           <Button
-            className="mt-3 w-full"
+            className="mt-3 h-11 w-full md:h-11"
             onClick={() => {
               editOrCopy({ notes: setupDraft.trim() || null });
               setSetupOpen(false);
@@ -4351,6 +4351,7 @@ function Spotlight({
                 if (restStartedAt != null) onStopRest();
               }}
               readOnly={key === "duration" && timerRunning}
+              data-big-input
               className="num min-w-0 flex-1 bg-transparent text-center text-[40px] leading-none font-bold text-ink placeholder:text-3xl placeholder:text-faint sm:text-[52px]"
               data-testid={fieldTestId}
               aria-invalid={key === "weight" && weightError ? true : undefined}
@@ -5009,7 +5010,8 @@ function Spotlight({
                     value={weight2}
                     placeholder={weight}
                     onChange={(e) => setWeight2(e.target.value)}
-                    className="num w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
+                    data-big-input
+                    className="num h-full w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
                     data-testid="weight-field-right"
                   />
                 </div>
@@ -5073,7 +5075,8 @@ function Spotlight({
                     onFocus={() => {
                       if (restStartedAt != null) onStopRest();
                     }}
-                    className="num w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
+                    data-big-input
+                    className="num h-full w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
                     data-testid={`reps-field-${side}`}
                   />
                 </div>
@@ -5141,7 +5144,7 @@ function Spotlight({
         </div>
       )}
       {effort && isUnilateral && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-2">
           <RirSegmented
             min={rirMin}
             max={rirMax}

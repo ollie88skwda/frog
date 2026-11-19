@@ -53,7 +53,7 @@ export function RestStopwatch({
       >
         <span
           aria-hidden="true"
-          className="size-2 shrink-0 animate-pulse bg-accent"
+          className="size-2 shrink-0 animate-pulse rounded-xs bg-accent-ink"
         />
         <span data-testid="rest-elapsed" className="tabular-nums">
           {mmss(elapsed)}
@@ -76,7 +76,7 @@ export function RestStopwatch({
           numerals, never on them. */}
       <span
         aria-hidden="true"
-        className="size-2 shrink-0 animate-pulse bg-accent"
+        className="size-2 shrink-0 animate-pulse rounded-xs bg-accent-ink"
       />
       <span className="flex min-w-0 flex-1 items-baseline gap-2">
         <span

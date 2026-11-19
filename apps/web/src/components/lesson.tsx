@@ -24,7 +24,7 @@ export function InfoTip({ lessonId }: { lessonId: LessonId }) {
       }}
     >
       <DialogTrigger
-        className="relative justify-self-center p-1 text-faint transition-colors duration-100 hover:text-ink"
+        className="relative justify-self-center rounded-xs bg-surface-2 p-1 text-soft transition-colors duration-100 after:absolute after:-inset-2.5 hover:text-ink"
         title={lesson.title}
         data-testid={`infotip-${lessonId}`}
       >
