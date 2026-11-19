@@ -134,7 +134,8 @@ export function AppShell() {
         id="main"
         tabIndex={-1}
         className={cn(
-          "min-w-0 flex-1 overflow-y-auto outline-none",
+          "min-w-0 flex-1 outline-none",
+          inSession ? "overflow-hidden" : "overflow-y-auto",
           // Clearance for the floating tab bar; the workout hides the bar, so
           // its entry panel sits flush with the bottom edge instead.
           !inSession && "max-md:pb-[calc(5rem+env(safe-area-inset-bottom))]",

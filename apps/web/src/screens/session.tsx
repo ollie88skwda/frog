@@ -1586,7 +1586,7 @@ export default function SessionScreen() {
         </div>
       </header>
 
-      <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] max-w-2xl flex-col">
+      <div className="mx-auto flex h-[calc(100dvh-clamp(52px,6.6dvh,56px))] max-w-2xl flex-col overflow-hidden">
         {activeBlock ? (
           <ExerciseSpotlight
             key={activeBlock.seId}
@@ -3211,304 +3211,319 @@ function ExerciseSpotlight({
 
   return (
     <div
-      className="flex flex-1 flex-col"
+      className="flex min-h-0 flex-1 flex-col"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* 2. Exercise header. */}
-      <header className="px-4 pt-1 pb-3" data-testid={`block-${block.name}`}>
-        <div className="flex items-center">
-          <button
-            type="button"
-            onClick={onOpenSwitcher}
-            className="flex min-h-[clamp(36px,5dvh,44px)] min-w-0 flex-1 items-center text-left"
-            data-testid="exercise-header"
-          >
-            <span
-              className="line-clamp-2 min-w-0 text-[clamp(22px,3.3dvh,28px)] leading-[1.15] font-bold tracking-tight text-balance"
-              data-testid="exercise-name"
+      <div
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        data-testid="session-scroll"
+      >
+        {/* 2. Exercise header. */}
+        <header className="px-4 pt-1 pb-3" data-testid={`block-${block.name}`}>
+          <div className="flex items-center">
+            <button
+              type="button"
+              onClick={onOpenSwitcher}
+              className="flex min-h-[clamp(36px,5dvh,44px)] min-w-0 flex-1 items-center text-left"
+              data-testid="exercise-header"
             >
-              {block.name}
-            </span>
-          </button>
-        </div>
-        <span className="sr-only" data-testid="exercise-position">
-          {position} of {total}
-        </span>
-        {(() => {
-          const gw = ghost.reduce<number | null>(
-            (max, g) =>
-              g.weightKg != null && (max == null || g.weightKg > max)
-                ? g.weightKg
-                : max,
-            null,
-          );
-          const gr = ghost.find((g) => g.weightKg === gw)?.reps ?? null;
-          if (gw == null || !TYPE_FIELDS[type].weight) return null;
-          const next =
-            toDisplayWeight(gw, blockUnit) + fieldStep("weight", blockUnit);
-          return (
-            <p
-              className="flex gap-1.5 pt-0.5 text-[13px] text-soft"
-              data-testid="goal-line"
-            >
-              Goal
-              <b className="num font-semibold text-accent-ink">
-                {next} {unitLabel(blockUnit)}
-                {gr != null ? ` × ${gr}` : ""}
-              </b>
-              · beat last time
-            </p>
-          );
-        })()}
-        {plan && (
-          <TargetLine
-            plan={plan}
-            unit={blockUnit}
-            ghostKg={ghost.reduce<number | null>(
+              <span
+                className="line-clamp-2 min-w-0 text-[clamp(22px,3.3dvh,28px)] leading-[1.15] font-bold tracking-tight text-balance"
+                data-testid="exercise-name"
+              >
+                {block.name}
+              </span>
+            </button>
+          </div>
+          <span className="sr-only" data-testid="exercise-position">
+            {position} of {total}
+          </span>
+          {(() => {
+            const gw = ghost.reduce<number | null>(
               (max, g) =>
                 g.weightKg != null && (max == null || g.weightKg > max)
                   ? g.weightKg
                   : max,
               null,
-            )}
-            onWhy={() => setEvidenceOpen(true)}
-          />
-        )}
-        {copyError && (
-          <div
-            role="status"
-            data-testid={`block-${block.name}-copy-error`}
-            className="mt-2 flex items-center justify-between gap-2 px-2 py-1.5"
-          >
-            <span className="min-w-0 text-2xs text-neg">
-              {copyError.unresolved
-                ? "Couldn't confirm that change — check your connection and retry."
-                : "Couldn't update this exercise — couldn't reach the server."}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={retryCopy}
-              disabled={copying}
-              data-testid={`block-${block.name}-copy-retry`}
-            >
-              {copying ? "Retrying…" : "Retry"}
-            </Button>
-          </div>
-        )}
-      </header>
-
-      {/* 3. Set band. */}
-      <SetRows
-        marks={marks}
-        rows={marks.map((_m, i) => {
-          const g = committedGroups[i];
-          const text = g
-            ? fieldsFor(type)
-                .map((k) => fieldText(k, g[0], blockUnit, distUnit))
-                .filter((t) => t !== "—")
-                .join(" × ")
-            : "";
-          const lastText = fieldsFor(type)
-            .map((k) => fieldText(k, ghostFor(ghost, i), blockUnit, distUnit))
-            .filter((t) => t !== "—")
-            .join(" × ");
-          const rirText = g ? rirLabel(g[0]) : "";
-          return { text, lastText, rirText, hasNote: !!g?.some((r) => r.note) };
-        })}
-      />
-      <div className="px-4 pt-1">
-        <button
-          type="button"
-          onClick={focusLive}
-          className="flex min-h-11 w-full items-center gap-2 rounded-md bg-surface-2/60 pl-12 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-2"
-          data-testid="add-set"
-        >
-          + Add a set
-        </button>
-      </div>
-
-      {(lastState || nudge || directThis) && (
-        <div
-          className="flex flex-col gap-1.5 px-4 pt-3"
-          data-testid="set-result"
-        >
-          {lastState && lastWorking && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={cn(
-                  "num inline-flex h-5 items-center rounded-xs px-1.5 text-2xs font-semibold",
-                  lastState.kind === "over"
-                    ? "bg-accent-soft text-accent-ink"
-                    : "bg-hover text-soft",
-                )}
-                data-testid="range-chip"
+            );
+            const gr = ghost.find((g) => g.weightKg === gw)?.reps ?? null;
+            if (gw == null || !TYPE_FIELDS[type].weight) return null;
+            const next =
+              toDisplayWeight(gw, blockUnit) + fieldStep("weight", blockUnit);
+            return (
+              <p
+                className="flex gap-1.5 pt-0.5 text-[13px] text-soft"
+                data-testid="goal-line"
               >
-                {lastState.label}
+                Goal
+                <b className="num font-semibold text-accent-ink">
+                  {next} {unitLabel(blockUnit)}
+                  {gr != null ? ` × ${gr}` : ""}
+                </b>
+                · beat last time
+              </p>
+            );
+          })()}
+          {plan && (
+            <TargetLine
+              plan={plan}
+              unit={blockUnit}
+              ghostKg={ghost.reduce<number | null>(
+                (max, g) =>
+                  g.weightKg != null && (max == null || g.weightKg > max)
+                    ? g.weightKg
+                    : max,
+                null,
+              )}
+              onWhy={() => setEvidenceOpen(true)}
+            />
+          )}
+          {copyError && (
+            <div
+              role="status"
+              data-testid={`block-${block.name}-copy-error`}
+              className="mt-2 flex items-center justify-between gap-2 px-2 py-1.5"
+            >
+              <span className="min-w-0 text-2xs text-neg">
+                {copyError.unresolved
+                  ? "Couldn't confirm that change — check your connection and retry."
+                  : "Couldn't update this exercise — couldn't reach the server."}
               </span>
-              {lastWorkingE1rm?.kind === "value" && (
-                <span className="num text-2xs text-soft">
-                  e1RM {toDisplayWeight(lastWorkingE1rm.kg, blockUnit)}{" "}
-                  {unitLabel(blockUnit)}
-                </span>
-              )}
-              {lastWorkingE1rm?.kind === "not_estimable" && (
-                <span className="text-2xs text-soft">
-                  Over 10 reps in total: no strength estimate for this set
-                </span>
-              )}
-              {(() => {
-                const g = ghostFor(ghost, lastWorking[0].setNo);
-                const w = lastWorking[0].weightKg;
-                if (g.weightKg == null || w == null) return null;
-                const d = toDisplayWeight(w - g.weightKg, blockUnit);
-                if (Math.abs(d) < 0.1) return null;
-                return (
-                  <DeltaChip
-                    delta={d}
-                    unit={` ${unitLabel(blockUnit)}`}
-                    basis="vs last time"
-                  />
-                );
-              })()}
-              <SaveDot
-                state={lastWorking.reduce<SaveState>(
-                  (acc, r) =>
-                    acc === "failed" || saveStateOf(r.id) === "failed"
-                      ? "failed"
-                      : acc === "queued" || saveStateOf(r.id) === "queued"
-                        ? "queued"
-                        : "saved",
-                  "saved",
-                )}
-                onRetry={onRetrySets}
-              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={retryCopy}
+                disabled={copying}
+                data-testid={`block-${block.name}-copy-retry`}
+              >
+                {copying ? "Retrying…" : "Retry"}
+              </Button>
             </div>
           )}
-          {nudge && (
-            <p className="text-xs text-soft" data-testid="coach-nudge">
-              {nudge}
-            </p>
-          )}
-          {directThis && (
-            <p className="text-xs text-soft" data-testid="direct-sets-note">
-              {directThis.direct} direct sets for{" "}
-              {muscleLabel(directThis.muscle)} in one session: a planning range
-              is 2-5.
-            </p>
-          )}
-        </div>
-      )}
+        </header>
 
-      <div
-        className="flex flex-col gap-1 px-4 pt-[clamp(4px,1.2dvh,12px)] pb-[clamp(8px,1.6dvh,16px)]"
-        data-testid="exercise-extras"
-      >
-        {exercise?.notes ? (
+        {/* 3. Set band. */}
+        <SetRows
+          marks={marks}
+          rows={marks.map((_m, i) => {
+            const g = committedGroups[i];
+            const text = g
+              ? fieldsFor(type)
+                  .map((k) => fieldText(k, g[0], blockUnit, distUnit))
+                  .filter((t) => t !== "—")
+                  .join(" × ")
+              : "";
+            const lastText = fieldsFor(type)
+              .map((k) => fieldText(k, ghostFor(ghost, i), blockUnit, distUnit))
+              .filter((t) => t !== "—")
+              .join(" × ");
+            const rirText = g ? rirLabel(g[0]) : "";
+            return {
+              text,
+              lastText,
+              rirText,
+              hasNote: !!g?.some((r) => r.note),
+            };
+          })}
+        />
+        <div className="px-4 pt-1">
           <button
             type="button"
-            onClick={() => setSetupOpen(true)}
-            className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm text-soft transition-colors duration-100 hover:bg-surface-hover"
-            data-testid="setup-row"
+            onClick={focusLive}
+            className="flex min-h-11 w-full items-center gap-2 rounded-md bg-surface-2/60 pl-12 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-2"
+            data-testid="add-set"
           >
-            <Wrench className="size-5 shrink-0 text-accent-ink" />
-            <span className="min-w-0 flex-1 truncate">
-              <b className="mr-1.5 font-semibold text-ink">Setup &amp; form</b>
-              {exercise.notes}
-            </span>
-            <CaretRight className="size-4 shrink-0 text-soft" />
+            + Add a set
           </button>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setSetupOpen(true)}
-            className="flex min-h-[clamp(40px,5.2dvh,44px)] w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
-            data-testid="setup-add"
+        </div>
+
+        {(lastState || nudge || directThis) && (
+          <div
+            className="flex flex-col gap-1.5 px-4 pt-3"
+            data-testid="set-result"
           >
-            <Plus className="size-5 shrink-0 text-soft" />
-            Add setup or form notes
-          </button>
+            {lastState && lastWorking && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={cn(
+                    "num inline-flex h-5 items-center rounded-xs px-1.5 text-2xs font-semibold",
+                    lastState.kind === "over"
+                      ? "bg-accent-soft text-accent-ink"
+                      : "bg-hover text-soft",
+                  )}
+                  data-testid="range-chip"
+                >
+                  {lastState.label}
+                </span>
+                {lastWorkingE1rm?.kind === "value" && (
+                  <span className="num text-2xs text-soft">
+                    e1RM {toDisplayWeight(lastWorkingE1rm.kg, blockUnit)}{" "}
+                    {unitLabel(blockUnit)}
+                  </span>
+                )}
+                {lastWorkingE1rm?.kind === "not_estimable" && (
+                  <span className="text-2xs text-soft">
+                    Over 10 reps in total: no strength estimate for this set
+                  </span>
+                )}
+                {(() => {
+                  const g = ghostFor(ghost, lastWorking[0].setNo);
+                  const w = lastWorking[0].weightKg;
+                  if (g.weightKg == null || w == null) return null;
+                  const d = toDisplayWeight(w - g.weightKg, blockUnit);
+                  if (Math.abs(d) < 0.1) return null;
+                  return (
+                    <DeltaChip
+                      delta={d}
+                      unit={` ${unitLabel(blockUnit)}`}
+                      basis="vs last time"
+                    />
+                  );
+                })()}
+                <SaveDot
+                  state={lastWorking.reduce<SaveState>(
+                    (acc, r) =>
+                      acc === "failed" || saveStateOf(r.id) === "failed"
+                        ? "failed"
+                        : acc === "queued" || saveStateOf(r.id) === "queued"
+                          ? "queued"
+                          : "saved",
+                    "saved",
+                  )}
+                  onRetry={onRetrySets}
+                />
+              </div>
+            )}
+            {nudge && (
+              <p className="text-xs text-soft" data-testid="coach-nudge">
+                {nudge}
+              </p>
+            )}
+            {directThis && (
+              <p className="text-xs text-soft" data-testid="direct-sets-note">
+                {directThis.direct} direct sets for{" "}
+                {muscleLabel(directThis.muscle)} in one session: a planning
+                range is 2-5.
+              </p>
+            )}
+          </div>
         )}
-        <div className="flex min-h-[clamp(40px,5.2dvh,44px)] flex-wrap items-center gap-2">
-          <MachineChip
-            machine={machine ?? null}
-            blockName={block.name}
-            disabled={copying}
-            onPick={(machineId) => editOrCopy({ machineId })}
-          />
-          {override && (
+
+        <div
+          className="flex flex-col gap-1 px-4 pt-[clamp(4px,1.2dvh,12px)] pb-[clamp(8px,1.6dvh,16px)]"
+          data-testid="exercise-extras"
+        >
+          {exercise?.notes ? (
             <button
               type="button"
-              onClick={() =>
-                setWeightUnit.mutate({
-                  exerciseId: block.exerciseId,
-                  unit: null,
-                })
-              }
-              className="num flex h-11 shrink-0 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-ink transition-colors duration-100 hover:bg-active"
-              title="Using a per-exercise weight unit override — tap to clear"
-              data-testid={`block-${block.name}-unit-clear`}
+              onClick={() => setSetupOpen(true)}
+              className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm text-soft transition-colors duration-100 hover:bg-surface-hover"
+              data-testid="setup-row"
             >
-              {unitLabel(override)} only
+              <Wrench className="size-5 shrink-0 text-accent-ink" />
+              <span className="min-w-0 flex-1 truncate">
+                <b className="mr-1.5 font-semibold text-ink">
+                  Setup &amp; form
+                </b>
+                {exercise.notes}
+              </span>
+              <CaretRight className="size-4 shrink-0 text-soft" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setSetupOpen(true)}
+              className="flex min-h-[clamp(40px,5.2dvh,44px)] w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
+              data-testid="setup-add"
+            >
+              <Plus className="size-5 shrink-0 text-soft" />
+              Add setup or form notes
             </button>
           )}
-          {avgRestSec != null && (
-            <span
-              className="num shrink-0 text-xs text-soft"
-              title="Average rest between sets of this exercise"
-              data-testid={`block-${block.name}-rest-avg`}
-            >
-              rest {formatRest(avgRestSec)} avg
-            </span>
-          )}
-          <span className="ml-auto flex">
-            <ExerciseSettingsMenu
+          <div className="flex min-h-[clamp(40px,5.2dvh,44px)] flex-wrap items-center gap-2">
+            <MachineChip
+              machine={machine ?? null}
               blockName={block.name}
-              unit={blockUnit}
-              showUnitOverride={TYPE_FIELDS[type].weight}
-              unitOverride={override}
-              globalUnit={unit}
-              onSetUnitOverride={(u) =>
-                setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
-              }
-              warmupEligible={warmupEligible}
-              heaviestDisplay={
-                heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
-              }
-              laterality={exercise?.laterality ?? null}
-              onLateralityChange={(l) => editOrCopy({ laterality: l })}
-              onRemoveBlock={onRemoveBlock}
-              onAddWarmup={(w) =>
-                onAddWarmup(blockUnit === "lb" ? lbToKg(w) : w)
-              }
-              busy={copying || copyError != null}
+              disabled={copying}
+              onPick={(machineId) => editOrCopy({ machineId })}
             />
-          </span>
+            {override && (
+              <button
+                type="button"
+                onClick={() =>
+                  setWeightUnit.mutate({
+                    exerciseId: block.exerciseId,
+                    unit: null,
+                  })
+                }
+                className="num flex h-11 shrink-0 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-ink transition-colors duration-100 hover:bg-active"
+                title="Using a per-exercise weight unit override — tap to clear"
+                data-testid={`block-${block.name}-unit-clear`}
+              >
+                {unitLabel(override)} only
+              </button>
+            )}
+            {avgRestSec != null && (
+              <span
+                className="num shrink-0 text-xs text-soft"
+                title="Average rest between sets of this exercise"
+                data-testid={`block-${block.name}-rest-avg`}
+              >
+                rest {formatRest(avgRestSec)} avg
+              </span>
+            )}
+            <span className="ml-auto flex">
+              <ExerciseSettingsMenu
+                blockName={block.name}
+                unit={blockUnit}
+                showUnitOverride={TYPE_FIELDS[type].weight}
+                unitOverride={override}
+                globalUnit={unit}
+                onSetUnitOverride={(u) =>
+                  setWeightUnit.mutate({
+                    exerciseId: block.exerciseId,
+                    unit: u,
+                  })
+                }
+                warmupEligible={warmupEligible}
+                heaviestDisplay={
+                  heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
+                }
+                laterality={exercise?.laterality ?? null}
+                onLateralityChange={(l) => editOrCopy({ laterality: l })}
+                onRemoveBlock={onRemoveBlock}
+                onAddWarmup={(w) =>
+                  onAddWarmup(blockUnit === "lb" ? lbToKg(w) : w)
+                }
+                busy={copying || copyError != null}
+              />
+            </span>
+          </div>
         </div>
+        <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
+          <DialogContent title="Setup & form">
+            <Textarea
+              rows={4}
+              placeholder="Seat height, grip, cues, left knee…"
+              value={setupDraft}
+              onChange={(e) => setSetupDraft(e.target.value)}
+              data-testid="setup-notes"
+              className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint"
+            />
+            <Button
+              className="mt-3 h-11 w-full md:h-11"
+              onClick={() => {
+                editOrCopy({ notes: setupDraft.trim() || null });
+                setSetupOpen(false);
+              }}
+              data-testid="setup-save"
+            >
+              Save
+            </Button>
+          </DialogContent>
+        </Dialog>
       </div>
-      <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
-        <DialogContent title="Setup & form">
-          <Textarea
-            rows={4}
-            placeholder="Seat height, grip, cues, left knee…"
-            value={setupDraft}
-            onChange={(e) => setSetupDraft(e.target.value)}
-            data-testid="setup-notes"
-            className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint"
-          />
-          <Button
-            className="mt-3 h-11 w-full md:h-11"
-            onClick={() => {
-              editOrCopy({ notes: setupDraft.trim() || null });
-              setSetupOpen(false);
-            }}
-            data-testid="setup-save"
-          >
-            Save
-          </Button>
-        </DialogContent>
-      </Dialog>
 
       {/* 4 + 5. The spotlight + action zone — one persistent spotlight, live
           or focused on a committed set via a marks-band tap (never a second
@@ -4614,7 +4629,7 @@ function Spotlight({
     ];
     return (
       <div
-        className="sticky bottom-0 z-10 mt-auto rounded-t-lg bg-surface px-4 pt-2"
+        className="z-10 shrink-0 rounded-t-lg bg-surface px-4 pt-2"
         data-testid="entry-panel"
       >
         <div className="flex min-h-[clamp(36px,5.2dvh,44px)] items-center gap-2">
@@ -4894,7 +4909,7 @@ function Spotlight({
 
   return (
     <div
-      className="mt-auto flex flex-col gap-3 rounded-t-lg bg-surface px-4 pt-2 pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]"
+      className="flex max-h-[72dvh] shrink-0 flex-col gap-3 overflow-y-auto rounded-t-lg bg-surface px-4 pt-2 pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]"
       data-testid="entry-panel"
     >
       <div className="flex min-h-11 items-center gap-2">
