@@ -238,7 +238,7 @@ export function Ruler(props: Props) {
       aria-valuetext={`${props.value}${unit ? ` ${unit}` : ""}`}
       data-testid={testId}
       className={cn(
-        "block h-14 w-full cursor-ew-resize rounded-sm outline-offset-2 select-none",
+        "block h-[clamp(40px,6.4dvh,56px)] w-full cursor-ew-resize rounded-sm outline-offset-2 select-none",
       )}
       style={{
         touchAction: "pan-y",

@@ -1481,7 +1481,7 @@ export default function SessionScreen() {
 
       {/* 1. Top bar — the one clock, voice, and a ⋯ menu (Finish lives here). */}
       <header className="sticky top-0 z-10 bg-bg">
-        <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-2 px-4">
+        <div className="mx-auto flex h-[clamp(52px,6.6dvh,56px)] max-w-2xl items-center justify-between gap-2 px-4">
           <h1 className="sr-only">{session?.title ?? "Session"}</h1>
           {rest && activeBlock && rest.seId === activeBlock.seId ? (
             <RestStopwatch
@@ -2481,7 +2481,7 @@ function SetRows({
             disabled={!m.onTap}
             onClick={m.onTap}
             className={cn(
-              "grid min-h-12 w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 text-left text-[17px] text-ink transition-colors duration-100",
+              "grid min-h-[clamp(40px,5.4dvh,48px)] w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 text-left text-[17px] text-ink transition-colors duration-100",
               now ? "bg-accent-soft" : "bg-surface hover:bg-surface-hover",
             )}
             data-testid={`set-mark-${i}`}
@@ -3221,11 +3221,11 @@ function ExerciseSpotlight({
           <button
             type="button"
             onClick={onOpenSwitcher}
-            className="flex min-h-11 min-w-0 flex-1 items-center text-left"
+            className="flex min-h-[clamp(36px,5dvh,44px)] min-w-0 flex-1 items-center text-left"
             data-testid="exercise-header"
           >
             <span
-              className="line-clamp-2 min-w-0 text-[28px] leading-[1.15] font-bold tracking-tight text-balance"
+              className="line-clamp-2 min-w-0 text-[clamp(22px,3.3dvh,28px)] leading-[1.15] font-bold tracking-tight text-balance"
               data-testid="exercise-name"
             >
               {block.name}
@@ -3402,14 +3402,14 @@ function ExerciseSpotlight({
       )}
 
       <div
-        className="flex flex-col gap-1 px-4 pt-3 pb-4"
+        className="flex flex-col gap-1 px-4 pt-[clamp(4px,1.2dvh,12px)] pb-[clamp(8px,1.6dvh,16px)]"
         data-testid="exercise-extras"
       >
         {exercise?.notes ? (
           <button
             type="button"
             onClick={() => setSetupOpen(true)}
-            className="flex min-h-12 w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm text-soft transition-colors duration-100 hover:bg-surface-hover"
+            className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm text-soft transition-colors duration-100 hover:bg-surface-hover"
             data-testid="setup-row"
           >
             <Wrench className="size-5 shrink-0 text-accent-ink" />
@@ -3423,14 +3423,14 @@ function ExerciseSpotlight({
           <button
             type="button"
             onClick={() => setSetupOpen(true)}
-            className="flex min-h-12 w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
+            className="flex min-h-[clamp(40px,5.2dvh,44px)] w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
             data-testid="setup-add"
           >
             <Plus className="size-5 shrink-0 text-soft" />
             Add setup or form notes
           </button>
         )}
-        <div className="flex min-h-11 flex-wrap items-center gap-2">
+        <div className="flex min-h-[clamp(40px,5.2dvh,44px)] flex-wrap items-center gap-2">
           <MachineChip
             machine={machine ?? null}
             blockName={block.name}
@@ -4598,7 +4598,12 @@ function Spotlight({
     // One size for all three numbers: 44px until the longest would outgrow a
     // third of a 390 column ("102.5 lbs").
     const longest = Math.max(weight.length, reps.length);
-    const fontSize = longest <= 4 ? 44 : longest === 5 ? 40 : 32;
+    const fontSize =
+      longest <= 4
+        ? "clamp(30px,6dvh,44px)"
+        : longest === 5
+          ? "clamp(28px,5.4dvh,40px)"
+          : "clamp(24px,4.2dvh,32px)";
     const cols: {
       key: "weight" | "reps" | "rir";
       beat: boolean;
@@ -4612,7 +4617,7 @@ function Spotlight({
         className="sticky bottom-0 z-10 mt-auto rounded-t-lg bg-surface px-4 pt-2"
         data-testid="entry-panel"
       >
-        <div className="flex min-h-11 items-center gap-2">
+        <div className="flex min-h-[clamp(36px,5.2dvh,44px)] items-center gap-2">
           <span
             className="num text-sm font-semibold text-soft"
             data-testid="set-number"
@@ -4687,7 +4692,7 @@ function Spotlight({
               <div
                 key={key}
                 className={cn(
-                  "relative flex min-w-0 flex-col items-center pb-2.5",
+                  "relative flex min-w-0 flex-col items-center pb-[clamp(2px,1.1dvh,10px)]",
                   on ? "text-ink" : "text-soft",
                 )}
                 data-beat={key === "rir" ? undefined : beat ? "true" : "false"}
@@ -4697,7 +4702,7 @@ function Spotlight({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => setActiveCol("rir")}
-                    className="num h-12 w-full text-center leading-none font-bold tracking-tight"
+                    className="num h-[clamp(40px,5.8dvh,48px)] w-full text-center leading-none font-bold tracking-tight"
                     style={{ fontSize }}
                     data-testid="rir-column"
                     aria-label={`RIR ${rirSel ?? "not set"}`}
@@ -4705,7 +4710,7 @@ function Spotlight({
                     {rirSel == null ? "–" : rirSel === 4 ? "4+" : rirSel}
                   </button>
                 ) : (
-                  <span className="relative flex h-12 w-full items-center justify-center">
+                  <span className="relative flex h-[clamp(40px,5.8dvh,48px)] w-full items-center justify-center">
                     <input
                       inputMode={key === "weight" ? "decimal" : "numeric"}
                       data-big-input
@@ -4775,7 +4780,7 @@ function Spotlight({
                 {key !== "rir" && (
                   <span
                     className={cn(
-                      "num min-h-4 px-1 text-center text-2xs leading-4 font-semibold text-balance",
+                      "num min-h-4 px-1 text-center text-2xs leading-4 font-semibold text-balance [@media(max-height:700px)]:sr-only",
                       cmp.state === "up" && "text-accent-ink",
                       cmp.state === "down" && "text-warn",
                       (cmp.state === "same" || cmp.state === "none") &&
@@ -4861,10 +4866,10 @@ function Spotlight({
           )}
         </div>
 
-        <div className="pt-3 pb-[max(2.125rem,env(safe-area-inset-bottom))]">
+        <div className="pt-[clamp(8px,1.4dvh,12px)] pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]">
           <Button
             size="lg"
-            className="h-[60px] w-full rounded-lg bg-action text-[19px] font-bold text-on-action hover:bg-action-hover md:h-[60px] dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover"
+            className="h-[clamp(48px,7dvh,60px)] w-full rounded-lg bg-action text-[19px] font-bold text-on-action hover:bg-action-hover dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover"
             onClick={submit}
             data-testid="log-set"
           >
@@ -4889,7 +4894,7 @@ function Spotlight({
 
   return (
     <div
-      className="mt-auto flex flex-col gap-3 rounded-t-lg bg-surface px-4 pt-2 pb-[max(2.125rem,env(safe-area-inset-bottom))]"
+      className="mt-auto flex flex-col gap-3 rounded-t-lg bg-surface px-4 pt-2 pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]"
       data-testid="entry-panel"
     >
       <div className="flex min-h-11 items-center gap-2">
@@ -5172,7 +5177,7 @@ function Spotlight({
       <div className="pt-1">
         <Button
           size="lg"
-          className="h-[60px] w-full rounded-lg bg-action text-[19px] font-bold text-on-action hover:bg-action-hover md:h-[60px] dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover"
+          className="h-[clamp(48px,7dvh,60px)] w-full rounded-lg bg-action text-[19px] font-bold text-on-action hover:bg-action-hover dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover"
           onClick={submit}
           data-testid="log-set"
         >
