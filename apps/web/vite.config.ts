@@ -128,6 +128,8 @@ export default defineConfig(({ command }) => {
       changelogPlugin(),
       ocrAssetsPlugin(),
     ],
+    // Dev server is reached over the tailnet (tailscale serve) for phone review.
+    server: { allowedHosts: [".ts.net"] },
     resolve: {
       alias: {
         "@": fileURLToPath(new URL("./src", import.meta.url)),
