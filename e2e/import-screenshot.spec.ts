@@ -41,7 +41,7 @@ test("screenshot → review → confirm → History, fully on-device", async ({
 
   await page.goto("/import");
   await page
-    .getByTestId("import-screenshot-input")
+    .getByTestId("import-file-input")
     .setInputFiles("packages/core/src/import/ocr/fixtures/hevy-light.png");
 
   await expect(page.getByTestId("import-review")).toBeVisible({
