@@ -147,15 +147,15 @@ test("a seeded lift shows in Strength and opens its Lift page", async ({
   await expect(page.getByTestId("lift-bandchart")).toBeVisible();
 });
 
-test("under 7 sessions a verdict reads as rough, never a confident trend", async ({
+test("under 7 sessions a verdict is a tentative best guess with a %", async ({
   page,
 }) => {
   const EX = `Rough Lift ${Date.now()}`;
-  await seedLift(page, EX, 3);
+  await seedLift(page, EX, 3, { weights: [100, 110, 120] });
   await page.goto("/progress?s=strength");
   const body = page.getByTestId("progress-screen");
   await expect(body.getByText(EX, { exact: true }).first()).toBeVisible();
-  await expect(body).toContainText(/Rough: 3 of 7/);
+  await expect(body).toContainText(/Maybe progressing · \d+%/);
 });
 
 test("a condition finding names n and says correlation, not causation", async ({

@@ -5,10 +5,9 @@ import {
   type FileParseResult,
   genericCsvToDraft,
   type ImportDraft,
-  parseImportFile,
   parseWorkoutText,
 } from "@frog/core";
-import { Camera, FileText, UploadSimple } from "@phosphor-icons/react";
+import { FileText, UploadSimple } from "@phosphor-icons/react";
 import { useRef, useState } from "react";
 import { Link } from "react-router";
 import { ImportReview, type ReviewSummary } from "@/components/import/review";
@@ -45,44 +44,67 @@ export default function ImportScreen() {
   const [mapping, setMapping] = useState<CsvMapping>({});
   const [csvUnit, setCsvUnit] = useState<"kg" | "lb">(unit);
   const [error, setError] = useState<string | null>(null);
-  const [reading, setReading] = useState<number | null>(null);
-  const shotRef = useRef<HTMLInputElement>(null);
+  const [progress, setProgress] = useState<{
+    label: string;
+    fraction: number;
+  } | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [done, setDone] = useState<ReviewSummary | null>(null);
 
-  /** The single hand-off into review. OCR calls this too. */
+  /** The single hand-off into review. Every source calls this. */
   function showDraft(d: ImportDraft) {
     setDraft(d);
     setError(null);
   }
 
-  async function onScreenshot(f: File | undefined) {
-    if (!f) return;
+  /** One entry for everything dropped, picked or pasted: images, PDF, CSV, JSON, XLSX, text. */
+  async function onFiles(list: FileList | File[] | null | undefined) {
+    const files = Array.from(list ?? []);
+    if (files.length === 0) return;
     setError(null);
     setFile(null);
-    setReading(0);
+    setProgress({ label: "Starting", fraction: 0 });
     try {
-      // Lazy: the OCR engine + model load only now, from this app's own /ocr/.
-      const { screenshotToImportDraft } = await import(
-        "@/lib/ocr/screenshot-import"
+      // Lazy: OCR, PDF and HEIC decoders load only when a file needs them.
+      const { filesToImportResult } = await import(
+        "@/lib/ocr/universal-import"
       );
-      const d = await screenshotToImportDraft(f, unit, setReading);
-      if (d.sessions.length + d.routines.length === 0) {
-        setError(
-          t(
-            "No workout found in that screenshot. Try a sharper one, or copy the text and paste it above.",
-            "The frog squinted and found no workout. Try a sharper shot, or paste the text above.",
-          ),
-        );
-        return;
+      const r = await filesToImportResult(files, unit, setProgress);
+      const n = r.draft.sessions.length + r.draft.routines.length;
+      if (r.file) {
+        setFile(r.file);
+        setMapping(r.file.mapping ?? {});
+        setCsvUnit(unit);
       }
-      showDraft(d);
+      if (r.rawText) setText(r.rawText);
+      if (n > 0) {
+        showDraft(r.draft);
+        if (r.problems.length) setError(r.problems.join(" "));
+      } else if (r.file) {
+        setError("Match the columns below so Frog can read this file.");
+      } else {
+        setError(
+          [
+            ...r.problems,
+            r.rawText
+              ? t(
+                  "Frog read the text below but could not find sets in it. Edit it into lines like 'Bench Press' then '100 kg x 8', then tap Read text.",
+                  "The frog read this but found no sets. Tidy it into lines like '100 kg x 8' and tap Read text.",
+                )
+              : t(
+                  "No workout found. Try a sharper screenshot, or paste the text above.",
+                  "The frog squinted and found no workout. Try a sharper shot, or paste the text.",
+                ),
+          ].join(" "),
+        );
+      }
     } catch (e) {
       setError(
-        `Could not read that screenshot${e instanceof Error ? `: ${e.message}` : "."}`,
+        `Could not read that${e instanceof Error ? `: ${e.message}` : "."}`,
       );
     } finally {
-      setReading(null);
-      if (shotRef.current) shotRef.current.value = "";
+      setProgress(null);
+      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -100,38 +122,6 @@ export default function ImportScreen() {
       return;
     }
     showDraft(d);
-  }
-
-  async function onFile(f: File | undefined) {
-    if (!f) return;
-    setError(null);
-    try {
-      const body = await f.text();
-      if (/\.txt$/i.test(f.name) || f.type === "text/plain") {
-        setFile(null);
-        setText(body);
-        const d = parseWorkoutText(body, { defaultUnit: unit });
-        if (d.sessions.length + d.routines.length === 0)
-          throw new Error("No workout found in that text file.");
-        showDraft(d);
-        return;
-      }
-      const r = parseImportFile(body, { defaultUnit: unit });
-      if (
-        r.draft.sessions.length === 0 &&
-        r.format !== "generic-csv" &&
-        r.format !== "jefit-csv"
-      )
-        throw new Error("No sessions found. Is this the right export?");
-      setFile(r);
-      setMapping(r.mapping ?? {});
-      setCsvUnit(unit);
-      if (r.draft.sessions.length > 0) showDraft(r.draft);
-      else if (r.rows)
-        setError("Match the columns below so Frog can read this file.");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not read that file.");
-    }
   }
 
   function remap(next: CsvMapping, u = csvUnit) {
@@ -203,6 +193,11 @@ export default function ImportScreen() {
             }}
           />
         )}
+        {error && (
+          <p className="mb-3 text-xs text-neg" data-testid="import-error">
+            {error}
+          </p>
+        )}
         <ImportReview
           draft={draft}
           onDraftChange={setDraft}
@@ -231,6 +226,13 @@ export default function ImportScreen() {
           }
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            // A pasted screenshot or file goes through the same reader as a drop.
+            if (e.clipboardData.files.length > 0) {
+              e.preventDefault();
+              void onFiles(e.clipboardData.files);
+            }
+          }}
           aria-label="Workout text"
           data-testid="import-text"
         />
@@ -245,55 +247,48 @@ export default function ImportScreen() {
         </Button>
       </section>
 
-      <section className="mt-3 rounded-md bg-surface p-4">
-        <h2 className="text-sm font-medium">Upload a file</h2>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: drag-and-drop is an extra; the Choose files button is the accessible path */}
+      <section
+        className={`mt-3 rounded-md p-4 ${dragging ? "bg-accent-soft" : "bg-surface"}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          void onFiles(e.dataTransfer.files);
+        }}
+        data-testid="import-dropzone"
+      >
+        <h2 className="text-sm font-medium">Screenshots and files</h2>
         <p className="mt-1 text-xs text-soft">
-          Export files from Hevy, Strong, Fitbod, JEFIT or Frog, or any
-          spreadsheet saved as CSV.
+          Drop or pick anything: workout screenshots and photos (PNG, JPG,
+          HEIC), several at once if you scrolled; PDF; CSV, JSON or Excel
+          exports; plain text. It is read on this device and never uploaded or
+          saved.
         </p>
         <input
           ref={fileRef}
           type="file"
-          accept=".csv,.json,.txt,text/csv,text/plain,application/json"
+          multiple
+          accept="image/*,.heic,.heif,.pdf,.csv,.tsv,.json,.txt,.xlsx,text/csv,text/plain,application/json,application/pdf"
           className="sr-only"
-          onChange={(e) => void onFile(e.target.files?.[0])}
+          onChange={(e) => void onFiles(e.target.files)}
           data-testid="import-file-input"
         />
         <Button
           variant="outline"
           className="mt-3 w-full"
+          disabled={progress !== null}
           onClick={() => fileRef.current?.click()}
           data-testid="import-file-btn"
         >
-          <UploadSimple className="size-4" /> Choose a file
-        </Button>
-      </section>
-
-      <section className="mt-3 rounded-md bg-surface p-4">
-        <h2 className="text-sm font-medium">Screenshot</h2>
-        <p className="mt-1 text-xs text-soft">
-          Pick a workout screenshot from Hevy, Strong, Fitbod, JEFIT or a notes
-          app. It is read on this device and never uploaded or saved.
-        </p>
-        <input
-          ref={shotRef}
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          onChange={(e) => void onScreenshot(e.target.files?.[0])}
-          data-testid="import-screenshot-input"
-        />
-        <Button
-          variant="outline"
-          className="mt-3 w-full"
-          disabled={reading !== null}
-          onClick={() => shotRef.current?.click()}
-          data-testid="import-screenshot-btn"
-        >
-          <Camera className="size-4" />
-          {reading === null
-            ? "Choose a screenshot"
-            : `Reading… ${Math.round(reading * 100)}%`}
+          <UploadSimple className="size-4" />
+          {progress === null
+            ? "Choose files or screenshots"
+            : `${progress.label}… ${Math.round(progress.fraction * 100)}%`}
         </Button>
       </section>
 

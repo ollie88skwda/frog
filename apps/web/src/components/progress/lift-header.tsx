@@ -15,6 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import {
+  ConfidenceBadge,
   DeltaChip,
   EvidenceSheet,
   StatTile,
@@ -87,10 +88,18 @@ export function LiftHeader({
         />
         <StatTile
           label="Status"
-          value={<span className="text-lg">{verdictWord(verdict)}</span>}
+          value={
+            <span className="whitespace-normal text-lg">
+              {verdictWord(verdict)}
+            </span>
+          }
           basis={
             verdict.kind === "status" && verdict.rough
-              ? `rough: ${verdict.status.n} of 7 sessions`
+              ? verdict.score
+                ? verdict.score.level === "low"
+                  ? "tentative: tap the % for what raises it"
+                  : "best guess: tap the % for what raises it"
+                : "log one more session to compare"
               : verdict.kind === "status"
                 ? "7+ comparable sessions · beta"
                 : verdict.kind === "not_estimable"
@@ -98,7 +107,18 @@ export function LiftHeader({
                   : verdict.note
           }
           n={series.sessionsLogged}
-          confidence={<TierBadge tier={5} onClick={() => setWhy(true)} />}
+          confidence={
+            <>
+              {verdict.kind === "status" && verdict.score && (
+                <ConfidenceBadge
+                  score={verdict.score}
+                  showWord={verdict.score.level === "low"}
+                  onClick={() => setWhy(true)}
+                />
+              )}
+              <TierBadge tier={5} onClick={() => setWhy(true)} />
+            </>
+          }
         />
         <StatTile
           label="Best top set"
@@ -182,7 +202,7 @@ export function LiftHeader({
         <p className="mt-3 rounded-md bg-surface p-3 text-xs text-soft">
           {series.points.length === 0 && series.flaggedSets.length > 0
             ? `${NOT_ESTIMABLE_NOTE}.`
-            : `Not enough yet (${series.points.length} of 2 sessions for a trend line).`}
+            : `One session so far. Log one more to draw a trend line.`}
         </p>
       )}
 
@@ -239,10 +259,11 @@ export function LiftHeader({
           </p>
         }
         ruleId="C2c"
-        rule="e1RM = load × 36 / (37 − (reps + RIR)), only for sets of 10 or fewer total reps. A change under 10% is normal swing. A stall check needs 7 comparable sessions; earlier verdicts are rough."
+        rule="e1RM = load × 36 / (37 − (reps + RIR)), only for sets of 10 or fewer total reps. A change under 10% is normal swing. A firm stall check uses 7 comparable sessions; before that you get a best guess with a confidence percentage."
         tier={5}
         tierNote="Brzycki is a standard formula; RIR is an estimate (about ±1 rep), so treat e1RM as a trend signal, not a true max. The 7-session stall rule is untested on real logs, so it is labelled beta."
         flags={["Beta"]}
+        confidence={verdict.kind === "status" ? verdict.score : null}
       />
     </div>
   );

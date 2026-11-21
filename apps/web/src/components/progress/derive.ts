@@ -5,13 +5,17 @@
 // No React, no DOM: unit-tested in derive.test.ts.
 import {
   type BwEntry,
+  type ClaimDirection,
   type ComparableSession,
+  type ConfidenceScore,
+  comparableSessions,
   creditsFor,
   e1rmOfSet,
   fractionalHardSets,
   type HardSetBlock,
   hardSetCount,
   type LiftStatus,
+  liftConfidence,
   liftStatus,
   type MuscleByExercise,
   type RecordsSessionInput,
@@ -111,7 +115,14 @@ export function liftSeries(
 export type LiftVerdict =
   | { kind: "not_estimable"; note: string }
   | { kind: "none"; note: string }
-  | { kind: "status"; status: LiftStatus; rough: boolean };
+  | {
+      kind: "status";
+      status: LiftStatus;
+      rough: boolean;
+      /** Computed confidence in the shown direction; null with a single session. */
+      score: ConfidenceScore | null;
+      claim: ClaimDirection | "drop" | null;
+    };
 
 export const NOT_ESTIMABLE_NOTE =
   "strength estimate needs 10 or fewer total reps";
@@ -125,7 +136,14 @@ export function liftVerdict(series: LiftSeries): LiftVerdict {
   }
   const status = liftStatus(series.points);
   // Before 7 comparable sessions the verdict is rough (C2c-stall).
-  return { kind: "status", status, rough: status.n < STALL_MIN_SESSIONS };
+  const lc = liftConfidence(comparableSessions(series.points), status.state);
+  return {
+    kind: "status",
+    status,
+    rough: status.n < STALL_MIN_SESSIONS,
+    score: lc?.score ?? null,
+    claim: lc?.claim ?? null,
+  };
 }
 
 export const STATE_WORD: Record<LiftStatus["state"], string> = {
@@ -137,14 +155,32 @@ export const STATE_WORD: Record<LiftStatus["state"], string> = {
   restart: "Restarting",
 };
 
-/** Short pill text for a verdict; rough reads as rough. */
+const CLAIM_VERB: Record<ClaimDirection | "drop", string> = {
+  up: "Maybe progressing",
+  down: "Maybe declining",
+  flat: "Maybe holding",
+  drop: "Maybe a dip",
+};
+
+/** 7/6 status words when the score is under 50%: tentative, never fact (section 12). */
+const SOFT_STATE_WORD: Record<LiftStatus["state"], string> = {
+  ...STATE_WORD,
+  progressing: "Maybe progressing",
+  holding: "Maybe holding",
+  stalled: "Maybe stalled",
+  dropped: "Maybe a dip",
+};
+
+/** Short pill text for a verdict; a best guess starts with "Maybe" and carries its % elsewhere. */
 export function verdictWord(v: LiftVerdict): string {
   if (v.kind === "not_estimable") return "No estimate";
   if (v.kind === "none") return "No data";
-  if (v.rough)
-    return v.status.state === "restart"
-      ? "Restarting"
-      : `Rough: ${v.status.n} of ${STALL_MIN_SESSIONS}`;
+  if (v.rough) {
+    if (v.status.state === "restart") return "Restarting";
+    if (v.claim && v.score) return CLAIM_VERB[v.claim];
+    return "Not enough yet";
+  }
+  if (v.score?.level === "low") return SOFT_STATE_WORD[v.status.state];
   return STATE_WORD[v.status.state];
 }
 
@@ -239,6 +275,31 @@ export type Contribution = {
   /** Credit-weighted hard sets this exercise gave the muscle. */
   sets: number;
 };
+
+/** Weekly fractional hard sets, oldest first, for the last `weeks` 7-day
+ * windows that start on or after the first logged session (a week before the
+ * user began is not a zero week). */
+export function weeklyHardSets(
+  history: RecordsSessionInput[],
+  muscles: MuscleByExercise,
+  muscle: string,
+  now: number,
+  rirMax?: number,
+  weeks = 6,
+): number[] {
+  const first = history.reduce((m, s) => Math.min(m, s.startedAt), now);
+  const out: number[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const to = now - i * 7 * DAY + 1;
+    const from = to - 7 * DAY;
+    if (from < first) continue;
+    const r = fractionalHardSets(blocksIn(history, muscles, from, to), {
+      rirMax,
+    });
+    out.push(r.muscles.find((m) => m.muscle === muscle)?.total ?? 0);
+  }
+  return out;
+}
 
 /** Which exercises fed one muscle's count in the window (the tap-through sheet). */
 export function muscleContributions(

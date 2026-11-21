@@ -26,7 +26,9 @@
     "@electric-sql/pglite": "0.5.14",
     "@playwright/test": "^1.61.1",
     "@types/node": "^26.1.1",
+    "@types/pngjs": "^6.0.5",
     "convex": "1.49.0",
+    "pngjs": "^7.0.0",
     "typescript": "~5.9.2",
     "vite": "^7.1.11",
     "wrangler": "^4.159.0"

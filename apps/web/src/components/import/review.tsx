@@ -366,8 +366,20 @@ export function ImportReview({
   const repo = useRepo();
   const qc = useQueryClient();
   const { t } = useVoice();
-  const { data: exercises = [], isSuccess: libraryLoaded } = useExercises();
-  const { data: sessions = [], isSuccess: historyLoaded } = useAllSessions();
+  const {
+    data: exercises = [],
+    isSuccess: libraryOk,
+    isError: libraryFailed,
+  } = useExercises();
+  const {
+    data: sessions = [],
+    isSuccess: historyOk,
+    isError: historyFailed,
+  } = useAllSessions();
+  // A failed library/history load must never lock the Import button: names
+  // then just become new custom exercises (the server dedupes by name).
+  const libraryLoaded = libraryOk || libraryFailed;
+  const historyLoaded = historyOk || historyFailed;
   const pending = usePendingExercises();
 
   const duplicates = useMemo(
@@ -445,14 +457,20 @@ export function ImportReview({
     }));
 
   const chosen = draft.sessions.filter(included);
+  // No date in the source: save as today (editable above) rather than block.
   const undated = chosen.filter((s) => s.startedAt == null);
   const stats = draftStats({ ...draft, sessions: chosen });
+  const newNames = new Set<string>();
+  for (const e of [
+    ...chosen.flatMap((s) => s.exercises),
+    ...draft.routines.flatMap((r) => r.exercises),
+  ])
+    if (resolve(e.rawName).kind === "create") newNames.add(norm(e.rawName));
   const canImport =
     !busy &&
     libraryLoaded &&
     historyLoaded &&
     pending.size === 0 &&
-    undated.length === 0 &&
     chosen.length + draft.routines.length > 0;
 
   async function confirm() {
@@ -463,7 +481,15 @@ export function ImportReview({
         const r = resolve(raw);
         return r.kind === "match" ? r.name : raw.trim();
       };
-      const payload = draftToImportedSessions(draft, nameFor, included);
+      const now = Date.now();
+      let n = 0;
+      const dated: ImportDraft = {
+        ...draft,
+        sessions: draft.sessions.map((s) =>
+          s.startedAt == null ? { ...s, startedAt: now - 60_000 * n++ } : s,
+        ),
+      };
+      const payload = draftToImportedSessions(dated, nameFor, included);
       const result: ImportResult =
         payload.length > 0
           ? await repo.importSessions(payload)
@@ -478,7 +504,9 @@ export function ImportReview({
               ? res.id
               : (
                   exercises.find((x) => norm(x.name) === norm(e.rawName)) ??
-                  (await repo.createExercise(e.rawName.trim()))
+                  (await repo.createExercise(e.rawName.trim(), {
+                    share: false,
+                  }))
                 ).id;
           ids.push({
             exerciseId,
@@ -771,9 +799,10 @@ export function ImportReview({
       )}
 
       {undated.length > 0 && (
-        <p className="mt-3 text-xs text-neg">
-          Set a date on {undated.length === 1 ? "the session" : "each session"}{" "}
-          that has none, or turn it off.
+        <p className="mt-3 text-xs text-soft">
+          {undated.length === 1 ? "One session has" : "Some sessions have"} no
+          date, so {undated.length === 1 ? "it" : "they"} will be saved as
+          today. Change the date above if needed.
         </p>
       )}
       {error && (
@@ -782,7 +811,15 @@ export function ImportReview({
         </p>
       )}
 
-      <div className="sticky bottom-16 z-10 mt-4 flex gap-2 rounded-md bg-surface p-3 md:bottom-4">
+      {newNames.size > 0 && (
+        <p className="mt-3 text-xs text-soft" data-testid="review-new-note">
+          {newNames.size} new custom exercise{newNames.size === 1 ? "" : "s"}{" "}
+          will be created. Tap an exercise above to match an existing one
+          instead.
+        </p>
+      )}
+
+      <div className="sticky bottom-16 z-10 mt-4 flex gap-2 rounded-md bg-surface p-3 shadow-lg md:bottom-4">
         <Button
           variant="ghost"
           className="flex-1"

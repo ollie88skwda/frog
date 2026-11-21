@@ -51,12 +51,89 @@ describe("progressionFindings", () => {
     expect(trends[0].roughVerdict).toBe(false);
   });
 
-  it("an early drop before 7 comparable sessions keeps the fitted, rough verdict (C2c)", () => {
-    const sessions = [100, 100, 100, 100, 85].map((w, i) => session(i, w));
+  it("an early drop before 7 comparable sessions reads as the status's dip, badge and verdict agreeing (C2c)", () => {
+    const sessions = [100, 104, 108, 112, 94].map((w, i) => session(i, w));
     const { trends } = progressionFindings(sessions);
     expect(trends[0].status.state).toBe("dropped");
     expect(trends[0].status.drop.kind).toBe("drop");
+    expect(trends[0].verdict).toBe("REGRESSING");
+    expect(trends[0].claim).toBe("drop");
+    expect(trends[0].roughVerdict).toBe(false);
+  });
+
+  it("after a 14-day break the dip is scored on the post-break window only", () => {
+    const before = Array.from({ length: 10 }, (_, i) =>
+      session(i, 100 + i * 2),
+    );
+    const after = [110, 110, 110, 95].map((w, i) => ({
+      ...session(100 + i, w),
+      startedAt: (27 + 21 + i * 3) * DAY_MS,
+    }));
+    const { trends } = progressionFindings([...before, ...after]);
+    expect(trends[0].status.state).toBe("dropped");
+    expect(trends[0].status.n).toBe(4);
+    expect(trends[0].claim).toBe("drop");
+    expect(trends[0].score?.n).toBe(4);
+  });
+
+  it("after a break the rough verdict reads the flat post-break window, not the old climb", () => {
+    const before = Array.from({ length: 10 }, (_, i) =>
+      session(i, 100 + i * 3.5),
+    );
+    const after = [132, 131, 132, 131, 132].map((w, i) => ({
+      ...session(100 + i, w),
+      startedAt: (27 + 21 + i * 3) * DAY_MS,
+    }));
+    const { trends } = progressionFindings([...before, ...after]);
+    expect(trends[0].status.n).toBe(5);
+    expect(trends[0].preBreak).toBe(false);
+    expect(trends[0].verdict).toBe("PLATEAU");
+    expect(trends[0].claim).toBe("flat");
+    expect(trends[0].n).toBe(5);
+    expect(Math.abs(trends[0].pctChange)).toBeLessThan(10);
+  });
+
+  it("one session back after a break keeps the pre-break trend, unscored, not a countdown", () => {
+    const before = Array.from({ length: 10 }, (_, i) =>
+      session(i, 100 + i * 3.5),
+    );
+    const back = { ...session(100, 130), startedAt: 48 * DAY_MS };
+    const { trends, countdowns } = progressionFindings([...before, back]);
+    expect(countdowns).toEqual([]);
+    expect(trends).toHaveLength(1);
+    expect(trends[0].preBreak).toBe(true);
+    expect(trends[0].verdict).toBe("PROGRESSING");
+    expect(trends[0].score).toBeNull();
+    expect(trends[0].n).toBe(11);
+  });
+
+  it("a steady +6% before 7 sessions reads PLATEAU with a matching 'flat' claim", () => {
+    const sessions = [100, 101, 102, 104, 106].map((w, i) => session(i, w));
+    const { trends } = progressionFindings(sessions);
     expect(trends[0].roughVerdict).toBe(true);
+    expect(trends[0].verdict).toBe("PLATEAU");
+    expect(trends[0].claim).toBe("flat");
+  });
+
+  it("a 7-session stall declining inside the 10% band stays PLATEAU", () => {
+    const sessions = [100, 100, 99, 98, 97, 96, 95, 94].map((w, i) =>
+      session(i, w),
+    );
+    const { trends } = progressionFindings(sessions);
+    expect(trends[0].status.state).toBe("stalled");
+    expect(trends[0].verdict).toBe("PLATEAU");
+    expect(trends[0].claim).toBe("flat");
+  });
+
+  it("a declining 7-session stall reads as REGRESSING with a 'down' claim", () => {
+    const sessions = [100, 99, 97, 95, 93, 91, 89, 87].map((w, i) =>
+      session(i, w),
+    );
+    const { trends } = progressionFindings(sessions);
+    expect(trends[0].status.state).toBe("stalled");
+    expect(trends[0].verdict).toBe("REGRESSING");
+    expect(trends[0].claim).toBe("down");
+    expect(trends[0].score?.pct).toBeGreaterThanOrEqual(50);
   });
 
   it("keeps a high-rep-only exercise visible as not estimable (over 10 total reps)", () => {
@@ -183,11 +260,35 @@ describe("conditionFindings", () => {
     expect(conditionFindings(sessions, [SLEEP])).toEqual([]);
   });
 
-  it("stays silent below the per-bucket minimum n (6)", () => {
+  it("stays silent with fewer than 3 sessions per bucket", () => {
+    const sessions = Array.from({ length: 4 }, (_, i) => {
+      const wellSlept = i % 2 === 0;
+      return session(i, wellSlept ? 120 : 90, {
+        [SLEEP.id]: wellSlept ? 8 : 6,
+      });
+    });
+    expect(conditionFindings(sessions, [SLEEP])).toEqual([]);
+  });
+
+  it("shows a small sample as a tentative, capped confidence instead of hiding it", () => {
     const sessions = Array.from({ length: 10 }, (_, i) => {
       const wellSlept = i % 2 === 0;
       return session(i, wellSlept ? 120 : 90, {
         [SLEEP.id]: wellSlept ? 8 : 6,
+      });
+    });
+    const [f] = conditionFindings(sessions, [SLEEP]);
+    expect(f).toBeDefined();
+    expect(f.n).toEqual({ high: 5, low: 5 });
+    expect(f.score.pct).toBeLessThanOrEqual(70);
+    expect(f.confidence).toBe("low");
+  });
+
+  it("drops a finding whose detrended effect points the other way from the shown %", () => {
+    const sessions = Array.from({ length: 8 }, (_, i) => {
+      const highSleep = i < 4;
+      return session(i, 100 + i * 4 + (highSleep ? 1.5 : 0), {
+        [SLEEP.id]: highSleep ? 8 : 6,
       });
     });
     expect(conditionFindings(sessions, [SLEEP])).toEqual([]);
