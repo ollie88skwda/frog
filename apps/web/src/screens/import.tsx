@@ -193,6 +193,11 @@ export default function ImportScreen() {
             }}
           />
         )}
+        {error && (
+          <p className="mb-3 text-xs text-neg" data-testid="import-error">
+            {error}
+          </p>
+        )}
         <ImportReview
           draft={draft}
           onDraftChange={setDraft}
