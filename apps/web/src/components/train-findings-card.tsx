@@ -1,6 +1,7 @@
 import { Flask } from "@phosphor-icons/react";
 import { useMemo } from "react";
 import { Link } from "react-router";
+import { ConfidenceBadge } from "@/components/data";
 import { computeFindings } from "@/lib/findings";
 import { useFindingsData, useMetrics } from "@/lib/queries";
 import { useVoice } from "@/lib/voice";
@@ -35,7 +36,8 @@ export function TrainFindingsCard() {
           {top.pctDiff > 0 ? "+" : ""}
           {top.pctDiff.toFixed(1)}%
         </span>{" "}
-        on high {top.conditionName} days
+        on high {top.conditionName} days{" "}
+        <ConfidenceBadge score={top.score} showWord />
       </p>
     );
   } else if (trend) {
@@ -44,8 +46,8 @@ export function TrainFindingsCard() {
         {trend.exerciseName} is{" "}
         <span className="num text-ink">{trend.verdict.toLowerCase()}</span> (
         {trend.pctChange > 0 ? "+" : ""}
-        {trend.pctChange.toFixed(1)}%
-        {trend.confidence === "low" ? " · rough estimate" : ""})
+        {trend.pctChange.toFixed(1)}%){trend.preBreak && " before your break"}{" "}
+        {trend.score && <ConfidenceBadge score={trend.score} showWord />}
       </p>
     );
   } else if (next) {
@@ -54,8 +56,8 @@ export function TrainFindingsCard() {
       <p className="text-sm text-soft" data-testid="findings-countdown">
         <span className="num text-ink">{next.sessionsNeeded}</span>{" "}
         {t(
-          `more ${word} of ${next.exerciseName} until your first finding`,
-          `more ${word} of ${next.exerciseName} before the frog will comment.`,
+          `more ${word} of ${next.exerciseName} for a first guess, with a confidence %`,
+          `more ${word} of ${next.exerciseName} and the frog will take a tentative guess.`,
         )}
       </p>
     );
@@ -65,8 +67,8 @@ export function TrainFindingsCard() {
       <p className="text-sm text-soft" data-testid="findings-countdown">
         <span className="num text-ink">{nextCond.sessionsNeeded}</span>{" "}
         {t(
-          `more ${word} with ${nextCond.conditionName} logged until a correlation`,
-          `more ${word} with ${nextCond.conditionName} logged. Then the frog looks for a correlation.`,
+          `more ${word} with ${nextCond.conditionName} logged for a first guess, with a confidence %`,
+          `more ${word} with ${nextCond.conditionName} logged. Then the frog takes a tentative guess.`,
         )}
       </p>
     );

@@ -353,7 +353,9 @@ function supportStatsFor(card: ShareCard): ShareStat[] {
       return card.support;
     case "pr":
       if (card.extraPrs.length > 0) {
-        const base = card.delta ? [card.delta] : [];
+        const base = [card.delta, card.confidence].filter(
+          (s): s is ShareStat => s != null,
+        );
         return [
           ...base,
           ...card.extraPrs
@@ -361,11 +363,13 @@ function supportStatsFor(card: ShareCard): ShareStat[] {
             .map((line) => ({ label: "Also this session", value: line })),
         ];
       }
-      return [card.delta, card.previousBest, card.estOneRm].filter(
-        (s): s is ShareStat => s != null,
-      );
+      return [card.delta, card.confidence, card.previousBest, card.estOneRm]
+        .filter((s): s is ShareStat => s != null)
+        .slice(0, 3);
     case "records":
-      return card.support;
+      return card.confidence
+        ? [card.confidence, ...card.support].slice(0, 3)
+        : card.support;
   }
 }
 
@@ -404,12 +408,14 @@ function paintSupport(
     ctx.font = `600 ${labelSize}px ${FONT_SANS}`;
     ctx.fillText(s.label.toUpperCase(), x, labelY);
     ctx.fillStyle = p.ink;
-    ctx.font = `700 ${valueSize}px ${FONT_MONO}`;
-    ctx.fillText(
-      clip(ctx, s.value, colW - sp(frame, 0.02) * frame.w),
-      x,
-      valueY,
-    );
+    const maxW = colW - sp(frame, 0.02) * frame.w;
+    let size = valueSize;
+    ctx.font = `700 ${size}px ${FONT_MONO}`;
+    while (size > valueSize * 0.6 && ctx.measureText(s.value).width > maxW) {
+      size -= 1;
+      ctx.font = `700 ${size}px ${FONT_MONO}`;
+    }
+    ctx.fillText(clip(ctx, s.value, maxW), x, valueY);
   });
 
   return valueY + sp(frame, 0.06) * frame.w;

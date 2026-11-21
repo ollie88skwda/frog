@@ -1,5 +1,7 @@
+import type { ConfidenceScore } from "@frog/core";
 import type { ReactNode } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ConfidenceBadge } from "./confidence-badge";
 import { TIER_WORD, type Tier } from "./logic";
 import { TierBadge } from "./tier-badge";
 
@@ -23,6 +25,7 @@ export function EvidenceSheet({
   cites,
   counterView,
   wouldChange,
+  confidence,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,6 +42,8 @@ export function EvidenceSheet({
   cites?: EvidenceCite[];
   counterView?: string;
   wouldChange?: string;
+  /** Computed confidence: adds the formula and a "what would raise it" line. */
+  confidence?: ConfidenceScore | null;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,6 +71,24 @@ export function EvidenceSheet({
             </div>
             <p className="text-sm text-ink">{tierNote}</p>
           </Section>
+          {confidence && (
+            <Section title="Confidence">
+              <div className="flex flex-wrap items-center gap-2">
+                <ConfidenceBadge score={confidence} showWord />
+                <span className="num text-xs text-soft">
+                  n = {confidence.n}
+                </span>
+              </div>
+              <p className="text-sm text-ink">{confidence.basis}</p>
+              {confidence.level === "low" && (
+                <p className="text-xs text-attn">
+                  Tentative: treat this as a first guess, not a fact.
+                </p>
+              )}
+              <p className="text-sm text-ink">{confidence.raise}</p>
+              <p className="text-xs text-soft">{confidence.formula}</p>
+            </Section>
+          )}
           {counterView && (
             <Section title="Other view">
               <p className="text-sm text-ink">{counterView}</p>

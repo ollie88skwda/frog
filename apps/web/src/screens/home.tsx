@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 import { MuscleMeter, SectionHeader } from "@/components/data";
 import { HomeHero } from "@/components/home-hero";
+import { TodayCoachCard } from "@/components/today-coach-card";
 import { rowClass } from "@/components/ui/row";
 import { formatDate } from "@/lib/format";
 import { useAllSessions, useResolvedUserPrefs } from "@/lib/profile-queries";
@@ -57,6 +58,8 @@ export default function TodayScreen() {
       <p className="num text-xs text-soft">{todayFmt.format(Date.now())}</p>
 
       <HomeHero />
+
+      <TodayCoachCard />
 
       <section className="mt-4 overflow-hidden rounded-md bg-surface">
         <SectionHeader

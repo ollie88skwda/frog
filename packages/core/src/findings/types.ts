@@ -20,6 +20,7 @@ export type FindingsSessionInput = {
   }[];
 };
 
+import type { ClaimDirection, ConfidenceScore } from "../domain/confidence";
 import type { LiftStatus } from "../domain/stall";
 
 export type TrendFinding = {
@@ -40,6 +41,13 @@ export type TrendFinding = {
   status: LiftStatus;
   /** True when `verdict` came from the fitted trend, not a 7-session status. */
   roughVerdict: boolean;
+  /** Fewer than 2 comparable sessions since the last break: `verdict`, % change
+   * and n are the rough trend over the full pre-break history, with no score. */
+  preBreak: boolean;
+  /** Computed confidence (domain/confidence.ts) that the shown direction is real. */
+  score: ConfidenceScore | null;
+  /** The direction `score` is about (best guess below 7 sessions). */
+  claim: ClaimDirection | "drop" | null;
 };
 
 export type CountdownFinding = {
@@ -88,6 +96,8 @@ export type ConditionFinding = {
   split: { kind: "median"; cutoff: number };
   /** Always carried as data so every surface shows it (C8/C19). */
   caveat: "correlation_not_causation";
+  /** Computed confidence in the gap's sign (domain/confidence.ts). */
+  score: ConfidenceScore;
 };
 
 export type Finding =

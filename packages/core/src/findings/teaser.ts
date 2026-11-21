@@ -1,5 +1,10 @@
+import { liftConfidence } from "../domain/confidence";
 import { robustTrend } from "../domain/progression";
-import { liftStatus, STALL_MIN_SESSIONS } from "../domain/stall";
+import {
+  comparableSessions,
+  liftStatus,
+  STALL_MIN_SESSIONS,
+} from "../domain/stall";
 import { overRepCapExercises, sessionTopsByExercise } from "./series";
 import type {
   CountdownFinding,
@@ -8,6 +13,7 @@ import type {
   TrendFinding,
 } from "./types";
 
+const DAY_MS = 86_400_000;
 export const MIN_TREND_SESSIONS = 2;
 
 /** Sessions of an exercise before its trend is labeled confident (medium)
@@ -32,7 +38,15 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
   const countdowns: CountdownFinding[] = [];
   const series = sessionTopsByExercise(sessions);
   for (const [exerciseId, { name, tops, comparable }] of series) {
-    const result = robustTrend(tops);
+    const window = comparableSessions(comparable);
+    // Under 2 sessions since the last break: the rough trend over the full
+    // history stands in, labelled pre-break and unscored.
+    const preBreak = window.length < 2;
+    const result = robustTrend(
+      preBreak
+        ? tops
+        : window.map((s) => ({ day: s.at / DAY_MS, e1rm: s.e1rm })),
+    );
     if (result.verdict === "INSUFFICIENT") {
       countdowns.push({
         kind: "countdown",
@@ -42,31 +56,37 @@ export function progressionFindings(sessions: FindingsSessionInput[]): {
         sessionsNeeded: MIN_TREND_SESSIONS - tops.length,
       });
     } else {
-      // C2c: once 7 comparable sessions exist the verdict is the status; before
-      // that it is only the fitted direction against the 10% noise band.
+      // C2c: whenever the status judged the lift (a dip from 4 comparable
+      // sessions, a trend from 7) the verdict is the status and the badge scores
+      // the same claim; before that it is only the fitted direction against the
+      // 10% noise band. Verdict, % change and score all read the comparable
+      // window (after the last break or target change).
       const status = liftStatus(comparable);
+      const lc = liftConfidence(window, status.state);
       const fromStatus: TrendFinding["verdict"] | null =
-        status.n < STALL_MIN_SESSIONS
-          ? null
-          : status.state === "progressing"
-            ? "PROGRESSING"
-            : status.state === "stalled"
-              ? // a stall is "flat"; a fitted decline beyond the noise band stays one
-                result.verdict === "REGRESSING"
-                ? "REGRESSING"
-                : "PLATEAU"
-              : status.state === "dropped"
-                ? "REGRESSING"
+        status.state === "dropped"
+          ? "REGRESSING"
+          : status.n < STALL_MIN_SESSIONS
+            ? null
+            : status.state === "progressing"
+              ? "PROGRESSING"
+              : status.state === "stalled"
+                ? lc?.claim === "down"
+                  ? "REGRESSING"
+                  : "PLATEAU"
                 : status.state === "holding"
                   ? "PLATEAU"
                   : null;
       trends.push({
+        score: lc?.score ?? null,
+        claim: lc?.claim ?? null,
         kind: "trend",
         exerciseId,
         exerciseName: name,
         verdict: fromStatus ?? result.verdict,
         status,
         roughVerdict: fromStatus === null,
+        preBreak,
         pctChange: result.pctChange,
         perMonth: result.perMonth,
         n: result.n,

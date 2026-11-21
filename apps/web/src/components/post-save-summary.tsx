@@ -26,6 +26,7 @@ import {
   useState,
 } from "react";
 import { MuscleMeter, Num } from "@/components/data";
+import { liftSeries, liftVerdict } from "@/components/progress/derive";
 import {
   planFromSnapshot,
   rangeState,
@@ -249,6 +250,15 @@ export function PostSaveSummary({
     }
     return out.slice(-12);
   }, [heroPrEvent, recordsData]);
+  const prConfidence = useMemo(() => {
+    if (!heroPrEvent) return null;
+    const v = liftVerdict(
+      liftSeries(recordsData?.history ?? [], heroPrEvent.exerciseId),
+    );
+    return v.kind === "status" && v.score && v.claim
+      ? { ...v.score, claim: v.claim }
+      : null;
+  }, [heroPrEvent, recordsData]);
   const prSource: ShareSource | null = useMemo(() => {
     if (!heroPrEvent) return null;
     const extraPrLabels = sessionPrEvents
@@ -268,11 +278,20 @@ export function PostSaveSummary({
         estOneRmKg:
           heroPrEvent.prType === "best_e1rm" ? heroPrEvent.value : null,
         sparkline: prSparkline,
+        confidence: prConfidence,
         extraPrLabels,
         identity,
       }),
     };
-  }, [heroPrEvent, sessionPrEvents, nameById, unit, prSparkline, identity]);
+  }, [
+    heroPrEvent,
+    sessionPrEvents,
+    nameById,
+    unit,
+    prSparkline,
+    prConfidence,
+    identity,
+  ]);
 
   // Streak share slide: this week's volume comes from the same records
   // history the PR sparkline above already reads (no extra fetch).

@@ -1,17 +1,21 @@
 import {
+  averageConfidence,
   bodyweightAverage7d,
   computeStreak,
+  confidenceLevel,
   FIRST_WEEKDAY,
   muscleLabel,
   roundBodyweightDisplay,
   toDisplayWeight,
   unitLabel,
+  volumeConfidence,
   weeklyBodyweightRatePct,
 } from "@frog/core";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { HumanBodyHeatmap } from "@/components/charts/human-body-heatmap";
 import {
+  ConfidenceBadge,
   DeltaChip,
   EmptyState,
   MuscleMeter,
@@ -40,6 +44,7 @@ import {
   type VolumeWindow,
   verdictWord,
   volumeRows,
+  weeklyHardSets,
 } from "./derive";
 import type { ProgressData } from "./use-progress";
 
@@ -94,14 +99,21 @@ export function OverviewTiles({
     const ids = mainLifts(d.history, "all", now).slice(0, 8);
     let progressing = 0;
     let judged = 0;
+    const scores = [];
     for (const id of ids) {
       const v = liftVerdict(liftSeries(d.history, id));
-      if (v.kind === "status" && !v.rough) {
+      if (v.kind === "status" && v.score) {
         judged += 1;
-        if (v.status.state === "progressing") progressing += 1;
+        scores.push(v.score);
+        if (v.claim === "up" && v.score.pct >= 50) progressing += 1;
       }
     }
-    return { progressing, judged, total: ids.length };
+    return {
+      progressing,
+      judged,
+      total: ids.length,
+      avg: averageConfidence(scores),
+    };
   }, [d.history, now]);
   const cov = rirCoverage(scopeSessions(d.history, scope, now));
   const bw = bodyweightEntries(d.measurements);
@@ -146,9 +158,18 @@ export function OverviewTiles({
         label="Lifts progressing"
         value={lifts.judged ? `${lifts.progressing}/${lifts.judged}` : "–"}
         basis={
-          lifts.judged
-            ? "of lifts with 7+ sessions"
-            : `Not enough yet (0 of ${lifts.total || "some"} lifts have 7)`
+          !lifts.judged
+            ? "log a lift twice for a first read"
+            : lifts.avg != null && lifts.avg < 50
+              ? "tentative: best guess per lift"
+              : "best guess per lift"
+        }
+        confidence={
+          lifts.avg != null && (
+            <ConfidenceBadge
+              score={{ pct: lifts.avg, level: confidenceLevel(lifts.avg) }}
+            />
+          )
         }
         n={lifts.total}
         onClick={() => go("strength")}
@@ -225,7 +246,7 @@ export function StrengthSection({
     return (
       <EmptyState
         title="No lifts in this scope"
-        need="Log a weighted exercise to see its strength trend. The check needs 7 sessions of a lift."
+        need="Log a weighted exercise twice to see its first strength read, with a confidence percentage."
       />
     );
   const minAt = scopeSessions(d.history, scope, now)[0]?.startedAt ?? 0;
@@ -253,7 +274,11 @@ export function StrengthSection({
             <SparkRow
               key={id}
               title={name}
-              sub={v.rough ? verdictWord(v) : `${verdictWord(v)} · n=${st.n}`}
+              sub={
+                v.score
+                  ? `${verdictWord(v)} · ${v.score.pct}%${v.score.level === "low" ? " tentative" : ""}`
+                  : `${verdictWord(v)} · n=${st.n}`
+              }
               points={pts}
               confidence={v.rough ? "low" : "ok"}
               value={
@@ -278,8 +303,9 @@ export function StrengthSection({
       </Block>
       <p className="px-4 pt-2 text-2xs text-soft">
         e1RM = Brzycki with RIR, sets of 10 or fewer total reps. A change under
-        10% reads as normal swing. Verdicts need 7 comparable sessions; earlier
-        ones are rough.
+        10% reads as normal swing. Every verdict is a best guess with a
+        confidence percentage that rises as you log more sessions of the lift.
+        Tap a lift for what would raise it.
       </p>
     </>
   );
@@ -301,6 +327,25 @@ export function VolumeSection({ d, now }: { d: ProgressData; now: number }) {
   const contrib = open
     ? muscleContributions(d.history, d.muscles, open, win, now, d.rirMax)
     : [];
+  const weekly = useMemo(
+    () =>
+      open
+        ? volumeConfidence(
+            weeklyHardSets(d.history, d.muscles, open, now, d.rirMax),
+          )
+        : null,
+    [d.history, d.muscles, open, now, d.rirMax],
+  );
+  const overall = useMemo(() => {
+    const scores = r.rows.flatMap((m) => {
+      const c = volumeConfidence(
+        weeklyHardSets(d.history, d.muscles, m.muscle, now, d.rirMax),
+      );
+      return c ? [c.score] : [];
+    });
+    const pct = averageConfidence(scores);
+    return pct == null ? null : { pct, muscles: scores.length };
+  }, [r.rows, d.history, d.muscles, now, d.rirMax]);
   return (
     <>
       <div className="flex items-center gap-1 px-4">
@@ -345,6 +390,18 @@ export function VolumeSection({ d, now }: { d: ProgressData; now: number }) {
           )}
         </Block>
       </div>
+      {overall && (
+        <div className="flex items-center gap-2 px-4 pt-2 text-xs text-soft">
+          <ConfidenceBadge
+            score={{ pct: overall.pct, level: confidenceLevel(overall.pct) }}
+            showWord
+          />
+          <span>
+            Average over {overall.muscles} muscle
+            {overall.muscles === 1 ? "" : "s"}. Tap a muscle for its own number.
+          </span>
+        </div>
+      )}
       <p className="px-4 pt-2 text-2xs text-soft">
         Fractional hard sets: direct 1, indirect 0.5. The 10-20 band is a
         starting range, not a target.
@@ -358,6 +415,19 @@ export function VolumeSection({ d, now }: { d: ProgressData; now: number }) {
           title={open ? muscleLabel(open) : ""}
           aria-describedby={undefined}
         >
+          {weekly && (
+            <div className="mb-3 flex flex-col gap-1.5">
+              <ConfidenceBadge score={weekly.score} showWord />
+              <p className="text-xs text-ink">{weekly.score.basis}</p>
+              {weekly.score.level === "low" && (
+                <p className="text-xs text-attn">
+                  Tentative: a first guess, not a fact.
+                </p>
+              )}
+              <p className="text-xs text-soft">{weekly.score.raise}</p>
+              <p className="text-2xs text-soft">{weekly.score.formula}</p>
+            </div>
+          )}
           <ul className="flex flex-col gap-1">
             {contrib.map((c) => (
               <li key={c.exerciseId}>
@@ -533,7 +603,7 @@ export function LabSection() {
         {f.conditions.length === 0 ? (
           <EmptyState
             title="No condition findings yet"
-            need="A finding needs about 10 sessions with a condition logged and an effect of at least 5%. Rounded effects, n and medians are shown."
+            need="Log a condition (sleep, carbs, stress) on a few sessions and the first guess shows up here with a confidence percentage. It needs an effect of at least 5%."
           />
         ) : (
           f.conditions.map((c) => (
@@ -556,8 +626,11 @@ export function LabSection() {
                 </span>
               </span>
               <span className="num flex items-center gap-1.5 text-2xs text-soft">
-                n={c.n.high} high / {c.n.low} low · {c.confidence} confidence ·
-                correlation, not causation
+                <ConfidenceBadge
+                  score={c.score}
+                  showWord={c.score.level === "low"}
+                />
+                n={c.n.high} high / {c.n.low} low · correlation, not causation
                 <TierBadge tier={5} />
               </span>
             </button>
@@ -566,8 +639,8 @@ export function LabSection() {
       </Block>
       {f.conditionCountdowns.length > 0 && (
         <p className="px-4 pt-2 text-2xs text-soft">
-          Next: {f.conditionCountdowns[0].sessionsNeeded} more sessions with{" "}
-          {f.conditionCountdowns[0].conditionName} logged.
+          Log {f.conditionCountdowns[0].conditionName} on more sessions and a
+          first guess appears here.
         </p>
       )}
       <div className="mt-3 flex flex-col gap-0.5 overflow-hidden rounded-md bg-surface">
@@ -585,9 +658,21 @@ export function LabSection() {
         <DialogContent
           title={open ? `${open.conditionName} finding` : ""}
           aria-describedby={undefined}
+          data-testid="finding-sheet"
         >
           {open && (
             <div className="flex flex-col gap-2 text-sm">
+              <div className="flex flex-col gap-1.5 rounded-sm bg-surface-2 p-3">
+                <ConfidenceBadge score={open.score} showWord />
+                <p className="text-xs text-ink">{open.score.basis}</p>
+                {open.score.level === "low" && (
+                  <p className="text-xs text-attn">
+                    Tentative: a first guess, not a fact.
+                  </p>
+                )}
+                <p className="text-xs text-soft">{open.score.raise}</p>
+                <p className="text-2xs text-soft">{open.score.formula}</p>
+              </div>
               <p>
                 High-day median-split mean{" "}
                 {toDisplayWeight(Math.round(open.highMean * 2) / 2, unit)} vs
