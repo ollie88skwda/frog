@@ -23,6 +23,7 @@ import { kgToLb, lbToKg } from "../domain/units";
 import type { SetSide } from "../repo/types";
 import { physicalSetCount } from "./set-nos";
 import type { ImportedSession } from "./types";
+import { isUnilateralName, pairUnilateralSets } from "./unilateral";
 
 export type ImportSource =
   | "hevy-csv"
@@ -260,23 +261,27 @@ export function draftToImportedSessions(
       exercises: s.exercises.flatMap((e) => {
         const name = nameFor(e.rawName);
         if (!name) return [];
+        const rows = e.sets.map((x) => ({
+          weightKg: weightToKg(x.weight, draft.unit),
+          reps: x.reps,
+          rir: x.rir,
+          note: x.note,
+          setType: x.setType,
+          durationSec: x.durationSec ?? null,
+          distanceM: x.distanceM ?? null,
+          side: x.side ?? null,
+          setNo: x.setNo ?? null,
+          rirMin: x.rirMin ?? null,
+          rirMax: x.rirMax ?? null,
+          rpe: x.rpe ?? null,
+        }));
         return [
           {
             name,
-            sets: e.sets.map((x) => ({
-              weightKg: weightToKg(x.weight, draft.unit),
-              reps: x.reps,
-              rir: x.rir,
-              note: x.note,
-              setType: x.setType,
-              durationSec: x.durationSec ?? null,
-              distanceM: x.distanceM ?? null,
-              side: x.side ?? null,
-              setNo: x.setNo ?? null,
-              rirMin: x.rirMin ?? null,
-              rirMax: x.rirMax ?? null,
-              rpe: x.rpe ?? null,
-            })),
+            sets:
+              isUnilateralName(e.rawName) || isUnilateralName(name)
+                ? pairUnilateralSets(rows)
+                : rows,
           },
         ];
       }),

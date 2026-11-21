@@ -133,3 +133,46 @@ test("text with a missing unit and date is flagged and blocks confirm until date
   await page.getByTestId("review-date").fill("2013-01-05T10:00");
   await expect(page.getByTestId("review-confirm")).toBeEnabled();
 });
+
+test("a 'Uni' exercise imports as a unilateral exercise with L/R pairs", async ({
+  page,
+}) => {
+  const stamp = Date.now();
+  const title = `Uni Day ${stamp}`;
+  const exName = `Uni Dumbbell Curl ${stamp}`;
+  await page.goto("/import");
+  await page
+    .getByTestId("import-text")
+    .fill(
+      `${title}\nFriday, 13 Mar 2015 at 6:45 PM\n${exName}\n1  20 kg x 10\n2  22.5 kg x 8\n`,
+    );
+  await page.getByTestId("import-read-text").click();
+  await expect(page.getByTestId("import-review")).toBeVisible();
+  await page.getByTestId("review-confirm").click();
+  await expect(page.getByTestId("import-done")).toBeVisible();
+
+  const res = await page.evaluate(async (n) => {
+    const sb = window.__frog.db;
+    const { data: ex } = await sb
+      .from("exercises")
+      .select("id,laterality")
+      .eq("name", n);
+    const { data: se } = await sb
+      .from("session_exercises")
+      .select("id")
+      .eq("exercise_id", ex?.[0]?.id);
+    const { data: sets } = await sb
+      .from("set_logs")
+      .select("set_no,side")
+      .eq("session_exercise_id", se?.[0]?.id);
+    return { laterality: ex?.[0]?.laterality, sets };
+  }, exName);
+  expect(res.laterality).toBe("unilateral");
+  expect(res.sets).toHaveLength(4);
+  expect(res.sets?.map((s) => s.side).sort()).toEqual([
+    "left",
+    "left",
+    "right",
+    "right",
+  ]);
+});

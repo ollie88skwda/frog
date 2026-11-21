@@ -1201,4 +1201,40 @@ describe("ConvexRepo (integration, local convex)", () => {
       (await repoA.listCoachEvents({ ruleId: "C7" })).map((e) => e.state),
     ).toEqual(["dismissed"]);
   });
+
+  it("editing an exercise to unilateral converts ALL its existing sets to L/R pairs, once", async () => {
+    const ex = await repoA.createExercise(`UniConv ${newId().slice(0, 8)}`, {
+      share: false,
+    });
+    const other = await repoA.createExercise(`Bi ${newId().slice(0, 8)}`, {
+      share: false,
+    });
+    const s1 = await repoA.startSession();
+    const se1 = await repoA.addExerciseToSession(s1.id, ex.id);
+    await repoA.logSet(se1, { weightKg: 20, reps: 10 }, newId(), 0);
+    await repoA.logSet(se1, { weightKg: 22.5, reps: 8, rir: 1 }, newId(), 1);
+    const seOther = await repoA.addExerciseToSession(s1.id, other.id);
+    await repoA.logSet(seOther, { weightKg: 50, reps: 5 }, newId(), 0);
+    await repoA.endSession(s1.id);
+    const s2 = await repoA.startSession();
+    const se2 = await repoA.addExerciseToSession(s2.id, ex.id);
+    await repoA.logSet(se2, { weightKg: 25, reps: 6 }, newId(), 0);
+
+    await repoA.updateExercise(ex.id, { laterality: "unilateral" });
+    await repoA.updateExercise(ex.id, { laterality: "unilateral" }); // idempotent
+
+    const rows = [...(await setsOf(a.raw, se1)), ...(await setsOf(a.raw, se2))];
+    expect(rows).toHaveLength(6);
+    for (const no of [0, 1]) {
+      const pair = (await setsOf(a.raw, se1)).filter((r) => r.setNo === no);
+      expect(pair.map((r) => r.side).sort()).toEqual(["left", "right"]);
+      expect(new Set(pair.map((r) => r.weightKg)).size).toBe(1);
+      expect(new Set(pair.map((r) => r.reps)).size).toBe(1);
+    }
+    expect((await setsOf(a.raw, se2)).map((r) => r.side).sort()).toEqual([
+      "left",
+      "right",
+    ]);
+    expect((await setsOf(a.raw, seOther)).map((r) => r.side)).toEqual([null]);
+  });
 });

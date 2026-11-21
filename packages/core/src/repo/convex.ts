@@ -361,6 +361,48 @@ export class ConvexRepo implements Repo {
       if (k in p) row[k] = arr(p[k] as unknown[] | null);
     }
     await this.patchById("exercises", id, row);
+    if (patch.laterality === "unilateral") await this.makeSetsUnilateral(id);
+  }
+
+  /**
+   * An exercise just became unilateral: convert every existing set of it, not
+   * just future ones. Each side-less set_log becomes a left row plus a new
+   * right row sharing its set_no (the repo's pair rule); planned routine sets
+   * are marked unilateral. Idempotent: rows that already carry a side are
+   * skipped, so a retry or a second edit never doubles anything.
+   */
+  private async makeSetsUnilateral(exerciseId: string): Promise<void> {
+    const blocks = live(
+      await this.find<Row>("session_exercises", { exerciseId }),
+    );
+    if (blocks.length > 0) {
+      const sets = live(
+        await this.find<Row>("set_logs", {
+          sessionExerciseId: blocks.map((b) => b.id as string),
+        }),
+      ).filter((r) => r.side == null);
+      const now = Date.now();
+      for (const r of sets) {
+        await this.patchById("set_logs", r.id as string, { side: "left" });
+        await this.insert("set_logs", {
+          ...r,
+          id: newId(),
+          side: "right",
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+    const planned = live(
+      await this.find<Row>("routine_exercises", { exerciseId }),
+    );
+    if (planned.length > 0) {
+      await this.update(
+        "routine_sets",
+        { routineExerciseId: planned.map((x) => x.id as string) },
+        { laterality: "unilateral", updatedAt: Date.now() },
+      );
+    }
   }
 
   deleteExercise(id: string) {
