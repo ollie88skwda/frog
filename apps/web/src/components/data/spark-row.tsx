@@ -44,7 +44,7 @@ export function SparkRow({
         {sub && <span className="block truncate text-xs text-soft">{sub}</span>}
       </span>
       {points && <Spark points={points} band={band} confidence={confidence} />}
-      <span className="flex w-[7.5rem] shrink-0 items-center justify-end gap-1.5">
+      <span className="flex w-[7.5rem] shrink-0 items-center justify-end gap-2">
         {value}
         {delta}
       </span>

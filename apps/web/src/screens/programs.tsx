@@ -66,7 +66,7 @@ function ProgramCatalog() {
     : undefined;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="flex items-center gap-3">
         <BackButton to="/routines" label="Back to routines" />
         <div>
@@ -92,7 +92,7 @@ function ProgramCatalog() {
             <Link
               to="/programs/edit"
               data-testid="program-edit"
-              className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary transition-colors duration-150 hover:bg-hover md:h-8"
+              className="inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary transition-colors duration-150 hover:bg-hover md:h-8"
             >
               Edit
             </Link>
@@ -189,7 +189,7 @@ function ProgramCard({ entry }: { entry: ProgramCatalogEntry }) {
           {entry.daysPerWeek}×/week
         </span>
       </div>
-      <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-2xs text-faint">
+      <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-2xs text-faint">
         <span>{LEVEL_LABELS[entry.level]}</span>
         <span>·</span>
         <span>{GOAL_LABELS[entry.goal]}</span>
@@ -240,7 +240,7 @@ function ProgramDetail({ programKey }: { programKey: string }) {
         </p>
         <Link
           to="/programs"
-          className="mt-2 inline-block text-xs text-accent-ink"
+          className="mt-2 inline-flex h-11 items-center text-xs text-accent-ink"
         >
           Back to programs
         </Link>
@@ -261,12 +261,12 @@ function ProgramDetail({ programKey }: { programKey: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="flex items-start gap-3">
         <BackButton to="/programs" label="Back to programs" />
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold tracking-tight">{entry.name}</h1>
-          <p className="mt-0.5 flex flex-wrap gap-x-2 text-2xs text-faint">
+          <p className="mt-1 flex flex-wrap gap-x-2 text-2xs text-faint">
             <span>{LEVEL_LABELS[entry.level]}</span>
             <span>·</span>
             <span>{GOAL_LABELS[entry.goal]} focus</span>

@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * Themed checkbox (Radix). The box is 20px; wrap it in a `<label>` with
- * `min-h-10` so label + control share one 40px hit target.
+ * `min-h-11` so label + control share one 40px hit target.
  */
 export function Checkbox({
   className,

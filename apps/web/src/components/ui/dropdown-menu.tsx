@@ -38,7 +38,7 @@ export function DropdownMenuItem({
   return (
     <MenuPrimitive.Item
       className={cn(
-        "flex min-h-10 w-full cursor-pointer items-center gap-2 rounded-sm px-3 text-left text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[highlighted]:bg-surface-hover md:min-h-8",
+        "flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-sm px-3 text-left text-sm outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-40 data-[highlighted]:bg-surface-hover md:min-h-8",
         danger && "text-neg",
         className,
       )}
@@ -53,7 +53,7 @@ export function DropdownMenuLabel({
 }: ComponentProps<typeof MenuPrimitive.Label>) {
   return (
     <MenuPrimitive.Label
-      className={cn("px-3 py-1.5 text-2xs text-faint", className)}
+      className={cn("px-3 py-2 text-2xs text-faint", className)}
       {...props}
     />
   );

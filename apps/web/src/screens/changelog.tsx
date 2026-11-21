@@ -59,7 +59,7 @@ export default function ChangelogScreen() {
     cutoff != null ? entries.filter((e) => e.date > cutoff) : [];
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <h1 className="text-lg font-semibold tracking-tight">Changelog</h1>
       <p className="mt-1 text-xs text-faint">
         Dev log of what shipped, pulled straight from docs/DECISIONS.md.
@@ -77,7 +77,7 @@ export default function ChangelogScreen() {
                 New since your last visit
               </h2>
               <div
-                className="rounded-md mt-2 [&>*+*]:mt-0.5 overflow-hidden bg-surface"
+                className="rounded-md mt-2 [&>*+*]:mt-2 overflow-hidden bg-surface"
                 data-testid="changelog-new"
               >
                 {newEntries.map((entry) => (
@@ -91,7 +91,7 @@ export default function ChangelogScreen() {
             All decisions
           </h2>
           <div
-            className="rounded-md mt-2 [&>*+*]:mt-0.5 overflow-hidden bg-surface"
+            className="rounded-md mt-2 [&>*+*]:mt-2 overflow-hidden bg-surface"
             data-testid="changelog-all"
           >
             {entries.map((entry, i) => (
@@ -117,7 +117,7 @@ function EntryCard({
 }) {
   return (
     <div
-      className="flex flex-col gap-1.5 px-4 py-3"
+      className="flex flex-col gap-2 px-4 py-3"
       data-testid={testId}
       data-date={entry.date}
     >

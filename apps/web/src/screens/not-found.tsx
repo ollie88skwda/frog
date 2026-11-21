@@ -9,7 +9,7 @@ export default function NotFoundScreen() {
   const { t } = useVoice();
   const navigate = useNavigate();
   return (
-    <div className="mx-auto flex max-w-2xl flex-col items-start gap-3 px-4 py-16 pb-20 md:pb-16">
+    <div className="mx-auto flex max-w-2xl flex-col items-start gap-3 px-4 py-16">
       <p className="num text-2xs tracking-widest text-faint uppercase">
         {t("HTTP 404 · specimens found: 0")}
       </p>

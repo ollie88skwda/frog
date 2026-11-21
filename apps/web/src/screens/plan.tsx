@@ -41,7 +41,7 @@ function ActiveProgramCard() {
           <h2 className="mt-1 truncate text-lg font-semibold tracking-tight">
             {folder?.name ?? "Your program"}
           </h2>
-          <p className="num mt-0.5 text-xs text-soft">
+          <p className="num mt-1 text-xs text-soft">
             {inRotation} routine{inRotation === 1 ? "" : "s"} in rotation
           </p>
           <Button
@@ -75,7 +75,7 @@ function ActiveProgramCard() {
 export default function PlanScreen() {
   const [segment, setSegment] = useSegment(SEGMENTS, "program");
   return (
-    <div className="mx-auto max-w-2xl pb-20 md:pb-6">
+    <div className="mx-auto max-w-2xl pb-6">
       <h1 className="px-4 pt-6 text-lg font-semibold tracking-tight">Plan</h1>
       <ActiveProgramCard />
       <SegmentBar

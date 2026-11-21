@@ -416,7 +416,7 @@ export function VolumeSection({ d, now }: { d: ProgressData; now: number }) {
           aria-describedby={undefined}
         >
           {weekly && (
-            <div className="mb-3 flex flex-col gap-1.5">
+            <div className="mb-3 flex flex-col gap-2">
               <ConfidenceBadge score={weekly.score} showWord />
               <p className="text-xs text-ink">{weekly.score.basis}</p>
               {weekly.score.level === "low" && (
@@ -491,7 +491,7 @@ export function EffortSection({
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold">
                   {d.names.get(id) ?? "Exercise"}
                 </span>
-                <span className="num flex gap-1.5 text-sm text-ink">
+                <span className="num flex gap-2 text-sm text-ink">
                   {rirs.map((x, i) => {
                     const ago = rirs.length - i;
                     return (
@@ -578,7 +578,7 @@ export function BodySection({ d, now }: { d: ProgressData; now: number }) {
       <div className="px-4 pt-3">
         <Link
           to="/measures"
-          className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary hover:bg-hover md:h-8"
+          className="inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary hover:bg-hover md:h-8"
         >
           Log measurements
         </Link>
@@ -610,7 +610,7 @@ export function LabSection() {
             <button
               type="button"
               key={`${c.conditionId}-${JSON.stringify(c.outcome)}`}
-              className="flex w-full flex-col gap-0.5 px-4 py-2 text-left hover:bg-surface-hover"
+              className="flex w-full flex-col gap-1 px-4 py-2 text-left hover:bg-surface-hover"
               onClick={() => setOpen(c)}
             >
               <span className="text-sm">
@@ -625,7 +625,7 @@ export function LabSection() {
                   on high {c.conditionName} days
                 </span>
               </span>
-              <span className="num flex items-center gap-1.5 text-2xs text-soft">
+              <span className="num flex items-center gap-2 text-2xs text-soft">
                 <ConfidenceBadge
                   score={c.score}
                   showWord={c.score.level === "low"}
@@ -643,7 +643,7 @@ export function LabSection() {
           first guess appears here.
         </p>
       )}
-      <div className="mt-3 flex flex-col gap-0.5 overflow-hidden rounded-md bg-surface">
+      <div className="mt-3 flex flex-col gap-2 overflow-hidden rounded-md bg-surface">
         {[
           ["/calendar", "Consistency calendar"],
           ["/stats/monthly", "Monthly report"],
@@ -662,7 +662,7 @@ export function LabSection() {
         >
           {open && (
             <div className="flex flex-col gap-2 text-sm">
-              <div className="flex flex-col gap-1.5 rounded-sm bg-surface-2 p-3">
+              <div className="flex flex-col gap-2 rounded-sm bg-surface-2 p-3">
                 <ConfidenceBadge score={open.score} showWord />
                 <p className="text-xs text-ink">{open.score.basis}</p>
                 {open.score.level === "low" && (

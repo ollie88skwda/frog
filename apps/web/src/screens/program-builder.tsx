@@ -204,7 +204,7 @@ export default function ProgramBuilderScreen() {
         }
       >
         <ol
-          className="flex gap-1"
+          className="flex gap-2"
           aria-label={`Step ${step + 1} of ${WIZARD_STEPS.length}: ${WIZARD_STEPS[step]}`}
         >
           {WIZARD_STEPS.map((s, i) => (
@@ -321,7 +321,7 @@ function Shell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-5 px-4 py-6 pb-44 md:pb-6">
+    <div className="mx-auto flex max-w-2xl flex-col gap-5 px-4 py-6 pb-20 md:pb-6">
       <div className="flex items-center gap-3">
         <BackButton onClick={onBack} label="Back" />
         <h1 className="text-xl font-bold tracking-tight">{title}</h1>
@@ -835,7 +835,7 @@ function Review(p: ReviewProps) {
                 value={p.everyWeeks}
                 onChange={(e) => p.setEveryWeeks(Number(e.target.value))}
                 aria-label="Weeks between deloads"
-                className="h-10 w-40 accent-[var(--chart-mark)]"
+                className="h-11 w-40 accent-[var(--chart-mark)]"
               />
             </label>
           )}

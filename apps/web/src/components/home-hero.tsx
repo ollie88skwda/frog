@@ -203,7 +203,7 @@ export function HomeHero() {
         )}
         <Link
           to="/import"
-          className="mt-3 flex h-10 w-full items-center justify-center rounded-sm bg-secondary/60 text-sm font-medium text-on-secondary hover:bg-secondary"
+          className="mt-3 flex h-11 w-full items-center justify-center rounded-sm bg-secondary/60 text-sm font-medium text-on-secondary hover:bg-secondary"
           data-testid="hero-import-link"
         >
           Coming from another app?
@@ -254,7 +254,7 @@ export function HomeHero() {
           >
             {selected?.name}
           </h2>
-          <p className="num mt-0.5 text-xs text-soft">
+          <p className="num mt-1 text-xs text-soft">
             {detail
               ? `~${estimateMinutes(detail)} min · ${detail.exercises.length} lift${detail.exercises.length === 1 ? "" : "s"} · `
               : ""}

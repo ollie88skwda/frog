@@ -12,7 +12,7 @@ export function Toolbar({
 }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex shrink-0 items-center gap-1.5", className)}
+      className={cn("flex shrink-0 items-center gap-2", className)}
       {...props}
     />
   );

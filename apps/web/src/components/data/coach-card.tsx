@@ -39,7 +39,7 @@ export function CoachCard({
   return (
     <Card size="sm" className="bg-surface-2">
       <div className="flex items-start gap-3 px-(--card-spacing)">
-        <span className="mt-0.5 shrink-0 text-chart-mark">
+        <span className="mt-1 shrink-0 text-chart-mark">
           {glyph ?? (
             <Lightbulb aria-hidden="true" weight="fill" className="size-5" />
           )}
@@ -64,7 +64,7 @@ export function CoachCard({
         <button
           type="button"
           onClick={onWhy}
-          className="ml-auto inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary transition-colors duration-150 hover:bg-hover md:h-8"
+          className="ml-auto inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary transition-colors duration-150 hover:bg-hover md:h-8"
         >
           Why?
         </button>

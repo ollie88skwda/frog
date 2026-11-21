@@ -352,7 +352,7 @@ export default function HistoryDetailScreen() {
   ) {
     const failed = sessionQ.isLoadingError || blocksQ.isLoadingError;
     return (
-      <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
+      <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
         <BackButton to="/history" label="Back to history" />
         <div className="mt-4 rounded-md bg-surface">
           <QueryState
@@ -378,7 +378,7 @@ export default function HistoryDetailScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <BackButton to="/history" label="Back to history" />
         <Toolbar className="shrink flex-wrap justify-end gap-2">
@@ -504,7 +504,7 @@ export default function HistoryDetailScreen() {
       {session && (
         <input
           type="datetime-local"
-          className="num mt-0.5 block bg-transparent text-xs text-faint transition-colors duration-100 hover:text-soft focus:text-ink"
+          className="num mt-1 block h-11 bg-transparent text-xs text-faint transition-colors duration-100 hover:text-soft focus:text-ink"
           value={toLocalInput(session.startedAt)}
           onChange={(e) => {
             const ms = new Date(e.target.value).getTime();

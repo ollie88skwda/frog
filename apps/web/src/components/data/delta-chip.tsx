@@ -48,7 +48,7 @@ export function DeltaChip({
           : `${delta > 0 ? "up" : delta < 0 ? "down" : "no change"} ${text}${unit ?? ""} ${basis}${swing}`
       }
       className={cn(
-        "num inline-flex h-5 items-center gap-0.5 rounded-xs px-1 text-2xs font-semibold whitespace-nowrap",
+        "num inline-flex h-5 items-center gap-1 rounded-xs px-1 text-2xs font-semibold whitespace-nowrap",
         TONE[state],
         className,
       )}

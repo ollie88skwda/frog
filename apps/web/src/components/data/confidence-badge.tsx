@@ -24,7 +24,7 @@ export function ConfidenceBadge({
   const word = CONFIDENCE_WORD[score.level];
   const label = `${score.pct}% confident, ${word}. Tap for what would raise it.`;
   const cls = cn(
-    "inline-flex h-5 items-center gap-1.5 rounded-xs px-1.5 text-2xs font-semibold whitespace-nowrap",
+    "relative inline-flex h-5 items-center gap-2 rounded-xs px-2 text-2xs font-semibold whitespace-nowrap",
     low ? "bg-attn-soft text-attn" : "bg-accent-soft text-accent-ink",
     className,
   );
@@ -51,7 +51,10 @@ export function ConfidenceBadge({
       type="button"
       onClick={onClick}
       aria-label={label}
-      className={cn(cls, "min-h-5 hover:opacity-80")}
+      className={cn(
+        cls,
+        "min-h-5 after:absolute after:-inset-y-3 after:-inset-x-2 hover:opacity-80",
+      )}
     >
       {body}
     </button>

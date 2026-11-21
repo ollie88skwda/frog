@@ -434,7 +434,7 @@ export function ExerciseEditor({
                 onChange={(e) => setName(e.target.value)}
                 onBlur={checkDuplicate}
                 placeholder="Zercher Squat"
-                className="h-10 md:h-10"
+                className="h-11 md:h-11"
                 aria-label="Exercise name"
                 data-testid="exercise-name-input"
               />
@@ -505,7 +505,7 @@ export function ExerciseEditor({
                 {ratings.map((r) => (
                   <li
                     key={r.jointAction}
-                    className="flex items-center gap-1.5 text-2xs text-soft"
+                    className="flex items-center gap-2 text-2xs text-soft"
                   >
                     <TierBadge tier={r.tier} />
                     {jointActionLabel(r.jointAction)} trains{" "}
@@ -605,7 +605,7 @@ export function ExerciseEditor({
                 value={repsMin}
                 onChange={(e) => setRepsMin(e.target.value.replace(/\D/g, ""))}
                 placeholder="8"
-                className="num h-10 w-16 md:h-10"
+                className="num h-11 w-16 md:h-11"
               />
               <span className="text-faint">–</span>
               <Input
@@ -613,7 +613,7 @@ export function ExerciseEditor({
                 value={repsMax}
                 onChange={(e) => setRepsMax(e.target.value.replace(/\D/g, ""))}
                 placeholder="12"
-                className="num h-10 w-16 md:h-10"
+                className="num h-11 w-16 md:h-11"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -623,7 +623,7 @@ export function ExerciseEditor({
                 value={restSec}
                 onChange={(e) => setRestSec(e.target.value.replace(/\D/g, ""))}
                 placeholder="150"
-                className="num h-10 w-20 md:h-10"
+                className="num h-11 w-20 md:h-11"
               />
               <span className="text-2xs text-faint">seconds</span>
             </div>
@@ -751,7 +751,7 @@ function CollapsibleSection({
       <button
         type="button"
         onClick={onToggle}
-        className="flex h-10 w-full items-center gap-2 text-left"
+        className="flex h-11 w-full items-center gap-2 text-left"
         data-testid={testId}
       >
         {open ? (
@@ -778,7 +778,7 @@ function SegmentedField({
   return (
     <div className="flex flex-col gap-1">
       <span className="text-2xs text-faint">{label}</span>
-      <div className="flex gap-1">{children}</div>
+      <div className="flex gap-2">{children}</div>
     </div>
   );
 }
@@ -799,7 +799,7 @@ function SegmentedButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "h-10 flex-1 text-xs transition-colors duration-150",
+        "h-11 flex-1 text-xs transition-colors duration-150",
         active
           ? "bg-accent-soft text-accent-ink"
           : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -845,7 +845,7 @@ function LabeledSelect({
     <Select.Root value={value} onValueChange={onChange} disabled={disabled}>
       <Select.Trigger
         placeholder={placeholder}
-        className={cn("h-10 md:h-10", triggerClassName)}
+        className={cn("h-11 md:h-11", triggerClassName)}
         data-testid={testId}
       />
       <Select.Content>
@@ -883,9 +883,9 @@ function MusclePicker({
   const taken = new Set([...selected, ...exclude]);
   const available = MUSCLES.filter((m) => !taken.has(m.key));
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       <span className="text-2xs text-faint">{label}</span>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
         {selected.map((muscle) => (
           <Chip key={muscle} onRemove={() => onRemove(muscle)}>
             {muscleLabel(muscle)}
@@ -916,9 +916,9 @@ function JointActionPicker({
 }) {
   const available = JOINT_ACTIONS.filter((a) => !selected.includes(a.key));
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       <span className="text-2xs text-faint">Joint actions</span>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
         {selected.map((action) => (
           <Chip key={action} onRemove={() => onRemove(action)}>
             {jointActionLabel(action)}
@@ -952,9 +952,9 @@ function AliasChips({
   onRemove: (alias: string) => void;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       <span className="text-2xs text-faint">Also known as</span>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-2">
         {aliases.map((a) => (
           <Chip key={a} onRemove={() => onRemove(a)}>
             {a}
@@ -977,7 +977,7 @@ function AliasChips({
           }}
           onBlur={() => onAdd()}
           placeholder="+ add alias"
-          className="h-10 w-32 md:h-10"
+          className="h-11 w-32 md:h-11"
           data-testid="exercise-editor-alias-input"
         />
       </div>
@@ -993,7 +993,7 @@ function Chip({
   onRemove: () => void;
 }) {
   return (
-    <span className="rounded-sm flex h-8 items-center gap-1.5 bg-surface px-2 text-xs text-soft">
+    <span className="rounded-sm flex h-8 items-center gap-2 bg-surface px-2 text-xs text-soft">
       {children}
       <button
         type="button"
@@ -1049,7 +1049,7 @@ function MediaField({
           />
         ))}
       <div className="flex items-center gap-2">
-        <label className="rounded-sm flex h-10 flex-1 cursor-pointer items-center justify-center gap-2 bg-translucent px-2 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
+        <label className="rounded-sm flex h-11 flex-1 cursor-pointer items-center justify-center gap-2 bg-translucent px-2 text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink">
           <Camera className="size-4" />
           <VideoCamera className="size-4" />
           {mediaUrl || hasPending ? "Replace" : "Add image or video"}

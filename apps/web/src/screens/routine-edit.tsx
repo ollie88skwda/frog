@@ -813,7 +813,7 @@ export default function RoutineEditScreen() {
   );
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="flex items-center justify-between gap-2">
         <h1 className="text-lg font-semibold tracking-tight">
           {id ? "Edit routine" : "New routine"}
@@ -852,7 +852,7 @@ export default function RoutineEditScreen() {
           // to content size) — only grow to fill width once the row is
           // actually a row. Mobile already gets full width from the default
           // align-items:stretch cross-axis behavior.
-          className="h-10 sm:flex-1 md:h-10"
+          className="h-11 sm:flex-1 md:h-11"
           data-testid="routine-name-input"
         />
         <Select.Root
@@ -860,7 +860,7 @@ export default function RoutineEditScreen() {
           onValueChange={(v) => setFolderId(v === NO_FOLDER ? null : v)}
         >
           <Select.Trigger
-            className="h-10 w-full sm:w-40 md:h-10"
+            className="h-11 w-full sm:w-40 md:h-11"
             data-testid="routine-folder-select"
           />
           <Select.Content>
@@ -1014,7 +1014,7 @@ export default function RoutineEditScreen() {
                   placeholder="Exercise note (shows every session)"
                   value={d.note}
                   onChange={(e) => patchExercise(i, { note: e.target.value })}
-                  className="h-8 w-full text-xs"
+                  className="h-11 w-full text-xs"
                   data-testid={`routine-ex-${i}-note`}
                 />
               </div>
@@ -1052,7 +1052,7 @@ export default function RoutineEditScreen() {
                           Set {si + 1}
                         </span>
                         {unilateral && (
-                          <span className="rounded-sm bg-surface-3 px-1.5 py-0.5 text-2xs text-faint">
+                          <span className="rounded-sm bg-surface-3 px-2 py-1 text-2xs text-faint">
                             per side
                           </span>
                         )}
@@ -1162,7 +1162,7 @@ export default function RoutineEditScreen() {
                                 testId={`${testBase}-reps`}
                                 className="flex-1"
                               />
-                              <div className="flex flex-col items-center pb-1.5">
+                              <div className="flex flex-col items-center pb-2">
                                 <span className="text-2xs text-faint">to</span>
                                 <Field
                                   inputMode="numeric"
@@ -1350,7 +1350,7 @@ export default function RoutineEditScreen() {
               <X className="size-4" />
             </Button>
           </div>
-          <ul className="mt-1 flex flex-col gap-0.5">
+          <ul className="mt-1 flex flex-col gap-1">
             {unparsed.map((line) => (
               <li key={line.key} className="truncate text-xs text-faint">
                 {line.text}
@@ -1455,7 +1455,7 @@ export default function RoutineEditScreen() {
                           ? `${e.name} is still saving`
                           : undefined
                       }
-                      className="flex h-10 items-center rounded-sm px-2 text-left text-sm hover:bg-surface-2 disabled:opacity-50 disabled:hover:bg-transparent"
+                      className="flex h-11 items-center rounded-sm px-2 text-left text-sm hover:bg-surface-2 disabled:opacity-50 disabled:hover:bg-transparent"
                       onClick={() => selectFromPicker(e)}
                       data-testid={`routine-pick-${e.name}`}
                     >
@@ -1510,7 +1510,7 @@ export default function RoutineEditScreen() {
             placeholder={
               "Push day\nBench press 4x8\nIncline dumbbell press 3x10\nTricep pushdown 3x12"
             }
-            className="mt-2 w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
+            className="mt-2 w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-2 text-sm text-ink placeholder:text-faint focus:border-focus"
             data-testid="routine-paste-textarea"
           />
           {pasteError && <p className="mt-2 text-xs text-neg">{pasteError}</p>}
@@ -1671,7 +1671,7 @@ function ExerciseMenu({
   const labelCls =
     "px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase";
   const itemCls =
-    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft";
+    "flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft";
 
   return (
     <span className="relative">
@@ -1889,7 +1889,7 @@ function ExerciseMenu({
                 close();
               }}
               data-testid={`routine-ex-${index}-remove`}
-              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
+              className="group flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
             >
               <Trash className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
               Remove exercise
@@ -1921,7 +1921,7 @@ function SetMenu({
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
   const itemCls =
-    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink";
+    "flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink";
 
   return (
     <span className="relative flex justify-self-end">
@@ -1979,7 +1979,7 @@ function SetMenu({
                 close();
               }}
               data-testid={`routine-ex-${index}-set-${si}-remove`}
-              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
+              className="group flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
             >
               <Trash className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
               Remove set

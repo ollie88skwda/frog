@@ -8,7 +8,7 @@ export function Input({ className, ...props }: ComponentProps<"input">) {
   return (
     <input
       className={cn(
-        "h-10 md:h-8 w-full min-w-0 rounded-sm border border-field bg-sunken px-3 text-sm text-ink placeholder:text-faint focus-visible:border-focus disabled:cursor-not-allowed disabled:bg-hover disabled:text-disabled",
+        "h-11 md:h-8 w-full min-w-0 rounded-sm border border-field bg-sunken px-3 text-sm text-ink placeholder:text-faint focus-visible:border-focus disabled:cursor-not-allowed disabled:bg-hover disabled:text-disabled",
         className,
       )}
       {...props}

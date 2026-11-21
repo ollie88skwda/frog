@@ -70,19 +70,19 @@ function HeroSetPicker({
     heroSetLabel(b, unit).map((s) => ({ ...s, exerciseId: b.exerciseId })),
   );
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       <span className="text-2xs font-medium tracking-widest text-faint uppercase">
         Headline set
       </span>
       <div
-        className="flex gap-1.5 overflow-x-auto pb-1"
+        className="flex gap-2 overflow-x-auto pb-1"
         data-testid="share-hero-picker"
       >
         <button
           type="button"
           onClick={() => onPick(null)}
           className={cn(
-            "h-10 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150",
+            "h-11 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150",
             heroSet === null
               ? "bg-accent-soft text-accent-ink"
               : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -103,7 +103,7 @@ function HeroSetPicker({
                 onPick({ exerciseId: item.exerciseId, setId: item.setId })
               }
               className={cn(
-                "h-10 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150",
+                "h-11 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150",
                 selected
                   ? "bg-accent-soft text-accent-ink"
                   : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -135,12 +135,12 @@ function ChipRow<T extends string>({
   testIdPrefix: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       <span className="text-2xs font-medium tracking-widest text-faint uppercase">
         {label}
       </span>
       <div
-        className="flex gap-1.5 overflow-x-auto pb-1"
+        className="flex gap-2 overflow-x-auto pb-1"
         data-testid={`${testIdPrefix}s`}
       >
         {options.map((o) => (
@@ -149,7 +149,7 @@ function ChipRow<T extends string>({
             type="button"
             onClick={() => onChange(o)}
             className={cn(
-              "rounded-sm h-10 shrink-0 whitespace-nowrap px-4 text-xs transition-colors duration-150",
+              "rounded-sm h-11 shrink-0 whitespace-nowrap px-4 text-xs transition-colors duration-150",
               o === value
                 ? "bg-accent-soft text-accent-ink"
                 : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -211,7 +211,7 @@ function PhotoPicker({
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2">
       <span className="text-2xs font-medium tracking-widest text-faint uppercase">
         Photo
       </span>
@@ -538,7 +538,7 @@ export function ShareSheet({
         </Button>
         <Button
           variant="outline"
-          className="h-10 w-full text-sm md:h-10"
+          className="h-11 w-full text-sm md:h-11"
           disabled={!pendingFile}
           onClick={save}
           data-testid="share-save"

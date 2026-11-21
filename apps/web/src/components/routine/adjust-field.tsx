@@ -55,7 +55,7 @@ export function AdjustField({
     <div
       className={cn(
         "rounded-sm bg-surface-2",
-        compact ? "p-1.5" : "p-2",
+        compact ? "p-2" : "p-2",
         className,
       )}
     >
@@ -74,8 +74,8 @@ export function AdjustField({
       </div>
       <div
         className={cn(
-          "mt-1 flex items-baseline gap-1",
-          compact ? "pb-0.5" : "pb-1",
+          "mt-1 flex items-baseline gap-2",
+          compact ? "pb-1" : "pb-1",
         )}
       >
         <input
@@ -84,26 +84,26 @@ export function AdjustField({
           onChange={(e) => onValueChange(e.target.value)}
           placeholder={placeholder}
           className={cn(
-            "num min-w-0 flex-1 bg-transparent font-semibold text-ink focus:text-accent-ink",
+            "num min-h-11 min-w-0 flex-1 bg-transparent font-semibold text-ink focus:text-accent-ink",
             compact ? "text-lg" : "text-2xl",
           )}
           data-testid={testId}
         />
         {unit && (
-          <span className="shrink-0 pb-0.5 text-xs font-medium text-faint">
+          <span className="shrink-0 pb-1 text-xs font-medium text-faint">
             {unit}
           </span>
         )}
       </div>
-      <div className={cn("flex flex-wrap gap-1", compact ? "mt-1" : "mt-1.5")}>
+      <div className="mt-2 flex flex-wrap gap-2">
         {deltas.map((d) => (
           <button
             key={d}
             type="button"
             onClick={() => onValueChange(applyDelta(value, d, integer))}
             className={cn(
-              "num rounded-sm px-1.5 text-2xs font-medium transition-colors duration-150",
-              compact ? "py-0.5" : "py-1",
+              "num min-h-11 min-w-11 rounded-sm px-2 text-2xs font-medium transition-colors duration-150",
+
               d > 0
                 ? "bg-accent-soft text-accent-ink hover:bg-accent-soft/70"
                 : "bg-surface-3 text-soft hover:bg-surface-hover",

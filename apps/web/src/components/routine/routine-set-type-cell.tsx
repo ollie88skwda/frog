@@ -38,7 +38,7 @@ export function RoutineSetTypeCell({
         onClick={() => setOpen((o) => !o)}
         title="Set type"
         className={cn(
-          "num min-w-3 text-left text-2xs tabular-nums",
+          "num relative flex h-11 min-w-11 items-center text-left text-2xs tabular-nums",
           markerColorClass(setType),
           setType !== "normal" && "font-semibold",
         )}
@@ -67,7 +67,7 @@ export function RoutineSetTypeCell({
                   setOpen(false);
                 }}
                 data-testid={testId ? `${testId}-${t}` : undefined}
-                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
               >
                 <span className="flex items-center gap-2">
                   <span

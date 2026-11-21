@@ -74,7 +74,7 @@ export default function YearReviewScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="flex items-center gap-3">
         <BackButton
           onClick={() => navigate(-1)}
@@ -94,7 +94,7 @@ export default function YearReviewScreen() {
       ) : (
         <>
           <div
-            className="mt-4 flex gap-1 overflow-x-auto pb-1"
+            className="mt-4 flex gap-2 overflow-x-auto pb-1"
             data-testid="year-picker"
           >
             {years.map((y) => (
@@ -102,7 +102,7 @@ export default function YearReviewScreen() {
                 key={y}
                 type="button"
                 onClick={() => setSelYear(y)}
-                className={`num h-9 shrink-0 px-4 text-xs transition-colors duration-150 ${
+                className={`num h-11 shrink-0 px-4 text-xs transition-colors duration-150 ${
                   y === activeYear
                     ? "bg-accent-soft text-accent-ink"
                     : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink"
@@ -262,7 +262,7 @@ function YearBody({
         {review.topExercises.length === 0 ? (
           <p className="text-xs text-faint">No exercises this year.</p>
         ) : (
-          <ul className="[&>*+*]:mt-0.5">
+          <ul className="[&>*+*]:mt-2">
             {review.topExercises.map((ex) => (
               <li key={ex.exerciseId}>
                 <Row interactive={false}>
@@ -286,7 +286,7 @@ function YearBody({
         {review.prEvents.length === 0 ? (
           <p className="text-xs text-faint">No PRs this year.</p>
         ) : (
-          <ul className="[&>*+*]:mt-0.5">
+          <ul className="[&>*+*]:mt-2">
             {review.prEvents.slice(0, 20).map((e) => (
               <li key={`${e.exerciseId}-${e.prType}-${e.at}`}>
                 <Link

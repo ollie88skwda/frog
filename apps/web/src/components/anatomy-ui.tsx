@@ -74,7 +74,7 @@ export function TierLegend({
         aria-pressed={active === item.value}
         data-testid={`tier-filter-${item.value}`}
         className={cn(
-          "flex h-10 items-center px-2 font-semibold transition-colors duration-100",
+          "flex h-11 min-w-11 items-center justify-center px-2 font-semibold transition-colors duration-100",
           item.className,
           active === item.value ? "bg-accent-soft" : "bg-surface",
         )}
@@ -269,7 +269,7 @@ export function ExerciseRibbon({
         size="lg"
       />
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-2">
           <span
             className={cn(
               "truncate text-sm font-semibold",
@@ -279,9 +279,9 @@ export function ExerciseRibbon({
             {exercise.name}
           </span>
         </div>
-        <JointActionRatings exercise={exercise} className="mt-1.5" />
+        <JointActionRatings exercise={exercise} className="mt-2" />
         {machine && (
-          <div className="mt-1.5 flex items-center gap-1 truncate text-2xs text-faint">
+          <div className="mt-2 flex items-center gap-1 truncate text-2xs text-faint">
             <Barbell className="size-3 shrink-0" />
             {machine.brand ? `${machine.brand} · ` : ""}
             {machine.name}

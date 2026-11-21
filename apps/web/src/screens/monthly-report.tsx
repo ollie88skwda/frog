@@ -105,7 +105,7 @@ export default function MonthlyReportScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="flex items-center gap-3">
         <BackButton
           onClick={() => navigate(-1)}
@@ -127,7 +127,7 @@ export default function MonthlyReportScreen() {
           {/* Month archive picker — Frog keeps every completed month (Hevy shows
               only the latest). Newest first. */}
           <div
-            className="mt-4 flex gap-1 overflow-x-auto pb-1"
+            className="mt-4 flex gap-2 overflow-x-auto pb-1"
             data-testid="monthly-picker"
           >
             {months.map((m) => {
@@ -138,7 +138,7 @@ export default function MonthlyReportScreen() {
                   key={key}
                   type="button"
                   onClick={() => setSelKey(key)}
-                  className={`num h-9 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150 ${
+                  className={`num h-11 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150 ${
                     selected
                       ? "bg-accent-soft text-accent-ink"
                       : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink"
@@ -257,7 +257,7 @@ function ReportBody({
         {report.prEvents.length === 0 ? (
           <p className="text-xs text-faint">No PRs this month.</p>
         ) : (
-          <ul className="[&>*+*]:mt-0.5">
+          <ul className="[&>*+*]:mt-2">
             {report.prEvents.map((e) => (
               <li key={`${e.exerciseId}-${e.prType}-${e.at}`}>
                 <Link
@@ -344,7 +344,7 @@ function ReportBody({
         {report.topExercises.length === 0 ? (
           <p className="text-xs text-faint">No exercises logged this month.</p>
         ) : (
-          <ul className="[&>*+*]:mt-0.5">
+          <ul className="[&>*+*]:mt-2">
             {report.topExercises.map((ex) => (
               <li key={ex.exerciseId}>
                 <Row interactive={false}>
@@ -399,13 +399,13 @@ function TrendSlide({
       title="Monthly trend"
       testId="monthly-trend"
       action={
-        <div className="flex gap-1">
+        <div className="flex gap-2">
           {(["time", "volume", "sets"] as Metric[]).map((m) => (
             <button
               key={m}
               type="button"
               onClick={() => setMetric(m)}
-              className={`h-7 px-2 text-2xs transition-colors duration-150 ${
+              className={`h-11 px-3 text-2xs transition-colors duration-150 ${
                 metric === m
                   ? "bg-accent-soft text-accent-ink"
                   : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink"
@@ -562,10 +562,10 @@ function Stat({
       </div>
       <div className="num mt-1 text-lg font-semibold">{value}</div>
       {delta === 0 ? (
-        <div className="num mt-0.5 text-2xs text-faint">±0 vs last month</div>
+        <div className="num mt-1 text-2xs text-faint">±0 vs last month</div>
       ) : (
         <div
-          className={`num mt-0.5 text-2xs ${delta > 0 ? "text-pos" : "text-neg"}`}
+          className={`num mt-1 text-2xs ${delta > 0 ? "text-pos" : "text-neg"}`}
         >
           {delta > 0 ? "▲" : "▼"} {fmtDelta(delta)} vs last month
         </div>

@@ -60,7 +60,7 @@ export function MonthHeatGrid({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-2">
         {cells.map((c) => {
           if (c.day == null) return <div key={c.key} />;
           const has = workoutDays.has(c.key);

@@ -77,7 +77,7 @@ export default function FindingsScreen() {
     countdowns.length === 0 && conditionCountdowns.length === 0;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <h1 className="text-lg font-semibold tracking-tight">Findings</h1>
       <p className="mt-1 text-xs text-soft">
         What your data says so far.{" "}
@@ -104,7 +104,7 @@ export default function FindingsScreen() {
           {trends.length > 0 && (
             <section>
               <SectionLabel>Progression</SectionLabel>
-              <div className="mt-2 [&>*+*]:mt-0.5 overflow-hidden rounded-md bg-surface">
+              <div className="mt-2 [&>*+*]:mt-2 overflow-hidden rounded-md bg-surface">
                 {trends.map((trend) => (
                   <TrendRow
                     key={trend.exerciseId}
@@ -119,7 +119,7 @@ export default function FindingsScreen() {
           {notEstimable.length > 0 && (
             <section>
               <SectionLabel>No strength estimate</SectionLabel>
-              <div className="mt-2 [&>*+*]:mt-0.5 overflow-hidden rounded-md bg-surface">
+              <div className="mt-2 [&>*+*]:mt-2 overflow-hidden rounded-md bg-surface">
                 {notEstimable.map((n) => (
                   <div
                     key={n.exerciseId}
@@ -140,7 +140,7 @@ export default function FindingsScreen() {
           {conditions.length > 0 && (
             <section>
               <SectionLabel>Conditions</SectionLabel>
-              <div className="mt-2 [&>*+*]:mt-0.5 overflow-hidden rounded-md bg-surface">
+              <div className="mt-2 [&>*+*]:mt-2 overflow-hidden rounded-md bg-surface">
                 {conditions.map((c) => (
                   <ConditionRow
                     key={`${c.conditionId}-${JSON.stringify(c.outcome)}`}
@@ -155,7 +155,7 @@ export default function FindingsScreen() {
           {!nothingOnTheWay && (
             <section>
               <SectionLabel>On the way</SectionLabel>
-              <div className="mt-2 [&>*+*]:mt-0.5 overflow-hidden rounded-md bg-surface">
+              <div className="mt-2 [&>*+*]:mt-2 overflow-hidden rounded-md bg-surface">
                 {countdowns.map((c) => (
                   <div
                     key={c.exerciseId}
@@ -330,7 +330,7 @@ function ConditionRow({
         </span>
         <CaretRight className="size-4 shrink-0 text-faint" />
       </p>
-      <p className="num mt-0.5 flex items-center gap-1.5 text-2xs text-faint">
+      <p className="num mt-1 flex items-center gap-2 text-2xs text-faint">
         <ConfidenceBadge
           score={finding.score}
           showWord={finding.score.level === "low"}
@@ -552,7 +552,7 @@ function TrendSheet({
 
           <Link
             to={`/exercises/${trend.exerciseId}`}
-            className="rounded-sm mt-1 inline-flex h-9 w-full items-center justify-center bg-translucent text-xs transition-colors duration-150 hover:bg-surface-hover"
+            className="rounded-sm mt-1 inline-flex h-11 w-full items-center justify-center bg-translucent text-xs transition-colors duration-150 hover:bg-surface-hover"
           >
             {t("Full history", "Full history — the frog's ledger")}
           </Link>
@@ -577,7 +577,7 @@ function RecommendationBlock({
     return (
       <div className="rounded-md bg-surface px-3 py-2">
         <p className="text-sm font-medium">{t("Keep going", "Keep going")}</p>
-        <p className="mt-0.5 text-xs text-soft">
+        <p className="mt-1 text-xs text-soft">
           {t(
             `Top-set e1RM is up ${sign}${trend.pctChange.toFixed(1)}% over ${stats.n} sessions.`,
             `Top-set e1RM is up ${sign}${trend.pctChange.toFixed(1)}% over ${stats.n} sessions — the frog approves.`,
@@ -596,7 +596,7 @@ function RecommendationBlock({
         <p className="text-sm font-medium">
           {t("Consider more volume", "Consider more volume")}
         </p>
-        <p className="mt-0.5 text-xs text-soft">
+        <p className="mt-1 text-xs text-soft">
           {falling
             ? t(
                 `Volume is down ${Math.abs(pct).toFixed(1)}% while e1RM plateaus. Try adding a set or reps.`,
@@ -622,7 +622,7 @@ function RecommendationBlock({
           "Log RIR — the frog will read your effort",
         )}
       </p>
-      <p className="mt-0.5 text-xs text-soft">
+      <p className="mt-1 text-xs text-soft">
         {t(
           `RIR is logged on ${coveragePct}% of sessions. Log it on most work sets to compare effort.`,
           `RIR is logged on ${coveragePct}% of sessions. Log it on most work sets and the frog can read how hard you are trying.`,

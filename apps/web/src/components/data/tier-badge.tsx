@@ -23,7 +23,7 @@ export function TierBadge({
   "onClick" | "children"
 >) {
   const cls = cn(
-    "inline-flex h-5 items-center gap-1 rounded-xs px-1.5 text-2xs font-semibold whitespace-nowrap",
+    "relative inline-flex h-5 items-center gap-1 rounded-xs px-2 text-2xs font-semibold whitespace-nowrap",
     TIER[tier],
     className,
   );
@@ -39,7 +39,10 @@ export function TierBadge({
       type="button"
       onClick={onClick}
       aria-label={aria}
-      className={cn(cls, "min-h-5 hover:opacity-80")}
+      className={cn(
+        cls,
+        "min-h-5 after:absolute after:-inset-y-3 after:-inset-x-2 hover:opacity-80",
+      )}
       {...props}
     >
       {hollow}T{tier}

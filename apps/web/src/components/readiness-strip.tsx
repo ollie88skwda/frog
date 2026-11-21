@@ -52,7 +52,7 @@ export function ReadinessStrip({
         <button
           type="button"
           onClick={onSkip}
-          className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
+          className="inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
         >
           Add
         </button>
@@ -71,7 +71,7 @@ export function ReadinessStrip({
         <button
           type="button"
           onClick={onSkip}
-          className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
+          className="inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
           data-testid="readiness-skip"
         >
           Skip
@@ -80,7 +80,7 @@ export function ReadinessStrip({
 
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="text-sm text-ink">Sleep</span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <IconButton title="Less sleep" onClick={() => stepSleep(-0.5)}>
             <Minus className="size-4" />
           </IconButton>
@@ -103,7 +103,7 @@ export function ReadinessStrip({
             {stress == null ? "1 calm · 10 maxed" : `${stress} of 10`}
           </span>
         </div>
-        <div className="mt-1.5 grid grid-cols-10 gap-1">
+        <div className="mt-2 grid grid-cols-5 gap-2">
           {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
             <button
               key={n}
@@ -113,7 +113,7 @@ export function ReadinessStrip({
               data-testid={`readiness-stress-${n}`}
               onClick={() => set(STRESS, stress === n ? undefined : n)}
               className={cn(
-                "num h-10 rounded-sm text-xs font-semibold transition-colors duration-150 md:h-8",
+                "num h-11 rounded-sm text-xs font-semibold transition-colors duration-150 md:h-8",
                 stress === n
                   ? "bg-accent text-accent-fg"
                   : "bg-translucent text-soft hover:bg-surface-hover",
@@ -128,7 +128,7 @@ export function ReadinessStrip({
       {caffeineOn && (
         <div className="mt-3 flex items-center justify-between gap-2">
           <span className="text-sm text-ink">Caffeine</span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <IconButton
               title="Less caffeine"
               onClick={() =>

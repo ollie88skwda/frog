@@ -129,7 +129,7 @@ export default function StatsScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="flex items-center gap-3">
         <BackButton
           onClick={() => navigate(-1)}
@@ -219,14 +219,14 @@ function Chips<T extends string>({
   testIdPrefix: string;
 }) {
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-2">
       {options.map((o) => (
         <button
           key={o}
           type="button"
           onClick={() => onChange(o)}
           className={cn(
-            "h-8 flex-1 whitespace-nowrap px-2 text-2xs transition-colors duration-150",
+            "h-11 flex-1 whitespace-nowrap px-2 text-2xs transition-colors duration-150",
             o === value
               ? "bg-accent-soft text-accent-ink"
               : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -438,13 +438,13 @@ function SetsPerMuscleSection({ history, muscleMap, opts }: SectionProps) {
 
       {breakdown.length > 0 && (
         <ul
-          className="mt-3 [&>*+*]:mt-0.5"
+          className="mt-3 [&>*+*]:mt-2"
           data-testid="sets-per-muscle-breakdown"
         >
           {breakdown.map(([m, n]) => (
             <li
               key={m}
-              className="flex items-center justify-between px-3 py-1.5"
+              className="flex items-center justify-between px-3 py-2"
               data-testid={`spm-row-${m}`}
             >
               <span className="text-xs text-soft">{muscleLabel(m)}</span>
@@ -579,7 +579,7 @@ function DistributionSection({
         </ChartContainer>
       </div>
 
-      <ul className="mt-3 [&>*+*]:mt-0.5" data-testid="distribution-totals">
+      <ul className="mt-3 [&>*+*]:mt-2" data-testid="distribution-totals">
         {totals.map((t) => (
           <li
             key={t.label}
@@ -669,7 +669,7 @@ function WeekBodySection({ history, muscleMap, opts }: SectionProps) {
       {rows.length === 0 ? (
         <p className="mt-2 text-xs text-faint">No sets logged this week.</p>
       ) : (
-        <ul className="mt-2 [&>*+*]:mt-0.5">
+        <ul className="mt-2 [&>*+*]:mt-2">
           {rows.map(([m, n]) => (
             <li key={m}>
               <Row interactive={false}>
@@ -716,7 +716,7 @@ function MainExercisesSection({
       {ranked.length === 0 ? (
         <p className="mt-3 text-xs text-faint">No exercises logged yet.</p>
       ) : (
-        <ul className="mt-3 [&>*+*]:mt-0.5">
+        <ul className="mt-3 [&>*+*]:mt-2">
           {ranked.slice(0, 15).map((ex, i) => (
             <li key={ex.exerciseId}>
               <Link

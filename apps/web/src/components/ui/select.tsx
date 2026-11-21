@@ -19,7 +19,7 @@ export const Select = {
     return (
       <SelectPrimitive.Trigger
         className={cn(
-          "inline-flex h-10 min-w-0 md:h-8 items-center justify-between gap-2 rounded-sm border border-field bg-sunken px-3 text-sm text-ink focus-visible:border-focus disabled:cursor-not-allowed disabled:bg-hover disabled:text-disabled",
+          "inline-flex h-11 min-w-0 md:h-8 items-center justify-between gap-2 rounded-sm border border-field bg-sunken px-3 text-sm text-ink focus-visible:border-focus disabled:cursor-not-allowed disabled:bg-hover disabled:text-disabled",
           className,
         )}
         {...props}
@@ -65,7 +65,7 @@ export const Select = {
     return (
       <SelectPrimitive.Item
         className={cn(
-          "relative flex min-h-9 w-full cursor-default items-center rounded-sm py-1.5 pr-3 pl-8 text-sm outline-none select-none focus:bg-hover data-[disabled]:pointer-events-none data-[disabled]:text-disabled data-[state=checked]:bg-accent-selected",
+          "relative flex min-h-11 w-full cursor-default items-center rounded-sm py-2 pr-3 pl-8 text-sm outline-none select-none focus:bg-hover data-[disabled]:pointer-events-none data-[disabled]:text-disabled data-[state=checked]:bg-accent-selected",
           className,
         )}
         {...props}
@@ -86,7 +86,7 @@ export const Select = {
   Label({ className, ...props }: ComponentProps<typeof SelectPrimitive.Label>) {
     return (
       <SelectPrimitive.Label
-        className={cn("px-2 py-1.5 text-xs font-bold text-soft", className)}
+        className={cn("px-2 py-2 text-xs font-bold text-soft", className)}
         {...props}
       />
     );

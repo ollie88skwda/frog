@@ -90,7 +90,7 @@ export default function TrainerScreen() {
   } = useActiveProgram();
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="flex items-center gap-3">
         <BackButton to="/train" label="Back to training" />
         <div>
@@ -133,7 +133,7 @@ function Segmented<T extends string | number>({
   testId?: string;
 }) {
   return (
-    <div className="flex gap-1 overflow-x-auto pb-0.5" data-testid={testId}>
+    <div className="flex gap-2 overflow-x-auto pb-1" data-testid={testId}>
       {options.map((o) => (
         <button
           key={String(o)}
@@ -142,7 +142,7 @@ function Segmented<T extends string | number>({
           aria-pressed={value === o}
           data-testid={testId ? `${testId}-${o}` : undefined}
           className={cn(
-            "h-9 flex-1 shrink-0 px-3 text-xs whitespace-nowrap transition-colors duration-150",
+            "h-11 flex-1 shrink-0 px-3 text-xs whitespace-nowrap transition-colors duration-150",
             value === o
               ? "bg-accent-soft text-accent-ink"
               : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -241,7 +241,7 @@ function QuestionnaireForm({
         />
       </Field>
       <Field label="Equipment">
-        <div className="flex flex-wrap gap-1" data-testid="q-equipment">
+        <div className="flex flex-wrap gap-2" data-testid="q-equipment">
           {SELECTABLE_EQUIPMENT.map((k) => (
             <button
               key={k}
@@ -250,7 +250,7 @@ function QuestionnaireForm({
               aria-pressed={equipSet.has(k)}
               data-testid={`q-equip-${k}`}
               className={cn(
-                "h-8 px-3 text-xs transition-colors duration-150",
+                "h-11 px-3 text-xs transition-colors duration-150",
                 equipSet.has(k)
                   ? "bg-accent-soft text-accent-ink"
                   : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -643,8 +643,8 @@ function NextWorkoutCard({
           <p className="text-2xs font-medium tracking-widest text-accent-ink uppercase">
             Next workout
           </p>
-          <p className="mt-0.5 text-base font-semibold">{routine.name}</p>
-          <p className="num mt-0.5 text-2xs text-faint">
+          <p className="mt-1 text-base font-semibold">{routine.name}</p>
+          <p className="num mt-1 text-2xs text-faint">
             {detail.exercises.length} exercises · ~{est} min
             {lastAt == null ? " · not started yet" : ""}
           </p>
@@ -672,7 +672,7 @@ function NextWorkoutCard({
         </Button>
       )}
 
-      <div className="mt-3 flex flex-col [&>*+*]:mt-0.5">
+      <div className="mt-3 flex flex-col [&>*+*]:mt-2">
         {editableExercises(detail).map((ex) => (
           <ExerciseRow
             key={ex.detailId}
@@ -817,7 +817,7 @@ function MenuItem({
     <button
       type="button"
       className={cn(
-        "flex h-9 items-center px-2 text-left text-xs hover:bg-surface-hover",
+        "flex h-11 items-center px-2 text-left text-xs hover:bg-surface-hover",
         destructive && "text-neg",
       )}
       onClick={onClick}
@@ -872,14 +872,14 @@ function ReplaceDialog({
           onChange={(e) => setQuery(e.target.value)}
           data-testid="replace-search"
         />
-        <div className="mt-2 flex max-h-72 flex-col gap-1 overflow-y-auto">
+        <div className="mt-2 flex max-h-72 flex-col gap-2 overflow-y-auto">
           {list.map((e) => (
             <button
               key={e.id}
               type="button"
               onClick={() => onPick(e.id)}
               data-testid={`replace-pick-${e.name}`}
-              className="flex h-10 items-center px-2 text-left text-xs hover:bg-surface-hover"
+              className="flex h-11 items-center px-2 text-left text-xs hover:bg-surface-hover"
             >
               {e.name}
             </button>
@@ -1176,11 +1176,11 @@ function ProgressReport({
       {exerciseFlags.length > 0 && (
         <div>
           <p className="mb-2 text-2xs text-faint">Exercise progression</p>
-          <div className="flex flex-col [&>*+*]:mt-0.5">
+          <div className="flex flex-col [&>*+*]:mt-2">
             {exerciseFlags.map(([id, status]) => (
               <div
                 key={id}
-                className="flex items-center justify-between py-1.5"
+                className="flex items-center justify-between py-2"
                 data-testid={`flag-${nameById.get(id) ?? id}`}
               >
                 <span className="truncate text-xs text-ink">
@@ -1273,7 +1273,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-surface p-3">
       <p className="text-2xs tracking-widest text-faint uppercase">{label}</p>
-      <p className="num mt-0.5 text-sm font-semibold text-ink">{value}</p>
+      <p className="num mt-1 text-sm font-semibold text-ink">{value}</p>
     </div>
   );
 }
@@ -1304,7 +1304,7 @@ function SetsPerRegionBars({
   const max = Math.max(24, ...MUSCLE_REGIONS.map((r) => regionSets[r] ?? 0));
   const pct = (v: number) => `${(v / max) * 100}%`;
   return (
-    <div className="flex flex-col gap-1.5" data-testid="sets-per-region">
+    <div className="flex flex-col gap-2" data-testid="sets-per-region">
       {MUSCLE_REGIONS.map((r) => {
         const v = regionSets[r] ?? 0;
         const inBand = v >= 10 && v <= 20;

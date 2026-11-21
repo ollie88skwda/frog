@@ -75,7 +75,7 @@ export function MachineAttachDialog({
             <p className="mb-1 text-2xs font-medium tracking-widest text-faint uppercase">
               From your gym
             </p>
-            <ul className="overflow-hidden rounded-md [&>*+*]:mt-0.5 bg-surface">
+            <ul className="overflow-hidden rounded-md [&>*+*]:mt-2 bg-surface">
               {machines.map((m) => (
                 <MachineRow
                   key={m.id}
@@ -111,7 +111,7 @@ function MachineRow({
       <button
         type="button"
         onClick={onPick}
-        className="flex h-10 w-full items-center gap-2 px-2 text-left text-xs transition-colors duration-100 hover:bg-surface-hover md:h-8"
+        className="flex h-11 w-full items-center gap-2 px-2 text-left text-xs transition-colors duration-100 hover:bg-surface-hover md:h-8"
         data-testid={`attach-existing-${machine.name}`}
       >
         <span className="truncate">

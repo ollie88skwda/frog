@@ -71,7 +71,7 @@ export function SessionStrip({ sessions }: { sessions: SessionSummary[] }) {
               )}
               {strip?.chip && (
                 <span
-                  className="inline-flex h-5 items-center rounded-xs bg-attn-soft px-1.5 text-2xs font-semibold text-attn"
+                  className="inline-flex h-5 items-center rounded-xs bg-attn-soft px-2 text-2xs font-semibold text-attn"
                   data-testid="cap-chip"
                 >
                   planning range is 2-5
@@ -115,7 +115,7 @@ export function FindingsList({
               <Warning
                 aria-hidden="true"
                 weight="fill"
-                className="mt-0.5 size-4 shrink-0 text-attn"
+                className="mt-1 size-4 shrink-0 text-attn"
               />
             )}
             <p

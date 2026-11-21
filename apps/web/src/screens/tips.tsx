@@ -24,7 +24,7 @@ export default function TipsScreen() {
   const entries = Object.entries(LESSONS) as [LessonId, Lesson][];
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <h1 className="text-lg font-semibold tracking-tight">Training tips</h1>
       <RuleLibrary />
       <p className="mt-1 text-xs text-faint">
@@ -40,7 +40,7 @@ export default function TipsScreen() {
           )}
         </p>
       ) : (
-        <div className="rounded-md mt-4 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
+        <div className="rounded-md mt-4 [&>*+*]:mt-2 overflow-hidden bg-surface">
           {entries.map(([id, lesson]) => (
             <LessonCard key={id} id={id} lesson={lesson} />
           ))}
@@ -70,7 +70,7 @@ function RuleLibrary() {
         Every suggestion follows a numbered rule. Tap a tier to see the evidence
         and sources.
       </p>
-      <ul className="rounded-md mt-2 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
+      <ul className="rounded-md mt-2 [&>*+*]:mt-2 overflow-hidden bg-surface">
         {EVIDENCE_RULES.map((r) => (
           <li key={r.id} className="flex items-start gap-3 px-4 py-3">
             <span className="num w-10 shrink-0 text-xs font-semibold text-soft">

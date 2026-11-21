@@ -430,7 +430,7 @@ export function PostSaveSummary({
             #{ordinal}
           </p>
           <p className="mt-1 text-sm text-soft">{title}</p>
-          <p className="num mt-0.5 text-xs text-faint">{subtitle}</p>
+          <p className="num mt-1 text-xs text-faint">{subtitle}</p>
           {showStreak && (
             <div
               className="rounded-md mt-6 flex items-center gap-2 bg-surface-2 px-4 py-3"
@@ -461,11 +461,11 @@ export function PostSaveSummary({
         <p className="text-sm font-semibold" data-testid="summary-report">
           vs plan
         </p>
-        <ul className="flex flex-col gap-1.5">
+        <ul className="flex flex-col gap-2">
           {report.rows.map(({ b, best, state, e1rm, planned }) => (
             <li
               key={b.id}
-              className="rounded-sm flex flex-col gap-0.5 bg-surface-2 px-3 py-2"
+              className="rounded-sm flex flex-col gap-1 bg-surface-2 px-3 py-2"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="min-w-0 truncate text-sm font-semibold">
