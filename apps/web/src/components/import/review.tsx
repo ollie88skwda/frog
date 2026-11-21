@@ -1,7 +1,6 @@
 import {
   draftStats,
   draftToImportedSessions,
-  isUnilateralName,
   type Exercise,
   type ExerciseMatch,
   findDuplicateSessions,
@@ -12,6 +11,7 @@ import {
   type ImportResult,
   isConfidentMatch,
   isLowConfidence,
+  isUnilateralName,
   matchExerciseName,
   type NewRoutineInput,
   setDraftUnit,
