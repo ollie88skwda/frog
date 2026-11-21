@@ -13,7 +13,6 @@ import {
   type ImportDraftExercise,
   type ImportDraftSet,
   importDraftSet,
-  isLowConfidence,
   type WeightUnit,
 } from "../draft";
 import { ocrLinesToDraft } from "../ocr/draft";
@@ -47,11 +46,16 @@ const norm = (s: string) =>
 /** Stitch scrolled shots of one list: by row number, whole rows beat cut-off ones. */
 export function stitchRows<
   R extends { index: number; partial: boolean; name: string },
->(reads: R[][], quality: (r: R) => number): { rows: R[]; gaps: number[] } {
+>(
+  reads: R[][],
+  quality: (r: R) => number,
+): { rows: R[]; gaps: number[]; conflicts: number[] } {
   const byIndex = new Map<number, R>();
+  const conflicts = new Set<number>();
   for (const rows of reads)
     for (const r of rows) {
       const cur = byIndex.get(r.index);
+      if (cur && !sameName(cur.name, r.name)) conflicts.add(r.index);
       if (
         !cur ||
         (cur.partial && !r.partial) ||
@@ -63,8 +67,18 @@ export function stitchRows<
   const gaps: number[] = [];
   for (let i = 1; i < rows.length; i++)
     for (let n = rows[i - 1].index + 1; n < rows[i].index; n++) gaps.push(n);
-  return { rows, gaps };
+  return { rows, gaps, conflicts: [...conflicts].sort((a, b) => a - b) };
 }
+
+const sameName = (a: string, b: string) => {
+  const stem = (x: string) =>
+    norm(x.replace(/(\.{2,}|…)$/, "")).replace(/ /g, "");
+  const [x, y] = [stem(a), stem(b)];
+  return x.startsWith(y) || y.startsWith(x);
+};
+
+const conflictNote = (what: string, rows: number[]) =>
+  `Rows ${rows.join(", ")} of the ${what} have different names in different screenshots, so these may be separate workouts merged into one. Import each workout on its own.`;
 
 /** Complete a name the app shortened with "..." from a longer known name. */
 export function completeName(name: string, known: string[]): string | null {
@@ -121,11 +135,7 @@ export function readsToDraft(
   if (routine.rows.length > 0) {
     const exercises = routine.rows.map((r) => {
       const hasChips = r.sets != null || r.reps != null;
-      const flags: string[] = [];
-      if (r.indexInferred) flags.push("Row number guessed");
-      if (r.partial) flags.push("Row was cut off");
       const conf = Math.min(r.nameConf || 0.5, r.partial ? 0.6 : 1);
-      void flags;
       return {
         id: newId(),
         rawName: r.name,
@@ -142,6 +152,8 @@ export function readsToDraft(
       draft.notes.push(
         `Rows ${routine.gaps.join(", ")} of the routine were not in any screenshot. Add another screenshot that shows them.`,
       );
+    if (routine.conflicts.length)
+      draft.notes.push(conflictNote("routine", routine.conflicts));
     draft.notes.push(
       "The routine screen only shows sets and reps when the app displays them; exercises without them import as 1 set, no rep target.",
     );
@@ -247,13 +259,14 @@ export function readsToDraft(
       draft.notes.push(
         `Rows ${table.gaps.join(", ")} of the table were not readable.`,
       );
+    if (table.conflicts.length)
+      draft.notes.push(conflictNote("table", table.conflicts));
     const last = table.rows.at(-1);
     if (last?.partial)
       draft.notes.push(
         "The last row is cut off at the bottom of the screenshot; scroll and add another one.",
       );
   }
-  void isLowConfidence;
 
   // Screens neither layout parser knows: stitch their text lines (dropping the
   // lines two overlapping scrolls share) and run the older line parser.

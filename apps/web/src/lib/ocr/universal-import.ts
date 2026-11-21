@@ -204,8 +204,8 @@ export async function filesToImportResult(
     (t) => t.info.kind === "csv" || t.info.kind === "json",
   );
   for (const t of textFiles) {
-    rawText += `${t.body}\n`;
     if (t.info.kind === "text") {
+      rawText += `${t.body}\n`;
       drafts.push(parseWorkoutText(t.body, { defaultUnit: unit }));
     } else {
       const r = parseImportFile(t.body, { defaultUnit: unit });

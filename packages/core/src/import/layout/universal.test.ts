@@ -69,6 +69,16 @@ describe("stitching", () => {
     expect(rows.find((r) => r.name === "C")?.partial).toBe(false);
     expect(gaps).toEqual([5]);
   });
+  it("reports rows whose names differ between shots (two different workouts)", () => {
+    const { conflicts } = stitchRows(
+      [
+        [row(1, "Bench Press"), row(2, "Incline Dumbbell Curl (45De...")],
+        [row(1, "Squat"), row(2, "Incline Dumbbell Curl (45 Degrees)")],
+      ],
+      (r) => r.q,
+    );
+    expect(conflicts).toEqual([1]);
+  });
   it("drops lines shared by two scrolled text shots", () => {
     const l = (t: string) => ({ text: t, confidence: 1 });
     const out = stitchTextLines([
