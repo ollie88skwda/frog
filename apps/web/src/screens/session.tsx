@@ -74,10 +74,14 @@ import {
   weightLabel,
 } from "@frog/core";
 import {
+  ArrowCounterClockwise,
   Calculator,
   CaretDown,
   CaretRight,
   Check,
+  Clock,
+  ClockCounterClockwise,
+  DotsThree,
   Flame,
   LinkSimple,
   MagnifyingGlass,
@@ -85,15 +89,19 @@ import {
   Microphone,
   Notebook,
   Pause,
+  PencilSimple,
   Play,
   Plus,
+  SlidersHorizontal,
   Square,
   Trash,
   Wrench,
 } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  type Dispatch,
   type TouchEvent as ReactTouchEvent,
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -101,7 +109,7 @@ import {
   useState,
 } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
-import { ExerciseRibbon, ExerciseThumb } from "@/components/anatomy-ui";
+import { ExerciseRibbon } from "@/components/anatomy-ui";
 import { ConditionsChip } from "@/components/conditions";
 import {
   DeltaChip,
@@ -115,6 +123,8 @@ import {
   filterExercises,
 } from "@/components/exercise-filter";
 import { InfoTip } from "@/components/lesson";
+import { fieldStep, logLabel, stepValue } from "@/components/session/entry";
+import { ScrubSurface, Stepper } from "@/components/session/entry-tile";
 import { MachineChip } from "@/components/session/machine-chip";
 import { PlateSheet } from "@/components/session/plate-sheet";
 import { PrBanner, type PrBannerData } from "@/components/session/pr-banner";
@@ -130,12 +140,20 @@ import {
   setTarget,
 } from "@/components/session/prescription";
 import { RestStopwatch } from "@/components/session/rest-stopwatch";
+import { Ruler } from "@/components/session/ruler";
 import {
   FinishPhotoStrip,
   type PendingPhoto,
 } from "@/components/session-photos";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
@@ -166,6 +184,7 @@ import {
   type Unit,
   useUnit,
 } from "@/lib/settings";
+import { sessionConditionsLine } from "@/lib/share/conditions";
 import { compareToLast, rirSegmentOf, segmentToFields } from "@/lib/spotlight";
 import { cn } from "@/lib/utils";
 import { useVoice, voice } from "@/lib/voice";
@@ -377,6 +396,10 @@ function fieldText(
 // ── RIR / RPE: shared effort controls (locked decision — segmented RIR,
 // compact RPE, both single-value, replacing the old free min/max range) ─────
 
+// The screen's quiet square controls (menus, note, clock): 44px, one resting
+// fill that reads on the page and on the entry panel in both modes.
+const CHROME_BTN = "size-11 bg-secondary text-ink hover:bg-active md:size-11";
+
 const RIR_SEGMENTS = [0, 1, 2, 3, 4] as const;
 
 // Contract testid for one RIR segment: value ∈ 0,1,2,3,4plus ("rir-option-{value}",
@@ -392,20 +415,25 @@ function RirSegmented({
   onChange,
   side,
   hint,
+  bare,
 }: {
   min: string;
   max: string;
   onChange: (v: { min: string; max: string }) => void;
   side?: "left" | "right";
+  /** No "RIR" caption: the entry panel's column already labels it. */
+  bare?: boolean;
   /** Planned segment, outlined until tapped; never selected by itself. */
   hint?: number | null;
 }) {
   const selected = rirSegmentOf(min, max);
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-2xs font-medium tracking-widest text-faint uppercase">
-        RIR
-      </span>
+      {!bare && (
+        <span className="text-2xs font-medium tracking-widest text-soft uppercase">
+          RIR{side ? ` · ${side}` : ""}
+        </span>
+      )}
       <div className="flex gap-1">
         {RIR_SEGMENTS.map((v) => {
           const on = selected === v;
@@ -420,11 +448,11 @@ function RirSegmented({
               }
               aria-pressed={on}
               className={cn(
-                "rounded-sm num h-10 flex-1 text-sm font-semibold transition-colors duration-100",
+                "num h-11 flex-1 rounded-sm text-sm font-semibold transition-colors duration-100",
                 on
-                  ? "bg-ink text-on-action"
-                  : "bg-surface text-soft hover:bg-surface-hover",
-                hinted && "text-ink ring-2 ring-accent ring-inset",
+                  ? "bg-action text-on-action"
+                  : "bg-secondary text-ink hover:bg-active",
+                hinted && "ring-2 ring-accent-ink ring-inset",
               )}
               data-hint={hinted ? "true" : undefined}
               data-testid={rirOptionId(v, side)}
@@ -448,6 +476,11 @@ export default function SessionScreen() {
   const { t } = useVoice();
   const sessionQuery = useSession(sessionId);
   const session = sessionQuery.data;
+  const { data: allMetrics = [] } = useMetrics();
+  const conditionsSummary = sessionConditionsLine(
+    session?.conditionValues ?? {},
+    allMetrics.filter((m) => m.scope === "session"),
+  );
   const sessionLoaded = session !== undefined;
   const {
     data: restored,
@@ -463,6 +496,7 @@ export default function SessionScreen() {
   const [blocks, setBlocks] = useState<BlockState[] | null>(null);
   const [picking, setPicking] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [conditionsOpen, setConditionsOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [activeSeId, setActiveSeId] = useState<string | null>(null);
   const copySeed = (location.state as { seed?: Record<string, SeedSet[]> })
@@ -1445,46 +1479,52 @@ export default function SessionScreen() {
         </div>
       )}
 
-      {/* 1. Session line — name, elapsed clock, Finish. */}
+      {/* 1. Top bar — the one clock, voice, and a ⋯ menu (Finish lives here). */}
       <header className="sticky top-0 z-10 bg-bg">
-        <div className="mx-auto flex h-12 max-w-2xl items-center justify-between gap-3 px-4">
-          <h1 className="min-w-0 truncate text-base font-semibold tracking-tight">
-            {session?.title ?? "Session"}
-          </h1>
+        <div className="mx-auto flex h-[clamp(52px,6.6dvh,56px)] max-w-2xl items-center justify-between gap-2 px-4">
+          <h1 className="sr-only">{session?.title ?? "Session"}</h1>
+          {rest && activeBlock && rest.seId === activeBlock.seId ? (
+            <RestStopwatch
+              compact
+              startedAt={rest.state.startedAt}
+              setNumber={countSets(activeBlock.committed)}
+              onStop={dismissRest}
+            />
+          ) : session ? (
+            <SessionDurationControl
+              startedAt={session.startedAt}
+              endedAt={session.endedAt}
+              paused={paused}
+              pausedMs={pausedMs}
+              pauseStartedAt={pauseStartedAt}
+              onTogglePause={togglePause}
+              onEditStart={(ms) => {
+                void repo.updateSessionStartedAt(sessionId, ms);
+                qc.setQueryData<Session | null>(
+                  ["session", sessionId],
+                  (old) => (old ? { ...old, startedAt: ms } : old),
+                );
+              }}
+            />
+          ) : null}
           <div className="flex shrink-0 items-center gap-2">
-            {session && (
-              <SessionDurationControl
-                startedAt={session.startedAt}
-                endedAt={session.endedAt}
-                paused={paused}
-                pausedMs={pausedMs}
-                pauseStartedAt={pauseStartedAt}
-                onTogglePause={togglePause}
-                onEditStart={(ms) => {
-                  void repo.updateSessionStartedAt(sessionId, ms);
-                  qc.setQueryData<Session | null>(
-                    ["session", sessionId],
-                    (old) => (old ? { ...old, startedAt: ms } : old),
-                  );
-                }}
-              />
-            )}
             {speechSupported && (
               <span className="relative flex items-center">
                 <Button
                   variant={listening ? "primary" : "outline"}
                   size="icon-lg"
+                  className="size-11"
                   onClick={listening ? stopListening : startListening}
                   title={listening ? "Stop listening" : "Log a set by voice"}
                   aria-pressed={listening}
                   data-testid="voice-log-mic"
                 >
-                  <Microphone className="size-4" />
+                  <Microphone className="size-5" />
                 </Button>
                 <span
                   role="status"
                   className={cn(
-                    "absolute top-full right-0 z-20 mt-1 whitespace-nowrap text-2xs text-faint",
+                    "absolute top-full right-0 z-20 mt-1 whitespace-nowrap text-2xs text-soft",
                     micMessage && "floating px-2 py-1",
                   )}
                 >
@@ -1492,68 +1532,61 @@ export default function SessionScreen() {
                 </span>
               </span>
             )}
-            <Button
-              size="lg"
-              onClick={() => setFinishOpen(true)}
-              title="Finish session"
-              data-testid="session-finish"
-            >
-              <Square className="size-3" />
-              Finish
-            </Button>
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  title="Session menu"
+                  className={CHROME_BTN}
+                  data-testid="session-menu"
+                >
+                  <DotsThree weight="bold" className="size-6" />
+                </IconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                {activeBlock && (
+                  <DropdownMenuItem
+                    className="min-h-11"
+                    onSelect={() =>
+                      navigate(`/exercises/${activeBlock.exerciseId}`)
+                    }
+                    data-testid="session-menu-history"
+                  >
+                    <ClockCounterClockwise className="size-4" />
+                    History
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  className="min-h-11"
+                  onSelect={() => setPicking(true)}
+                  data-testid="open-exercise-picker"
+                >
+                  <Plus className="size-4" />
+                  Add exercise
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="min-h-11"
+                  onSelect={() => setConditionsOpen(true)}
+                  data-testid="conditions-chip"
+                >
+                  <Notebook className="size-4" />
+                  {conditionsSummary ?? "Log conditions"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  danger
+                  className="min-h-11"
+                  onSelect={() => setFinishOpen(true)}
+                  data-testid="session-finish"
+                >
+                  <Square className="size-4" />
+                  Finish workout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto flex max-w-2xl flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1.5">
-        <div className="min-w-max flex-1">
-          <ConditionsChip sessionId={sessionId} />
-        </div>
-        {/* F15: failed/queued summary; per-set dots live under the set card. */}
-        <span className="flex shrink-0 items-center gap-1.5">
-          <SaveDot
-            state={
-              failedSetCount > 0
-                ? "failed"
-                : Object.keys(queuedSets).length > 0
-                  ? "queued"
-                  : "saved"
-            }
-            onRetry={retryFailedSets}
-          />
-        </span>
-      </div>
-      {/* Live strip (§8.2): this session's hard sets per muscle (R6, R7). */}
-      <div
-        className="mx-auto flex max-w-2xl items-center gap-2 overflow-x-auto px-4 pb-1.5"
-        data-testid="live-strip"
-      >
-        <p
-          className="num shrink-0 text-xs font-semibold text-ink"
-          data-testid="session-stats"
-        >
-          {live.hardSets} hard {live.hardSets === 1 ? "set" : "sets"}
-        </p>
-        {live.muscles
-          .filter((m) => m.total > 0)
-          .slice(0, 8)
-          .map((m) => (
-            <span
-              key={m.muscle}
-              className="num shrink-0 rounded-xs bg-surface-2 px-1.5 py-0.5 text-2xs text-soft"
-            >
-              {muscleLabel(m.muscle).toLowerCase()}{" "}
-              {Math.round(m.total * 10) / 10}
-            </span>
-          ))}
-        {live.noRirSets > 0 && (
-          <span className="shrink-0 text-2xs text-faint">
-            {live.noRirSets} without RIR
-          </span>
-        )}
-      </div>
-
-      <div className="mx-auto flex max-w-2xl flex-col">
+      <div className="mx-auto flex h-[calc(100dvh-clamp(52px,6.6dvh,56px))] max-w-2xl flex-col overflow-hidden">
         {activeBlock ? (
           <ExerciseSpotlight
             key={activeBlock.seId}
@@ -1598,29 +1631,21 @@ export default function SessionScreen() {
           />
         ) : (
           <div className="flex flex-col items-center gap-3 px-4 py-16">
-            <p className="text-center text-sm text-faint">No exercises yet.</p>
+            <p className="text-center text-sm text-soft">No exercises yet.</p>
           </div>
         )}
-
-        <div className="px-4 pb-24">
-          <Button
-            variant="outline"
-            size="lg"
-            className="mt-3 w-full"
-            onClick={() => setPicking(true)}
-            data-testid="open-exercise-picker"
-          >
-            <Plus className="size-4" />
-            Add exercise
-          </Button>
-        </div>
       </div>
 
+      <ConditionsChip
+        sessionId={sessionId}
+        open={conditionsOpen}
+        onOpenChange={setConditionsOpen}
+        hideTrigger
+      />
       <ExerciseSwitcher
         open={switcherOpen}
         onOpenChange={setSwitcherOpen}
         blocks={blocks}
-        seedFor={seedFor}
         activeSeId={activeBlock?.seId ?? null}
         onJump={(id) => {
           setActiveSeId(id);
@@ -2256,7 +2281,6 @@ function ExerciseSwitcher({
   open,
   onOpenChange,
   blocks,
-  seedFor,
   activeSeId,
   onJump,
   onAddExercise,
@@ -2265,7 +2289,6 @@ function ExerciseSwitcher({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   blocks: BlockState[];
-  seedFor: (block: BlockState) => SeedSet[];
   activeSeId: string | null;
   onJump: (seId: string) => void;
   onAddExercise: () => void;
@@ -2276,9 +2299,7 @@ function ExerciseSwitcher({
       <DialogContent title="Switch exercise" className="md:max-w-md">
         <ul className="flex flex-col" data-testid="exercise-sheet">
           {blocks.map((b, i) => {
-            const planned = seedFor(b).length;
             const done = countSets(b.committed);
-            const complete = planned > 0 && done >= planned;
             return (
               <li
                 key={b.seId}
@@ -2299,12 +2320,13 @@ function ExerciseSwitcher({
                   <span
                     className={cn(
                       "num shrink-0 text-xs tabular-nums",
-                      complete ? "text-accent-ink" : "text-faint",
+                      done > 0 ? "text-accent-ink" : "text-faint",
                     )}
                     data-testid={`switcher-progress-${b.name}`}
                   >
-                    {planned > 0 ? `${done}/${planned}` : done}
-                    {complete ? " ✓" : ""}
+                    {done === 0
+                      ? "Empty"
+                      : `${done} ${done === 1 ? "set" : "sets"}`}
                   </span>
                   <CaretRight className="size-3.5 shrink-0 text-faint" />
                 </button>
@@ -2415,7 +2437,7 @@ function WarmupDialog({
   );
 }
 
-type MarkState = "done" | "warmup" | "current" | "todo";
+type MarkState = "done" | "warmup" | "current";
 type Mark = {
   kind: MarkState;
   paired: boolean;
@@ -2423,74 +2445,87 @@ type Mark = {
   onTap?: () => void;
 };
 
-function MarksBand({ marks }: { marks: Mark[] }) {
-  return (
-    <div className="flex" data-testid="marks-band">
-      {marks.map((m, i) => (
-        <button
-          // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
-          key={`${m.kind}-${i}`}
-          type="button"
-          disabled={!m.onTap}
-          onClick={m.onTap}
-          className={cn(
-            "relative min-w-0 flex-1 pt-2 pb-4 text-center text-base leading-none",
-            m.kind === "done" && "text-accent-ink",
-            m.kind === "warmup" && "text-warn",
-            m.kind === "todo" && "text-disabled",
-            m.kind === "current" && "bg-ink text-on-action",
-          )}
-          data-testid={`set-mark-${i}`}
-        >
-          <span data-testid={`set-mark-${i}-state`} data-state={m.kind}>
-            {m.kind === "current" ? "●" : m.kind === "todo" ? "○" : "✓"}
-          </span>
-          {m.paired && (
-            <span
-              data-testid={`set-mark-${i}-side-tag`}
-              className="absolute right-0 bottom-0.5 left-0 text-2xs leading-none font-bold text-faint"
-            >
-              ᴸᴿ
-            </span>
-          )}
-          {m.kind === "warmup" && (
-            <span className="absolute right-0 bottom-0.5 left-0 text-2xs leading-none font-bold text-faint">
-              W
-            </span>
-          )}
-          {m.pr && (
-            <Medal
-              className="absolute top-0.5 right-0.5 size-2.5 text-accent-ink"
-              data-testid={`set-mark-${i}-medal`}
-            />
-          )}
-        </button>
-      ))}
-    </div>
-  );
+function rirLabel(r: {
+  rirMin?: number | null;
+  rirMax?: number | null;
+  rir?: number | null;
+}): string {
+  const lo = r.rirMin ?? r.rir ?? null;
+  const hi = r.rirMax ?? r.rir ?? null;
+  if (lo == null && hi == null) return "";
+  const a = lo ?? (hi as number);
+  const b = hi ?? a;
+  return a === b ? `RIR ${a}` : `RIR ${a}-${b}`;
 }
 
-// ── Edge dots (position indicator down the right edge) ─────────────────────
-
-function EdgeDots({ total, position }: { total: number; position: number }) {
-  if (total <= 1) return null;
+// Set list: one 48px card per logged set plus the current "Now" row; tap a row
+// to open that set in the entry panel. Planned sets are never drawn. Same
+// set-mark-* test hooks as the old marks band.
+function SetRows({
+  marks,
+  rows,
+}: {
+  marks: Mark[];
+  rows: { text: string; lastText: string; rirText: string; hasNote: boolean }[];
+}) {
   return (
-    <div
-      className="pointer-events-none fixed top-1/2 right-1 z-10 flex -translate-y-1/2 flex-col items-center gap-1.5"
-      data-testid="exercise-edge-rail"
-    >
-      {Array.from({ length: total }, (_, i) => (
-        <span
-          // biome-ignore lint/suspicious/noArrayIndexKey: fixed-count position rail, no other identity per dot
-          key={`dot-${i}`}
-          className={cn(
-            "size-1 shrink-0",
-            i < position - 1 && "bg-accent",
-            i === position - 1 && "size-2 bg-ink",
-            i > position - 1 && "bg-active",
-          )}
-        />
-      ))}
+    <div className="flex flex-col gap-1 px-4" data-testid="marks-band">
+      {marks.map((m, i) => {
+        const r = rows[i];
+        const now = m.kind === "current";
+        return (
+          <button
+            // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
+            key={`${m.kind}-${i}`}
+            type="button"
+            disabled={!m.onTap}
+            onClick={m.onTap}
+            className={cn(
+              "grid min-h-[clamp(40px,5.4dvh,48px)] w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 text-left text-[17px] text-ink transition-colors duration-100",
+              now ? "bg-accent-soft" : "bg-surface hover:bg-surface-hover",
+            )}
+            data-testid={`set-mark-${i}`}
+          >
+            <span
+              className={cn(
+                "num flex size-6 items-center justify-center rounded-sm text-xs font-semibold",
+                now
+                  ? "bg-accent text-on-accent"
+                  : m.kind === "warmup"
+                    ? "bg-surface-2 text-warn"
+                    : "bg-accent-soft text-accent-ink",
+              )}
+              data-testid={`set-mark-${i}-state`}
+              data-state={m.kind}
+            >
+              {m.kind === "warmup" ? "W" : i + 1}
+            </span>
+            <span className="num flex min-w-0 items-center gap-1.5 font-semibold">
+              <span className="min-w-0 truncate">{now ? "Now" : r.text}</span>
+              {m.paired && (
+                <span
+                  data-testid={`set-mark-${i}-side-tag`}
+                  className="shrink-0 text-2xs font-bold text-soft"
+                >
+                  ᴸᴿ
+                </span>
+              )}
+              {m.pr && (
+                <Medal
+                  className="size-4 shrink-0 text-accent-ink"
+                  data-testid={`set-mark-${i}-medal`}
+                />
+              )}
+            </span>
+            <span className="num flex items-center gap-2 text-sm text-soft">
+              {now ? (r.lastText ? `last ${r.lastText}` : "") : r.rirText}
+              {r.hasNote && (
+                <Notebook className="size-4 shrink-0 text-accent-ink" />
+              )}
+            </span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -2527,111 +2562,88 @@ function ExerciseSettingsMenu({
   onAddWarmup: (displayWeight: number) => void;
   busy: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const [warmupOpen, setWarmupOpen] = useState(false);
   const currentLaterality: Laterality =
     laterality === "unilateral" ? "unilateral" : "bilateral";
   return (
-    <span className="relative">
-      <IconButton
-        onClick={() => setOpen((o) => !o)}
-        title="Exercise options"
-        data-testid={`block-${blockName}-menu`}
-      >
-        <Wrench className="size-4" />
-      </IconButton>
-      {open && (
-        <>
-          <button
-            type="button"
-            aria-label="Close menu"
-            tabIndex={-1}
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-10 cursor-default"
-          />
-          <div
-            className="floating absolute top-full right-0 z-20 mt-1 max-h-80 min-w-56 overflow-y-auto py-1"
-            data-testid={`block-${blockName}-menu-popup`}
+    <>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <IconButton
+            title="Exercise options"
+            className={CHROME_BTN}
+            data-testid={`block-${blockName}-menu`}
           >
-            {warmupEligible && (
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  setWarmupOpen(true);
-                }}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
-                data-testid={`block-${blockName}-warmup`}
-              >
-                <Flame className="size-3.5 shrink-0 text-warn" />
-                Add warm-up sets
-              </button>
-            )}
-            {showUnitOverride && (
-              <>
-                <p className="px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
-                  Weight unit
-                </p>
-                {[
-                  { value: "kg" as const, label: "kg" },
-                  { value: "lb" as const, label: "lbs" },
-                  { value: null, label: `Default (${unitLabel(globalUnit)})` },
-                ].map((o) => (
-                  <button
-                    key={o.label}
-                    type="button"
-                    onClick={() => {
-                      setOpen(false);
-                      onSetUnitOverride(o.value);
-                    }}
-                    className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
-                    data-testid={`block-${blockName}-unit-${o.value ?? "default"}`}
-                  >
-                    {o.label}
-                    {unitOverride === o.value && (
-                      <Check className="size-3.5 shrink-0 text-accent-ink" />
-                    )}
-                  </button>
-                ))}
-              </>
-            )}
-            <p className="px-3 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
-              Default laterality
-            </p>
-            {LATERALITY.map((l) => (
-              <button
-                key={l}
-                type="button"
-                onClick={() => {
-                  setOpen(false);
-                  onLateralityChange(l);
-                }}
-                disabled={busy}
-                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:cursor-default disabled:opacity-50"
-                data-testid={`block-${blockName}-laterality-${l}`}
-              >
-                {LATERALITY_LABELS[l]}
-                {currentLaterality === l && (
-                  <Check className="size-3.5 shrink-0 text-accent-ink" />
-                )}
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                onRemoveBlock();
-              }}
-              disabled={busy}
-              className="group flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg disabled:cursor-default disabled:opacity-50"
-              data-testid={`remove-block-${blockName}`}
+            <SlidersHorizontal className="size-5" />
+          </IconButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="max-h-[min(26rem,var(--radix-dropdown-menu-content-available-height))] w-60 overflow-y-auto"
+          data-testid={`block-${blockName}-menu-popup`}
+        >
+          {warmupEligible && (
+            <DropdownMenuItem
+              className="min-h-11"
+              onSelect={() => setWarmupOpen(true)}
+              data-testid={`block-${blockName}-warmup`}
             >
-              <Trash className="size-3.5 shrink-0 text-faint group-hover:text-neg" />
-              Remove exercise
-            </button>
-          </div>
-        </>
-      )}
+              <Flame className="size-4 shrink-0 text-warn" />
+              Add warm-up sets
+            </DropdownMenuItem>
+          )}
+          {showUnitOverride && (
+            <>
+              <DropdownMenuLabel className="pt-2.5 font-semibold tracking-widest text-soft uppercase">
+                Weight unit
+              </DropdownMenuLabel>
+              {[
+                { value: "kg" as const, label: "kg" },
+                { value: "lb" as const, label: "lbs" },
+                { value: null, label: `Default (${unitLabel(globalUnit)})` },
+              ].map((o) => (
+                <DropdownMenuItem
+                  key={o.label}
+                  className="min-h-11 justify-between"
+                  onSelect={() => onSetUnitOverride(o.value)}
+                  data-testid={`block-${blockName}-unit-${o.value ?? "default"}`}
+                >
+                  {o.label}
+                  {unitOverride === o.value && (
+                    <Check className="size-4 shrink-0 text-accent-ink" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </>
+          )}
+          <DropdownMenuLabel className="pt-2.5 font-semibold tracking-widest text-soft uppercase">
+            Default laterality
+          </DropdownMenuLabel>
+          {LATERALITY.map((l) => (
+            <DropdownMenuItem
+              key={l}
+              className="min-h-11 justify-between"
+              disabled={busy}
+              onSelect={() => onLateralityChange(l)}
+              data-testid={`block-${blockName}-laterality-${l}`}
+            >
+              {LATERALITY_LABELS[l]}
+              {currentLaterality === l && (
+                <Check className="size-4 shrink-0 text-accent-ink" />
+              )}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuItem
+            danger
+            className="mt-1 min-h-11"
+            disabled={busy}
+            onSelect={onRemoveBlock}
+            data-testid={`remove-block-${blockName}`}
+          >
+            <Trash className="size-4 shrink-0" />
+            Remove exercise
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <WarmupDialog
         open={warmupOpen}
         onOpenChange={setWarmupOpen}
@@ -2640,7 +2652,7 @@ function ExerciseSettingsMenu({
         prefill={heaviestDisplay}
         onInsert={onAddWarmup}
       />
-    </span>
+    </>
   );
 }
 
@@ -2669,10 +2681,10 @@ function SetActionsMenu({
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => setOpen((o) => !o)}
         title="Set options"
-        className="rounded-sm flex size-9 shrink-0 items-center justify-center bg-surface-2 text-lg font-bold text-soft"
+        className="flex size-11 shrink-0 items-center justify-center rounded-sm bg-secondary text-ink transition-colors duration-100 hover:bg-active"
         data-testid="set-type-menu"
       >
-        ⋯
+        <DotsThree weight="bold" className="size-6" />
       </button>
       {open && (
         <>
@@ -2687,7 +2699,7 @@ function SetActionsMenu({
             }}
             className="fixed inset-0 z-10 cursor-default"
           />
-          <div className="floating absolute top-full right-0 z-20 mt-1 min-w-52 py-1">
+          <div className="floating absolute top-full right-0 z-20 mt-1 min-w-60 p-1">
             <button
               type="button"
               onMouseDown={(e) => e.preventDefault()}
@@ -2695,14 +2707,14 @@ function SetActionsMenu({
                 onToggleWarmup();
                 setOpen(false);
               }}
-              className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+              className="flex min-h-11 w-full items-center justify-between gap-2 rounded-sm px-3 text-left text-sm text-ink transition-colors duration-100 hover:bg-surface-hover"
               data-testid="set-type-warmup"
             >
               <span className="flex items-center gap-2">
-                <Flame className="size-3.5 shrink-0 text-warn" />
+                <Flame className="size-4 shrink-0 text-warn" />
                 Make it a warm-up
               </span>
-              {isWarmup && <Check className="size-3.5 text-accent-ink" />}
+              {isWarmup && <Check className="size-4 text-accent-ink" />}
             </button>
             <button
               type="button"
@@ -2711,11 +2723,11 @@ function SetActionsMenu({
                 onToggleUnilateral();
                 setOpen(false);
               }}
-              className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+              className="flex min-h-11 w-full items-center justify-between gap-2 rounded-sm px-3 text-left text-sm text-ink transition-colors duration-100 hover:bg-surface-hover"
               data-testid="set-type-perside"
             >
               <span>Log left/right separately</span>
-              {isUnilateral && <Check className="size-3.5 text-accent-ink" />}
+              {isUnilateral && <Check className="size-4 text-accent-ink" />}
             </button>
             {onDelete && (
               <button
@@ -2730,10 +2742,10 @@ function SetActionsMenu({
                     setConfirmDelete(true);
                   }
                 }}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-neg transition-colors duration-150 hover:bg-surface-hover"
+                className="flex min-h-11 w-full items-center gap-2 rounded-sm px-3 text-left text-sm text-neg transition-colors duration-100 hover:bg-surface-hover"
                 data-testid="set-type-delete"
               >
-                <Trash className="size-3.5 shrink-0" />
+                <Trash className="size-4 shrink-0" />
                 {confirmDelete ? "Confirm delete" : "Delete set"}
               </button>
             )}
@@ -2781,10 +2793,10 @@ function TargetLine({
       <button
         type="button"
         onClick={onWhy}
-        className="rounded-sm num flex min-h-10 w-full items-center gap-2 bg-surface px-2.5 text-left text-sm font-semibold text-ink md:min-h-8"
+        className="num flex min-h-11 w-full items-center gap-2 rounded-md bg-surface px-3 text-left text-sm font-semibold text-ink"
         data-testid="target-line"
       >
-        <span className="text-2xs font-bold tracking-widest text-faint uppercase">
+        <span className="text-2xs font-bold tracking-widest text-soft uppercase">
           {plan.isDeload ? "Deload" : "Today"}
         </span>
         <span className="min-w-0 truncate">
@@ -3129,6 +3141,8 @@ function ExerciseSpotlight({
   );
   const mechanic = exercise?.mechanic ?? null;
   const [evidenceOpen, setEvidenceOpen] = useState(false);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [setupDraft, setSetupDraft] = useState("");
   const working = committedGroups
     .flatMap((g, i) => (g[0].setType === "warmup" ? [] : [{ g, i }]))
     .map(({ g, i }, j) => ({
@@ -3158,7 +3172,7 @@ function ExerciseSpotlight({
     .filter((c) => c.kind === "direct")
     .map((c) => sessionMuscles[c.muscle])
     .find((m) => m != null && sessionDirectCheck(m.direct) === "high");
-  const totalMarks = Math.max(committedGroups.length + 1, seedSets.length + 1);
+  const totalMarks = committedGroups.length + 1;
   const marks: Mark[] = [];
   for (let i = 0; i < totalMarks; i++) {
     if (i < committedGroups.length) {
@@ -3169,15 +3183,13 @@ function ExerciseSpotlight({
         pr: group.some((r) => prSetIds.has(r.id)),
         onTap: () => setManualFocus(i),
       });
-    } else if (i === activeIndex) {
+    } else {
       marks.push({
         kind: "current",
         paired: false,
         pr: false,
         onTap: focusLive,
       });
-    } else {
-      marks.push({ kind: "todo", paired: false, pr: false });
     }
   }
 
@@ -3198,126 +3210,328 @@ function ExerciseSpotlight({
   }
 
   return (
-    <div onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      <EdgeDots total={total} position={position} />
-
-      {/* 2. Exercise header. */}
-      <header className="px-4 pt-3 pb-2.5" data-testid={`block-${block.name}`}>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onOpenSwitcher}
-            className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
-            data-testid="exercise-header"
-          >
-            <ExerciseThumb imageUrl={exercise?.imageUrl} name={block.name} />
-            <span
-              className="min-w-0 truncate text-xl font-bold tracking-tight"
-              data-testid="exercise-name"
-            >
-              {block.name}
-            </span>
-            <CaretDown className="size-3 shrink-0 text-faint" />
-          </button>
-          <ExerciseSettingsMenu
-            blockName={block.name}
-            unit={blockUnit}
-            showUnitOverride={TYPE_FIELDS[type].weight}
-            unitOverride={override}
-            globalUnit={unit}
-            onSetUnitOverride={(u) =>
-              setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
-            }
-            warmupEligible={warmupEligible}
-            heaviestDisplay={
-              heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
-            }
-            laterality={exercise?.laterality ?? null}
-            onLateralityChange={(l) => editOrCopy({ laterality: l })}
-            onRemoveBlock={onRemoveBlock}
-            onAddWarmup={(w) => onAddWarmup(blockUnit === "lb" ? lbToKg(w) : w)}
-            busy={copying || copyError != null}
-          />
-        </div>
-        <div className="mt-1 flex min-w-0 items-center gap-2">
-          <span
-            className="num shrink-0 text-2xs text-faint"
-            data-testid="exercise-position"
-          >
-            {position} of {total}
-          </span>
-          {avgRestSec != null && (
-            <span
-              className="num shrink-0 text-2xs text-faint"
-              title="Average rest between sets of this exercise"
-              data-testid={`block-${block.name}-rest-avg`}
-            >
-              rest {formatRest(avgRestSec)} avg
-            </span>
-          )}
-          <MachineChip
-            machine={machine ?? null}
-            blockName={block.name}
-            disabled={copying}
-            onPick={(machineId) => editOrCopy({ machineId })}
-          />
-          {override && (
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
+      <div
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        data-testid="session-scroll"
+      >
+        {/* 2. Exercise header. */}
+        <header className="px-4 pt-1 pb-3" data-testid={`block-${block.name}`}>
+          <div className="flex items-center">
             <button
               type="button"
-              onClick={() =>
-                setWeightUnit.mutate({
-                  exerciseId: block.exerciseId,
-                  unit: null,
-                })
-              }
-              className="rounded-sm num shrink-0 bg-surface-2 px-1.5 py-0.5 text-2xs text-faint"
-              title="Using a per-exercise weight unit override — tap to clear"
-              data-testid={`block-${block.name}-unit-clear`}
+              onClick={onOpenSwitcher}
+              className="flex min-h-[clamp(36px,5dvh,44px)] min-w-0 flex-1 items-center text-left"
+              data-testid="exercise-header"
             >
-              {unitLabel(override)} only
+              <span
+                className="line-clamp-2 min-w-0 text-[clamp(22px,3.3dvh,28px)] leading-[1.15] font-bold tracking-tight text-balance"
+                data-testid="exercise-name"
+              >
+                {block.name}
+              </span>
             </button>
-          )}
-        </div>
-        {plan && (
-          <TargetLine
-            plan={plan}
-            unit={blockUnit}
-            ghostKg={ghost.reduce<number | null>(
+          </div>
+          <span className="sr-only" data-testid="exercise-position">
+            {position} of {total}
+          </span>
+          {(() => {
+            const gw = ghost.reduce<number | null>(
               (max, g) =>
                 g.weightKg != null && (max == null || g.weightKg > max)
                   ? g.weightKg
                   : max,
               null,
-            )}
-            onWhy={() => setEvidenceOpen(true)}
-          />
-        )}
-        {copyError && (
-          <div
-            role="status"
-            data-testid={`block-${block.name}-copy-error`}
-            className="mt-2 flex items-center justify-between gap-2 px-2 py-1.5"
-          >
-            <span className="min-w-0 text-2xs text-neg">
-              {copyError.unresolved
-                ? "Couldn't confirm that change — check your connection and retry."
-                : "Couldn't update this exercise — couldn't reach the server."}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={retryCopy}
-              disabled={copying}
-              data-testid={`block-${block.name}-copy-retry`}
+            );
+            const gr = ghost.find((g) => g.weightKg === gw)?.reps ?? null;
+            if (plan || gw == null || !TYPE_FIELDS[type].weight) return null;
+            const next =
+              toDisplayWeight(gw, blockUnit) + fieldStep("weight", blockUnit);
+            return (
+              <p
+                className="flex gap-1.5 pt-0.5 text-[13px] text-soft"
+                data-testid="goal-line"
+              >
+                Goal
+                <b className="num font-semibold text-accent-ink">
+                  {next} {unitLabel(blockUnit)}
+                  {gr != null ? ` × ${gr}` : ""}
+                </b>
+                · beat last time
+              </p>
+            );
+          })()}
+          {plan && (
+            <TargetLine
+              plan={plan}
+              unit={blockUnit}
+              ghostKg={ghost.reduce<number | null>(
+                (max, g) =>
+                  g.weightKg != null && (max == null || g.weightKg > max)
+                    ? g.weightKg
+                    : max,
+                null,
+              )}
+              onWhy={() => setEvidenceOpen(true)}
+            />
+          )}
+          {copyError && (
+            <div
+              role="status"
+              data-testid={`block-${block.name}-copy-error`}
+              className="mt-2 flex items-center justify-between gap-2 px-2 py-1.5"
             >
-              {copying ? "Retrying…" : "Retry"}
-            </Button>
+              <span className="min-w-0 text-2xs text-neg">
+                {copyError.unresolved
+                  ? "Couldn't confirm that change — check your connection and retry."
+                  : "Couldn't update this exercise — couldn't reach the server."}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={retryCopy}
+                disabled={copying}
+                data-testid={`block-${block.name}-copy-retry`}
+              >
+                {copying ? "Retrying…" : "Retry"}
+              </Button>
+            </div>
+          )}
+        </header>
+
+        {/* 3. Set band. */}
+        <SetRows
+          marks={marks}
+          rows={marks.map((_m, i) => {
+            const g = committedGroups[i];
+            const text = g
+              ? fieldsFor(type)
+                  .map((k) => fieldText(k, g[0], blockUnit, distUnit))
+                  .filter((t) => t !== "—")
+                  .join(" × ")
+              : "";
+            const lastText = fieldsFor(type)
+              .map((k) => fieldText(k, ghostFor(ghost, i), blockUnit, distUnit))
+              .filter((t) => t !== "—")
+              .join(" × ");
+            const rirText = g ? rirLabel(g[0]) : "";
+            return {
+              text,
+              lastText,
+              rirText,
+              hasNote: !!g?.some((r) => r.note),
+            };
+          })}
+        />
+        <div className="px-4 pt-1">
+          <button
+            type="button"
+            onClick={focusLive}
+            className="flex min-h-11 w-full items-center gap-2 rounded-md bg-surface-2/60 pl-12 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-2"
+            data-testid="add-set"
+          >
+            + Add a set
+          </button>
+        </div>
+
+        {(lastState || nudge || directThis) && (
+          <div
+            className="flex flex-col gap-1.5 px-4 pt-3"
+            data-testid="set-result"
+          >
+            {lastState && lastWorking && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={cn(
+                    "num inline-flex h-5 items-center rounded-xs px-1.5 text-2xs font-semibold",
+                    lastState.kind === "over"
+                      ? "bg-accent-soft text-accent-ink"
+                      : "bg-hover text-soft",
+                  )}
+                  data-testid="range-chip"
+                >
+                  {lastState.label}
+                </span>
+                {lastWorkingE1rm?.kind === "value" && (
+                  <span className="num text-2xs text-soft">
+                    e1RM {toDisplayWeight(lastWorkingE1rm.kg, blockUnit)}{" "}
+                    {unitLabel(blockUnit)}
+                  </span>
+                )}
+                {lastWorkingE1rm?.kind === "not_estimable" && (
+                  <span className="text-2xs text-soft">
+                    Over 10 reps in total: no strength estimate for this set
+                  </span>
+                )}
+                {(() => {
+                  const g = ghostFor(ghost, lastWorking[0].setNo);
+                  const w = lastWorking[0].weightKg;
+                  if (g.weightKg == null || w == null) return null;
+                  const d = toDisplayWeight(w - g.weightKg, blockUnit);
+                  if (Math.abs(d) < 0.1) return null;
+                  return (
+                    <DeltaChip
+                      delta={d}
+                      unit={` ${unitLabel(blockUnit)}`}
+                      basis="vs last time"
+                    />
+                  );
+                })()}
+                <SaveDot
+                  state={lastWorking.reduce<SaveState>(
+                    (acc, r) =>
+                      acc === "failed" || saveStateOf(r.id) === "failed"
+                        ? "failed"
+                        : acc === "queued" || saveStateOf(r.id) === "queued"
+                          ? "queued"
+                          : "saved",
+                    "saved",
+                  )}
+                  onRetry={onRetrySets}
+                />
+              </div>
+            )}
+            {nudge && (
+              <p className="text-xs text-soft" data-testid="coach-nudge">
+                {nudge}
+              </p>
+            )}
+            {directThis && (
+              <p className="text-xs text-soft" data-testid="direct-sets-note">
+                {directThis.direct} direct sets for{" "}
+                {muscleLabel(directThis.muscle)} in one session: a planning
+                range is 2-5.
+              </p>
+            )}
           </div>
         )}
-      </header>
 
-      {/* 3. Set band. */}
-      <MarksBand marks={marks} />
+        <div
+          className="flex flex-col gap-1 px-4 pt-[clamp(4px,1.2dvh,12px)] pb-[clamp(8px,1.6dvh,16px)]"
+          data-testid="exercise-extras"
+        >
+          {exercise?.isCustom &&
+            exercise.ownerId !== null &&
+            (exercise.notes ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSetupDraft(exercise.notes ?? "");
+                  setSetupOpen(true);
+                }}
+                className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm text-soft transition-colors duration-100 hover:bg-surface-hover"
+                data-testid="setup-row"
+              >
+                <Wrench className="size-5 shrink-0 text-accent-ink" />
+                <span className="min-w-0 flex-1 truncate">
+                  <b className="mr-1.5 font-semibold text-ink">
+                    Setup &amp; form
+                  </b>
+                  {exercise.notes}
+                </span>
+                <CaretRight className="size-4 shrink-0 text-soft" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setSetupDraft("");
+                  setSetupOpen(true);
+                }}
+                className="flex min-h-[clamp(40px,5.2dvh,44px)] w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
+                data-testid="setup-add"
+              >
+                <Plus className="size-5 shrink-0 text-soft" />
+                Add setup or form notes
+              </button>
+            ))}
+          <div className="flex min-h-[clamp(40px,5.2dvh,44px)] flex-wrap items-center gap-2">
+            <MachineChip
+              machine={machine ?? null}
+              blockName={block.name}
+              disabled={copying}
+              onPick={(machineId) => editOrCopy({ machineId })}
+            />
+            {override && (
+              <button
+                type="button"
+                onClick={() =>
+                  setWeightUnit.mutate({
+                    exerciseId: block.exerciseId,
+                    unit: null,
+                  })
+                }
+                className="num flex h-11 shrink-0 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-ink transition-colors duration-100 hover:bg-active"
+                title="Using a per-exercise weight unit override — tap to clear"
+                data-testid={`block-${block.name}-unit-clear`}
+              >
+                {unitLabel(override)} only
+              </button>
+            )}
+            {avgRestSec != null && (
+              <span
+                className="num shrink-0 text-xs text-soft"
+                title="Average rest between sets of this exercise"
+                data-testid={`block-${block.name}-rest-avg`}
+              >
+                rest {formatRest(avgRestSec)} avg
+              </span>
+            )}
+            <span className="ml-auto flex">
+              <ExerciseSettingsMenu
+                blockName={block.name}
+                unit={blockUnit}
+                showUnitOverride={TYPE_FIELDS[type].weight}
+                unitOverride={override}
+                globalUnit={unit}
+                onSetUnitOverride={(u) =>
+                  setWeightUnit.mutate({
+                    exerciseId: block.exerciseId,
+                    unit: u,
+                  })
+                }
+                warmupEligible={warmupEligible}
+                heaviestDisplay={
+                  heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
+                }
+                laterality={exercise?.laterality ?? null}
+                onLateralityChange={(l) => editOrCopy({ laterality: l })}
+                onRemoveBlock={onRemoveBlock}
+                onAddWarmup={(w) =>
+                  onAddWarmup(blockUnit === "lb" ? lbToKg(w) : w)
+                }
+                busy={copying || copyError != null}
+              />
+            </span>
+          </div>
+        </div>
+        <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
+          <DialogContent title="Setup & form">
+            <Textarea
+              rows={4}
+              placeholder="Seat height, grip, cues, left knee…"
+              value={setupDraft}
+              onChange={(e) => setSetupDraft(e.target.value)}
+              data-testid="setup-notes"
+              className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint"
+            />
+            <Button
+              className="mt-3 h-11 w-full md:h-11"
+              onClick={() => {
+                editOrCopy({ notes: setupDraft.trim() || null });
+                setSetupOpen(false);
+              }}
+              data-testid="setup-save"
+            >
+              Save
+            </Button>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       {/* 4 + 5. The spotlight + action zone — one persistent spotlight, live
           or focused on a committed set via a marks-band tap (never a second
@@ -3334,7 +3548,7 @@ function ExerciseSpotlight({
           ghost — its values come straight from `committedGroup`. */}
       {committedGroups[focusedIndex] == null && ghostLoading ? (
         <p
-          className="px-4 py-10 text-center text-xs text-faint"
+          className="px-4 py-10 text-center text-xs text-soft"
           data-testid="spotlight-loading"
         >
           Loading…
@@ -3397,78 +3611,6 @@ function ExerciseSpotlight({
           voiceFill={voiceFill}
           onVoiceFillConsumed={onVoiceFillConsumed}
         />
-      )}
-
-      {(lastState || nudge || directThis) && (
-        <div
-          className="flex flex-col gap-1.5 px-4 pb-3"
-          data-testid="set-result"
-        >
-          {lastState && lastWorking && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={cn(
-                  "num inline-flex h-5 items-center rounded-xs px-1.5 text-2xs font-semibold",
-                  lastState.kind === "over"
-                    ? "bg-accent-soft text-accent-ink"
-                    : "bg-hover text-soft",
-                )}
-                data-testid="range-chip"
-              >
-                {lastState.label}
-              </span>
-              {lastWorkingE1rm?.kind === "value" && (
-                <span className="num text-2xs text-soft">
-                  e1RM {toDisplayWeight(lastWorkingE1rm.kg, blockUnit)}{" "}
-                  {unitLabel(blockUnit)}
-                </span>
-              )}
-              {lastWorkingE1rm?.kind === "not_estimable" && (
-                <span className="text-2xs text-soft">
-                  Over 10 reps in total: no strength estimate for this set
-                </span>
-              )}
-              {(() => {
-                const g = ghostFor(ghost, lastWorking[0].setNo);
-                const w = lastWorking[0].weightKg;
-                if (g.weightKg == null || w == null) return null;
-                const d = toDisplayWeight(w - g.weightKg, blockUnit);
-                if (Math.abs(d) < 0.1) return null;
-                return (
-                  <DeltaChip
-                    delta={d}
-                    unit={` ${unitLabel(blockUnit)}`}
-                    basis="vs last time"
-                  />
-                );
-              })()}
-              <SaveDot
-                state={lastWorking.reduce<SaveState>(
-                  (acc, r) =>
-                    acc === "failed" || saveStateOf(r.id) === "failed"
-                      ? "failed"
-                      : acc === "queued" || saveStateOf(r.id) === "queued"
-                        ? "queued"
-                        : "saved",
-                  "saved",
-                )}
-                onRetry={onRetrySets}
-              />
-            </div>
-          )}
-          {nudge && (
-            <p className="text-xs text-soft" data-testid="coach-nudge">
-              {nudge}
-            </p>
-          )}
-          {directThis && (
-            <p className="text-xs text-soft" data-testid="direct-sets-note">
-              {directThis.direct} direct sets for{" "}
-              {muscleLabel(directThis.muscle)} in one session: a planning range
-              is 2-5.
-            </p>
-          )}
-        </div>
       )}
 
       <EvidenceSheet
@@ -3633,9 +3775,7 @@ function Spotlight({
         : "";
     }
     // Contract: a value FILLS the field only from an uncommitted draft or
-    // last time's own performance (ghost) — never from the routine target,
-    // which is placeholder-only (seedPlaceholder below) when there's no
-    // ghost to prefill from.
+    // last time's own performance (ghost) — never from the routine target.
     if (kind === "weight") {
       if (draft?.weight) return draft.weight;
       if (ghost.weightKg != null)
@@ -3656,28 +3796,6 @@ function Spotlight({
     if (ghost.distanceM != null)
       return String(toDisplayDistance(ghost.distanceM, distUnit));
     return "";
-  };
-  // Routine/copy-workout target, shown as a placeholder only — never a
-  // silent fill — when there's no ghost (last-time) value for this field.
-  const seedPlaceholder = (
-    kind: "weight" | "reps" | "duration" | "distance",
-  ): string | undefined => {
-    if (isEditing || !seed) return undefined;
-    if (kind === "weight")
-      return seed.weightKg != null
-        ? String(toDisplayWeight(seed.weightKg, unit))
-        : undefined;
-    if (kind === "reps") {
-      if (seed.repsMax != null) return `${seed.reps ?? ""}–${seed.repsMax}`;
-      return seed.reps != null ? String(seed.reps) : undefined;
-    }
-    if (kind === "duration")
-      return seed.durationSec != null
-        ? formatMMSS(seed.durationSec)
-        : undefined;
-    return seed.distanceM != null
-      ? String(toDisplayDistance(seed.distanceM, distUnit))
-      : undefined;
   };
   const seedRightReps = () => {
     if (isEditing) return right?.reps != null ? String(right.reps) : "";
@@ -3759,6 +3877,9 @@ function Spotlight({
   // this set already carries a value for one); `metricDraft` is their raw
   // text, parsed by type at commit.
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [activeCol, setActiveCol] = useState<"weight" | "reps" | "rir">(
+    "weight",
+  );
   const [note, setNote] = useState(
     () => draft?.note ?? (isEditing ? (left?.note ?? "") : ""),
   );
@@ -4040,36 +4161,21 @@ function Spotlight({
     delta: number,
     side: "left" | "right" = "left",
   ) {
-    const setters: Record<FieldKey, (v: string) => void> = {
-      weight: side === "left" ? setWeight : setWeight2,
+    const setters: Record<FieldKey, Dispatch<SetStateAction<string>>> = {
+      weight: side === "left" ? setWeightRaw : setWeight2,
       reps: side === "left" ? setReps : setReps2,
       duration: side === "left" ? setDuration : setRDuration,
       distance: side === "left" ? setDistance : setRDistance,
     };
-    const current =
-      kind === "weight"
-        ? side === "left"
-          ? weight
-          : weight2 || weight
-        : kind === "reps"
-          ? side === "left"
-            ? reps
-            : reps2 || reps
-          : kind === "duration"
-            ? side === "left"
-              ? duration
-              : rDuration || duration
-            : side === "left"
-              ? distance
-              : rDistance || distance;
-    if (kind === "duration") {
-      const sec = Math.max(0, (parseDuration(current) ?? 0) + delta);
-      setters.duration(formatMMSS(sec));
-      return;
-    }
-    const base = Number.parseFloat(current || "0") || 0;
-    const next = Math.max(0, Math.round((base + delta) * 100) / 100);
-    setters[kind](String(next));
+    const fallback =
+      side === "left" ? "" : { weight, reps, duration, distance }[kind];
+    if (kind === "weight" && side === "left") setWeightError(false);
+    setters[kind]((prev) => {
+      const current = prev || fallback;
+      if (kind === "duration")
+        return formatMMSS(Math.max(0, (parseDuration(current) ?? 0) + delta));
+      return stepValue(current, delta);
+    });
   }
 
   // Comparison header + "beat" tint per row, against last time (ghost).
@@ -4204,7 +4310,7 @@ function Spotlight({
         data-beat={beat ? "true" : "false"}
       >
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-2xs font-bold tracking-widest text-faint uppercase">
+          <span className="text-2xs font-bold tracking-widest text-soft uppercase">
             {isUnilateral && key === "weight" ? `${label} · both sides` : label}
           </span>
           <span
@@ -4212,7 +4318,8 @@ function Spotlight({
               "num text-xs font-bold",
               cmp.state === "up" && "text-accent-ink",
               cmp.state === "down" && "text-warn",
-              (cmp.state === "same" || cmp.state === "none") && "text-faint",
+              (cmp.state === "same" || cmp.state === "none") &&
+                "font-normal text-soft",
             )}
             data-testid={compareTestId}
           >
@@ -4221,41 +4328,64 @@ function Spotlight({
         </div>
         <div
           className={cn(
-            "rounded-sm mt-1.5 mb-2 flex items-center justify-center gap-2 bg-surface px-2.5 py-2",
+            "rounded-sm mt-1.5 mb-2 flex items-center justify-center gap-2 bg-surface px-1.5 py-1.5",
             beat && "bg-bg",
           )}
         >
-          <input
-            inputMode={
-              key === "duration"
-                ? "text"
-                : key === "reps"
-                  ? "numeric"
-                  : "decimal"
-            }
-            value={value}
-            placeholder={seedPlaceholder(key)}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.preventDefault();
-            }}
-            onFocus={() => {
-              // Rest auto-stops the moment the next set's input is touched
-              // (R3 locked decision) — manual Stop is the other trigger.
-              if (restStartedAt != null) onStopRest();
-            }}
-            readOnly={key === "duration" && timerRunning}
-            className="num min-w-0 flex-1 bg-transparent text-center text-[44px] leading-none font-bold text-ink placeholder:text-3xl placeholder:text-faint sm:text-[52px]"
-            data-testid={fieldTestId}
-            aria-invalid={key === "weight" && weightError ? true : undefined}
-            aria-describedby={
-              key === "weight" && weightError ? "weight-error" : undefined
-            }
-          />
-          {unitTxt && (
-            <span className="shrink-0 text-sm font-bold text-faint">
-              {unitTxt}
-            </span>
+          {key !== "duration" && (
+            <Stepper
+              dir={-1}
+              label={`Decrease ${label}`}
+              step={fieldStep(key, unit)}
+              onStep={(d) => bump(key, d)}
+              testId={`${key}-step-minus`}
+            />
+          )}
+          <ScrubSurface
+            step={key === "duration" ? 1 : fieldStep(key, unit)}
+            onStep={(d) => bump(key, d)}
+          >
+            <input
+              inputMode={
+                key === "duration"
+                  ? "text"
+                  : key === "reps"
+                    ? "numeric"
+                    : "decimal"
+              }
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.preventDefault();
+              }}
+              onFocus={() => {
+                // Rest auto-stops the moment the next set's input is touched
+                // (R3 locked decision) — manual Stop is the other trigger.
+                if (restStartedAt != null) onStopRest();
+              }}
+              readOnly={key === "duration" && timerRunning}
+              data-big-input
+              className="num min-w-0 flex-1 bg-transparent text-center text-[40px] leading-none font-bold text-ink placeholder:text-3xl placeholder:text-faint sm:text-[52px]"
+              data-testid={fieldTestId}
+              aria-invalid={key === "weight" && weightError ? true : undefined}
+              aria-describedby={
+                key === "weight" && weightError ? "weight-error" : undefined
+              }
+            />
+            {unitTxt && (
+              <span className="shrink-0 text-sm font-semibold text-soft">
+                {unitTxt}
+              </span>
+            )}
+          </ScrubSurface>
+          {key !== "duration" && (
+            <Stepper
+              dir={1}
+              label={`Increase ${label}`}
+              step={fieldStep(key, unit)}
+              onStep={(d) => bump(key, d)}
+              testId={`${key}-step-plus`}
+            />
           )}
           {key === "duration" ? (
             <IconButton
@@ -4265,13 +4395,17 @@ function Spotlight({
                 onToggleTimer();
               }}
               title={timerRunning ? "Stop timer" : "Start timer"}
-              className={cn(timerRunning && "bg-accent text-accent-fg")}
+              className={cn(
+                CHROME_BTN,
+                timerRunning &&
+                  "bg-accent text-accent-fg hover:bg-accent-hover",
+              )}
               data-testid="set-timer"
             >
               {timerRunning ? (
-                <Square className="size-3.5" />
+                <Square className="size-4" weight="fill" />
               ) : (
-                <Play className="size-3.5" />
+                <Play className="size-4" weight="fill" />
               )}
             </IconButton>
           ) : null}
@@ -4284,12 +4418,32 @@ function Spotlight({
                 )
               }
               title="Plate calculator"
+              className={CHROME_BTN}
               data-testid="set-plates"
             >
-              <Calculator className="size-3.5" />
+              <Calculator className="size-5" />
             </IconButton>
           )}
         </div>
+        {(key === "weight" || key === "reps") && (
+          <div className="mb-2" data-testid={`${key}-ruler-wrap`}>
+            <Ruler
+              value={Number.parseFloat(value) || 0}
+              min={0}
+              max={key === "weight" ? (unit === "lb" ? 1000 : 500) : 100}
+              step={fieldStep(key, unit)}
+              majorEvery={key === "weight" ? 4 : 5}
+              pxPerStep={key === "weight" ? 14 : 22}
+              label={`${label} ruler`}
+              unit={unitTxt}
+              testId={`${key}-ruler`}
+              onStart={() => {
+                if (restStartedAt != null) onStopRest();
+              }}
+              onChange={(v) => setValue(String(v))}
+            />
+          </div>
+        )}
         {key === "weight" && weightError && (
           <p
             id="weight-error"
@@ -4308,7 +4462,7 @@ function Spotlight({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => bump(key, d)}
-                className="rounded-sm num h-10 flex-1 bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
+                className="rounded-sm num h-11 flex-1 bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
                 data-testid={`${adjustPrefix}-${d}`}
               >
                 {d}
@@ -4321,7 +4475,7 @@ function Spotlight({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => bump(key, d)}
-                className="rounded-sm num h-10 flex-1 bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
+                className="rounded-sm num h-11 flex-1 bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
                 data-testid={`${adjustPrefix}-${d}`}
               >
                 +{d}
@@ -4340,15 +4494,424 @@ function Spotlight({
 
   const primaryFields = fields.filter((k) => k !== "reps" || !isUnilateral);
 
+  const detailsDialog = (
+    <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+      <DialogContent title={`Set ${index + 1} details`}>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-1.5">
+            <span className="text-2xs font-bold tracking-widest text-faint uppercase">
+              RIR
+            </span>
+            <InfoTip lessonId="rir" />
+          </div>
+          <label className="flex flex-col gap-1">
+            <span className="text-2xs font-bold tracking-widest text-faint uppercase">
+              Note
+            </span>
+            <Textarea
+              rows={3}
+              placeholder="// note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              data-testid={`set-${index}-note`}
+              className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
+            />
+          </label>
+          {enabledMetrics
+            .filter((m) => extras.has(m.id))
+            .map((m) => (
+              <div key={m.id} className="flex flex-col gap-1">
+                <span className="text-2xs font-bold tracking-widest text-faint uppercase">
+                  {m.name}
+                </span>
+                {m.type === "checkbox" ? (
+                  <input
+                    type="checkbox"
+                    checked={metricDraft[m.id] === "true"}
+                    onChange={(e) =>
+                      setMetricDraft((d) => ({
+                        ...d,
+                        [m.id]: e.target.checked ? "true" : "",
+                      }))
+                    }
+                    className="size-4 justify-self-start accent-(--color-accent-mark)"
+                    data-testid={`set-${index}-metric-${m.id}`}
+                  />
+                ) : (
+                  <Input
+                    inputMode={m.type === "text" ? undefined : "decimal"}
+                    placeholder={m.type === "text" ? m.name : "0"}
+                    value={metricDraft[m.id] ?? ""}
+                    onChange={(e) =>
+                      setMetricDraft((d) => ({
+                        ...d,
+                        [m.id]: e.target.value,
+                      }))
+                    }
+                    autoFocus={lastAdded === m.id}
+                    className="num"
+                    data-testid={`set-${index}-metric-${m.id}`}
+                  />
+                )}
+              </div>
+            ))}
+          {enabledMetrics.some((m) => !extras.has(m.id)) && (
+            <div className="flex flex-wrap gap-1.5 pt-3">
+              {enabledMetrics
+                .filter((m) => !extras.has(m.id))
+                .map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => toggleExtra(m.id)}
+                    data-testid={`set-${index}-add-${m.id}`}
+                    className="rounded-sm flex items-center gap-1 bg-surface-2 px-2.5 py-1 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+                  >
+                    <Plus className="size-3" />
+                    {m.name}
+                  </button>
+                ))}
+            </div>
+          )}
+          {barLoaded && (
+            <button
+              type="button"
+              onClick={() => {
+                setDetailsOpen(false);
+                onOpenPlates(
+                  weight.trim() === "" ? null : Number.parseFloat(weight),
+                );
+              }}
+              data-testid={`set-${index}-plates`}
+              className="flex items-center gap-2 pt-3 text-left text-xs text-soft transition-colors duration-150 hover:text-ink"
+            >
+              <Calculator className="size-3.5" />
+              Plate calculator
+            </button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+
   const currentReps = Number.parseInt(reps, 10);
   const restLabel =
     left?.restSec != null ? formatDurationSeconds(left.restSec * 1000) : null;
 
+  const simple =
+    f.weight && f.reps && !f.duration && !f.distance && !isUnilateral;
+  if (simple) {
+    const wCmp = comparison("weight", weight);
+    const rCmp = comparison("reps", reps);
+    const ghostW =
+      ghost.weightKg != null ? toDisplayWeight(ghost.weightKg, unit) : null;
+    const ghostR = ghost.reps ?? null;
+    const rirSel = rirSegmentOf(rirMin, rirMax);
+    const wUnit = weightLabel(type, unitLabel(unit));
+    // One size for all three numbers: 44px until the longest would outgrow a
+    // third of a 390 column ("102.5 lbs").
+    const longest = Math.max(weight.length, reps.length);
+    const fontSize =
+      longest <= 4
+        ? "clamp(30px,6dvh,44px)"
+        : longest === 5
+          ? "clamp(28px,5.4dvh,40px)"
+          : "clamp(24px,4.2dvh,32px)";
+    const cols: {
+      key: "weight" | "reps" | "rir";
+      beat: boolean;
+    }[] = [
+      { key: "weight", beat: wCmp.state === "up" },
+      { key: "reps", beat: rCmp.state === "up" },
+      ...(effort ? [{ key: "rir" as const, beat: false }] : []),
+    ];
+    return (
+      <div
+        className="z-10 shrink-0 rounded-t-lg bg-surface px-4 pt-2"
+        data-testid="entry-panel"
+      >
+        <div className="flex min-h-[clamp(36px,5.2dvh,44px)] items-center gap-2">
+          <span
+            className="num text-sm font-semibold text-soft"
+            data-testid="set-number"
+          >
+            Set {index + 1}
+          </span>
+          {topSet && setType !== "warmup" && (
+            <span
+              className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-bold tracking-widest text-accent-ink uppercase"
+              data-testid="top-set-label"
+            >
+              Top set
+            </span>
+          )}
+          {setType === "warmup" && (
+            <span className="rounded-xs bg-secondary px-1.5 py-0.5 text-2xs font-bold tracking-widest text-warn uppercase">
+              Warm-up
+            </span>
+          )}
+          {isEditing && restLabel && (
+            <span
+              className="num text-2xs text-soft"
+              data-testid={`set-rest-stamp-${index}`}
+            >
+              rested {restLabel}
+            </span>
+          )}
+          <span className="ml-auto flex items-center gap-2">
+            <IconButton
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => setDetailsOpen(true)}
+              title="Set note and details"
+              className={CHROME_BTN}
+              data-testid={`set-${index}-more`}
+            >
+              <PencilSimple className="size-5" />
+            </IconButton>
+            <SetActionsMenu
+              isWarmup={setType === "warmup"}
+              onToggleWarmup={() => {
+                const next = setType === "warmup" ? "normal" : "warmup";
+                setSetType(next);
+                if (isEditing) onSaveType({ setType: next });
+              }}
+              isUnilateral={isUnilateral}
+              onToggleUnilateral={() => {
+                const next = !isUnilateral;
+                if (isEditing) {
+                  onSetLaterality(next);
+                } else {
+                  setIsUnilateral(next);
+                  onLateralityOverrideChange(next ? "unilateral" : "bilateral");
+                }
+              }}
+              onDelete={isEditing ? onDeleteCommitted : null}
+            />
+          </span>
+        </div>
+
+        {/* Equal columns; each number sits on its column's centre line. The
+            unit hangs off the number in a zero-width box, so it never pushes
+            the number off centre, and the input covers the whole column so
+            the tap target is the column, not the glyphs. */}
+        <div className="grid auto-cols-fr grid-flow-col">
+          {cols.map(({ key, beat }) => {
+            const on = activeCol === key;
+            const label =
+              key === "weight" ? "Weight" : key === "reps" ? "Reps" : "RIR";
+            const text = key === "weight" ? weight : key === "reps" ? reps : "";
+            const cmp = key === "weight" ? wCmp : rCmp;
+            return (
+              <div
+                key={key}
+                className={cn(
+                  "relative flex min-w-0 flex-col items-center pb-[clamp(2px,1.1dvh,10px)]",
+                  on ? "text-ink" : "text-soft",
+                )}
+                data-beat={key === "rir" ? undefined : beat ? "true" : "false"}
+              >
+                {key === "rir" ? (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setActiveCol("rir")}
+                    className="num h-[clamp(40px,5.8dvh,48px)] w-full text-center leading-none font-bold tracking-tight"
+                    style={{ fontSize }}
+                    data-testid="rir-column"
+                    aria-label={`RIR ${rirSel ?? "not set"}`}
+                  >
+                    {rirSel == null ? "–" : rirSel === 4 ? "4+" : rirSel}
+                  </button>
+                ) : (
+                  <span className="relative flex h-[clamp(40px,5.8dvh,48px)] w-full items-center justify-center">
+                    <input
+                      inputMode={key === "weight" ? "decimal" : "numeric"}
+                      data-big-input
+                      value={text}
+                      onChange={(e) =>
+                        key === "weight"
+                          ? setWeight(e.target.value)
+                          : setReps(e.target.value)
+                      }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.preventDefault();
+                      }}
+                      onFocus={() => {
+                        setActiveCol(key);
+                        if (restStartedAt != null) onStopRest();
+                      }}
+                      className="peer num absolute inset-0 size-full min-w-0 bg-transparent p-0 text-center leading-none font-bold tracking-tight outline-none"
+                      style={{ fontSize }}
+                      data-testid={
+                        key === "weight" ? "weight-field" : "reps-field"
+                      }
+                      aria-label={label}
+                      aria-invalid={
+                        key === "weight" && weightError ? true : undefined
+                      }
+                    />
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "num leading-none font-bold tracking-tight whitespace-pre peer-focus:invisible",
+                        text !== "" && "invisible",
+                      )}
+                      style={{ fontSize }}
+                    >
+                      {text === "" ? "–" : text}
+                      {key === "weight" && (
+                        <span className="visible inline-block w-0 whitespace-nowrap">
+                          <small className="pl-1 text-[13px] font-semibold tracking-normal text-soft">
+                            {wUnit}
+                          </small>
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                )}
+                <span className="flex h-7 items-center justify-center gap-1.5 text-xs font-semibold text-soft">
+                  {label}
+                  {key === "weight" && barLoaded && (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() =>
+                        onOpenPlates(
+                          weight.trim() === ""
+                            ? null
+                            : Number.parseFloat(weight),
+                        )
+                      }
+                      className="relative flex h-7 items-center rounded-sm bg-secondary px-2 text-xs font-semibold text-ink transition-colors duration-100 after:absolute after:-inset-x-1 after:-inset-y-2 hover:bg-active"
+                      data-testid="set-plates"
+                    >
+                      plates
+                    </button>
+                  )}
+                </span>
+                {key !== "rir" && (
+                  <span
+                    className={cn(
+                      "num min-h-4 px-1 text-center text-2xs leading-4 font-semibold text-balance [@media(max-height:700px)]:sr-only",
+                      cmp.state === "up" && "text-accent-ink",
+                      cmp.state === "down" && "text-warn",
+                      (cmp.state === "same" || cmp.state === "none") &&
+                        "font-normal text-soft",
+                    )}
+                    data-testid={
+                      key === "weight" ? "weight-compare" : "reps-compare"
+                    }
+                  >
+                    {cmp.text}
+                  </span>
+                )}
+                {on && (
+                  <span className="absolute inset-x-4 bottom-0 h-[3px] rounded-xs bg-accent-ink" />
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {weightError && (
+          <p
+            id="weight-error"
+            role="alert"
+            className="pt-2 text-center text-xs font-bold text-neg"
+            data-testid="weight-error"
+          >
+            Add a weight to log this set.
+          </p>
+        )}
+
+        <div className="mt-2 rounded-sm bg-surface-2 dark:bg-bg">
+          {activeCol === "weight" && (
+            <Ruler
+              value={Number.parseFloat(weight) || 0}
+              min={0}
+              max={unit === "lb" ? 1000 : 500}
+              step={fieldStep("weight", unit)}
+              majorEvery={unit === "lb" ? 10 : 20}
+              midEvery={unit === "lb" ? 2 : 4}
+              pxPerStep={10}
+              ghost={ghostW}
+              label="Weight ruler"
+              unit={wUnit}
+              testId="weight-ruler"
+              onStart={() => {
+                if (restStartedAt != null) onStopRest();
+              }}
+              onChange={(v) => setWeight(String(v))}
+            />
+          )}
+          {activeCol === "reps" && (
+            <Ruler
+              value={Number.parseFloat(reps) || 0}
+              min={0}
+              max={100}
+              step={1}
+              majorEvery={5}
+              pxPerStep={22}
+              ghost={ghostR}
+              label="Reps ruler"
+              unit="reps"
+              testId="reps-ruler"
+              onStart={() => {
+                if (restStartedAt != null) onStopRest();
+              }}
+              onChange={(v) => setReps(String(v))}
+            />
+          )}
+          {effort && (
+            <div className={cn("p-1.5", activeCol !== "rir" && "hidden")}>
+              <RirSegmented
+                bare
+                min={rirMin}
+                max={rirMax}
+                onChange={(v) => {
+                  setRirMin(v.min);
+                  setRirMax(v.max);
+                }}
+                hint={rirHintValue}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="pt-[clamp(8px,1.4dvh,12px)] pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]">
+          <Button
+            size="lg"
+            className="h-[clamp(48px,7dvh,60px)] w-full rounded-lg bg-action text-[19px] font-bold text-on-action hover:bg-action-hover dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover"
+            onClick={submit}
+            data-testid="log-set"
+          >
+            <Check className="size-5" weight="bold" />
+            {isEditing
+              ? "Save"
+              : logLabel({
+                  weight,
+                  reps,
+                  weightUnit: unitLabel(unit),
+                  setNo: index + 1,
+                  unilateral: false,
+                  rightWeight: "",
+                  rightReps: "",
+                })}
+          </Button>
+        </div>
+        {detailsDialog}
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col gap-2.5 px-4 pt-2.5 pb-4">
-      <div className="flex items-center gap-2">
+    <div
+      className="flex max-h-[72dvh] shrink-0 flex-col gap-3 overflow-y-auto rounded-t-lg bg-surface px-4 pt-2 pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]"
+      data-testid="entry-panel"
+    >
+      <div className="flex min-h-11 items-center gap-2">
         <span
-          className="text-xl font-bold tracking-tight"
+          className="num text-sm font-semibold text-soft"
           data-testid="set-number"
         >
           Set {index + 1}
@@ -4373,23 +4936,22 @@ function Spotlight({
         )}
         {isEditing && restLabel && (
           <span
-            className="num text-2xs text-faint"
+            className="num text-2xs text-soft"
             data-testid={`set-rest-stamp-${index}`}
           >
             rested {restLabel}
           </span>
         )}
-        <span className="ml-auto flex items-center gap-1.5">
-          <button
-            type="button"
+        <span className="ml-auto flex items-center gap-2">
+          <IconButton
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setDetailsOpen(true)}
-            title="Set details"
-            className="rounded-sm flex size-9 shrink-0 items-center justify-center bg-surface-2 text-soft"
+            title="Set note and details"
+            className={CHROME_BTN}
             data-testid={`set-${index}-more`}
           >
-            <Notebook className="size-4" />
-          </button>
+            <PencilSimple className="size-5" />
+          </IconButton>
           <SetActionsMenu
             isWarmup={setType === "warmup"}
             onToggleWarmup={() => {
@@ -4414,7 +4976,7 @@ function Spotlight({
 
       {hasGhost && !isEditing && (
         <div
-          className="rounded-sm flex items-center gap-2.5 bg-surface px-2.5 py-2"
+          className="flex items-center gap-3 rounded-md bg-bg p-2"
           data-testid="last-time-row"
         >
           <button
@@ -4422,13 +4984,13 @@ function Spotlight({
             onMouseDown={(e) => e.preventDefault()}
             onClick={resetToLastTime}
             title="Reset to last time's values"
-            className="flex size-7 shrink-0 items-center justify-center bg-bg text-sm text-soft"
+            className="flex size-11 shrink-0 items-center justify-center rounded-sm bg-surface text-ink transition-colors duration-100 hover:bg-surface-hover"
             data-testid="last-time-reset"
           >
-            ↺
+            <ArrowCounterClockwise className="size-5" />
           </button>
           <span className="min-w-0 flex-1">
-            <span className="block text-2xs font-bold tracking-widest text-faint uppercase">
+            <span className="block text-2xs font-bold tracking-widest text-soft uppercase">
               Last time
             </span>
             <span className="num block text-base font-bold">
@@ -4445,12 +5007,12 @@ function Spotlight({
             <button
               type="button"
               onClick={() => setWeightLinked((v) => !v)}
-              className="rounded-sm self-start bg-surface-2 px-1.5 py-0.5 text-2xs font-semibold text-faint"
+              className="flex min-h-11 items-center self-start rounded-sm bg-secondary px-3 text-xs font-semibold text-ink transition-colors duration-100 hover:bg-active"
               data-testid="weight-link-toggle"
             >
               {weightLinked ? (
                 <>
-                  <LinkSimple className="mr-1 inline size-3" />
+                  <LinkSimple className="mr-1.5 inline size-4" />
                   Linked · tap to set sides separately
                 </>
               ) : (
@@ -4458,14 +5020,15 @@ function Spotlight({
               )}
             </button>
             {!weightLinked && (
-              <div className="rounded-md bg-bg p-2">
-                <div className="rounded-xs flex items-center justify-center bg-surface px-2 py-1">
+              <div className="rounded-md bg-bg p-2.5">
+                <div className="flex h-12 items-center justify-center rounded-sm bg-surface px-2">
                   <input
                     inputMode="decimal"
                     value={weight2}
                     placeholder={weight}
                     onChange={(e) => setWeight2(e.target.value)}
-                    className="num w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
+                    data-big-input
+                    className="num h-full w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
                     data-testid="weight-field-right"
                   />
                 </div>
@@ -4476,7 +5039,7 @@ function Spotlight({
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => bump("weight", d, "right")}
-                      className="rounded-sm num h-8 flex-1 bg-surface text-xs font-bold text-soft"
+                      className="num h-11 flex-1 rounded-sm bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
                       data-testid={`weight-adjust-${d}-right`}
                     >
                       {d}
@@ -4488,7 +5051,7 @@ function Spotlight({
                       type="button"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => bump("weight", d, "right")}
-                      className="rounded-sm num h-8 flex-1 bg-accent-soft text-xs font-bold text-accent-ink"
+                      className="num h-11 flex-1 rounded-sm bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
                       data-testid={`weight-adjust-${d}-right`}
                     >
                       +{d}
@@ -4515,8 +5078,8 @@ function Spotlight({
           </div>
           <div className="grid grid-cols-2 gap-2">
             {(["left", "right"] as const).map((side) => (
-              <div key={side} className="rounded-md bg-bg p-1.5">
-                <div className="rounded-xs flex items-center justify-center bg-surface px-2 py-1">
+              <div key={side} className="rounded-md bg-bg p-2.5">
+                <div className="flex h-12 items-center justify-center rounded-sm bg-surface px-2">
                   <input
                     inputMode="numeric"
                     value={side === "left" ? reps : reps2}
@@ -4529,7 +5092,8 @@ function Spotlight({
                     onFocus={() => {
                       if (restStartedAt != null) onStopRest();
                     }}
-                    className="num w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
+                    data-big-input
+                    className="num h-full w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
                     data-testid={`reps-field-${side}`}
                   />
                 </div>
@@ -4538,7 +5102,7 @@ function Spotlight({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => bump("reps", -1, side)}
-                    className="rounded-sm num h-8 flex-1 bg-surface text-xs font-bold text-soft"
+                    className="num h-11 flex-1 rounded-sm bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
                     data-testid={`reps-adjust--1-${side}`}
                   >
                     −1
@@ -4547,7 +5111,7 @@ function Spotlight({
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => bump("reps", 1, side)}
-                    className="rounded-sm num h-8 flex-1 bg-accent-soft text-xs font-bold text-accent-ink"
+                    className="num h-11 flex-1 rounded-sm bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
                     data-testid={`reps-adjust-1-${side}`}
                   >
                     +1
@@ -4597,7 +5161,7 @@ function Spotlight({
         </div>
       )}
       {effort && isUnilateral && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-2">
           <RirSegmented
             min={rirMin}
             max={rirMax}
@@ -4622,136 +5186,42 @@ function Spotlight({
       )}
 
       {/* 5. Action zone. */}
-      <div className="mt-1">
-        {restStartedAt != null ? (
-          <RestStopwatch
-            startedAt={restStartedAt}
-            setNumber={index + 1}
-            onStop={onStopRest}
-          />
-        ) : (
-          <Button
-            size="lg"
-            className="h-13 w-full text-base font-bold md:h-13"
-            onClick={submit}
-            data-testid="log-set"
-          >
-            {isEditing
-              ? "Save"
-              : isUnilateral
-                ? `Log set ${index + 1} · ᴸ + ᴿ`
-                : `Log set ${index + 1}`}
-          </Button>
-        )}
+      <div className="pt-1">
+        <Button
+          size="lg"
+          className="h-[clamp(48px,7dvh,60px)] w-full rounded-lg bg-action text-[19px] font-bold text-on-action hover:bg-action-hover dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover"
+          onClick={submit}
+          data-testid="log-set"
+        >
+          <Check className="size-5" weight="bold" />
+          {isEditing
+            ? "Save"
+            : logLabel({
+                weight,
+                reps,
+                weightUnit: f.weight ? unitLabel(unit) : null,
+                setNo: index + 1,
+                unilateral: isUnilateral,
+                rightWeight: weightLinked ? "" : weight2,
+                rightReps: reps2,
+              })}
+        </Button>
       </div>
 
-      {/* Set details sheet (`set-{index}-more`): the four things the hero row
-          has no room for — the RIR InfoTip (always shown, per tips.spec.ts),
-          a per-set note, opt-in custom metrics, and the plate calculator.
-          Nothing here is required to log a set — it's all optional detail
-          reachable without leaving the row. */}
-      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent title={`Set ${index + 1} details`}>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-1.5">
-              <span className="text-2xs font-bold tracking-widest text-faint uppercase">
-                RIR
-              </span>
-              <InfoTip lessonId="rir" />
-            </div>
-            <label className="flex flex-col gap-1">
-              <span className="text-2xs font-bold tracking-widest text-faint uppercase">
-                Note
-              </span>
-              <Textarea
-                rows={3}
-                placeholder="// note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                data-testid={`set-${index}-note`}
-                className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
-              />
-            </label>
-            {enabledMetrics
-              .filter((m) => extras.has(m.id))
-              .map((m) => (
-                <div key={m.id} className="flex flex-col gap-1">
-                  <span className="text-2xs font-bold tracking-widest text-faint uppercase">
-                    {m.name}
-                  </span>
-                  {m.type === "checkbox" ? (
-                    <input
-                      type="checkbox"
-                      checked={metricDraft[m.id] === "true"}
-                      onChange={(e) =>
-                        setMetricDraft((d) => ({
-                          ...d,
-                          [m.id]: e.target.checked ? "true" : "",
-                        }))
-                      }
-                      className="size-4 justify-self-start accent-(--color-accent-mark)"
-                      data-testid={`set-${index}-metric-${m.id}`}
-                    />
-                  ) : (
-                    <Input
-                      inputMode={m.type === "text" ? undefined : "decimal"}
-                      placeholder={m.type === "text" ? m.name : "0"}
-                      value={metricDraft[m.id] ?? ""}
-                      onChange={(e) =>
-                        setMetricDraft((d) => ({
-                          ...d,
-                          [m.id]: e.target.value,
-                        }))
-                      }
-                      autoFocus={lastAdded === m.id}
-                      className="num"
-                      data-testid={`set-${index}-metric-${m.id}`}
-                    />
-                  )}
-                </div>
-              ))}
-            {enabledMetrics.some((m) => !extras.has(m.id)) && (
-              <div className="flex flex-wrap gap-1.5 pt-3">
-                {enabledMetrics
-                  .filter((m) => !extras.has(m.id))
-                  .map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => toggleExtra(m.id)}
-                      data-testid={`set-${index}-add-${m.id}`}
-                      className="rounded-sm flex items-center gap-1 bg-surface-2 px-2.5 py-1 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
-                    >
-                      <Plus className="size-3" />
-                      {m.name}
-                    </button>
-                  ))}
-              </div>
-            )}
-            {barLoaded && (
-              <button
-                type="button"
-                onClick={() => {
-                  setDetailsOpen(false);
-                  onOpenPlates(
-                    weight.trim() === "" ? null : Number.parseFloat(weight),
-                  );
-                }}
-                data-testid={`set-${index}-plates`}
-                className="flex items-center gap-2 pt-3 text-left text-xs text-soft transition-colors duration-150 hover:text-ink"
-              >
-                <Calculator className="size-3.5" />
-                Plate calculator
-              </button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {detailsDialog}
     </div>
   );
 }
 
 // ── Session duration / pause control (unchanged) ────────────────────────────
+
+function clockText(ms: number): string {
+  const t = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const sec = String(t % 60).padStart(2, "0");
+  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
+}
 
 function SessionDurationControl({
   startedAt,
@@ -4788,15 +5258,15 @@ function SessionDurationControl({
         onClick={() => setOpen((o) => !o)}
         title="Duration · pause / edit start"
         className={cn(
-          "num flex h-8 items-center gap-1 rounded-sm px-1.5 text-xs transition-colors duration-100",
+          "num flex h-11 items-center gap-2 rounded-sm px-3 text-sm font-semibold transition-colors duration-100",
           paused
             ? "bg-accent-soft text-accent-ink"
-            : "text-soft hover:bg-surface-hover",
+            : "bg-secondary text-ink hover:bg-active",
         )}
         data-testid="session-clock"
       >
-        {paused && <Pause className="size-3.5" />}
-        {formatDurationSeconds(duration)}
+        {paused ? <Pause className="size-5" /> : <Clock className="size-5" />}
+        {clockText(duration)}
       </button>
       {open && (
         <>
@@ -4807,11 +5277,11 @@ function SessionDurationControl({
             onClick={() => setOpen(false)}
             className="fixed inset-0 z-10 cursor-default"
           />
-          <div className="floating absolute top-full right-0 z-20 mt-1 min-w-52 p-2">
+          <div className="floating absolute top-full left-0 z-20 mt-1 min-w-56 p-2">
             <Button
               variant="outline"
               size="sm"
-              className="w-full"
+              className="h-11 w-full text-sm"
               onClick={() => {
                 onTogglePause();
                 setOpen(false);
@@ -4831,12 +5301,12 @@ function SessionDurationControl({
               )}
             </Button>
             <div className="mt-2 flex flex-col gap-1">
-              <span className="text-2xs font-medium tracking-wide text-faint uppercase">
+              <span className="text-2xs font-medium tracking-wide text-soft uppercase">
                 Start
               </span>
               <Input
                 type="datetime-local"
-                className="num"
+                className="num h-11"
                 value={toLocalInput(startedAt)}
                 onChange={(e) => {
                   const ms = new Date(e.target.value).getTime();

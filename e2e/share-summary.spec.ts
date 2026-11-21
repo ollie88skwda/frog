@@ -66,6 +66,8 @@ test("post-save summary shows the ordinal, offers a hero-set pick, and shares a 
     ["110", "3"],
   ]);
 
+  await page.getByTestId("session-menu").click();
+
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
 
@@ -171,6 +173,7 @@ test("post-save session slide paints the heavy tagline when the session out-tonn
     ["100", "10"],
     ["100", "10"],
   ]);
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page.getByTestId("post-save-summary")).toBeVisible();
@@ -186,6 +189,7 @@ test("post-save session slide paints the heavy tagline when the session out-tonn
     ["100", "8"],
     ["100", "8"],
   ]);
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).toHaveURL(new RegExp(`/history/${id}\\?summary=1`));
@@ -258,6 +262,7 @@ test("post-save session slide paints the heavy tagline when the session out-tonn
   const LIGHT = `Light ${stamp}`;
   await newExercise(page, LIGHT);
   await startAndLog(page, LIGHT, [["20", "5"]]);
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page.getByTestId("post-save-summary")).toBeVisible();
@@ -281,6 +286,8 @@ test("photo attached at finish appears in the history carousel", async ({
   const EX = `Photo ${Date.now()}`;
   await newExercise(page, EX);
   const id = await startAndLog(page, EX, [["80", "8"]]);
+
+  await page.getByTestId("session-menu").click();
 
   await page.getByTestId("session-finish").click();
 

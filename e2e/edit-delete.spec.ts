@@ -138,6 +138,7 @@ test("delete a custom exercise removes it from the picker; tags round-trip", asy
   await page.keyboard.press("Escape");
   await page.getByRole("dialog").waitFor({ state: "hidden" });
   // End the session through the finish overlay.
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
 });

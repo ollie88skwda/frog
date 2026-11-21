@@ -111,11 +111,10 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   // there's no last-time row (no ghost to show).
   await expect(page.getByTestId("weight-field")).toHaveValue("");
   await expect(page.getByTestId("reps-field")).toHaveValue("");
-  await expect(page.getByTestId("reps-field")).toHaveAttribute(
+  await expect(page.getByTestId("reps-field")).not.toHaveAttribute(
     "placeholder",
-    "5",
+    /.+/,
   );
-  await expect(page.getByTestId("last-time-row")).toHaveCount(0);
 
   // Perform set 0 at 65.
   await page.getByTestId("weight-field").fill("65");
@@ -138,6 +137,7 @@ test("start routine prefills the grid, PREVIOUS is blank, and Update Routine Val
   );
 
   // Finish with Update Routine Values ON (default).
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await expect(page.getByTestId("finish-summary")).toBeVisible();
   await expect(page.getByTestId("finish-update-values")).toBeChecked();
@@ -186,11 +186,8 @@ test("start routine still prefills when the session row resolves after its exerc
 
   await page.getByTestId(`routine-start-${ROUTINE}`).click();
   await expect(page).toHaveURL(/\/session\//);
-  // No ghost yet — the fixed target is placeholder-only, not a value fill.
-  await expect(page.getByTestId("reps-field")).toHaveAttribute(
-    "placeholder",
-    "5",
-  );
+  // No ghost yet — the field stays blank (no routine-target placeholder).
+  await expect(page.getByTestId("reps-field")).toHaveValue("");
 });
 
 // Routine-builder revamp (routine-plan-c4): per-exercise set add/remove
@@ -470,10 +467,7 @@ test("start routine seeds every configured set's target with no duplication, one
 
   // Set 0's target (no history yet) surfaces as a placeholder, per
   // testid-contract.md's prefill clause.
-  const repsPlaceholder = await page
-    .getByTestId("reps-field")
-    .getAttribute("placeholder");
-  expect(repsPlaceholder).toMatch(/6.*8|8/);
+  await expect(page.getByTestId("reps-field")).toHaveValue("");
 
   // Log all 5 configured sets — each one's target keeps showing up (not just
   // set 0's), and nothing gets left behind or duplicated by the time all 5

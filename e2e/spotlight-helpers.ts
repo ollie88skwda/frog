@@ -52,6 +52,7 @@ export async function logBilateralSet(
  * lookup for the next session's spotlight reads whatever's landed server-
  * side, and a page.goto right behind an in-flight finish write can abort it). */
 export async function finishSession(page: Page) {
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).toHaveURL(/\/history\//);
@@ -73,11 +74,31 @@ export async function currentSetIndex(page: Page): Promise<number> {
  * hit-testing false positive on this element, not a real overlap (verified:
  * a plain force click opens the menu immediately, every time). */
 export async function openSetTypeMenu(page: Page) {
-  await page.getByTestId("set-type-menu").click({ force: true });
+  const trigger = page.getByTestId("set-type-menu");
+  // The per-side panel can be taller than the viewport; keep the trigger
+  // clear of the sticky header before the (forced) click.
+  await trigger.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await trigger.click({ force: true });
 }
 
 /** Numeric value currently in a spotlight field. */
 export async function fieldValue(page: Page, testId: string): Promise<number> {
   const v = await page.getByTestId(testId).inputValue();
   return Number.parseFloat(v);
+}
+
+/** Opens the conditions dialog via the session ⋯ menu. */
+export async function openConditions(page: Page) {
+  await page.getByTestId("session-menu").click();
+  await page.getByTestId("conditions-chip").click();
+}
+
+/** Asserts the ⋯ menu's conditions row text, then closes the menu. */
+export async function expectConditionsText(page: Page, text: string) {
+  await page.keyboard.press("Escape"); // close an open conditions dialog
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByTestId("session-menu").click();
+  await expect(page.getByTestId("conditions-chip")).toContainText(text);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("conditions-chip")).toHaveCount(0);
 }

@@ -58,6 +58,7 @@ test("finish overlay edits title + start-time (duration), and persists the backd
   const id = await startAndLog(page, EX, [["100", "5"]]);
 
   // Open the finish overlay.
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await expect(page.getByTestId("finish-summary")).toContainText("1 set");
 
@@ -86,6 +87,8 @@ test("discard abandons the session (soft-deleted, home)", async ({ page }) => {
   const EX = `Discard ${Date.now()}`;
   await newExercise(page, EX);
   const id = await startAndLog(page, EX, [["80", "8"]]);
+
+  await page.getByTestId("session-menu").click();
 
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-discard").click();
@@ -120,6 +123,7 @@ test("Save as routine and Copy workout from history detail", async ({
   ]);
 
   // Finish → lands on the session's history, over the post-save summary (M9).
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).toHaveURL(new RegExp(`/history/${id}`));

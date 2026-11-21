@@ -60,6 +60,7 @@ test("start → resume restores sets → end → resume gone", async ({ page }) 
 
   // Finish: the End button opens the finish overlay; Save stamps ended_at and
   // lands on the session's history.
+  await page.getByTestId("session-menu").click();
   await page.getByTestId("session-finish").click();
   await page.getByTestId("finish-save").click();
   await expect(page).toHaveURL(/\/history\//);

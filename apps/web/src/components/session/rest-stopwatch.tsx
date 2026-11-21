@@ -25,11 +25,14 @@ export function RestStopwatch({
   startedAt,
   setNumber,
   onStop,
+  compact = false,
 }: {
   startedAt: number;
   /** 1-based number of the set this rest FOLLOWS. */
   setNumber: number;
   onStop: () => void;
+  /** Top-bar clock form: one pill, tap to stop. */
+  compact?: boolean;
 }) {
   const [, tick] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
@@ -38,6 +41,29 @@ export function RestStopwatch({
   }, []);
 
   const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={onStop}
+        title={`Resting after set ${setNumber} — tap to stop`}
+        className="rounded-sm num flex h-11 items-center gap-2 bg-accent-soft px-3 text-sm font-semibold text-accent-ink"
+        data-testid="rest-stopwatch"
+      >
+        <span
+          aria-hidden="true"
+          className="size-2 shrink-0 animate-pulse rounded-xs bg-accent-ink"
+        />
+        <span data-testid="rest-elapsed" className="tabular-nums">
+          {mmss(elapsed)}
+        </span>
+        <span data-testid="rest-stop" className="sr-only">
+          Stop
+        </span>
+      </button>
+    );
+  }
 
   return (
     <div
@@ -50,7 +76,7 @@ export function RestStopwatch({
           numerals, never on them. */}
       <span
         aria-hidden="true"
-        className="size-2 shrink-0 animate-pulse bg-accent"
+        className="size-2 shrink-0 animate-pulse rounded-xs bg-accent-ink"
       />
       <span className="flex min-w-0 flex-1 items-baseline gap-2">
         <span
