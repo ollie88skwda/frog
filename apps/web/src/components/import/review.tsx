@@ -504,7 +504,9 @@ export function ImportReview({
               ? res.id
               : (
                   exercises.find((x) => norm(x.name) === norm(e.rawName)) ??
-                  (await repo.createExercise(e.rawName.trim()))
+                  (await repo.createExercise(e.rawName.trim(), {
+                    share: false,
+                  }))
                 ).id;
           ids.push({
             exerciseId,
