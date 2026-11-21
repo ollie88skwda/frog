@@ -212,3 +212,48 @@ test("unknown layout → raw text lands in the box for manual editing", async ({
   expect(net.uploads).toEqual([]);
   expect(net.external).toEqual([]);
 });
+
+const GENERIC_CSV = {
+  name: "lifts.csv",
+  mime: "text/csv",
+  b64: readFileSync("packages/core/src/import/fixtures/generic.csv").toString(
+    "base64",
+  ),
+};
+
+test("a lone generic CSV still offers column mapping", async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto("/import");
+  await dropFiles(page, [GENERIC_CSV]);
+  await expect(page.getByTestId("import-review")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId("import-mapping")).toBeVisible();
+  await expect(page.getByTestId("review-counts")).toContainText("2 sessions");
+  await shoot(page, "05-lone-csv-mapping");
+});
+
+test("generic CSV + routine screenshots → both kept, no column mapping that could wipe the routine", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const net = watchNetwork(page);
+  await page.goto("/import");
+  await dropFiles(page, [
+    GENERIC_CSV,
+    png("routine-1"),
+    png("routine-2"),
+    png("routine-3"),
+  ]);
+  await expect(page.getByTestId("import-review")).toBeVisible({
+    timeout: 150_000,
+  });
+  await expect(page.getByTestId("review-counts")).toContainText(
+    "2 sessions · 1 routines",
+  );
+  await expect(page.getByTestId("review-routine")).toHaveCount(1);
+  await expect(page.getByTestId("import-mapping")).toHaveCount(0);
+  await shoot(page, "06-csv-plus-routine-review");
+  expect(net.uploads).toEqual([]);
+  expect(net.external).toEqual([]);
+});
