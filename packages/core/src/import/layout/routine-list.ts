@@ -11,10 +11,6 @@ import type { PageScan, PageWord } from "./types";
 export type ListRow = {
   /** Tile number as printed (the "12" of "12A"); sequence-corrected. */
   index: number;
-  /** What the tile itself OCR'd to, for the review tooltip. */
-  tileRaw: string;
-  /** Tile number was inferred from neighbours rather than read. */
-  indexInferred: boolean;
   name: string;
   nameConf: number;
   sets: number | null;
@@ -22,8 +18,6 @@ export type ListRow = {
   repsMax: number | null;
   /** The row touches the top/bottom edge of the visible list. */
   partial: boolean;
-  /** Name ends in "…" (the app shortened it). */
-  truncated: boolean;
 };
 
 export type RoutineListScan = {
@@ -67,7 +61,6 @@ export async function parseRoutineList(
   // Tile numbers: read each tile on a clean crop at several scales, then
   // repair against the running sequence (a cut-off tile reads "155A").
   const reads: (number | null)[] = [];
-  const raws: string[] = [];
   for (const t of tiles) {
     const rect = {
       x0: Math.max(0, t.box.x0 - 0.03 * W),
@@ -87,7 +80,6 @@ export async function parseRoutineList(
     }
     const v = vote(got);
     const raw = v?.value ?? t.text;
-    raws.push(raw);
     const m = /^(\d{1,2})[A-Z]?$/.exec(raw);
     reads.push(m ? Number(m[1]) : null);
   }
@@ -97,7 +89,7 @@ export async function parseRoutineList(
       offsets.set(r - i, (offsets.get(r - i) ?? 0) + 1);
   });
   const best = [...offsets.entries()].sort((a, b) => b[1] - a[1])[0];
-  // Without any sensible read, number rows from 1 (flagged as inferred).
+  // Without any sensible read, number rows from 1.
   const base = best ? best[0] : 1;
 
   const rows: ListRow[] = [];
@@ -130,7 +122,6 @@ export async function parseRoutineList(
       .replace(/\s+/g, " ")
       .replace(/[.:*°’']+$/g, "")
       .trim();
-    const truncated = /(\.{2,}|…)$/.test(name);
     const conf = nameWords.length
       ? nameWords.reduce((m, w) => m + w.conf, 0) / nameWords.length
       : 0;
@@ -175,11 +166,8 @@ export async function parseRoutineList(
         repsMax = b ? Number(b) : null;
       }
     }
-    const idx = base + i;
     rows.push({
-      index: idx,
-      tileRaw: raws[i],
-      indexInferred: reads[i] !== idx,
+      index: base + i,
       name,
       nameConf: conf,
       sets,
@@ -190,7 +178,6 @@ export async function parseRoutineList(
         (i === tiles.length - 1 &&
           Math.max(tiles[i].box.y1, ...nameWords.map((w) => w.box.y1)) >
             bottom - 0.006 * H),
-      truncated,
     });
   }
 
