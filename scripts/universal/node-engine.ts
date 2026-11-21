@@ -69,7 +69,7 @@ export async function makeNodeEngine(): Promise<{
           box: { x0: l.bbox.x0, y0: l.bbox.y0, x1: l.bbox.x1, y1: l.bbox.y1 },
           words: l.words.map((w: any) => ({
             text: w.text,
-            conf: w.confidence,
+            conf: w.confidence / 100,
             box: { x0: w.bbox.x0, y0: w.bbox.y0, x1: w.bbox.x1, y1: w.bbox.y1 },
           })),
         }),

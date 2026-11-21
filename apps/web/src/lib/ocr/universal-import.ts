@@ -117,7 +117,11 @@ async function pdfPages(
   return { text: "", images };
 }
 
-function mergeDrafts(drafts: ImportDraft[], unit: WeightUnit): ImportDraft {
+function mergeDrafts(
+  drafts: ImportDraft[],
+  unit: WeightUnit,
+  problems: string[],
+): ImportDraft {
   if (drafts.length === 1) return drafts[0];
   const first = drafts[0];
   const out: ImportDraft = {
@@ -129,7 +133,13 @@ function mergeDrafts(drafts: ImportDraft[], unit: WeightUnit): ImportDraft {
   };
   out.unit = unit;
   for (const d of drafts) {
-    if (d.unit !== out.unit) continue; // different unit: keep it out rather than guess a conversion
+    if (d.unit !== out.unit) {
+      const n = d.sessions.length + d.routines.length;
+      problems.push(
+        `${n} workout${n === 1 ? "" : "s"} in ${d.unit} were left out; import them separately.`,
+      );
+      continue;
+    }
     out.sessions.push(...d.sessions);
     out.routines.push(...d.routines);
     out.unparsed.push(...d.unparsed);
@@ -244,7 +254,7 @@ export async function filesToImportResult(
     (d) => d.sessions.length + d.routines.length > 0,
   );
   const draft = usable.length
-    ? mergeDrafts(usable, usable[0].unit)
+    ? mergeDrafts(usable, usable[0].unit, problems)
     : (drafts[0] ?? readsToDraft([], { defaultUnit: unit }));
   return { draft, file, rawText: rawText.trim(), problems };
 }

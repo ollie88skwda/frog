@@ -132,7 +132,7 @@ export async function parseRoutineList(
       .trim();
     const truncated = /(\.{2,}|…)$/.test(name);
     const conf = nameWords.length
-      ? nameWords.reduce((m, w) => m + w.conf, 0) / nameWords.length / 100
+      ? nameWords.reduce((m, w) => m + w.conf, 0) / nameWords.length
       : 0;
     // chips
     let sets: number | null = null;

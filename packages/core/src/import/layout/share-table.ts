@@ -238,7 +238,7 @@ export async function parseShareTable(
       indexRaw: idxWords[i].text,
       name,
       nameConf: nameWords.length
-        ? nameWords.reduce((m, w) => m + w.conf, 0) / nameWords.length / 100
+        ? nameWords.reduce((m, w) => m + w.conf, 0) / nameWords.length
         : 0,
       truncated,
       count: c?.value ?? null,
