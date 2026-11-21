@@ -200,21 +200,17 @@ export async function filesToImportResult(
     }
   }
 
-  const csvLike = textFiles.filter(
-    (t) => t.info.kind === "csv" || t.info.kind === "json",
-  );
+  const soleCsv =
+    bitmaps.length === 0 &&
+    textFiles.length === 1 &&
+    (textFiles[0].info.kind === "csv" || textFiles[0].info.kind === "json");
   for (const t of textFiles) {
     if (t.info.kind === "text") {
       rawText += `${t.body}\n`;
       drafts.push(parseWorkoutText(t.body, { defaultUnit: unit }));
     } else {
       const r = parseImportFile(t.body, { defaultUnit: unit });
-      if (
-        r.rows &&
-        r.mapping &&
-        csvLike.length === 1 &&
-        r.draft.sessions.length === 0
-      )
+      if (r.rows && r.mapping && soleCsv && r.draft.sessions.length === 0)
         file = r;
       else if (r.draft.sessions.length === 0 && r.format !== "generic-csv")
         problems.push(
@@ -223,7 +219,7 @@ export async function filesToImportResult(
       else if (r.draft.sessions.length === 0)
         problems.push(`${t.name}: no workouts found in that file's columns.`);
       if (r.draft.sessions.length > 0 || file === r) {
-        if (csvLike.length === 1) file = r.rows ? r : null;
+        if (soleCsv) file = r.rows ? r : null;
         drafts.push(r.draft);
       }
     }
