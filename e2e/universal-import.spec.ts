@@ -213,12 +213,15 @@ test("unknown layout → raw text lands in the box for manual editing", async ({
   expect(net.external).toEqual([]);
 });
 
+// Dates in 2011 so no session the shared e2e account logs (other specs log
+// relative to today) lands on the same day and gets switched off as a
+// duplicate, which would change the review counts.
 const GENERIC_CSV = {
   name: "lifts.csv",
   mime: "text/csv",
-  b64: readFileSync("packages/core/src/import/fixtures/generic.csv").toString(
-    "base64",
-  ),
+  b64: Buffer.from(
+    "Day;Lift;Load;Repetitions;Comment\n03/11/2011;Squat;100;5;\n03/11/2011;Squat;100;5;felt heavy\n14/11/2011;Squat;102.5;5;\n",
+  ).toString("base64"),
 };
 
 test("a lone generic CSV still offers column mapping", async ({ page }) => {
