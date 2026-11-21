@@ -79,6 +79,19 @@ describe("stitching", () => {
     );
     expect(conflicts).toEqual([1]);
   });
+  it("does not report the same row read with OCR noise or cut off at an edge", () => {
+    const { conflicts } = stitchRows(
+      [
+        [row(1, "Machine Row", true), row(2, "Triceps Pressdown")],
+        [
+          row(1, "Chest Supported Neutral Grip Machine Row"),
+          row(2, "Triceps Pressdovvn"),
+        ],
+      ],
+      (r) => r.q,
+    );
+    expect(conflicts).toEqual([]);
+  });
   it("drops lines shared by two scrolled text shots", () => {
     const l = (t: string) => ({ text: t, confidence: 1 });
     const out = stitchTextLines([

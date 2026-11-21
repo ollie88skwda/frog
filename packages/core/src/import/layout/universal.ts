@@ -55,7 +55,8 @@ export function stitchRows<
   for (const rows of reads)
     for (const r of rows) {
       const cur = byIndex.get(r.index);
-      if (cur && !sameName(cur.name, r.name)) conflicts.add(r.index);
+      if (cur && !cur.partial && !r.partial && !sameName(cur.name, r.name))
+        conflicts.add(r.index);
       if (
         !cur ||
         (cur.partial && !r.partial) ||
@@ -74,8 +75,24 @@ const sameName = (a: string, b: string) => {
   const stem = (x: string) =>
     norm(x.replace(/(\.{2,}|…)$/, "")).replace(/ /g, "");
   const [x, y] = [stem(a), stem(b)];
-  return x.startsWith(y) || y.startsWith(x);
+  if (x.startsWith(y) || y.startsWith(x)) return true;
+  return editDistance(x, y) <= Math.max(2, Math.min(x.length, y.length) / 5);
 };
+
+function editDistance(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++)
+      cur[j] = Math.min(
+        prev[j] + 1,
+        cur[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    prev = cur;
+  }
+  return prev[b.length];
+}
 
 const conflictNote = (what: string, rows: number[]) =>
   `Rows ${rows.join(", ")} of the ${what} have different names in different screenshots, so these may be separate workouts merged into one. Import each workout on its own.`;
