@@ -91,9 +91,7 @@ test("three scrolled routine screenshots → one stitched routine, on-device", a
   await expect(page.getByTestId("review-counts")).toContainText(
     "0 sessions · 1 routines",
   );
-  await expect(page.getByTestId("review-counts")).toContainText(
-    "17 exercises",
-  );
+  await expect(page.getByTestId("review-counts")).toContainText("17 exercises");
   const routine = page.getByTestId("review-routine");
   await expect(routine).toHaveCount(1);
   await expect(routine.getByLabel("Routine name")).toHaveValue("Push Pull");
@@ -144,9 +142,7 @@ test("dropped Share table + unsupported file → one session, problem reported",
   await expect(page.getByTestId("review-counts")).toContainText(
     "1 sessions · 0 routines",
   );
-  await expect(page.getByTestId("review-counts")).toContainText(
-    "10 exercises",
-  );
+  await expect(page.getByTestId("review-counts")).toContainText("10 exercises");
   await expect(page.getByTestId("review-session")).toContainText(
     "Wide Incline Machine Press",
   );
@@ -199,7 +195,9 @@ test("unknown layout → raw text lands in the box for manual editing", async ({
     g.fillStyle = "#000";
     g.font = "bold 48px Arial";
     ["Groceries", "Milk and eggs", "Fresh bread", "Call the plumber"].forEach(
-      (t, i) => g.fillText(t, 60, 120 + i * 110),
+      (t, i) => {
+        g.fillText(t, 60, 120 + i * 110);
+      },
     );
     return c.toDataURL("image/png").split(",")[1];
   });
