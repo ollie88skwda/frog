@@ -39,6 +39,7 @@ export function detectInputKind(
     const brand = String.fromCharCode(...head.slice(8, 12)).toLowerCase();
     if (/^(heic|heix|hevc|hevx|heim|heis|mif1|msf1)/.test(brand))
       return { kind: "image", heic: true };
+    if (/^(avif|avis)/.test(brand)) return { kind: "image" };
     return { kind: "unsupported", what: "a video" };
   }
   if (ascii(head, 0, "%PDF")) return { kind: "pdf" };

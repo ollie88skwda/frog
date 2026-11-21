@@ -97,8 +97,8 @@ export async function xlsxToCsv(bytes: Uint8Array): Promise<string> {
       if (/[ymdh]/i.test(m[2].replace(/"[^"]*"|\[[^\]]*\]/g, "")))
         custom.add(Number(m[1]));
     const xfs = /<cellXfs[^>]*>([\s\S]*?)<\/cellXfs>/.exec(xml)?.[1] ?? "";
-    [...xfs.matchAll(/<xf\b[^>]*?numFmtId="(\d+)"/g)].forEach((m, i) => {
-      const id = Number(m[1]);
+    [...xfs.matchAll(/<xf\b[^>]*>/g)].forEach((m, i) => {
+      const id = Number(/\bnumFmtId="(\d+)"/.exec(m[0])?.[1] ?? 0);
       if ((id >= 14 && id <= 22) || (id >= 45 && id <= 47) || custom.has(id))
         dateXf.add(i);
     });

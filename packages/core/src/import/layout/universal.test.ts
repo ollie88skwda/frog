@@ -8,6 +8,7 @@ import {
 } from "../../../../../scripts/universal/node-engine";
 import { isLowConfidence } from "../draft";
 import { detectInputKind, unsupportedMessage } from "../input-kind";
+import { xlsxToCsv } from "../xlsx";
 import { scanBitmap } from "./scan";
 import { parseWeightReps, voteDroppedDigits } from "./share-table";
 import {
@@ -109,6 +110,78 @@ describe("stitching", () => {
   });
 });
 
+describe("xlsxToCsv", () => {
+  const storedZip = (files: Record<string, string>) => {
+    const enc = new TextEncoder();
+    const local: number[] = [];
+    const central: number[] = [];
+    const u16 = (n: number) => [n & 255, (n >> 8) & 255];
+    const u32 = (n: number) => [...u16(n & 0xffff), ...u16(n >>> 16)];
+    let count = 0;
+    for (const [name, body] of Object.entries(files)) {
+      const nb = [...enc.encode(name)];
+      const data = [...enc.encode(body)];
+      const offset = local.length;
+      local.push(
+        ...u32(0x04034b50),
+        ...u16(20),
+        ...u16(0),
+        ...u16(0),
+        ...u32(0),
+        ...u32(0),
+        ...u32(data.length),
+        ...u32(data.length),
+        ...u16(nb.length),
+        ...u16(0),
+        ...nb,
+        ...data,
+      );
+      central.push(
+        ...u32(0x02014b50),
+        ...u16(20),
+        ...u16(20),
+        ...u16(0),
+        ...u16(0),
+        ...u32(0),
+        ...u32(0),
+        ...u32(data.length),
+        ...u32(data.length),
+        ...u16(nb.length),
+        ...u16(0),
+        ...u16(0),
+        ...u16(0),
+        ...u16(0),
+        ...u32(0),
+        ...u32(offset),
+        ...nb,
+      );
+      count++;
+    }
+    const end = [
+      ...u32(0x06054b50),
+      ...u16(0),
+      ...u16(0),
+      ...u16(count),
+      ...u16(count),
+      ...u32(central.length),
+      ...u32(local.length),
+      ...u16(0),
+    ];
+    return new Uint8Array([...local, ...central, ...end]);
+  };
+  it("maps style ids to every cellXfs xf, even ones without numFmtId", async () => {
+    const csv = await xlsxToCsv(
+      storedZip({
+        "xl/styles.xml":
+          '<styleSheet><cellXfs count="3"><xf fontId="0"/><xf numFmtId="14"/><xf numFmtId="0"/></cellXfs></styleSheet>',
+        "xl/worksheets/sheet1.xml":
+          '<worksheet><sheetData><row r="1"><c r="A1" s="0"><v>100</v></c><c r="B1" s="1"><v>45000</v></c><c r="C1" s="2"><v>80</v></c></row></sheetData></worksheet>',
+      }),
+    );
+    expect(csv).toBe("100,2023-03-15,80");
+  });
+});
+
 describe("detectInputKind", () => {
   it("sniffs by bytes before name", () => {
     expect(
@@ -127,6 +200,10 @@ describe("detectInputKind", () => {
     expect(detectInputKind("a.xlsx", "", bytes(0x50, 0x4b, 3, 4)).kind).toBe(
       "xlsx",
     );
+    const avif = new Uint8Array([
+      0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x61, 0x76, 0x69, 0x66,
+    ]);
+    expect(detectInputKind("shot.avif", "", avif)).toEqual({ kind: "image" });
   });
   it("routes text types and refuses the rest with a clear message", () => {
     const enc = (s: string) => new TextEncoder().encode(s);
