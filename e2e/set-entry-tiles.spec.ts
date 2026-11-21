@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-test("the ruler moves weight by the unit step (5 lb default) and reps by 1, and Log states the values", async ({
+test("the ruler moves weight by the unit step (1 lb default) and reps by 1, and Log states the values", async ({
   page,
 }) => {
   test.setTimeout(60_000);
@@ -21,11 +21,12 @@ test("the ruler moves weight by the unit step (5 lb default) and reps by 1, and 
   await page.getByTestId("weight-field").focus();
   await page.getByTestId("weight-ruler").focus();
   await page.keyboard.press("ArrowRight");
-  await expect(page.getByTestId("weight-field")).toHaveValue("85");
-  await expect(page.getByTestId("log-set")).toHaveText("Log 85 lbs × 9");
+  await expect(page.getByTestId("weight-field")).toHaveValue("81");
+  await expect(page.getByTestId("log-set")).toHaveText("Log 81 lbs × 9");
   await page.keyboard.press("ArrowLeft");
   await expect(page.getByTestId("weight-field")).toHaveValue("80");
   await logSet(page);
+  await page.getByTestId("add-set").click();
   await expect(page.getByTestId("set-number")).toContainText("Set 2");
 });
 

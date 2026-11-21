@@ -1,3 +1,4 @@
+import { sanitizeNumeric } from "@frog/core";
 import type { InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +22,7 @@ export type AdjustFieldProps = {
   /** Reps round to whole numbers; weight allows up to 2 decimal places. */
   integer?: boolean;
   placeholder?: string;
-  /** Smaller variant for the per-side ᴸ/ᴿ grid, where two fields share a row. */
+  /** Smaller variant for the per-side L/R grid, where two fields share a row. */
   compact?: boolean;
   testId?: string;
   inputMode?: InputHTMLAttributes<HTMLInputElement>["inputMode"];
@@ -81,7 +82,11 @@ export function AdjustField({
         <input
           inputMode={inputMode ?? (integer ? "numeric" : "decimal")}
           value={value}
-          onChange={(e) => onValueChange(e.target.value)}
+          onChange={(e) =>
+            onValueChange(
+              sanitizeNumeric(e.target.value, { decimal: !integer }),
+            )
+          }
           placeholder={placeholder}
           className={cn(
             "num min-w-0 flex-1 bg-transparent font-semibold text-ink focus:text-accent-ink",
@@ -119,7 +124,7 @@ export function AdjustField({
 }
 
 // Weight ±1/5/10/15, reps ±1/2 — the deltas locked in session-redesign-r3.html
-// (mockups A1/A2). The per-side ᴸ/ᴿ grid gets a compact ±1-only set (A3):
+// (mockups A1/A2). The per-side L/R grid gets a compact ±1-only set (A3):
 // sides differ by a rep, not by fifteen.
 export const WEIGHT_DELTAS = [-15, -10, -5, -1, 1, 5, 10, 15] as const;
 export const REPS_DELTAS = [-2, -1, 1, 2] as const;

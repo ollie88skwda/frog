@@ -18,6 +18,7 @@ export * from "./domain/exercise-types";
 export * from "./domain/hard-sets";
 export * from "./domain/ids";
 export * from "./domain/match-exercise";
+export * from "./domain/numeric";
 export * from "./domain/plan";
 export * from "./domain/plates";
 export * from "./domain/previous";

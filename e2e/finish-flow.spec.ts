@@ -6,6 +6,7 @@ import {
   signIn,
   waitForExercise,
 } from "./helpers";
+import { ensureOpenSet } from "./spotlight-helpers";
 
 // M2 finish flow: the End button opens a Save-Workout overlay (editable title /
 // notes / start-time with a computed duration, Discard). Plus the two history
@@ -21,6 +22,7 @@ test.beforeEach(async ({ page }) => {
 // there's no per-index draft/committed row anymore, so sets are logged one
 // at a time through the always-current spotlight fields.
 async function logSet(page: Page, index: number, weight: string, reps: string) {
+  await ensureOpenSet(page);
   await page.getByTestId("weight-field").fill(weight);
   await page.getByTestId("reps-field").fill(reps);
   await page.getByTestId("log-set").click();

@@ -6,6 +6,7 @@ import {
 } from "@frog/core";
 import { Check } from "@phosphor-icons/react";
 import { useState } from "react";
+import { SideTag } from "@/components/ui/side-tag";
 import { StatusRing } from "@/components/ui/status-ring";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +47,7 @@ export function SetTypeCell({
   ringState?: "done" | "empty";
   onChange: (t: SetType) => void;
   testId?: string;
-  /** "L" on a unilateral pair's top line — appends ᴸ to the number or type marker. */
+  /** "L" on a unilateral pair's top line — appends an L tag to the number or type marker. */
   sideLabel?: "L";
 }) {
   const [open, setOpen] = useState(false);
@@ -68,7 +69,8 @@ export function SetTypeCell({
         )}
         data-testid={testId}
       >
-        {sideLabel ? `${marker || index + 1}ᴸ` : marker || index + 1}
+        {marker || index + 1}
+        {sideLabel && <SideTag side="left" className="ml-1" />}
       </button>
       {open && (
         <>

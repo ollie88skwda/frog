@@ -1,3 +1,4 @@
+import { sanitizeNumeric } from "@frog/core";
 import type { InputHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
@@ -10,9 +11,24 @@ type FieldProps = InputHTMLAttributes<HTMLInputElement>;
  * as a committed row — and the value takes the accent while the field is
  * focused, so an editing cell reads at a glance without a box.
  */
-export function Field({ className, ...props }: FieldProps) {
+export function Field({ className, onChange, ...props }: FieldProps) {
+  // A numeric/decimal keyboard request means a numbers-only field: typed and
+  // pasted text is cleaned before the caller sees it.
+  const mode = props.inputMode;
+  const numeric = mode === "numeric" || mode === "decimal";
   return (
     <input
+      onChange={
+        numeric && onChange
+          ? (e) => {
+              const clean = sanitizeNumeric(e.target.value, {
+                decimal: mode === "decimal",
+              });
+              if (clean !== e.target.value) e.target.value = clean;
+              onChange(e);
+            }
+          : onChange
+      }
       className={cn(
         "num h-10 min-w-0 w-full bg-transparent px-1 text-sm text-ink placeholder:text-faint focus:bg-transparent focus:text-accent-ink md:h-8",
         className,

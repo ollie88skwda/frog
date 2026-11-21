@@ -22,6 +22,14 @@ async function createExerciseInSession(
   await expect(page.getByTestId("exercise-name")).toHaveText(name);
 }
 
+async function openMachinePicker(
+  page: import("@playwright/test").Page,
+  exercise: string,
+) {
+  await page.getByTestId(`block-${exercise}-menu`).click();
+  await page.getByTestId(`block-${exercise}-machine`).click();
+}
+
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e` (seeds the user)");
   await signIn(page);
@@ -70,10 +78,10 @@ test("in-session attach: catalog search attaches a machine to the block", async 
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);
 
-  // No machine set → the chip reads "+ add machine" and opens the picker.
-  const chip = page.getByTestId("exercise-machine-chip");
-  await expect(chip).toContainText("add machine");
-  await chip.click();
+  // No machine set → no chip; "Add machine" lives in the exercise settings
+  // menu at the top and opens the picker.
+  await expect(page.getByTestId("exercise-machine-chip")).toHaveCount(0);
+  await openMachinePicker(page, NAME);
 
   // Search the catalog inside the dialog and pick a Life Fitness press (a
   // machine no other spec creates, so the shared e2e user stays clean).
@@ -142,7 +150,7 @@ test("in-session attach: picks an existing machine from my gym", async ({
   await page.getByTestId("start-session-btn").click();
   await expect(page).toHaveURL(/\/session\//);
   await createExerciseInSession(page, NAME);
-  await page.getByTestId("exercise-machine-chip").click();
+  await openMachinePicker(page, NAME);
 
   // The dialog lists the user's own machines first — no duplicate created.
   await page

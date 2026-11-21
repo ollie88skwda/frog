@@ -26,7 +26,7 @@ export type DraftSnapshot = {
   rDuration?: string;
   rDistance?: string;
   // Per-set laterality override ("just this one set") — persisted so a reload
-  // restores the ᴿ line and the right-side keystrokes it protects. Null = no
+  // restores the right-side line and the right-side keystrokes it protects. Null = no
   // override, the exercise's own laterality applies.
   laterality?: Laterality | null;
 };
