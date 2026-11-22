@@ -33,6 +33,7 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import { ChipGroup, ChipItem } from "@/components/ui/chip";
+import { HintTip } from "@/components/ui/hint-tip";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
 import { rowClass } from "@/components/ui/row";
@@ -287,7 +288,12 @@ function GoalFields({
   const update = useUpdateUserPrefs();
   return (
     <div className="rounded-md mt-4 bg-surface p-4" data-testid="goal-fields">
-      <p className="text-xs font-medium">Goal</p>
+      <p className="flex items-center gap-2 text-xs font-medium">
+        Goal
+        <HintTip title="Goal">
+          Optional. Weight-rate notes only appear when your goal is cut or bulk.
+        </HintTip>
+      </p>
       <ChipGroup
         className="mt-2"
         value={goal ?? ""}
@@ -327,9 +333,6 @@ function GoalFields({
           </ChipItem>
         ))}
       </ChipGroup>
-      <p className="mt-2 text-2xs text-faint">
-        Optional. Weight-rate notes only appear when your goal is cut or bulk.
-      </p>
     </div>
   );
 }

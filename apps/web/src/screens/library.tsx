@@ -57,7 +57,7 @@ import {
 } from "@/components/exercise-filter";
 import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
-import { ChipGroup, ChipItem } from "@/components/ui/chip";
+import { ChipGroup, ChipItem, ToggleChip } from "@/components/ui/chip";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { IconButton, IconLink } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -186,6 +186,7 @@ export default function LibraryScreen() {
   const [filterEquipment, setFilterEquipment] = useState("");
   const [filterTier, setFilterTier] = useState<TierFilter>("");
   const [yoursOnly, setYoursOnly] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   // One shared editor sheet for both "+ Custom exercise" and every row's "Edit"
@@ -348,30 +349,47 @@ export default function LibraryScreen() {
           }
         />
         <div className="mt-2 flex items-center gap-2">
-          <span className="text-2xs text-faint">Group by</span>
-          <ChipGroup
-            value={exerciseGrouping}
-            onValueChange={(v) =>
-              v &&
-              updatePrefs.mutate({
-                exerciseGrouping: v as typeof exerciseGrouping,
-              })
-            }
-            aria-label="Group exercises by"
+          <ToggleChip
+            pressed={showMore || filterTier !== ""}
+            onClick={() => setShowMore((v) => !v)}
+            data-testid="library-more-toggle"
           >
-            <ChipItem value="joint_action" data-testid="group-joint-action">
-              Joint action
-            </ChipItem>
-            <ChipItem value="region" data-testid="group-region">
-              Region
-            </ChipItem>
-          </ChipGroup>
+            Group &amp; quality
+            <CaretDown
+              aria-hidden="true"
+              className={cn("size-3", showMore && "rotate-180")}
+            />
+          </ToggleChip>
         </div>
-        <TierLegend
-          className="mt-2"
-          active={filterTier}
-          onSelect={(v) => setFilterTier((prev) => (prev === v ? "" : v))}
-        />
+        {(showMore || filterTier !== "") && (
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-2xs text-faint">Group by</span>
+              <ChipGroup
+                value={exerciseGrouping}
+                onValueChange={(v) =>
+                  v &&
+                  updatePrefs.mutate({
+                    exerciseGrouping: v as typeof exerciseGrouping,
+                  })
+                }
+                aria-label="Group exercises by"
+              >
+                <ChipItem value="joint_action" data-testid="group-joint-action">
+                  Joint action
+                </ChipItem>
+                <ChipItem value="region" data-testid="group-region">
+                  Region
+                </ChipItem>
+              </ChipGroup>
+            </div>
+            <TierLegend
+              className="mt-2"
+              active={filterTier}
+              onSelect={(v) => setFilterTier((prev) => (prev === v ? "" : v))}
+            />
+          </div>
+        )}
       </div>
 
       <div className="rounded-md mt-4 overflow-hidden bg-surface">

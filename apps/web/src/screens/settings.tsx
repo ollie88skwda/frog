@@ -15,6 +15,7 @@ import { Link } from "react-router";
 import { ImportCard } from "@/components/import-card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { HintTip } from "@/components/ui/hint-tip";
 import { Input } from "@/components/ui/input";
 import { QueryState } from "@/components/ui/query-state";
 import { Row as ListRow } from "@/components/ui/row";
@@ -89,27 +90,35 @@ function Section({
 }) {
   return (
     <div className="mt-4 rounded-md bg-surface p-4">
-      <h2 className="text-sm font-medium">{title}</h2>
-      {hint && <p className="mt-1 text-2xs text-faint">{hint}</p>}
+      <h2 className="flex items-center gap-2 text-sm font-medium">
+        {title}
+        {hint && <HintTip title={title}>{hint}</HintTip>}
+      </h2>
       {children}
     </div>
   );
 }
 
+/** `hint` is the explanation, behind the ⓘ; `note` is live state that must stay visible (blocked, unsupported). */
 function Row({
   label,
   hint,
+  note,
   children,
 }: {
   label: string;
   hint?: string;
+  note?: string;
   children: ReactNode;
 }) {
   return (
     <div className="flex items-center justify-between gap-3 py-3">
       <div className="min-w-0">
-        <p className="text-xs font-medium">{label}</p>
-        {hint && <p className="mt-1 text-2xs text-faint">{hint}</p>}
+        <p className="flex items-center gap-2 text-xs font-medium">
+          {label}
+          {hint && <HintTip title={label}>{hint}</HintTip>}
+        </p>
+        {note && <p className="mt-1 text-2xs text-faint">{note}</p>}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
@@ -643,12 +652,13 @@ function NotificationsSection() {
       <div className="mt-1 [&>*+*]:mt-2">
         <Row
           label="System notifications"
-          hint={
+          hint={`Allow ${APP_NAME} to post notifications — only "Send test" posts one today.`}
+          note={
             permission === "denied"
               ? "Blocked — re-enable in your browser settings."
               : permission === "unsupported"
                 ? "Not supported on this device."
-                : `Allow ${APP_NAME} to post notifications — only "Send test" posts one today.`
+                : undefined
           }
         >
           {permission === "granted" ? (
@@ -675,14 +685,15 @@ function NotificationsSection() {
 
         <Row
           label="Background push"
-          hint={
+          hint="Registers this device for push. No sender is wired up yet, so nothing arrives."
+          note={
             !supported
               ? "Not supported on this device."
               : !pushConfigured
                 ? "Requires server keys — not configured."
                 : isIOS()
                   ? "iOS: install the app to Home Screen first."
-                  : "Registers this device for push. No sender is wired up yet, so nothing arrives."
+                  : undefined
           }
         >
           <Toggle
