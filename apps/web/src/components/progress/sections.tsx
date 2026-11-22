@@ -238,18 +238,7 @@ export function OverviewTiles({
           )
         }
         basis={avg.kg == null ? "7-day avg · need 4 weigh-ins" : "7-day avg"}
-        info={
-          <>
-            <p>
-              {avg.kg == null
-                ? "Not enough yet: the average needs 4 weigh-ins in the last 7 days."
-                : "Mean of your weigh-ins in the last 7 days, with the weekly rate of change."}
-            </p>
-            <p className="num text-soft">
-              n={avg.n} weigh-ins · {Math.min(avg.n, 4)} of 4 needed
-            </p>
-          </>
-        }
+        info={<BodyweightInfo avg={avg} />}
         onClick={() => go("body")}
       />
       <StatTile
@@ -578,6 +567,21 @@ const GIRTHS: {
   { key: "thighLCm", label: "Thigh" },
 ];
 
+function BodyweightInfo({ avg }: { avg: { kg: number | null; n: number } }) {
+  return (
+    <>
+      <p>
+        {avg.kg == null
+          ? "Not enough yet: the average needs 4 weigh-ins in the last 7 days."
+          : "Mean of your weigh-ins in the last 7 days, with the weekly rate of change."}
+      </p>
+      <p className="num text-soft">
+        n={avg.n} weigh-ins · {Math.min(avg.n, 4)} of 4 needed
+      </p>
+    </>
+  );
+}
+
 export function BodySection({ d, now }: { d: ProgressData; now: number }) {
   const { unit } = useUnit();
   const entries = bodyweightEntries(d.measurements);
@@ -601,6 +605,11 @@ export function BodySection({ d, now }: { d: ProgressData; now: number }) {
                 ? "–"
                 : toDisplayWeight(roundBodyweightDisplay(avg.kg), unit)}
             </span>
+          }
+          delta={
+            <InfoNote title="About bodyweight">
+              <BodyweightInfo avg={avg} />
+            </InfoNote>
           }
         />
         {GIRTHS.map((g) => {
