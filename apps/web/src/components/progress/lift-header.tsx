@@ -82,11 +82,22 @@ export function LiftHeader({
               />
             ) : undefined
           }
-          basis={last ? "latest session top set" : NOT_ESTIMABLE_NOTE}
-          n={series.points.length}
+          basis={last ? "latest top set" : "needs 10 or fewer reps"}
+          emphasis
+          info={
+            <>
+              <p>
+                {last
+                  ? "Estimated from your latest session's top set."
+                  : NOT_ESTIMABLE_NOTE}
+              </p>
+              <p className="num text-soft">n={series.points.length} sessions</p>
+            </>
+          }
           onClick={() => setWhy(true)}
         />
         <StatTile
+          emphasis
           label="Status"
           value={
             <span className="whitespace-normal text-lg">
@@ -95,18 +106,35 @@ export function LiftHeader({
           }
           basis={
             verdict.kind === "status" && verdict.rough
-              ? verdict.score
-                ? verdict.score.level === "low"
-                  ? "tentative: tap the % for what raises it"
-                  : "best guess: tap the % for what raises it"
-                : "log one more session to compare"
+              ? verdict.score && verdict.score.level === "low"
+                ? "tentative"
+                : verdict.score
+                  ? "best guess"
+                  : "log one more session"
               : verdict.kind === "status"
-                ? "7+ comparable sessions · beta"
+                ? "7+ sessions · beta"
                 : verdict.kind === "not_estimable"
-                  ? NOT_ESTIMABLE_NOTE
+                  ? "needs 10 or fewer reps"
                   : verdict.note
           }
-          n={series.sessionsLogged}
+          info={
+            <>
+              <p>
+                {verdict.kind === "status" && verdict.rough
+                  ? verdict.score
+                    ? "A best guess until 7 comparable sessions. Tap the % for what raises it."
+                    : "Log one more session to compare."
+                  : verdict.kind === "status"
+                    ? "7+ comparable sessions · beta"
+                    : verdict.kind === "not_estimable"
+                      ? NOT_ESTIMABLE_NOTE
+                      : verdict.note}
+              </p>
+              <p className="num text-soft">
+                n={series.sessionsLogged} sessions
+              </p>
+            </>
+          }
           confidence={
             <>
               {verdict.kind === "status" && verdict.score && (
@@ -121,18 +149,24 @@ export function LiftHeader({
           }
         />
         <StatTile
+          emphasis
           label="Best top set"
           value={best ? w(displayE1rm(best)) : "–"}
           unit={best ? unitLabel(unit) : undefined}
-          basis="highest e1RM, working sets"
+          basis="highest e1RM"
+          info={<p>Highest e1RM across your working sets.</p>}
         />
         <StatTile
+          emphasis
           label="Next time"
           value={<span className="text-sm">{nextHint ?? "–"}</span>}
-          basis={
-            nextHint
-              ? "from your plan"
-              : "appears once a plan targets this lift"
+          basis={nextHint ? "from your plan" : "no plan yet"}
+          info={
+            <p>
+              {nextHint
+                ? "From your plan."
+                : "Appears once a plan targets this lift."}
+            </p>
           }
         />
       </div>

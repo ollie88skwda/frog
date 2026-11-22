@@ -107,7 +107,7 @@ test("overview tiles and all six sections render with honest copy", async ({
     "Sessions, 7 days",
     "Lifts progressing",
     "RIR logged",
-    "Bodyweight, 7-day avg",
+    "Bodyweight",
     "Weekly streak",
   ])
     await expect(tiles).toContainText(label);
@@ -121,9 +121,9 @@ test("overview tiles and all six sections render with honest copy", async ({
 
   // Strength carries the formula note (Brzycki + RIR, 10% swing, 7 sessions).
   await page.getByTestId("progress-seg-strength").click();
-  await expect(page.getByTestId("progress-screen")).toContainText(
-    "Brzycki with RIR",
-  );
+  await page.getByRole("button", { name: "About strength" }).click();
+  await expect(page.getByRole("dialog")).toContainText("Brzycki with RIR");
+  await page.keyboard.press("Escape");
   // Lab states its caveat plainly when there is nothing to find yet.
   await page.getByTestId("progress-seg-lab").click();
   await expect(page.getByTestId("progress-screen")).toContainText(
@@ -170,7 +170,6 @@ test("a condition finding names n and says correlation, not causation", async ({
   const row = page.getByRole("button", { name: /Sleep \(h\) days/ }).first();
   await expect(row).toBeVisible();
   await expect(row).toContainText(/n=\d+ high/);
-  await expect(row).toContainText("correlation, not causation");
   await row.click();
   await expect(page.getByRole("dialog")).toContainText(
     "Correlation, not causation.",

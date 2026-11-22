@@ -18,6 +18,7 @@ import {
   ConfidenceBadge,
   DeltaChip,
   EmptyState,
+  InfoNote,
   MuscleMeter,
   Spark,
   SparkRow,
@@ -36,7 +37,6 @@ import {
   liftSeries,
   liftVerdict,
   muscleContributions,
-  NOT_ESTIMABLE_NOTE,
   type ProgressScope,
   rirCoverage,
   scopeSessions,
@@ -125,9 +125,11 @@ export function OverviewTiles({
     now,
   );
 
+  const nSets = d.history.filter((s) => s.startedAt > now - 7 * DAY).length;
   return (
-    <div className="grid grid-cols-2 gap-2 px-4" data-testid="progress-tiles">
+    <div className="grid grid-cols-2 gap-3 px-4" data-testid="progress-tiles">
       <StatTile
+        emphasis
         label="Hard sets, 7 days"
         value={Math.round(vol.hardSets * 10) / 10}
         delta={
@@ -137,11 +139,20 @@ export function OverviewTiles({
             basis="vs the 7 days before"
           />
         }
-        basis="vs previous 7 d"
-        n={d.history.filter((s) => s.startedAt > now - 7 * DAY).length}
+        basis="vs prior 7 days"
+        info={
+          <>
+            <p>
+              Working sets at 4 RIR or closer, compared with the 7 days before.
+              Warm-ups never count.
+            </p>
+            <p className="num text-soft">n={nSets} sessions</p>
+          </>
+        }
         onClick={() => go("volume")}
       />
       <StatTile
+        emphasis
         label="Sessions, 7 days"
         value={sessions7}
         delta={
@@ -151,18 +162,26 @@ export function OverviewTiles({
             basis="vs the 7 days before"
           />
         }
-        basis="vs previous 7 d"
-        n={sessions7}
+        basis="vs prior 7 days"
+        info={
+          <>
+            <p>
+              Sessions logged in the last 7 days, compared with the 7 before.
+            </p>
+            <p className="num text-soft">n={sessions7} sessions</p>
+          </>
+        }
       />
       <StatTile
+        emphasis
         label="Lifts progressing"
         value={lifts.judged ? `${lifts.progressing}/${lifts.judged}` : "–"}
         basis={
           !lifts.judged
-            ? "log a lift twice for a first read"
+            ? "log a lift twice"
             : lifts.avg != null && lifts.avg < 50
-              ? "tentative: best guess per lift"
-              : "best guess per lift"
+              ? "tentative guess"
+              : "best guess"
         }
         confidence={
           lifts.avg != null && (
@@ -171,18 +190,34 @@ export function OverviewTiles({
             />
           )
         }
-        n={lifts.total}
+        info={
+          <>
+            <p>
+              A best guess per lift, with a confidence percentage that rises as
+              you log more sessions of each lift.
+              {!lifts.judged && " Log a lift twice for a first read."}
+            </p>
+            <p className="num text-soft">n={lifts.total} lifts</p>
+          </>
+        }
         onClick={() => go("strength")}
       />
       <StatTile
+        emphasis
         label="RIR logged"
         value={cov.coverage == null ? "–" : pctText(cov.coverage * 100)}
-        basis="of working sets, in scope"
-        n={cov.n}
+        basis="of working sets"
+        info={
+          <>
+            <p>Share of working sets in this scope that have an RIR logged.</p>
+            <p className="num text-soft">n={cov.n} sets</p>
+          </>
+        }
         onClick={() => go("effort")}
       />
       <StatTile
-        label="Bodyweight, 7-day avg"
+        emphasis
+        label="Bodyweight"
         value={
           avg.kg == null
             ? "–"
@@ -200,20 +235,31 @@ export function OverviewTiles({
             />
           )
         }
-        basis={
-          avg.kg == null
-            ? "Not enough yet (need 4 weigh-ins)"
-            : "mean of weigh-ins"
+        basis={avg.kg == null ? "7-day avg · need 4 weigh-ins" : "7-day avg"}
+        info={
+          <>
+            <p>
+              {avg.kg == null
+                ? "Not enough yet: the average needs 4 weigh-ins in the last 7 days."
+                : "Mean of your weigh-ins in the last 7 days, with the weekly rate of change."}
+            </p>
+            <p className="num text-soft">n={avg.n} weigh-ins</p>
+          </>
         }
-        n={avg.n}
         onClick={() => go("body")}
       />
       <StatTile
+        emphasis
         label="Weekly streak"
         value={streak.weeks}
         unit={streak.weeks === 1 ? "wk" : "wks"}
         basis="weeks with a session"
-        n={d.history.length}
+        info={
+          <>
+            <p>Consecutive weeks (Sunday start) with at least one session.</p>
+            <p className="num text-soft">n={d.history.length} sessions</p>
+          </>
+        }
         onClick={() => go("lab")}
       />
     </div>
@@ -261,7 +307,9 @@ export function StrengthSection({
               <SparkRow
                 key={id}
                 title={name}
-                sub={v.kind === "not_estimable" ? NOT_ESTIMABLE_NOTE : v.note}
+                sub={
+                  v.kind === "not_estimable" ? "needs 10 or fewer reps" : v.note
+                }
                 value={
                   <span className="text-xs text-soft">{verdictWord(v)}</span>
                 }
@@ -301,12 +349,6 @@ export function StrengthSection({
           );
         })}
       </Block>
-      <p className="px-4 pt-2 text-2xs text-soft">
-        e1RM = Brzycki with RIR, sets of 10 or fewer total reps. A change under
-        10% reads as normal swing. Every verdict is a best guess with a
-        confidence percentage that rises as you log more sessions of the lift.
-        Tap a lift for what would raise it.
-      </p>
     </>
   );
 }
@@ -384,6 +426,7 @@ export function VolumeSection({ d, now }: { d: ProgressData; now: number }) {
                 key={m.muscle}
                 label={muscleLabel(m.muscle)}
                 sets={m.total}
+                quiet
                 onClick={() => setOpen(m.muscle)}
               />
             ))
@@ -397,19 +440,26 @@ export function VolumeSection({ d, now }: { d: ProgressData; now: number }) {
             showWord
           />
           <span>
-            Average over {overall.muscles} muscle
-            {overall.muscles === 1 ? "" : "s"}. Tap a muscle for its own number.
+            avg of {overall.muscles} muscle{overall.muscles === 1 ? "" : "s"}
           </span>
         </div>
       )}
-      <p className="px-4 pt-2 text-2xs text-soft">
-        Fractional hard sets: direct 1, indirect 0.5. The 10-20 band is a
-        starting range, not a target.
-        {r.noRirSets > 0 &&
-          ` ${Math.round(r.noRirSets)} sets without RIR counted as hard.`}
-        {r.unmapped > 0 &&
-          ` ${Math.round(r.unmapped)} sets on exercises with no muscle map are not shown.`}
-      </p>
+      {(r.noRirSets > 0 || r.unmapped > 0) && (
+        <div className="flex items-center gap-2 px-4 pt-2 text-xs text-soft">
+          <InfoNote title="Sets not fully counted">
+            {r.noRirSets > 0 && (
+              <p>{Math.round(r.noRirSets)} sets without RIR counted as hard.</p>
+            )}
+            {r.unmapped > 0 && (
+              <p>
+                {Math.round(r.unmapped)} sets on exercises with no muscle map
+                are not shown.
+              </p>
+            )}
+          </InfoNote>
+          <span>some sets not fully counted</span>
+        </div>
+      )}
       <Dialog open={open != null} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent
           title={open ? muscleLabel(open) : ""}
@@ -469,11 +519,11 @@ export function EffortSection({
   );
   return (
     <>
-      <div className="px-4 pb-2 text-xs text-soft">
-        {cov.coverage == null
-          ? "No working sets in this scope."
-          : `RIR logged on ${pctText(cov.coverage * 100)} of ${cov.n} working sets. RIR is an estimate, about ±1 rep.`}
-      </div>
+      {cov.coverage == null && (
+        <div className="px-4 pb-2 text-xs text-soft">
+          No working sets in this scope.
+        </div>
+      )}
       <Block>
         {ids.length === 0 ? (
           <EmptyState
@@ -509,9 +559,6 @@ export function EffortSection({
           })
         )}
       </Block>
-      <p className="px-4 pt-2 text-2xs text-soft">
-        Last set's RIR per session, oldest to newest. "–" = not logged.
-      </p>
     </>
   );
 }
@@ -540,8 +587,8 @@ export function BodySection({ d, now }: { d: ProgressData; now: number }) {
           title="Bodyweight"
           sub={
             avg.kg == null
-              ? `Not enough yet (${avg.n} of 4 weigh-ins this week)`
-              : `7-day average · n=${avg.n}${rate == null ? "" : ` · ${rate > 0 ? "+" : ""}${rate.toFixed(2)}%/wk`}`
+              ? "need 4 weigh-ins"
+              : `7-day avg${rate == null ? "" : ` · ${rate > 0 ? "+" : ""}${rate.toFixed(2)}%/wk`}`
           }
           points={entries.slice(-20).map((e) => e.kg)}
           value={
@@ -560,11 +607,7 @@ export function BodySection({ d, now }: { d: ProgressData; now: number }) {
             <SparkRow
               key={g.key}
               title={g.label}
-              sub={
-                pts.length < 2
-                  ? "Not enough yet (2 entries)"
-                  : `n=${pts.length}`
-              }
+              sub={pts.length < 2 ? "need 2 entries" : `${pts.length} entries`}
               points={pts.slice(-20)}
               value={
                 <span className="num text-sm font-semibold">
@@ -613,10 +656,12 @@ export function LabSection() {
               className="flex w-full flex-col gap-1 px-4 py-2 text-left hover:bg-surface-hover"
               onClick={() => setOpen(c)}
             >
-              <span className="text-sm">
+              <span className="block truncate text-sm font-semibold">
                 {c.outcome.type === "e1rm"
                   ? `${c.outcome.exerciseName} e1RM`
-                  : "Session"}{" "}
+                  : "Session"}
+              </span>
+              <span className="text-sm">
                 <span className="num font-semibold">
                   {c.pctDiff > 0 ? "+" : ""}
                   {c.pctDiff.toFixed(1)}%
@@ -630,7 +675,7 @@ export function LabSection() {
                   score={c.score}
                   showWord={c.score.level === "low"}
                 />
-                n={c.n.high} high / {c.n.low} low · correlation, not causation
+                n={c.n.high} high / {c.n.low} low
                 <TierBadge tier={5} />
               </span>
             </button>

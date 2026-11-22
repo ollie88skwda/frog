@@ -12,6 +12,7 @@ export function MuscleMeter({
   band = [10, 20],
   max = 24,
   onClick,
+  quiet,
 }: {
   label: string;
   sets: number;
@@ -19,6 +20,8 @@ export function MuscleMeter({
   /** Track scale (sets). */
   max?: number;
   onClick?: () => void;
+  /** Opt-in: name the status only when it is not the expected one (in band). */
+  quiet?: boolean;
 }) {
   const status = meterStatus(sets, band);
   const pct = (v: number) => `${Math.min(100, Math.max(0, (v / max) * 100))}%`;
@@ -58,14 +61,16 @@ export function MuscleMeter({
             style={{ width: pct(sets) }}
           />
         </span>
-        <span
-          className={cn(
-            "mt-1 block text-2xs",
-            status === "high" ? "text-attn" : "text-soft",
-          )}
-        >
-          {word}
-        </span>
+        {!(quiet && status === "in-band") && (
+          <span
+            className={cn(
+              "mt-1 block text-2xs",
+              status === "high" ? "text-attn" : "text-soft",
+            )}
+          >
+            {word}
+          </span>
+        )}
       </span>
       <span className="num w-9 shrink-0 text-right text-sm font-semibold text-ink">
         {shown}
