@@ -69,6 +69,7 @@ function ProgramCatalog() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
+      <h1 className="sr-only">Programs</h1>
       {active.config && activeTemplate && (
         <Card size="sm" className="mt-5 bg-surface-2">
           <div className="flex items-center gap-3 px-(--card-spacing)">
