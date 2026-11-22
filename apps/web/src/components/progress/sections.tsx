@@ -299,59 +299,59 @@ export function StrengthSection({
     );
   const minAt = scopeSessions(d.history, scope, now)[0]?.startedAt ?? 0;
   return (
-    <>
-      <Block>
-        {lifts.map(({ id, s, v }) => {
-          const pts = s.points.filter((p) => p.at >= minAt).map((p) => p.e1rm);
-          const name = d.names.get(id) ?? "Exercise";
-          if (v.kind !== "status")
-            return (
-              <SparkRow
-                key={id}
-                title={name}
-                sub={
-                  v.kind === "not_estimable" ? "needs 10 or fewer reps" : v.note
-                }
-                value={
-                  <span className="text-xs text-soft">{verdictWord(v)}</span>
-                }
-                onClick={() => navigate(`/exercises/${id}`)}
-              />
-            );
-          const last = s.points[s.points.length - 1].e1rm;
-          const st = v.status;
+    <Block>
+      {lifts.map(({ id, s, v }) => {
+        const pts = s.points.filter((p) => p.at >= minAt).map((p) => p.e1rm);
+        const name = d.names.get(id) ?? "Exercise";
+        if (v.kind !== "status")
           return (
             <SparkRow
               key={id}
               title={name}
               sub={
-                v.score
-                  ? `${verdictWord(v)} · ${v.score.pct}%${v.score.level === "low" ? " tentative" : ""}`
-                  : `${verdictWord(v)} · n=${st.n}`
+                v.kind === "not_estimable"
+                  ? "needs 10 or fewer total reps"
+                  : v.note
               }
-              points={pts}
-              confidence={v.rough ? "low" : "ok"}
               value={
-                <span className="num text-sm font-semibold">
-                  {toDisplayWeight(Math.round(last * 2) / 2, unit)}
-                </span>
-              }
-              delta={
-                st.deltaPct == null ? undefined : (
-                  <DeltaChip
-                    delta={st.deltaPct}
-                    noise={10}
-                    unit="%"
-                    basis="vs your last 6 sessions' median"
-                  />
-                )
+                <span className="text-xs text-soft">{verdictWord(v)}</span>
               }
               onClick={() => navigate(`/exercises/${id}`)}
             />
           );
-        })}
-      </Block>
-    </>
+        const last = s.points[s.points.length - 1].e1rm;
+        const st = v.status;
+        return (
+          <SparkRow
+            key={id}
+            title={name}
+            sub={
+              v.score
+                ? `${verdictWord(v)} · ${v.score.pct}%${v.score.level === "low" ? " tentative" : ""}`
+                : `${verdictWord(v)} · n=${st.n}`
+            }
+            points={pts}
+            confidence={v.rough ? "low" : "ok"}
+            value={
+              <span className="num text-sm font-semibold">
+                {toDisplayWeight(Math.round(last * 2) / 2, unit)}
+              </span>
+            }
+            delta={
+              st.deltaPct == null ? undefined : (
+                <DeltaChip
+                  delta={st.deltaPct}
+                  noise={10}
+                  unit="%"
+                  basis="vs your last 6 sessions' median"
+                />
+              )
+            }
+            onClick={() => navigate(`/exercises/${id}`)}
+          />
+        );
+      })}
+    </Block>
   );
 }
 

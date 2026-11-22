@@ -82,7 +82,7 @@ export function LiftHeader({
               />
             ) : undefined
           }
-          basis={last ? "latest top set" : "needs 10 or fewer reps"}
+          basis={last ? "latest top set" : "needs 10 or fewer total reps"}
           emphasis
           info={
             <>
@@ -114,7 +114,7 @@ export function LiftHeader({
               : verdict.kind === "status"
                 ? "7+ sessions · beta"
                 : verdict.kind === "not_estimable"
-                  ? "needs 10 or fewer reps"
+                  ? "needs 10 or fewer total reps"
                   : verdict.note
           }
           info={
