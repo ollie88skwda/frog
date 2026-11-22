@@ -95,14 +95,19 @@ export function AdjustField({
           </span>
         )}
       </div>
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div
+        className={cn(
+          "mt-2 grid gap-2",
+          deltas.length <= 2 ? "grid-cols-2" : "grid-cols-4",
+        )}
+      >
         {deltas.map((d) => (
           <button
             key={d}
             type="button"
             onClick={() => onValueChange(applyDelta(value, d, integer))}
             className={cn(
-              "num min-h-11 min-w-11 rounded-sm px-2 text-2xs font-medium transition-colors duration-150",
+              "num min-h-11 w-full min-w-0 rounded-sm px-1 text-2xs font-medium transition-colors duration-150",
 
               d > 0
                 ? "bg-accent-soft text-accent-ink hover:bg-accent-soft/70"

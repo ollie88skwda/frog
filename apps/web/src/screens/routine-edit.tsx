@@ -1149,7 +1149,7 @@ export default function RoutineEditScreen() {
                               </p>
                             </div>
                           ) : (
-                            <div className="flex items-end gap-2">
+                            <div className="flex flex-col gap-2">
                               <AdjustField
                                 label="Reps"
                                 hint={repsHint}
@@ -1160,24 +1160,19 @@ export default function RoutineEditScreen() {
                                 }
                                 deltas={REPS_DELTAS}
                                 testId={`${testBase}-reps`}
-                                className="flex-1"
                               />
-                              <div className="flex flex-col items-center pb-2">
-                                <span className="text-2xs text-faint">to</span>
-                                <Field
-                                  inputMode="numeric"
-                                  placeholder="max"
-                                  title="Optional rep-range max"
-                                  value={s.repsMax}
-                                  onChange={(e) =>
-                                    patchSet(i, si, {
-                                      repsMax: e.target.value,
-                                    })
-                                  }
-                                  className="w-14 text-center"
-                                  data-testid={`${testBase}-repsmax`}
-                                />
-                              </div>
+                              <Field
+                                inputMode="numeric"
+                                placeholder="Rep range max (optional)"
+                                title="Optional rep-range max"
+                                value={s.repsMax}
+                                onChange={(e) =>
+                                  patchSet(i, si, {
+                                    repsMax: e.target.value,
+                                  })
+                                }
+                                data-testid={`${testBase}-repsmax`}
+                              />
                             </div>
                           ))}
 
