@@ -23,6 +23,20 @@ export const LESSONS = {
       "Beginner? Go near failure to learn what failure feels like. Intermediate+? Stay at 1–2.",
     ],
   },
+  quality: {
+    title: "Exercise quality",
+    body: [
+      "Best to Weak is how well an exercise trains its main muscle.",
+      "A brighter name means a better pick. Tap a grade to filter.",
+    ],
+  },
+  readiness: {
+    title: "Readiness check-in",
+    body: [
+      "Stress: 1 is calm, 10 is maxed out.",
+      "One rough night never changes your weekly volume. Frog only notes it.",
+    ],
+  },
 } satisfies Record<string, Lesson>;
 
 export type LessonId = keyof typeof LESSONS;

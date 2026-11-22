@@ -55,6 +55,7 @@ import {
   primaryMuscleKey,
   type TierFilter,
 } from "@/components/exercise-filter";
+import { InfoTip } from "@/components/lesson";
 import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
 import { ChipGroup, ChipItem } from "@/components/ui/chip";
@@ -288,9 +289,8 @@ export default function LibraryScreen() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
-      <h1 className="text-lg font-semibold tracking-tight">Library</h1>
-
-      <div className="mt-4 flex items-center gap-2">
+      <h1 className="sr-only">Library</h1>
+      <div className="flex items-center gap-2">
         <Button
           variant="primary"
           className="flex-1"
@@ -348,7 +348,7 @@ export default function LibraryScreen() {
           }
         />
         <div className="mt-2 flex items-center gap-2">
-          <span className="text-2xs text-faint">Group by</span>
+          <span className="text-2xs text-faint">Group</span>
           <ChipGroup
             value={exerciseGrouping}
             onValueChange={(v) =>
@@ -369,6 +369,7 @@ export default function LibraryScreen() {
         </div>
         <TierLegend
           className="mt-2"
+          label={<InfoTip lessonId="quality" />}
           active={filterTier}
           onSelect={(v) => setFilterTier((prev) => (prev === v ? "" : v))}
         />

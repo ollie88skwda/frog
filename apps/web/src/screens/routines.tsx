@@ -95,8 +95,8 @@ export default function RoutinesScreen() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold tracking-tight">Routines</h1>
+      <h1 className="sr-only">Routines</h1>
+      <div className="flex items-center justify-end">
         <Toolbar>
           <Button
             variant="ghost"
@@ -106,14 +106,6 @@ export default function RoutinesScreen() {
             data-testid="new-folder-btn"
           >
             <FolderPlus className="size-4" />
-          </Button>
-          <Button
-            variant="accent"
-            size="sm"
-            onClick={() => navigate("/programs/new")}
-            data-testid="build-program-btn"
-          >
-            Build my program
           </Button>
           <Button
             variant="outline"
@@ -400,7 +392,7 @@ function RoutineCard({
         <p className="truncate text-sm font-medium">{routine.name}</p>
         {summary && (
           <p
-            className="num truncate text-xs text-soft"
+            className="num text-xs text-soft"
             data-testid={`routine-summary-${routine.name}`}
           >
             {formatRoutineSummary(summary)}

@@ -69,6 +69,7 @@ export const RESEARCH_B: ProgramTemplate = {
   name: "Research B: full body 3× a week",
   summary:
     "Monday, Wednesday, Friday. Three full-body sessions with small set differences per day; isolation at 10-15 reps.",
+  short: "Mon, Wed, Fri full-body sessions.",
   author: "research-b",
   schedule: { kind: "weekdays", days: [1, 3, 5] },
   rotation: "cycle",

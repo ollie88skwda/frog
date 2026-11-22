@@ -107,11 +107,13 @@ test("the hero names today's routine, previews it, and starts it in one tap", as
   // A pre-saved routine is named in the hero — not a generic "Start".
   await expect(page.getByTestId("hero-plan-name")).toHaveText(PUSH);
   // …and its contents are previewed, so you know what you're walking into.
+  await page.getByTestId("hero-lifts-toggle").click();
   await expect(hero.getByText(EX_A)).toBeVisible();
 
   // Picking a different plan re-aims the hero without leaving Home.
   await page.getByTestId(`hero-pick-${PULL}`).click();
   await expect(page.getByTestId("hero-plan-name")).toHaveText(PULL);
+  await page.getByTestId("hero-lifts-toggle").click();
   await expect(hero.getByText(EX_B)).toBeVisible();
 
   // One tap starts it, prefilled.

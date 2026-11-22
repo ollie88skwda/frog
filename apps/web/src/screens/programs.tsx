@@ -4,7 +4,7 @@ import {
   PROGRAM_TEMPLATES,
   templateById,
 } from "@frog/core";
-import { Barbell, MagicWand } from "@phosphor-icons/react";
+import { Barbell, Info, MagicWand } from "@phosphor-icons/react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { scheduleLabel } from "@/components/builder/logic";
@@ -12,6 +12,8 @@ import { SectionHeader } from "@/components/data";
 import { BackButton } from "@/components/ui/back-button";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { IconButton } from "@/components/ui/icon-button";
 import {
   catalogEntry,
   EQUIPMENT_PROFILE_LABELS,
@@ -67,16 +69,6 @@ function ProgramCatalog() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
-      <div className="flex items-center gap-3">
-        <BackButton to="/routines" label="Back to routines" />
-        <div>
-          <h1 className="text-xl font-bold tracking-tight">Programs</h1>
-          <p className="text-xs text-soft">
-            Five questions, then a plan you can tune before it saves.
-          </p>
-        </div>
-      </div>
-
       {active.config && activeTemplate && (
         <Card size="sm" className="mt-5 bg-surface-2">
           <div className="flex items-center gap-3 px-(--card-spacing)">
@@ -112,33 +104,14 @@ function ProgramCatalog() {
         />
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-bold">Build my program</span>
-          <span className="block text-xs opacity-80">
-            Schedule, goal, experience, equipment, time.
-          </span>
+          <span className="block text-xs opacity-80">Five quick questions</span>
         </span>
       </Link>
 
       <SectionHeader title="Templates" />
       <div className="flex flex-col gap-2" data-testid="template-list">
         {PROGRAM_TEMPLATES.map((tp) => (
-          <Link
-            key={tp.id}
-            to={`/programs/new?template=${tp.id}`}
-            data-testid={`template-${tp.id}`}
-            className="block rounded-md bg-surface-2 p-4 transition-colors duration-150 hover:bg-surface-hover"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm font-semibold">{tp.name}</span>
-              <span className="num shrink-0 text-xs text-soft">
-                {scheduleLabel(tp.schedule).split(" · ")[1]}
-              </span>
-            </div>
-            <p className="mt-1 text-xs text-soft">{tp.summary}</p>
-            <p className="num mt-1 text-xs text-soft">
-              {tp.minutes.min}-{tp.minutes.max} min
-              {tp.block.kind === "fixed" ? " · 6-week block" : ""}
-            </p>
-          </Link>
+          <TemplateCard key={tp.id} tp={tp} />
         ))}
       </div>
 
@@ -155,8 +128,7 @@ function ProgramCatalog() {
         {more && (
           <div className="mt-2 flex flex-col gap-2">
             <p className="px-1 text-xs text-soft">
-              Older split programs (push/pull/legs, upper/lower). No weekly set
-              meter.
+              Older split programs. No weekly set meter.
             </p>
             {PROGRAM_CATALOG.map((p) => (
               <ProgramCard key={p.key} entry={p} />
@@ -172,6 +144,37 @@ function ProgramCatalog() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function TemplateCard({ tp }: { tp: (typeof PROGRAM_TEMPLATES)[number] }) {
+  const [info, setInfo] = useState(false);
+  return (
+    <div className="flex items-stretch gap-2 rounded-md bg-surface-2 transition-colors duration-150 hover:bg-surface-hover">
+      <Link
+        to={`/programs/new?template=${tp.id}`}
+        data-testid={`template-${tp.id}`}
+        className="block min-w-0 flex-1 p-4"
+      >
+        <span className="block text-sm font-semibold">{tp.name}</span>
+        <span className="mt-1 block text-xs text-soft">{tp.short}</span>
+        <span className="num mt-1 block text-2xs text-faint">
+          {scheduleLabel(tp.schedule).split(" · ")[1]} · {tp.minutes.min}-
+          {tp.minutes.max} min
+          {tp.block.kind === "fixed" ? " · 6 weeks" : ""}
+        </span>
+      </Link>
+      <div className="flex items-center pr-3">
+        <IconButton title={`About ${tp.name}`} onClick={() => setInfo(true)}>
+          <Info className="size-4" />
+        </IconButton>
+      </div>
+      <Dialog open={info} onOpenChange={setInfo}>
+        <DialogContent title={tp.name} aria-describedby={undefined}>
+          <p className="text-sm text-ink-2">{tp.summary}</p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -51,6 +51,7 @@ export const FROG_DEFAULT: ProgramTemplate = {
   name: "Frog default",
   summary:
     "Oliver's method. Top set first, 4-8 reps, 1-3 RIR, every other day. Where this goes beyond the evidence, the Why sheet says so.",
+  short: "Top set first, every other day.",
   author: "frog-default",
   schedule: { kind: "interval", everyDays: 2 },
   rotation: "same",

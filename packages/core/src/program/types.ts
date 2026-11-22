@@ -150,6 +150,8 @@ export type ProgramTemplate = {
   name: string;
   /** Shown on the catalog card. */
   summary: string;
+  /** One short line for the catalog card; `summary` sits behind its info icon. */
+  short: string;
   author: "frog-default" | "research-a" | "research-b" | "research-c";
   schedule: ProgramSchedule;
   sessions: SessionTemplate[];

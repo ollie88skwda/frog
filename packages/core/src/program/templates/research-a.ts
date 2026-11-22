@@ -14,6 +14,7 @@ export const RESEARCH_A: ProgramTemplate = {
   name: "Research A: full body every other day",
   summary:
     "The same full-body session every other day, as the research notes lay it out: isolation at 10-15 reps, flat 1-3 RIR.",
+  short: "Same full-body session every other day.",
   author: "research-a",
   sessions: [{ id: "full", name: "Full body", slots: PROGRAM_A_SLOTS }],
   philosophy: {

@@ -1,8 +1,9 @@
 import { isConditionTracked, SEED_CONDITIONS } from "@frog/core";
 import { Minus, Plus } from "@phosphor-icons/react";
+import { InfoTip } from "@/components/lesson";
 import { IconButton } from "@/components/ui/icon-button";
+import { ScaleSlider } from "@/components/ui/scale-slider";
 import { useTrackedConditions } from "@/lib/queries";
-import { cn } from "@/lib/utils";
 
 /** Today's check-in (F5, C7/C9d: readiness before the first set). Values are
  * keyed by seeded condition metric id, the same shape as
@@ -67,7 +68,10 @@ export function ReadinessStrip({
       aria-label="Readiness check-in"
     >
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold text-soft">Readiness</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xs font-semibold text-soft">Readiness</h2>
+          <InfoTip lessonId="readiness" />
+        </div>
         <button
           type="button"
           onClick={onSkip}
@@ -99,30 +103,23 @@ export function ReadinessStrip({
       <div className="mt-3">
         <div className="flex items-baseline justify-between">
           <span className="text-sm text-ink">Stress</span>
-          <span className="num text-2xs text-faint">
-            {stress == null ? "1 calm · 10 maxed" : `${stress} of 10`}
+          <span className="num text-sm font-semibold text-ink">
+            {stress == null ? (
+              <span className="font-normal text-faint">Not set</span>
+            ) : (
+              <>
+                {stress}
+                <span className="font-normal text-faint"> / 10</span>
+              </>
+            )}
           </span>
         </div>
-        <div className="mt-2 grid grid-cols-5 gap-2">
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-            <button
-              key={n}
-              type="button"
-              aria-label={`Stress ${n}`}
-              aria-pressed={stress === n}
-              data-testid={`readiness-stress-${n}`}
-              onClick={() => set(STRESS, stress === n ? undefined : n)}
-              className={cn(
-                "num h-11 rounded-sm text-xs font-semibold transition-colors duration-150 md:h-8",
-                stress === n
-                  ? "bg-accent text-accent-fg"
-                  : "bg-translucent text-soft hover:bg-surface-hover",
-              )}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
+        <ScaleSlider
+          label="Stress, 1 calm to 10 maxed out"
+          value={stress}
+          onChange={(v) => set(STRESS, v)}
+          testId="readiness-stress"
+        />
       </div>
 
       {caffeineOn && (
@@ -149,11 +146,6 @@ export function ReadinessStrip({
           </div>
         </div>
       )}
-
-      {/* R22/C8: a bad night is a note, not a reason to cut weekly volume. */}
-      <p className="mt-3 text-2xs text-faint">
-        One rough night never changes your weekly volume. Frog only notes it.
-      </p>
     </section>
   );
 }

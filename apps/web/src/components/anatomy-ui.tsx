@@ -6,6 +6,7 @@ import {
   type Tier,
 } from "@frog/core";
 import { Barbell, Star } from "@phosphor-icons/react";
+import type { ReactNode } from "react";
 import { IconButton } from "@/components/ui/icon-button";
 import { cn } from "@/lib/utils";
 
@@ -58,8 +59,11 @@ export function TierLegend({
   className,
   active,
   onSelect,
+  label = "Exercise quality:",
 }: {
   className?: string;
+  /** Replaces the text label (e.g. an info icon). */
+  label?: ReactNode;
   /** Currently applied quality filter ("" = none). */
   active?: TierLegendValue | "";
   /** When provided, chips are buttons that report their value on click. */
@@ -94,7 +98,11 @@ export function TierLegend({
         className,
       )}
     >
-      <span className="text-faint">Exercise quality:</span>
+      {typeof label === "string" ? (
+        <span className="text-faint">{label}</span>
+      ) : (
+        label
+      )}
       {chips}
     </div>
   );
