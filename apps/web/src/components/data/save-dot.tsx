@@ -10,7 +10,7 @@ const LABEL: Record<SaveState, string> = {
 
 /**
  * F15 per-set save state. queued = hollow ring, saved = teal dot (teal is
- * system confirmation only), failed = danger dot + Retry control (40px target).
+ * system confirmation only), failed = danger dot + Retry control (44px target).
  * Derive state with `saveStateFrom(mutation)`.
  */
 export function SaveDot({

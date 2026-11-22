@@ -13,7 +13,7 @@ type IconButtonVariants = {
 };
 
 /**
- * The app's one square icon button treatment: 40px on touch, 32px on desktop,
+ * The app's one square icon button treatment: 44px on touch, 32px on desktop,
  * a single border + surface-fill so an icon control is always the same size
  * and style rather than a per-screen copy. Shared by `IconButton` (button
  * elements) and `IconLink` (navigation elements) so a bare, backgroundless
