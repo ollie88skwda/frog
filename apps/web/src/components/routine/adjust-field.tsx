@@ -52,9 +52,7 @@ export function AdjustField({
   className,
 }: AdjustFieldProps) {
   return (
-    <div
-      className={cn("rounded-sm bg-surface-2 p-2", className)}
-    >
+    <div className={cn("rounded-sm bg-surface-2 p-2", className)}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-2xs font-medium tracking-widest text-faint uppercase">
           {label}
@@ -68,9 +66,7 @@ export function AdjustField({
           </span>
         )}
       </div>
-      <div
-        className="mt-1 flex items-baseline gap-2 pb-1"
-      >
+      <div className="mt-1 flex items-baseline gap-2 pb-1">
         <input
           inputMode={inputMode ?? (integer ? "numeric" : "decimal")}
           value={value}

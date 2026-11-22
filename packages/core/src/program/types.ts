@@ -148,7 +148,7 @@ export const DEFAULT_PHILOSOPHY: Philosophy = {
 export type ProgramTemplate = {
   id: string;
   name: string;
-  /** Shown on the catalog card. */
+  /** Full description, shown behind the catalog card's info icon. */
   summary: string;
   /** One short line for the catalog card; `summary` sits behind its info icon. */
   short: string;
