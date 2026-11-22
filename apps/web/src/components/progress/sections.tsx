@@ -243,7 +243,9 @@ export function OverviewTiles({
                 ? "Not enough yet: the average needs 4 weigh-ins in the last 7 days."
                 : "Mean of your weigh-ins in the last 7 days, with the weekly rate of change."}
             </p>
-            <p className="num text-soft">n={avg.n} weigh-ins</p>
+            <p className="num text-soft">
+              n={avg.n} weigh-ins · {Math.min(avg.n, 4)} of 4 needed
+            </p>
           </>
         }
         onClick={() => go("body")}
@@ -519,11 +521,11 @@ export function EffortSection({
   );
   return (
     <>
-      {cov.coverage == null && (
-        <div className="px-4 pb-2 text-xs text-soft">
-          No working sets in this scope.
-        </div>
-      )}
+      <div className="num px-4 pb-2 text-xs text-soft">
+        {cov.coverage == null
+          ? "No working sets in this scope."
+          : `RIR logged on ${pctText(cov.coverage * 100)} of ${cov.n} working sets`}
+      </div>
       <Block>
         {ids.length === 0 ? (
           <EmptyState
