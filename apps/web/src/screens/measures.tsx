@@ -16,7 +16,8 @@ import { Select } from "@/components/ui/select";
 // uses a sentinel mapped back to "" (no comparison) at the boundary.
 const COMPARE_NONE = "__none__";
 
-import { type ChangeEvent, useMemo, useState } from "react";
+import { type ChangeEvent, Fragment, useMemo, useState } from "react";
+import { InfoNote } from "@/components/data";
 import { ShareSheet } from "@/components/share-sheet";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -170,13 +171,17 @@ export default function MeasuresScreen() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
-      <h1 className="text-lg font-semibold tracking-tight">Measures</h1>
-      <p className="mt-1 text-2xs text-faint">
-        {t(
-          "Body weight, body fat, and girths — one entry per day. Progress photos stay private.",
-          "Body weight, body fat, and girths — one entry per day. Progress photos stay private. The frog does not look.",
-        )}
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-lg font-semibold tracking-tight">Measures</h1>
+        <InfoNote title="About measures">
+          <p>
+            {t(
+              "Body weight, body fat, and girths — one entry per day. Progress photos stay private.",
+              "Body weight, body fat, and girths — one entry per day. Progress photos stay private. The frog does not look.",
+            )}
+          </p>
+        </InfoNote>
+      </div>
 
       {photos.length > 0 && <PhotoStrip photos={photos} />}
 
@@ -252,16 +257,22 @@ function Editor({
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2">
-        {METRICS.map((def) => (
-          <Field
-            // Remount on date change so the field reloads that day's value.
-            key={`${selectedDate}-${def.key}`}
-            def={def}
-            entry={entry}
-            unit={unit}
-            onCommit={onCommit}
-            wide={def.kind !== "length"}
-          />
+        {METRICS.map((def, i) => (
+          <Fragment key={`${selectedDate}-${def.key}`}>
+            {def.kind === "length" && METRICS[i - 1]?.kind !== "length" && (
+              <h2 className="col-span-2 mt-3 text-xs font-semibold text-soft">
+                Girths
+              </h2>
+            )}
+            <Field
+              // Remount on date change (the Fragment key) so the field reloads that day's value.
+              def={def}
+              entry={entry}
+              unit={unit}
+              onCommit={onCommit}
+              wide={def.kind !== "length"}
+            />
+          </Fragment>
         ))}
       </div>
 
@@ -316,7 +327,7 @@ function Field({
       htmlFor={`measure-field-${def.key}`}
       className={wide ? "col-span-2 block" : "block"}
     >
-      <span className="text-2xs text-faint">{def.label}</span>
+      <span className="text-xs text-soft">{def.label}</span>
       <div className="relative mt-1">
         <Input
           id={`measure-field-${def.key}`}

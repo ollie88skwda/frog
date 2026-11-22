@@ -5,6 +5,7 @@ export { ConfidenceDots } from "./confidence-dots";
 export { DeltaChip } from "./delta-chip";
 export { EmptyState } from "./empty-state";
 export { type EvidenceCite, EvidenceSheet } from "./evidence-sheet";
+export { InfoNote } from "./info-note";
 export {
   type Confidence,
   confidenceFrom,

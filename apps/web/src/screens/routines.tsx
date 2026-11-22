@@ -46,8 +46,8 @@ import { useVoice } from "@/lib/voice";
 // (44px per h-11 row + 8px p-1 + 2px border + 4px offset) — an underestimate
 // renders downward and clips the last row off-viewport; a small overestimate
 // only flips slightly more eagerly than strictly required at the boundary.
-const FOLDER_MENU_HEIGHT = 100; // 2 items (Rename/Delete folder), 44px rows, measured ~94
-const ROUTINE_MENU_HEIGHT = 184; // up to 4 items (Edit/Duplicate/Move/Delete), 44px rows, measured ~174
+const FOLDER_MENU_HEIGHT = 104; // 2 items (Rename/Delete folder): 2×44 + 8 + 2 + 4 = 102
+const ROUTINE_MENU_HEIGHT = 192; // up to 4 items (Edit/Duplicate/Move/Delete): 4×44 + 8 + 2 + 4 = 190
 
 // One owner for the collision rule shared by both menus below: measure the
 // trigger on open, and flip only when the room below can't fit the popup.

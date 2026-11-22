@@ -17,8 +17,8 @@ const VARIANT: Record<Variant, string> = {
   danger: "bg-danger-soft text-danger hover:bg-danger-soft/70",
 };
 
-// Touch-first: every size is 40px on a phone and drops to the denser 32px on
-// desktop (`md:`), matching IconButton. `lg` stays 40px everywhere. Radius is
+// Touch-first: every size is 44px on a phone and drops to the denser 32px on
+// desktop (`md:`), matching IconButton. `lg` stays 44px everywhere. Radius is
 // Base 8 (8px).
 const SIZE: Record<Size, string> = {
   sm: "h-11 px-3 text-xs md:h-8",

@@ -3,7 +3,7 @@
 // here via J6's app.tsx (see PR body). Section is the `?s=` search param.
 import { useMemo } from "react";
 import { useSearchParams } from "react-router";
-import { ScopeChips, SectionHeader } from "@/components/data";
+import { InfoNote, ScopeChips, SectionHeader } from "@/components/data";
 import {
   PROGRESS_SCOPES,
   type ProgressScope,
@@ -30,6 +30,27 @@ const SECTIONS = [
   ["lab", "Lab"],
 ] as const;
 type SectionKey = (typeof SECTIONS)[number][0];
+
+// Explanations live behind the info icon so each section opens on its data.
+const SECTION_INFO: Partial<Record<SectionKey, string[]>> = {
+  strength: [
+    "e1RM = Brzycki with RIR, sets of 10 or fewer total reps.",
+    "A change under 10% reads as normal swing.",
+    "Every verdict is a best guess with a confidence percentage that rises as you log more sessions of the lift. Tap a lift for what would raise it.",
+  ],
+  volume: [
+    "Fractional hard sets: direct 1, indirect 0.5. The 10-20 band is a starting range, not a target.",
+    "Tap a muscle for its own confidence number and the lifts behind it.",
+  ],
+  effort: [
+    "RIR is an estimate, about ±1 rep.",
+    'Each lift shows the last set\'s RIR per session, oldest to newest. "–" = not logged.',
+  ],
+  lab: [
+    "Correlation, not causation: each finding compares your top sets on high and low days of a condition.",
+    "n = sessions on high days / low days.",
+  ],
+};
 
 export default function ProgressScreen() {
   const [params, setParams] = useSearchParams();
@@ -79,6 +100,15 @@ export default function ProgressScreen() {
         </div>
         <SectionHeader
           title={SECTIONS.find(([k]) => k === section)?.[1] ?? ""}
+          action={
+            SECTION_INFO[section] && (
+              <InfoNote title={`About ${section}`}>
+                {SECTION_INFO[section]?.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </InfoNote>
+            )
+          }
         />
         {section === "coach" && <CoachSection />}
         {section === "volume" && <VolumeSection d={d} now={now} />}
