@@ -101,7 +101,7 @@ export function ReadinessStrip({
       </div>
 
       <div className="mt-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex min-h-11 items-center justify-between gap-2 md:min-h-8">
           <span className="text-sm text-ink">Stress</span>
           <div className="flex items-center gap-2">
             <span className="num text-sm font-semibold text-ink">
