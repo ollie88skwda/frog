@@ -10,7 +10,7 @@ export function Switch({
   return (
     <SwitchPrimitive.Root
       className={cn(
-        "inline-flex h-6 w-10 shrink-0 items-center rounded-full bg-hover p-0.5 transition-colors duration-150 data-[state=checked]:bg-accent disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex h-6 w-10 shrink-0 items-center rounded-full bg-hover p-1 transition-colors duration-150 data-[state=checked]:bg-accent disabled:cursor-not-allowed disabled:opacity-50",
         className,
       )}
       {...props}

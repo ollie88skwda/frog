@@ -63,7 +63,7 @@ export function EvidenceSheet({
               {flags?.map((f) => (
                 <span
                   key={f}
-                  className="inline-flex h-5 items-center rounded-xs bg-attn-soft px-1.5 text-2xs font-semibold text-attn"
+                  className="inline-flex h-5 items-center rounded-xs bg-attn-soft px-2 text-2xs font-semibold text-attn"
                 >
                   {f}
                 </span>
@@ -129,7 +129,7 @@ export function EvidenceSheet({
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="flex flex-col gap-1.5">
+    <section className="flex flex-col gap-2">
       <h3 className="text-xs font-semibold text-soft">{title}</h3>
       {children}
     </section>

@@ -119,7 +119,7 @@ test("CSV (Strong) → review → low-confidence highlight → confirm", async (
   expect(await sessionCount(page, title)).toBe(1);
 });
 
-test("text with a missing unit and date is flagged and blocks confirm until dated", async ({
+test("text with a missing unit and date is flagged but never blocks confirm", async ({
   page,
 }) => {
   await page.goto("/import");
@@ -129,7 +129,8 @@ test("text with a missing unit and date is flagged and blocks confirm until date
     page.locator('[data-testid="review-session"][data-low="1"]'),
   ).toBeVisible();
   await expect(page.getByText("No date found")).toBeVisible();
-  await expect(page.getByTestId("review-confirm")).toBeDisabled();
+  // Undated sessions save as today (#119), so confirm is never blocked.
+  await expect(page.getByTestId("review-confirm")).toBeEnabled();
   await page.getByTestId("review-date").fill("2013-01-05T10:00");
   await expect(page.getByTestId("review-confirm")).toBeEnabled();
 });

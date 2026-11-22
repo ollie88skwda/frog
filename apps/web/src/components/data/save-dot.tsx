@@ -29,7 +29,7 @@ export function SaveDot({
         onClick={onRetry}
         aria-label="Set not saved. Retry"
         className={cn(
-          "inline-flex size-10 items-center justify-center rounded-sm bg-danger-soft text-danger md:size-8",
+          "inline-flex size-11 items-center justify-center rounded-sm bg-danger-soft text-danger md:size-8",
           className,
         )}
       >

@@ -39,7 +39,7 @@ export default function HistoryScreen() {
   );
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <h1 className="text-lg font-semibold tracking-tight">History</h1>
 
       <div className="mt-4 overflow-hidden rounded-md bg-surface">
@@ -66,7 +66,7 @@ export default function HistoryScreen() {
               </p>
               <Link
                 to="/import"
-                className="mx-auto mt-4 flex h-10 max-w-64 items-center justify-center rounded-sm bg-secondary px-3 text-sm font-medium text-on-secondary hover:bg-active"
+                className="mx-auto mt-4 flex h-11 max-w-64 items-center justify-center rounded-sm bg-secondary px-3 text-sm font-medium text-on-secondary hover:bg-active"
                 data-testid="history-import-link"
               >
                 Coming from another app?
@@ -74,7 +74,7 @@ export default function HistoryScreen() {
             </div>
           }
         >
-          <ul className="[&>*+*]:mt-0.5">
+          <ul className="[&>*+*]:mt-2">
             {sessions.map((s) => (
               <li key={s.id}>
                 <Link
@@ -100,7 +100,7 @@ export default function HistoryScreen() {
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
                     {summary?.get(s.id) && (
-                      <span className="num flex items-center justify-end gap-1.5 whitespace-nowrap text-xs text-soft">
+                      <span className="num flex items-center justify-end gap-2 whitespace-nowrap text-xs text-soft">
                         {summary.get(s.id)?.hardSets}
                         <span className="text-2xs">
                           {summary.get(s.id)?.hardSets === 1 ? "set" : "sets"}

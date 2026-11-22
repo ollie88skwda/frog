@@ -4,7 +4,7 @@ import {
   suggestRoutineId,
   toDisplayWeight,
 } from "@frog/core";
-import { Play, Plus } from "@phosphor-icons/react";
+import { CaretDown, Play, Plus } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
@@ -75,6 +75,7 @@ export function HomeHero() {
   const [picked, setPicked] = useState<string | null>(null);
   const [readiness, setReadiness] = useState<Readiness>({});
   const [skipped, setSkipped] = useState(false);
+  const [showLifts, setShowLifts] = useState(false);
   const [starting, setStarting] = useState<StartFrom | null>(null);
   const [startError, setStartError] = useState<{
     from: StartFrom;
@@ -203,7 +204,7 @@ export function HomeHero() {
         )}
         <Link
           to="/import"
-          className="mt-3 flex h-10 w-full items-center justify-center rounded-sm bg-secondary/60 text-sm font-medium text-on-secondary hover:bg-secondary"
+          className="mt-3 flex h-11 w-full items-center justify-center rounded-sm bg-secondary/60 text-sm font-medium text-on-secondary hover:bg-secondary"
           data-testid="hero-import-link"
         >
           Coming from another app?
@@ -254,7 +255,7 @@ export function HomeHero() {
           >
             {selected?.name}
           </h2>
-          <p className="num mt-0.5 text-xs text-soft">
+          <p className="num mt-1 text-xs text-soft">
             {detail
               ? `~${estimateMinutes(detail)} min · ${detail.exercises.length} lift${detail.exercises.length === 1 ? "" : "s"} · `
               : ""}
@@ -270,43 +271,59 @@ export function HomeHero() {
             </ul>
           )}
 
-          <ul className="mt-2 flex flex-col">
-            {rows.map((p) => {
-              const reps = formatReps(p);
-              const rir = formatRir(p);
-              return (
-                <li
-                  key={p.routineExerciseId}
-                  className="flex min-h-11 items-center justify-between gap-3 py-1"
-                  data-testid="prescription-row"
-                >
-                  <span className="min-w-0 flex-1 truncate text-sm text-ink">
-                    {p.exerciseName}
-                  </span>
-                  <span className="num shrink-0 text-xs text-soft">
-                    {p.loadKg != null && (
-                      <>
-                        {toDisplayWeight(p.loadKg, unit)} {unit}{" "}
-                      </>
+          <button
+            type="button"
+            onClick={() => setShowLifts((v) => !v)}
+            aria-expanded={showLifts}
+            data-testid="hero-lifts-toggle"
+            className="mt-2 flex h-11 w-full items-center justify-between rounded-sm bg-translucent px-3 text-xs font-semibold text-soft transition-colors duration-150 hover:bg-surface-hover"
+          >
+            {showLifts ? "Hide lifts" : "See lifts"}
+            <CaretDown
+              className={cn("size-4", showLifts && "rotate-180")}
+              aria-hidden
+            />
+          </button>
+
+          {showLifts && (
+            <ul className="mt-1 flex flex-col">
+              {rows.map((p) => {
+                const reps = formatReps(p);
+                const rir = formatRir(p);
+                return (
+                  <li
+                    key={p.routineExerciseId}
+                    className="flex min-h-11 items-center justify-between gap-3 py-1"
+                    data-testid="prescription-row"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-sm text-ink">
+                      {p.exerciseName}
+                    </span>
+                    <span className="num shrink-0 text-xs text-soft">
+                      {p.loadKg != null && (
+                        <>
+                          {toDisplayWeight(p.loadKg, unit)} {unit}{" "}
+                        </>
+                      )}
+                      {p.sets}
+                      {reps ? ` × ${reps}` : " sets"}
+                      {rir ? ` ${rir}` : ""}
+                    </span>
+                    {p.deltaKg != null && (
+                      <DeltaChip
+                        delta={p.deltaKg}
+                        unit={unit}
+                        basis="vs last session"
+                      />
                     )}
-                    {p.sets}
-                    {reps ? ` × ${reps}` : " sets"}
-                    {rir ? ` ${rir}` : ""}
-                  </span>
-                  {p.deltaKg != null && (
-                    <DeltaChip
-                      delta={p.deltaKg}
-                      unit={unit}
-                      basis="vs last session"
-                    />
-                  )}
-                </li>
-              );
-            })}
-            {more > 0 && (
-              <li className="num pb-1 text-2xs text-faint">+{more} more</li>
-            )}
-          </ul>
+                  </li>
+                );
+              })}
+              {more > 0 && (
+                <li className="num pb-1 text-2xs text-faint">+{more} more</li>
+              )}
+            </ul>
+          )}
 
           <button
             type="button"

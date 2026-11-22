@@ -87,7 +87,7 @@ export function AppShell() {
         <p className="px-4 pt-2 pb-1 text-2xs font-medium tracking-widest text-faint uppercase">
           Workspace
         </p>
-        <nav className="flex flex-col gap-0.5 px-2">
+        <nav className="flex flex-col gap-1 px-2">
           {nav.map(
             ({
               to,
@@ -138,7 +138,13 @@ export function AppShell() {
           inSession ? "overflow-hidden" : "overflow-y-auto",
           // Clearance for the floating tab bar; the workout hides the bar, so
           // its entry panel sits flush with the bottom edge instead.
-          !inSession && "max-md:pb-[calc(5rem+env(safe-area-inset-bottom))]",
+          // Clears the tab bar footprint exactly (12px margin + 60px bar); each page's
+          // own pb-6 then leaves the standard 24px above it. With the resume pill
+          // (44px + 8px above the bar) the clearance grows by 52px.
+          !inSession &&
+            (showResume
+              ? "max-md:pb-[calc(7.75rem+env(safe-area-inset-bottom))]"
+              : "max-md:pb-[calc(4.5rem+env(safe-area-inset-bottom))]"),
         )}
       >
         <Outlet />
@@ -159,7 +165,7 @@ export function AppShell() {
       )}
       <nav
         className={cn(
-          "floating float-in fixed inset-x-0 bottom-0 z-40 mx-auto mb-[calc(0.75rem+env(safe-area-inset-bottom))] flex w-fit items-center gap-0.5 p-1.5 md:hidden",
+          "floating float-in fixed inset-x-0 bottom-0 z-40 mx-auto mb-[calc(0.75rem+env(safe-area-inset-bottom))] flex w-fit items-center gap-2 p-2 md:hidden",
           inSession && "hidden",
         )}
       >
@@ -172,7 +178,7 @@ export function AppShell() {
               title={label}
               className={({ isActive }) =>
                 cn(
-                  "flex h-11 min-w-[4.25rem] flex-col items-center justify-center gap-0.5 px-2 text-2xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
+                  "flex h-11 min-w-[4.25rem] flex-col items-center justify-center gap-1 px-2 text-2xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
                   (forceActive ?? isActive)
                     ? "bg-accent-soft text-accent-ink"
                     : "text-soft active:text-ink",

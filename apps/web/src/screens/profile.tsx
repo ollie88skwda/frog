@@ -102,14 +102,14 @@ export default function ProfileScreen() {
   );
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold tracking-tight">Profile</h1>
         <Link
           to="/settings"
           title="Settings"
           aria-label="Settings"
-          className="rounded-sm flex size-10 items-center justify-center bg-surface-2 text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink md:size-8"
+          className="rounded-sm flex size-11 items-center justify-center bg-surface-2 text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink md:size-8"
           data-testid="profile-settings"
         >
           <GearSix className="size-4" />
@@ -216,7 +216,7 @@ export default function ProfileScreen() {
           </h2>
           <Link
             to="/history"
-            className="text-2xs font-medium text-soft transition-colors duration-150 hover:text-ink"
+            className="inline-flex h-11 items-center text-2xs font-medium text-soft transition-colors duration-150 hover:text-ink"
           >
             View all
           </Link>
@@ -229,7 +229,7 @@ export default function ProfileScreen() {
             )}
           </p>
         ) : (
-          <ul className="[&>*+*]:mt-0.5">
+          <ul className="[&>*+*]:mt-2">
             {recent.map((s) => (
               <li key={s.id}>
                 <Link
@@ -289,7 +289,7 @@ function GoalFields({
     <div className="rounded-md mt-4 bg-surface p-4" data-testid="goal-fields">
       <p className="text-xs font-medium">Goal</p>
       <ChipGroup
-        className="mt-1.5"
+        className="mt-2"
         value={goal ?? ""}
         onValueChange={(v) =>
           update.mutate({ goal: (v || null) as Goal | null })
@@ -308,7 +308,7 @@ function GoalFields({
       </ChipGroup>
       <p className="mt-3 text-xs font-medium">Training experience</p>
       <ChipGroup
-        className="mt-1.5"
+        className="mt-2"
         value={status ?? ""}
         onValueChange={(v) =>
           update.mutate({
@@ -441,10 +441,10 @@ function ProfileHeader({
                 <PencilSimple className="size-4" />
               </IconButton>
             </div>
-            <p className="mt-0.5 truncate text-2xs text-faint">{email}</p>
+            <p className="mt-1 truncate text-2xs text-faint">{email}</p>
             {bio && (
               <p
-                className="mt-0.5 whitespace-pre-line text-xs text-soft"
+                className="mt-1 whitespace-pre-line text-xs text-soft"
                 data-testid="profile-bio"
               >
                 {bio}

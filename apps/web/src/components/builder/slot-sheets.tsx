@@ -228,7 +228,7 @@ export function SwapSheet({
                       onOpenChange(false);
                     }}
                     data-testid={`swap-${r.exercise.name}`}
-                    className="flex min-h-14 w-full flex-col items-start justify-center gap-0.5 rounded-md bg-surface-2 px-3 py-2 text-left transition-colors duration-150 hover:bg-surface-hover"
+                    className="flex min-h-14 w-full flex-col items-start justify-center gap-1 rounded-md bg-surface-2 px-3 py-2 text-left transition-colors duration-150 hover:bg-surface-hover"
                   >
                     <span className="text-sm font-semibold text-ink">
                       {r.exercise.name}

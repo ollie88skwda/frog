@@ -25,7 +25,7 @@ export function MachinesSection({ machines }: { machines: Machine[] }) {
       <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
         My gym — machines
       </h2>
-      <p className="mt-0.5 text-2xs text-faint">
+      <p className="mt-1 text-2xs text-faint">
         Settings entered once show up in every session. Photos: shoot your own
         machine.
       </p>
@@ -33,7 +33,7 @@ export function MachinesSection({ machines }: { machines: Machine[] }) {
       <AddMachine />
 
       {machines.length > 0 && (
-        <ul className="rounded-md mt-3 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
+        <ul className="rounded-md mt-3 [&>*+*]:mt-2 overflow-hidden bg-surface">
           {machines.map((m) => (
             <MachineRow
               key={m.id}
@@ -317,7 +317,7 @@ function SettingRow({
         data-testid={`setting-value-${machine.name}-${s.label}`}
       />
       <label
-        className="rounded-sm flex h-10 md:h-8 cursor-pointer items-center gap-1 bg-surface px-1.5 text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+        className="rounded-sm flex h-11 md:h-8 cursor-pointer items-center gap-1 bg-surface px-2 text-faint transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
         title={s.photoPath ? "Replace setting photo" : "Add setting photo"}
         data-testid={`setting-photo-${machine.name}-${s.label}`}
       >

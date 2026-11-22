@@ -46,11 +46,8 @@ export default function ProgressScreen() {
   };
 
   return (
-    <div
-      className="mx-auto max-w-2xl pb-24 md:pb-6"
-      data-testid="progress-screen"
-    >
-      <div className="sticky top-0 z-10 bg-page px-4 pt-4 pb-2">
+    <div className="mx-auto max-w-2xl pb-6" data-testid="progress-screen">
+      <div className="sticky top-0 z-10 bg-bg px-4 pt-4 pb-2">
         <h1 className="text-xl font-bold tracking-tight">Progress</h1>
         <ScopeChips
           className="mt-2 flex-nowrap overflow-x-auto"

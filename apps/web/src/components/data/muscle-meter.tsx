@@ -60,7 +60,7 @@ export function MuscleMeter({
         </span>
         <span
           className={cn(
-            "mt-0.5 block text-2xs",
+            "mt-1 block text-2xs",
             status === "high" ? "text-attn" : "text-soft",
           )}
         >

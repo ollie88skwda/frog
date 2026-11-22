@@ -27,7 +27,7 @@ export function Num({
     >
       {value}
       {unit && (
-        <span className="ml-0.5 text-[0.6em] font-semibold text-soft">
+        <span className="ml-1 text-[0.6em] font-semibold text-soft">
           {unit}
         </span>
       )}

@@ -12,6 +12,7 @@ export const RESEARCH_C: ProgramTemplate = {
   name: "Research C: 6-week block",
   summary:
     "Program B as a fixed block: five training weeks, a deload week, then a retest week. A block checks that the plan is workable; six weeks of logs do not measure muscle growth.",
+  short: "Program B as a 6-week block.",
   author: "research-c",
   sessions: PROGRAM_B_SESSIONS,
   block: {

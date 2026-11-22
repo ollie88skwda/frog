@@ -128,7 +128,7 @@ export default function ExerciseDetailScreen() {
   const primary = exercise.muscleTargets?.[0]?.muscle;
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="flex items-start gap-3">
         <BackButton
           onClick={() => navigate(-1)}
@@ -147,7 +147,7 @@ export default function ExerciseDetailScreen() {
           >
             {exercise.name}
           </h1>
-          <p className="mt-0.5 flex flex-wrap gap-x-2 text-2xs text-faint">
+          <p className="mt-1 flex flex-wrap gap-x-2 text-2xs text-faint">
             <span>{EXERCISE_TYPE_LABELS[type]}</span>
             {exercise.equipment && (
               <span>
@@ -175,7 +175,7 @@ export default function ExerciseDetailScreen() {
       <div
         role="tablist"
         aria-label="Exercise sections"
-        className="mt-4 flex gap-1"
+        className="mt-4 flex gap-2"
       >
         {(["summary", "history", "howto"] as Tab[]).map((t) => (
           <button
@@ -185,7 +185,7 @@ export default function ExerciseDetailScreen() {
             aria-selected={tab === t}
             onClick={() => setTab(t)}
             className={cn(
-              "h-10 flex-1 rounded-sm text-xs font-semibold transition-colors duration-150 md:h-8",
+              "h-11 flex-1 rounded-sm text-xs font-semibold transition-colors duration-150 md:h-8",
               tab === t
                 ? "bg-accent-soft text-accent-ink"
                 : "bg-secondary/60 text-on-secondary hover:bg-secondary",
@@ -302,14 +302,14 @@ function SummaryTab({
   return (
     <div>
       {/* Metric chips */}
-      <div className="flex gap-1 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {metrics.map((m) => (
           <button
             key={m.key}
             type="button"
             onClick={() => setMetricKey(m.key)}
             className={cn(
-              "h-9 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150",
+              "h-11 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150",
               m.key === metricKey
                 ? "bg-accent-soft text-accent-ink"
                 : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -400,14 +400,14 @@ function SummaryTab({
           </div>
         )}
         {/* Range selector — ungated (no Pro cap, scope decision #4). */}
-        <div className="mt-2 flex gap-1">
+        <div className="mt-2 flex gap-2">
           {(["3m", "1y", "all"] as Range[]).map((r) => (
             <button
               key={r}
               type="button"
               onClick={() => setRange(r)}
               className={cn(
-                "h-8 flex-1 text-2xs transition-colors duration-150",
+                "h-11 flex-1 text-2xs transition-colors duration-150",
                 range === r
                   ? "bg-accent-soft text-accent-ink"
                   : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -503,7 +503,7 @@ function RecordsPanel({
           )}
         </p>
       ) : (
-        <ul className="overflow-hidden rounded-md mt-2 [&>*+*]:mt-0.5 bg-surface">
+        <ul className="overflow-hidden rounded-md mt-2 [&>*+*]:mt-2 bg-surface">
           {bests.map(({ pr, entry }) => (
             <li key={pr}>
               <Link
@@ -549,7 +549,7 @@ function SetRecordsTable({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-2 text-left"
+        className="flex h-11 w-full items-center gap-2 text-left"
         data-testid="set-records-toggle"
       >
         {open ? (
@@ -571,7 +571,7 @@ function SetRecordsTable({
             )}
           </p>
         ) : (
-          <ul className="overflow-hidden rounded-md mt-2 [&>*+*]:mt-0.5 bg-surface">
+          <ul className="overflow-hidden rounded-md mt-2 [&>*+*]:mt-2 bg-surface">
             {rows.map((r) => (
               <li key={r.reps} data-testid={`set-record-${r.reps}`}>
                 <Link to={`/history/${r.sessionId}`} className={rowClass()}>
@@ -645,7 +645,7 @@ function HistoryTab({
                 return (
                   <li
                     key={rowKey}
-                    className="num flex items-center gap-2 py-0.5 text-xs text-soft"
+                    className="num flex items-center gap-2 py-1 text-xs text-soft"
                   >
                     <span className="w-5 text-faint">
                       {set.setNo + 1}
@@ -749,12 +749,12 @@ function HowToTab({
                       )}
                     </span>
                     {rating?.note && (
-                      <span className="mt-0.5 block text-2xs text-soft">
+                      <span className="mt-1 block text-2xs text-soft">
                         {rating.note}
                       </span>
                     )}
                     {rating?.citations && rating.citations.length > 0 && (
-                      <span className="mt-0.5 block truncate text-2xs text-faint">
+                      <span className="mt-1 block truncate text-2xs text-faint">
                         {rating.citations.join(" · ")}
                       </span>
                     )}
@@ -829,7 +829,7 @@ function MoreMenu({
                   setOpen(false);
                   setEditing(true);
                 }}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
                 data-testid="exercise-edit"
               >
                 <PencilSimple className="size-3.5" />
@@ -841,7 +841,7 @@ function MoreMenu({
               disabled={partial}
               title={partial ? "Still loading this exercise" : undefined}
               onClick={() => void duplicate()}
-              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-soft"
               data-testid="exercise-duplicate"
             >
               <Copy className="size-3.5" />

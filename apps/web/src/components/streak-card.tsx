@@ -34,11 +34,11 @@ export function StreakCard({
       className={`rounded-md bg-surface p-4 ${className ?? ""}`}
       data-testid="streak-card"
     >
-      <div className="flex items-center gap-1.5 text-2xs font-medium tracking-widest text-faint uppercase">
+      <div className="flex items-center gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
         <Flame className="size-3.5" />
         {t("Streak", "Consistency")}
       </div>
-      <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+      <p className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <span className="num text-2xl font-semibold" data-testid="streak-weeks">
           {weeks}
         </span>
@@ -50,7 +50,7 @@ export function StreakCard({
         </span>
       </p>
       {weeks > 0 && currentWeekPending && (
-        <p className="mt-0.5 text-2xs text-faint">
+        <p className="mt-1 text-2xs text-faint">
           {t(
             "Log this week to keep it going.",
             `Consistency, n=${weeks}. Log this week to keep it.`,
@@ -58,7 +58,7 @@ export function StreakCard({
         </p>
       )}
       {weeks === 0 && (
-        <p className="mt-0.5 text-2xs text-faint">
+        <p className="mt-1 text-2xs text-faint">
           {t(
             "Log a workout this week to start one.",
             "The frog refuses to speculate. Log a workout this week to start.",

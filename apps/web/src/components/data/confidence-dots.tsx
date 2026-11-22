@@ -16,7 +16,7 @@ export function ConfidenceDots({
       className={cn("inline-flex items-center gap-1", className)}
       title={confidence.label}
     >
-      <span role="img" aria-label={confidence.label} className="flex gap-0.5">
+      <span role="img" aria-label={confidence.label} className="flex gap-1">
         {[1, 2, 3].map((i) => (
           <span
             key={i}

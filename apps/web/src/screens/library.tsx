@@ -55,6 +55,7 @@ import {
   primaryMuscleKey,
   type TierFilter,
 } from "@/components/exercise-filter";
+import { InfoTip } from "@/components/lesson";
 import { MachinesSection } from "@/components/machines";
 import { Button } from "@/components/ui/button";
 import { ChipGroup, ChipItem } from "@/components/ui/chip";
@@ -287,10 +288,9 @@ export default function LibraryScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
-      <h1 className="text-lg font-semibold tracking-tight">Library</h1>
-
-      <div className="mt-4 flex items-center gap-2">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
+      <h1 className="sr-only">Library</h1>
+      <div className="flex items-center gap-2">
         <Button
           variant="primary"
           className="flex-1"
@@ -336,7 +336,7 @@ export default function LibraryScreen() {
               onClick={() => setYoursOnly((v) => !v)}
               aria-pressed={yoursOnly}
               className={cn(
-                "h-8 shrink-0 px-2.5 text-2xs transition-colors duration-150",
+                "h-11 shrink-0 px-3 text-2xs transition-colors duration-150",
                 yoursOnly
                   ? "bg-accent-soft text-accent-ink"
                   : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -348,7 +348,7 @@ export default function LibraryScreen() {
           }
         />
         <div className="mt-2 flex items-center gap-2">
-          <span className="text-2xs text-faint">Group by</span>
+          <span className="text-2xs text-faint">Group</span>
           <ChipGroup
             value={exerciseGrouping}
             onValueChange={(v) =>
@@ -369,6 +369,7 @@ export default function LibraryScreen() {
         </div>
         <TierLegend
           className="mt-2"
+          label={<InfoTip lessonId="quality" />}
           active={filterTier}
           onSelect={(v) => setFilterTier((prev) => (prev === v ? "" : v))}
         />
@@ -439,7 +440,7 @@ export default function LibraryScreen() {
                 )}
               </header>
               {!collapsed.has(group.key) && (
-                <ul className="[&>*+*]:mt-0.5">
+                <ul className="[&>*+*]:mt-2">
                   {group.items.map((ex) => (
                     <ExerciseRow
                       key={ex.id}
@@ -461,7 +462,7 @@ export default function LibraryScreen() {
           ))
         ) : query.trim() ? (
           // Search-first: a query shows a flat list of matches, no bands.
-          <ul className="[&>*+*]:mt-0.5">
+          <ul className="[&>*+*]:mt-2">
             {filtered.map((ex) => (
               <ExerciseRow
                 key={ex.id}
@@ -493,7 +494,7 @@ export default function LibraryScreen() {
                     {bands.recent.length}
                   </span>
                 </header>
-                <ul className="[&>*+*]:mt-0.5">
+                <ul className="[&>*+*]:mt-2">
                   {bands.recent.map((ex) => (
                     <ExerciseRow
                       key={ex.id}
@@ -523,7 +524,7 @@ export default function LibraryScreen() {
                     {bands.favorites.length}
                   </span>
                 </header>
-                <ul className="[&>*+*]:mt-0.5">
+                <ul className="[&>*+*]:mt-2">
                   {bands.favorites.map((ex) => (
                     <ExerciseRow
                       key={ex.id}
@@ -553,7 +554,7 @@ export default function LibraryScreen() {
                     {g.items.length}
                   </span>
                 </header>
-                <ul className="[&>*+*]:mt-0.5">
+                <ul className="[&>*+*]:mt-2">
                   {g.items.map((ex) => (
                     <ExerciseRow
                       key={ex.id}
@@ -963,7 +964,7 @@ const ExerciseRow = memo(function ExerciseRow({
               // classification — every one of them keyed by an id Postgres
               // doesn't have yet while the create is queued.
               disabled={pending}
-              className="flex min-w-0 items-center gap-1.5 text-left"
+              className="relative flex min-w-0 items-center gap-2 text-left after:absolute after:-inset-y-3 after:inset-x-0"
               data-testid={`exercise-row-toggle-${exercise.name}`}
             >
               <span
@@ -980,19 +981,19 @@ const ExerciseRow = memo(function ExerciseRow({
                 <Chevron className="size-4 shrink-0 text-faint" />
               )}
             </button>
-            <span className="flex shrink-0 items-center gap-1">
+            <span className="flex shrink-0 items-center gap-2">
               {exercise.isCustom &&
                 (exercise.ownerId === null ? (
                   // Community-shared row (owner_id null): quiet "shared" mark,
                   // the why behind the missing Edit/Archive below.
                   <span
-                    className="rounded-sm bg-surface px-2 py-0.5 text-2xs text-faint"
+                    className="rounded-sm bg-surface px-2 py-1 text-2xs text-faint"
                     data-testid={`shared-badge-${exercise.name}`}
                   >
                     shared
                   </span>
                 ) : (
-                  <span className="rounded-xs bg-accent-soft px-2 py-0.5 text-2xs text-accent-ink">
+                  <span className="rounded-xs bg-accent-soft px-2 py-1 text-2xs text-accent-ink">
                     yours
                   </span>
                 ))}
@@ -1013,9 +1014,9 @@ const ExerciseRow = memo(function ExerciseRow({
             </span>
           </div>
 
-          <JointActionRatings exercise={exercise} className="mt-1.5" />
+          <JointActionRatings exercise={exercise} className="mt-2" />
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-faint">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-2xs text-faint">
             {flat && (
               <span className="flex items-center gap-1 truncate">
                 <span className="size-1 bg-accent" />
@@ -1233,7 +1234,7 @@ function TagEditor({
       {(exercise.tags ?? []).map((t) => (
         <span
           key={t}
-          className="rounded-sm flex items-center gap-1 bg-surface px-2 py-0.5 text-2xs text-soft"
+          className="rounded-sm flex items-center gap-1 bg-surface px-2 py-1 text-2xs text-soft"
         >
           {t}
           <button
@@ -1304,7 +1305,7 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
       <h2 className="text-2xs font-medium tracking-widest text-faint uppercase">
         Custom metrics
       </h2>
-      <p className="mt-0.5 text-2xs text-faint">
+      <p className="mt-1 text-2xs text-faint">
         Everything logged is a metric. Set-scope metrics attach to exercises
         above.
       </p>
@@ -1340,7 +1341,7 @@ function MetricsSection({ metrics }: { metrics: Metric[] }) {
       </form>
 
       {custom.length > 0 && (
-        <ul className="rounded-md mt-3 [&>*+*]:mt-0.5 overflow-hidden bg-surface">
+        <ul className="rounded-md mt-3 [&>*+*]:mt-2 overflow-hidden bg-surface">
           {custom.map((m) => (
             <li key={m.id} data-testid={`metric-row-${m.name}`}>
               <Row interactive={false} className="text-sm">

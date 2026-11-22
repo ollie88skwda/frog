@@ -90,7 +90,7 @@ function Section({
   return (
     <div className="mt-4 rounded-md bg-surface p-4">
       <h2 className="text-sm font-medium">{title}</h2>
-      {hint && <p className="mt-0.5 text-2xs text-faint">{hint}</p>}
+      {hint && <p className="mt-1 text-2xs text-faint">{hint}</p>}
       {children}
     </div>
   );
@@ -106,10 +106,10 @@ function Row({
   children: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-2.5">
+    <div className="flex items-center justify-between gap-3 py-3">
       <div className="min-w-0">
         <p className="text-xs font-medium">{label}</p>
-        {hint && <p className="mt-0.5 text-2xs text-faint">{hint}</p>}
+        {hint && <p className="mt-1 text-2xs text-faint">{hint}</p>}
       </div>
       <div className="shrink-0">{children}</div>
     </div>
@@ -128,7 +128,7 @@ function Segmented<T extends string | number>({
   testid?: string;
 }) {
   return (
-    <div className="inline-flex gap-0.5 rounded-md bg-subtle p-0.5">
+    <div className="inline-flex gap-2 rounded-md bg-subtle p-1">
       {options.map((o) => (
         <button
           key={String(o.value)}
@@ -136,7 +136,7 @@ function Segmented<T extends string | number>({
           onClick={() => onChange(o.value)}
           data-testid={testid ? `${testid}-${o.value}` : undefined}
           className={cn(
-            "rounded-sm px-3 py-1 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
+            "h-11 min-w-11 rounded-sm px-3 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
             value === o.value
               ? "bg-accent text-on-accent"
               : "text-soft hover:bg-surface-hover",
@@ -202,7 +202,7 @@ export default function SettingsScreen() {
   const signOut = useSignOut();
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <h1 className="text-lg font-semibold tracking-tight">Settings</h1>
 
       <Group title="Training">
@@ -265,7 +265,7 @@ function UnitsSection() {
         "Display only. Underneath, the frog keeps everything canonical (kg, meters, cm).",
       )}
     >
-      <div className="mt-1 [&>*+*]:mt-0.5">
+      <div className="mt-1 [&>*+*]:mt-2">
         <Row label="Weight">
           <Segmented
             options={WEIGHT_UNITS.map((u) => ({
@@ -318,7 +318,7 @@ function VoiceSection() {
         "How the frog talks. The numbers never change.",
       )}
     >
-      <div className="mt-1 [&>*+*]:mt-0.5">
+      <div className="mt-1 [&>*+*]:mt-2">
         <Row label="Register">
           <Segmented
             options={REGISTERS}
@@ -363,7 +363,7 @@ function WorkoutsSection() {
 
   return (
     <Section title="Workouts">
-      <div className="mt-1 [&>*+*]:mt-0.5">
+      <div className="mt-1 [&>*+*]:mt-2">
         <Row
           label="Previous values"
           hint="Which past workout the PREVIOUS column fills from."
@@ -478,11 +478,11 @@ function WarmupMethodEditor() {
           </Button>
         )}
       </div>
-      <p className="mt-0.5 text-2xs text-faint">
+      <p className="mt-1 text-2xs text-faint">
         Percentage ramp used by “Add warm-up” on the logging screen.
       </p>
 
-      <div className="mt-2 space-y-1.5">
+      <div className="mt-2 space-y-2">
         {rows.map((row, i) => (
           <div
             key={row.id}
@@ -554,7 +554,7 @@ function DisplaySection() {
 
   return (
     <Section title="Display">
-      <div className="mt-1 [&>*+*]:mt-0.5">
+      <div className="mt-1 [&>*+*]:mt-2">
         <Row label="Appearance" hint="Device follows your phone or computer.">
           <Segmented
             options={[
@@ -640,7 +640,7 @@ function NotificationsSection() {
         "The frog has nothing to announce yet. Send a test and it croaks once; otherwise it sits still.",
       )}
     >
-      <div className="mt-1 [&>*+*]:mt-0.5">
+      <div className="mt-1 [&>*+*]:mt-2">
         <Row
           label="System notifications"
           hint={
@@ -903,7 +903,7 @@ function ApiTokensSection() {
       )}
 
       {tokens.length > 0 && (
-        <ul className="mt-3 [&>*+*]:mt-0.5 overflow-hidden rounded-sm">
+        <ul className="mt-3 [&>*+*]:mt-2 overflow-hidden rounded-sm">
           {tokens.map((t) => (
             <TokenRow
               key={t.id}
@@ -993,7 +993,7 @@ function LearnSection() {
   const { t } = useVoice();
   return (
     <Section title={`How ${APP_NAME} decides`}>
-      <div className="mt-1 [&>*+*]:mt-0.5">
+      <div className="mt-1 [&>*+*]:mt-2">
         <Row
           label="Rules and evidence"
           hint={t(
@@ -1003,7 +1003,7 @@ function LearnSection() {
         >
           <Link
             to="/you/rules"
-            className="flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active md:h-8"
+            className="flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active md:h-8"
             data-testid="tips-link"
           >
             Browse
@@ -1020,7 +1020,7 @@ function ChangelogSection() {
   const hasUnseen = useChangelogHasUnseen();
   return (
     <Section title="Changelog">
-      <div className="mt-1 [&>*+*]:mt-0.5">
+      <div className="mt-1 [&>*+*]:mt-2">
         <Row
           label="What's new"
           hint="Dev log of what shipped, pulled from docs/DECISIONS.md."
@@ -1034,7 +1034,7 @@ function ChangelogSection() {
             )}
             <Link
               to="/changelog"
-              className="flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active md:h-8"
+              className="flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 ease-(--ease-out-quad) hover:bg-active md:h-8"
               data-testid="changelog-link"
             >
               Browse
@@ -1086,7 +1086,7 @@ function CoachSection() {
       title="Coach"
       hint="Quiet suggestions on Today and in your workout. Nothing changes your plan unless you apply it."
     >
-      <div className="mt-1 [&>*+*]:mt-0.5">
+      <div className="mt-1 [&>*+*]:mt-2">
         <Row
           label="Coach suggestions"
           hint="Master switch for every rule below."
@@ -1142,7 +1142,7 @@ function ReportSection() {
             href={`${ISSUES_URL}?title=${encodeURIComponent(`${APP_NAME}: `)}`}
             target="_blank"
             rel="noreferrer"
-            className="flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 hover:bg-active md:h-8"
+            className="flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-medium text-on-secondary transition-colors duration-150 hover:bg-active md:h-8"
             data-testid="report-problem"
           >
             Report

@@ -1,8 +1,9 @@
 import { isConditionTracked, SEED_CONDITIONS } from "@frog/core";
 import { Minus, Plus } from "@phosphor-icons/react";
+import { InfoTip } from "@/components/lesson";
 import { IconButton } from "@/components/ui/icon-button";
+import { ScaleSlider } from "@/components/ui/scale-slider";
 import { useTrackedConditions } from "@/lib/queries";
-import { cn } from "@/lib/utils";
 
 /** Today's check-in (F5, C7/C9d: readiness before the first set). Values are
  * keyed by seeded condition metric id, the same shape as
@@ -52,7 +53,7 @@ export function ReadinessStrip({
         <button
           type="button"
           onClick={onSkip}
-          className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
+          className="inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
         >
           Add
         </button>
@@ -67,11 +68,14 @@ export function ReadinessStrip({
       aria-label="Readiness check-in"
     >
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-semibold text-soft">Readiness</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xs font-semibold text-soft">Readiness</h2>
+          <InfoTip lessonId="readiness" />
+        </div>
         <button
           type="button"
           onClick={onSkip}
-          className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
+          className="inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
           data-testid="readiness-skip"
         >
           Skip
@@ -80,7 +84,7 @@ export function ReadinessStrip({
 
       <div className="mt-2 flex items-center justify-between gap-2">
         <span className="text-sm text-ink">Sleep</span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <IconButton title="Less sleep" onClick={() => stepSleep(-0.5)}>
             <Minus className="size-4" />
           </IconButton>
@@ -97,38 +101,43 @@ export function ReadinessStrip({
       </div>
 
       <div className="mt-3">
-        <div className="flex items-baseline justify-between">
+        <div className="flex min-h-11 items-center justify-between gap-2 md:min-h-8">
           <span className="text-sm text-ink">Stress</span>
-          <span className="num text-2xs text-faint">
-            {stress == null ? "1 calm · 10 maxed" : `${stress} of 10`}
-          </span>
-        </div>
-        <div className="mt-1.5 grid grid-cols-10 gap-1">
-          {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-            <button
-              key={n}
-              type="button"
-              aria-label={`Stress ${n}`}
-              aria-pressed={stress === n}
-              data-testid={`readiness-stress-${n}`}
-              onClick={() => set(STRESS, stress === n ? undefined : n)}
-              className={cn(
-                "num h-10 rounded-sm text-xs font-semibold transition-colors duration-150 md:h-8",
-                stress === n
-                  ? "bg-accent text-accent-fg"
-                  : "bg-translucent text-soft hover:bg-surface-hover",
+          <div className="flex items-center gap-2">
+            <span className="num text-sm font-semibold text-ink">
+              {stress == null ? (
+                <span className="font-normal text-faint">Not set</span>
+              ) : (
+                <>
+                  {stress}
+                  <span className="font-normal text-faint"> / 10</span>
+                </>
               )}
-            >
-              {n}
-            </button>
-          ))}
+            </span>
+            {stress != null && (
+              <button
+                type="button"
+                onClick={() => set(STRESS, undefined)}
+                className="inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
+                data-testid="readiness-stress-clear"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
+        <ScaleSlider
+          label="Stress, 1 calm to 10 maxed out"
+          value={stress}
+          onChange={(v) => set(STRESS, v)}
+          testId="readiness-stress"
+        />
       </div>
 
       {caffeineOn && (
         <div className="mt-3 flex items-center justify-between gap-2">
           <span className="text-sm text-ink">Caffeine</span>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <IconButton
               title="Less caffeine"
               onClick={() =>
@@ -149,11 +158,6 @@ export function ReadinessStrip({
           </div>
         </div>
       )}
-
-      {/* R22/C8: a bad night is a note, not a reason to cut weekly volume. */}
-      <p className="mt-3 text-2xs text-faint">
-        One rough night never changes your weekly volume. Frog only notes it.
-      </p>
     </section>
   );
 }

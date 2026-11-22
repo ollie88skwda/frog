@@ -91,7 +91,7 @@ export function SetTypeCell({
                   setOpen(false);
                 }}
                 data-testid={testId ? `${testId}-${t}` : undefined}
-                className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
               >
                 <span className="flex items-center gap-2">
                   <span

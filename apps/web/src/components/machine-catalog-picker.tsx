@@ -89,13 +89,13 @@ export function MachineCatalogPicker({
           <p className="mb-1 text-2xs font-medium tracking-widest text-faint uppercase">
             Browse by type
           </p>
-          <div className="flex gap-1.5 overflow-x-auto pb-1">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {categories.map((cat) => (
               <button
                 key={cat}
                 type="button"
                 onClick={() => pickCategory(cat)}
-                className="h-8 shrink-0 rounded-sm bg-surface-2 px-2 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+                className="h-11 shrink-0 rounded-sm bg-surface-2 px-2 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
                 data-testid={`catalog-category-${cat}`}
               >
                 {cat.replace(/-/g, " ")}
@@ -127,7 +127,7 @@ export function MachineCatalogPicker({
       )}
 
       {results.length > 0 && (
-        <ul className="overflow-hidden rounded-md mt-1 [&>*+*]:mt-0.5 bg-surface">
+        <ul className="overflow-hidden rounded-md mt-1 [&>*+*]:mt-2 bg-surface">
           {results.map((r) => (
             <li key={r.id}>
               <button
@@ -138,7 +138,7 @@ export function MachineCatalogPicker({
                   setDebounced("");
                   setCategory(null);
                 }}
-                className="flex h-10 w-full items-center gap-2 px-2 text-left text-xs transition-colors duration-100 hover:bg-surface-hover md:h-8"
+                className="flex h-11 w-full items-center gap-2 px-2 text-left text-xs transition-colors duration-100 hover:bg-surface-hover md:h-8"
                 data-testid={resultTestId(r)}
               >
                 <span className="rounded-xs bg-translucent px-1 text-2xs text-faint">

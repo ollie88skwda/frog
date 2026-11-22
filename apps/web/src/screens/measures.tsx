@@ -152,7 +152,7 @@ export default function MeasuresScreen() {
 
   if (measurementsQ.isPending || measurementsQ.isLoadingError) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+      <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
         <h1 className="text-lg font-semibold tracking-tight">Measures</h1>
         <div className="mt-4 rounded-md bg-surface">
           <QueryState
@@ -169,9 +169,9 @@ export default function MeasuresScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <h1 className="text-lg font-semibold tracking-tight">Measures</h1>
-      <p className="mt-0.5 text-2xs text-faint">
+      <p className="mt-1 text-2xs text-faint">
         {t(
           "Body weight, body fat, and girths — one entry per day. Progress photos stay private.",
           "Body weight, body fat, and girths — one entry per day. Progress photos stay private. The frog does not look.",
@@ -236,7 +236,7 @@ function Editor({
       <div className="flex items-center gap-2">
         <label
           htmlFor="measure-date"
-          className="text-2xs font-medium tracking-widest text-faint uppercase"
+          className="flex h-11 min-w-11 items-center text-2xs font-medium tracking-widest text-faint uppercase"
         >
           Date
         </label>
@@ -317,7 +317,7 @@ function Field({
       className={wide ? "col-span-2 block" : "block"}
     >
       <span className="text-2xs text-faint">{def.label}</span>
-      <div className="relative mt-0.5">
+      <div className="relative mt-1">
         <Input
           id={`measure-field-${def.key}`}
           defaultValue={initial}
@@ -410,13 +410,13 @@ function Trends({
   return (
     <div className="overflow-hidden rounded-md mt-4 bg-surface">
       {/* Metric chips */}
-      <div className="flex gap-1 overflow-x-auto p-2">
+      <div className="flex gap-2 overflow-x-auto p-2">
         {METRICS.map((m) => (
           <button
             key={m.key}
             type="button"
             onClick={() => onMetricChange(m.key)}
-            className={`h-9 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150 ${
+            className={`h-11 shrink-0 whitespace-nowrap px-3 text-xs transition-colors duration-150 ${
               m.key === metricKey
                 ? "bg-accent-soft text-accent-ink"
                 : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink"
@@ -448,7 +448,7 @@ function Trends({
 
       {/* Dated value list, newest first */}
       {rows.length > 0 && (
-        <ul className="[&>*+*]:mt-0.5">
+        <ul className="[&>*+*]:mt-2">
           {rows.map(({ m, value }) => (
             <li
               key={m.measuredOn}
@@ -743,7 +743,7 @@ function PhotoThumb({
           className="size-full object-cover"
         />
       )}
-      <span className="num absolute inset-x-0 bottom-0 bg-scrim px-1 py-0.5 text-center text-2xs text-ink">
+      <span className="num absolute inset-x-0 bottom-0 bg-scrim px-1 py-1 text-center text-2xs text-ink">
         {formatDay(measurement.measuredOn)}
       </span>
     </button>

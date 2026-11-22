@@ -320,13 +320,13 @@ export function ConditionsChip({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={onQueryKeyDown}
-              className="h-10 text-sm md:h-8"
+              className="h-11 text-sm md:h-8"
               data-testid="condition-add-input"
             />
 
             {q !== "" && !exactMatch && (
               <div className="flex flex-col gap-2">
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-2">
                   {TYPES.map((t) => (
                     <button
                       key={t.value}
@@ -357,7 +357,7 @@ export function ConditionsChip({
             )}
 
             {(suggestions.length > 0 || q !== "") && (
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {suggestions.slice(0, 8).map((m) => (
                   <button
                     key={m.id}
@@ -418,7 +418,7 @@ function ConditionRow({
     metric.type === "number" || metric.type === "text" ? null : metric.type;
 
   return (
-    <div className="flex flex-col gap-1.5 py-2.5">
+    <div className="flex flex-col gap-2 py-3">
       <div className="flex min-h-8 items-center justify-between gap-2">
         <span className="min-w-0 truncate text-sm text-ink">{label}</span>
         <div className="flex shrink-0 items-center gap-1">
@@ -655,7 +655,7 @@ function RowMenu({
                 setOpen(false);
               }}
               data-testid={`condition-untrack-${metricId}`}
-              className="block w-full px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
+              className="block w-full px-3 py-2 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-ink"
             >
               {untrackLabel}
             </button>
@@ -667,7 +667,7 @@ function RowMenu({
                   setOpen(false);
                 }}
                 data-testid={`condition-delete-${metricId}`}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-soft transition-colors duration-150 hover:bg-surface-hover hover:text-neg"
               >
                 <Trash className="size-3.5" />
                 Delete
@@ -703,7 +703,7 @@ function NotesBlock({
       rows={3}
       placeholder="How did it feel? Anything worth remembering…"
       data-testid="condition-notes"
-      className="min-h-16 w-full resize-y rounded-sm border border-field bg-translucent px-2.5 py-2 text-sm text-ink placeholder:text-faint focus:border-focus"
+      className="min-h-16 w-full resize-y rounded-sm border border-field bg-translucent px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-focus"
     />
   );
 }

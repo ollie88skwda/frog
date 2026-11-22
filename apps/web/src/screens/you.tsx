@@ -15,7 +15,7 @@ const SEGMENTS = ["profile", "settings"] as const;
 export default function YouScreen() {
   const [segment, setSegment] = useSegment(SEGMENTS, "profile");
   return (
-    <div className="mx-auto max-w-2xl pb-20 md:pb-6">
+    <div className="mx-auto max-w-2xl pb-6">
       <SegmentBar
         value={segment}
         onChange={(v) => setSegment(v as (typeof SEGMENTS)[number])}
@@ -30,20 +30,20 @@ export default function YouScreen() {
       <div className="flex flex-wrap gap-2 px-4">
         <Link
           to="/you/rules"
-          className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
+          className="inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
         >
           How {APP_NAME} decides
         </Link>
         <Link
           to="/measures"
-          className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
+          className="inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
           data-testid="you-body-log"
         >
           Body log
         </Link>
         <Link
           to="/changelog"
-          className="inline-flex h-10 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
+          className="inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
         >
           Changelog
         </Link>

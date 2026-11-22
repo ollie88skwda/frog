@@ -43,7 +43,7 @@ export function StatTile({
         <Num value={value} unit={unit} size="xl" />
         {spark}
       </span>
-      <span className="flex flex-wrap items-center gap-1.5">
+      <span className="flex flex-wrap items-center gap-2">
         {delta}
         {confidence}
       </span>

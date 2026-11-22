@@ -53,14 +53,14 @@ export function ImportCard() {
   return (
     <div className="mt-4 rounded-md bg-surface p-4">
       <h2 className="text-sm font-medium">Import</h2>
-      <p className="mt-0.5 text-2xs text-faint">
+      <p className="mt-1 text-2xs text-faint">
         Bring your history in. Import workouts first, then sleep: sleep attaches
         to sessions that already exist.
       </p>
 
       <Link
         to="/import"
-        className="mt-3 flex h-10 items-center justify-center gap-2 rounded-sm bg-secondary text-sm font-medium text-on-secondary hover:bg-active"
+        className="mt-3 flex h-11 items-center justify-center gap-2 rounded-sm bg-secondary text-sm font-medium text-on-secondary hover:bg-active"
         data-testid="import-workouts-link"
       >
         <UploadSimple className="size-4" />
@@ -81,7 +81,7 @@ export function ImportCard() {
             accept=".json,application/json"
             multiple
             onChange={(e) => void onSleepFiles(e.target.files)}
-            className="text-xs text-soft file:mr-2 file:rounded-sm file:bg-surface-2 file:px-2 file:py-1 file:text-xs file:text-ink"
+            className="text-xs text-soft file:mr-2 file:h-11 file:rounded-sm file:bg-surface-2 file:px-3 file:text-xs file:text-ink"
             data-testid="import-sleep-input"
           />
           {sleep.phase === "parsed" && (

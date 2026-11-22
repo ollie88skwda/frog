@@ -43,11 +43,11 @@ import { useVoice } from "@/lib/voice";
 // flip upward when there isn't enough viewport room below. A fixed height is
 // a pragmatic call: item counts here are small, developer-controlled, and
 // bounded. Each constant must stay at or above the real rendered height
-// (36px per h-9 row + 8px p-1 + 2px border + 4px offset) — an underestimate
+// (44px per h-11 row + 8px p-1 + 2px border + 4px offset) — an underestimate
 // renders downward and clips the last row off-viewport; a small overestimate
 // only flips slightly more eagerly than strictly required at the boundary.
-const FOLDER_MENU_HEIGHT = 88; // 2 items (Rename/Delete folder), measured 86
-const ROUTINE_MENU_HEIGHT = 160; // up to 4 items (Edit/Duplicate/Move/Delete), measured 158
+const FOLDER_MENU_HEIGHT = 100; // 2 items (Rename/Delete folder), 44px rows, measured ~94
+const ROUTINE_MENU_HEIGHT = 184; // up to 4 items (Edit/Duplicate/Move/Delete), 44px rows, measured ~174
 
 // One owner for the collision rule shared by both menus below: measure the
 // trigger on open, and flip only when the room below can't fit the popup.
@@ -94,9 +94,9 @@ export default function RoutinesScreen() {
   const unfiled = byFolder.get(null) ?? [];
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-20 md:pb-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold tracking-tight">Routines</h1>
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
+      <h1 className="sr-only">Routines</h1>
+      <div className="flex items-center justify-end">
         <Toolbar>
           <Button
             variant="ghost"
@@ -106,14 +106,6 @@ export default function RoutinesScreen() {
             data-testid="new-folder-btn"
           >
             <FolderPlus className="size-4" />
-          </Button>
-          <Button
-            variant="accent"
-            size="sm"
-            onClick={() => navigate("/programs/new")}
-            data-testid="build-program-btn"
-          >
-            Build my program
           </Button>
           <Button
             variant="outline"
@@ -255,7 +247,7 @@ function FolderSection({
       <div className="flex items-center gap-1">
         <button
           type="button"
-          className="flex h-10 flex-1 items-center gap-2 rounded-sm px-1 text-left hover:bg-surface-2"
+          className="flex h-11 flex-1 items-center gap-2 rounded-sm px-1 text-left hover:bg-surface-2"
           onClick={() => setOpen((o) => !o)}
         >
           {open ? (
@@ -267,7 +259,7 @@ function FolderSection({
           <span className="text-sm font-medium">{folder.name}</span>
           <span className="num text-2xs text-faint">{routines.length}</span>
           {isProgram && (
-            <span className="inline-flex h-5 items-center rounded-xs bg-accent-soft px-1.5 text-2xs font-semibold text-accent-ink">
+            <span className="inline-flex h-5 items-center rounded-xs bg-accent-soft px-2 text-2xs font-semibold text-accent-ink">
               Program
             </span>
           )}
@@ -321,7 +313,7 @@ function FolderSection({
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="h-8 flex-1"
+            className="h-11 flex-1"
             autoFocus
           />
           <Button
@@ -400,7 +392,7 @@ function RoutineCard({
         <p className="truncate text-sm font-medium">{routine.name}</p>
         {summary && (
           <p
-            className="num truncate text-xs text-soft"
+            className="num text-xs text-soft"
             data-testid={`routine-summary-${routine.name}`}
           >
             {formatRoutineSummary(summary)}
@@ -482,7 +474,7 @@ function RoutineCard({
           <div className="mt-2 flex flex-col gap-1">
             <button
               type="button"
-              className="flex h-10 items-center rounded-sm px-2 text-left text-sm hover:bg-surface-2"
+              className="flex h-11 items-center rounded-sm px-2 text-left text-sm hover:bg-surface-2"
               onClick={() => {
                 move.mutate({ routineId: routine.id, folderId: null });
                 setMoveOpen(false);
@@ -495,7 +487,7 @@ function RoutineCard({
                 key={f.id}
                 type="button"
                 className={cn(
-                  "flex h-10 items-center gap-2 rounded-sm px-2 text-left text-sm hover:bg-surface-2",
+                  "flex h-11 items-center gap-2 rounded-sm px-2 text-left text-sm hover:bg-surface-2",
                   f.id === routine.folderId && "text-accent-ink",
                 )}
                 onClick={() => {
@@ -528,7 +520,7 @@ function MenuItem({
     <button
       type="button"
       className={cn(
-        "flex h-9 items-center rounded-sm px-2 text-left text-xs hover:bg-surface-2",
+        "flex h-11 items-center rounded-sm px-2 text-left text-xs hover:bg-surface-2",
         destructive && "text-neg",
       )}
       onClick={onClick}

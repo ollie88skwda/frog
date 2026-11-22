@@ -128,7 +128,7 @@ export function WizardStep({
           />
         ))}
         {sel === "custom" && (
-          <fieldset className="min-w-0 border-0 p-0 flex flex-wrap gap-1 pt-1">
+          <fieldset className="min-w-0 border-0 p-0 flex flex-wrap gap-2 pt-1">
             <legend className="sr-only">Training weekdays</legend>
             {WEEKDAY_SHORT.map((d, i) => {
               const days =
@@ -227,7 +227,7 @@ export function WizardStep({
           }}
         />
         {sel === "custom" && (
-          <fieldset className="min-w-0 border-0 p-0 flex flex-wrap gap-1 pt-1">
+          <fieldset className="min-w-0 border-0 p-0 flex flex-wrap gap-2 pt-1">
             <legend className="sr-only">Equipment</legend>
             {EQUIPMENT_KINDS.map((k) => {
               const on = answers.equipment.includes(k);

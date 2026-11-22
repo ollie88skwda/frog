@@ -182,7 +182,7 @@ export default function CalendarScreen() {
 
   if (sessionsQ.isPending || sessionsQ.isLoadingError) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+      <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
         <h1 className="text-lg font-semibold tracking-tight">Calendar</h1>
         <div className="mt-4 rounded-md bg-surface">
           <QueryState
@@ -199,7 +199,7 @@ export default function CalendarScreen() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-24 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold tracking-tight">Calendar</h1>
       </div>
@@ -238,7 +238,7 @@ export default function CalendarScreen() {
               setView("month");
             }
           }}
-          className="flex items-center gap-2 px-3 text-sm font-medium transition-colors duration-150 hover:text-soft"
+          className="flex h-11 items-center gap-2 px-3 text-sm font-medium transition-colors duration-150 hover:text-soft"
           data-testid="cal-zoom"
           title={view === "month" ? "Zoom to year" : "Back to month"}
         >
@@ -329,7 +329,7 @@ function MonthGrid({
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-2">
         {cells.map((c) => {
           if (c.day == null) return <div key={c.key} />;
           const d = c.day;
@@ -374,7 +374,7 @@ function MonthGrid({
               </span>
               {list.length > 1 && (
                 <span
-                  className="rounded-xs num absolute right-0.5 bottom-0.5 flex min-w-3 items-center justify-center bg-surface px-0.5 text-2xs leading-none text-accent-ink"
+                  className="rounded-xs num absolute right-0.5 bottom-0.5 flex min-w-3 items-center justify-center bg-surface px-1 text-2xs leading-none text-accent-ink"
                   data-testid={`cal-count-${key}`}
                 >
                   {list.length}
@@ -525,7 +525,7 @@ function DaySheet({
             )}
           </p>
         ) : (
-          <ul className="[&>*+*]:mt-0.5">
+          <ul className="[&>*+*]:mt-2">
             {sessions.map((s) => (
               <li key={s.id}>
                 <Link
