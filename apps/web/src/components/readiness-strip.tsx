@@ -101,18 +101,30 @@ export function ReadinessStrip({
       </div>
 
       <div className="mt-3">
-        <div className="flex items-baseline justify-between">
+        <div className="flex items-center justify-between gap-2">
           <span className="text-sm text-ink">Stress</span>
-          <span className="num text-sm font-semibold text-ink">
-            {stress == null ? (
-              <span className="font-normal text-faint">Not set</span>
-            ) : (
-              <>
-                {stress}
-                <span className="font-normal text-faint"> / 10</span>
-              </>
+          <div className="flex items-center gap-2">
+            <span className="num text-sm font-semibold text-ink">
+              {stress == null ? (
+                <span className="font-normal text-faint">Not set</span>
+              ) : (
+                <>
+                  {stress}
+                  <span className="font-normal text-faint"> / 10</span>
+                </>
+              )}
+            </span>
+            {stress != null && (
+              <button
+                type="button"
+                onClick={() => set(STRESS, undefined)}
+                className="inline-flex h-11 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-on-secondary md:h-8"
+                data-testid="readiness-stress-clear"
+              >
+                Clear
+              </button>
             )}
-          </span>
+          </div>
         </div>
         <ScaleSlider
           label="Stress, 1 calm to 10 maxed out"

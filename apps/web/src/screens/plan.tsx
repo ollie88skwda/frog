@@ -1,4 +1,4 @@
-import { CaretRight } from "@phosphor-icons/react";
+import { CaretRight, Plus } from "@phosphor-icons/react";
 import { Suspense } from "react";
 import { useNavigate } from "react-router";
 import { SegmentBar, useSegment } from "@/components/segments";
@@ -53,7 +53,20 @@ function ActiveProgramCard() {
           </Button>
         </>
       ) : (
-        <p className="text-sm text-soft">No active program yet.</p>
+        <>
+          <h2 className="text-lg font-semibold tracking-tight">
+            Pick how you train
+          </h2>
+          <p className="mt-1 text-sm text-soft">Takes a minute.</p>
+          <Button
+            variant="primary"
+            className="mt-3"
+            onClick={() => navigate("/plan/build")}
+            data-testid="plan-build-btn"
+          >
+            <Plus className="size-4" /> Build my program
+          </Button>
+        </>
       )}
     </section>
   );

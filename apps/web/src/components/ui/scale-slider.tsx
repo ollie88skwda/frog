@@ -1,11 +1,25 @@
+import { useRef } from "react";
 import { cn } from "@/lib/utils";
 
 /**
  * One-control 1..N scale (native range input: role=slider, arrow keys, touch
  * drag). The whole 44px-tall input is the touch target. `value` undefined =
- * not set yet; the thumb parks mid-scale and a plain tap/release on it still
- * records that value.
+ * not set yet; the thumb parks mid-scale and a tap that starts on it, or a
+ * value-picking key, still records that value.
  */
+const PICK_KEYS = new Set([
+  "Enter",
+  " ",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+  "Home",
+  "End",
+  "PageUp",
+  "PageDown",
+]);
+
 export function ScaleSlider({
   value,
   onChange,
@@ -24,6 +38,7 @@ export function ScaleSlider({
   className?: string;
 }) {
   const parked = Math.round((min + max) / 2);
+  const pressed = useRef(false);
   const commit = (el: HTMLInputElement) => onChange(Number(el.value));
   return (
     <input
@@ -37,8 +52,22 @@ export function ScaleSlider({
       data-testid={testId}
       data-set={value != null}
       onChange={(e) => commit(e.currentTarget)}
-      onPointerUp={(e) => value == null && commit(e.currentTarget)}
-      onKeyUp={(e) => value == null && commit(e.currentTarget)}
+      onPointerDown={() => {
+        pressed.current = true;
+      }}
+      onPointerUp={(e) => {
+        if (pressed.current && value == null) commit(e.currentTarget);
+        pressed.current = false;
+      }}
+      onPointerCancel={() => {
+        pressed.current = false;
+      }}
+      onPointerLeave={() => {
+        pressed.current = false;
+      }}
+      onKeyDown={(e) => {
+        if (value == null && PICK_KEYS.has(e.key)) commit(e.currentTarget);
+      }}
       style={{ accentColor: "var(--color-accent-solid)" }}
       className={cn(
         "block h-11 w-full cursor-pointer md:h-8",
