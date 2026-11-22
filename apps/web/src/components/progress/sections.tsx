@@ -4,6 +4,7 @@ import {
   computeStreak,
   confidenceLevel,
   FIRST_WEEKDAY,
+  HARD_SET_MAX_RIR,
   muscleLabel,
   roundBodyweightDisplay,
   toDisplayWeight,
@@ -143,8 +144,9 @@ export function OverviewTiles({
         info={
           <>
             <p>
-              Working sets at 4 RIR or closer, compared with the 7 days before.
-              Warm-ups never count.
+              Working sets at {d.rirMax ?? HARD_SET_MAX_RIR} RIR or closer, plus
+              sets with no RIR logged, compared with the 7 days before. Warm-ups
+              never count.
             </p>
             <p className="num text-soft">n={nSets} sessions</p>
           </>
@@ -420,7 +422,7 @@ export function VolumeSection({ d, now }: { d: ProgressData; now: number }) {
           {r.rows.length === 0 ? (
             <EmptyState
               title="No hard sets in this window"
-              need="Working sets at 4 RIR or closer count. Warm-ups never do."
+              need={`Working sets at ${d.rirMax ?? HARD_SET_MAX_RIR} RIR or closer count, and so do sets with no RIR logged. Warm-ups never do.`}
             />
           ) : (
             r.rows.map((m) => (
