@@ -553,7 +553,16 @@
   from { opacity: 0; transform: translateY(2px) scale(0.99); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
-@utility float-in { animation: float-in 160ms var(--ease-out-quad); }
+@utility float-in {
+  animation: float-in 160ms var(--ease-out-quad);
+  /* Radix menus/selects keep the layer mounted until this exit animation ends
+     (their Presence waits on animationend), so it fades instead of vanishing. */
+  &[data-state="closed"] { animation: float-out 120ms var(--ease-out-quad) forwards; pointer-events: none; }
+}
+@keyframes float-out {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(2px) scale(0.99); }
+}
 
 /* react-body-highlighter figure: a tone-step gap between polygons (no line). */
 .rbh polygon {
@@ -561,3 +570,24 @@
   stroke-width: 0.4;
   stroke-linejoin: round;
 }
+
+/* Press feedback: a pressable control dips 2% while held and eases back on
+   release (the duration-* class on the control sets the speed). Uses the
+   standalone `scale` property so it composes with any translate/transform.
+   Replaces `transition-colors` on the controls that carry it. Reduced motion:
+   colour transitions only, no dip. */
+@utility press {
+  transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, opacity, box-shadow, scale;
+  transition-timing-function: var(--ease);
+  @media (prefers-reduced-motion: no-preference) {
+    &:active:not(:disabled) { scale: 0.98; }
+  }
+}
+
+/* A number that just changed settles in: fade + 2px drop, 180ms. Applied only
+   on a change, never on first paint (components/data/num.tsx). */
+@keyframes num-tick {
+  from { opacity: 0.35; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@utility num-tick { display: inline-block; animation: num-tick 180ms var(--ease); }

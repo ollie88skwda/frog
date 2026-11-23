@@ -145,7 +145,7 @@ function Segmented<T extends string | number>({
           onClick={() => onChange(o.value)}
           data-testid={testid ? `${testid}-${o.value}` : undefined}
           className={cn(
-            "h-11 min-w-11 rounded-sm px-3 text-xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
+            "press h-11 min-w-11 rounded-sm px-3 text-xs font-medium duration-150",
             value === o.value
               ? "bg-accent text-on-accent"
               : "text-soft hover:bg-surface-hover",

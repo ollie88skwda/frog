@@ -8,11 +8,12 @@ import {
   Sun,
   User,
 } from "@phosphor-icons/react";
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense, useMemo, useRef } from "react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { FrogMark } from "@/components/frog-mark";
 import { IconButton } from "@/components/ui/icon-button";
 import { useChangelogHasUnseen } from "@/lib/changelog-prefs";
+import { m, useRouteFade } from "@/lib/motion";
 import { useActiveSession } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,8 @@ export function AppShell() {
   const { theme, toggle } = useTheme();
   const { data: active } = useActiveSession();
   const { pathname } = useLocation();
+  const mainRef = useRef<HTMLElement>(null);
+  useRouteFade(mainRef, pathname);
   // Changelog lives inside Profile → Settings, so its unseen-entry dot
   // surfaces on the Profile nav item instead.
   const hasUnseenChangelog = useChangelogHasUnseen();
@@ -104,21 +107,33 @@ export function AppShell() {
                 end={end}
                 className={({ isActive }) =>
                   cn(
-                    "flex h-8 items-center gap-2 rounded-sm px-2 text-sm transition-colors duration-150 ease-(--ease-out-quad)",
+                    "relative flex h-8 items-center gap-2 rounded-sm px-2 text-sm transition-colors duration-150 ease-(--ease-out-quad)",
                     (forceActive ?? isActive)
-                      ? "bg-surface-active text-ink"
+                      ? "text-ink"
                       : "text-soft hover:bg-surface-hover hover:text-ink",
                   )
                 }
               >
-                <span className="relative shrink-0">
-                  <Icon className="size-4" />
-                  {badge && (
-                    <span className="absolute top-0 right-0 size-1.5 bg-accent" />
-                  )}
-                </span>
-                <span className="min-w-0 flex-1 truncate">{label}</span>
-                {key && <kbd className="keycap">{key}</kbd>}
+                {({ isActive }) => (
+                  <>
+                    {(forceActive ?? isActive) && (
+                      <NavPill
+                        id="side-pill"
+                        className="rounded-sm bg-surface-active"
+                      />
+                    )}
+                    <span className="relative shrink-0">
+                      <Icon className="size-4" />
+                      {badge && (
+                        <span className="absolute top-0 right-0 size-1.5 bg-accent" />
+                      )}
+                    </span>
+                    <span className="relative min-w-0 flex-1 truncate">
+                      {label}
+                    </span>
+                    {key && <kbd className="relative keycap">{key}</kbd>}
+                  </>
+                )}
               </NavLink>
             ),
           )}
@@ -131,6 +146,7 @@ export function AppShell() {
       </aside>
 
       <main
+        ref={mainRef}
         id="main"
         tabIndex={-1}
         className={cn(
@@ -178,22 +194,25 @@ export function AppShell() {
               title={label}
               className={({ isActive }) =>
                 cn(
-                  "flex h-11 min-w-[4.25rem] flex-col items-center justify-center gap-1 px-2 text-2xs font-medium transition-colors duration-150 ease-(--ease-out-quad)",
+                  "relative flex h-11 min-w-[4.25rem] flex-col items-center justify-center gap-1 px-2 text-2xs font-medium press duration-150",
                   (forceActive ?? isActive)
-                    ? "bg-accent-soft text-accent-ink"
+                    ? "text-accent-ink"
                     : "text-soft active:text-ink",
                 )
               }
             >
-              {() => (
+              {({ isActive }) => (
                 <>
+                  {(forceActive ?? isActive) && (
+                    <NavPill id="tab-pill" className="bg-accent-soft" />
+                  )}
                   <span className="relative shrink-0">
                     <Icon className="size-5" />
                     {badge && (
                       <span className="absolute top-0 right-0 size-1.5 bg-accent" />
                     )}
                   </span>
-                  <span className="leading-none whitespace-nowrap">
+                  <span className="relative leading-none whitespace-nowrap">
                     {label}
                   </span>
                 </>
@@ -207,5 +226,20 @@ export function AppShell() {
         <CommandPalette />
       </Suspense>
     </div>
+  );
+}
+
+/**
+ * The active-tab fill. One shared `layoutId` per nav, so switching tabs slides
+ * the fill to the new tab with a soft spring instead of blinking it across.
+ */
+function NavPill({ id, className }: { id: string; className: string }) {
+  return (
+    <m.span
+      layoutId={id}
+      aria-hidden
+      className={cn("absolute inset-0", className)}
+      transition={{ type: "spring", visualDuration: 0.26, bounce: 0 }}
+    />
   );
 }

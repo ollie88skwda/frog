@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 const CHIP =
-  "inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-sm bg-secondary/60 px-3 text-xs font-semibold whitespace-nowrap text-on-secondary transition-colors duration-150 hover:bg-secondary data-[state=on]:bg-accent-soft data-[state=on]:text-accent-ink disabled:cursor-not-allowed disabled:opacity-50 md:h-8";
+  "inline-flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-sm bg-secondary/60 px-3 text-xs font-semibold whitespace-nowrap text-on-secondary press duration-150 hover:bg-secondary data-[state=on]:bg-accent-soft data-[state=on]:text-accent-ink disabled:cursor-not-allowed disabled:opacity-50 md:h-8";
 
 /**
  * Single-select chip row (segmented control / filter chips). Radix
