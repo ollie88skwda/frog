@@ -118,7 +118,7 @@ type SetLaterality = "bilateral" | "unilateral";
 // `reps` doubles as the per-side target on a unilateral set (session-redesign-
 // r3 A3): routine_sets carries one reps value per row, which the session
 // already reads as "reps per side" for a unilateral prescription, so the
-// ᴸ/ᴿ grid below edits the same field from both columns rather than a second
+// left/right grid below edits the same field from both columns rather than a second
 // column with nowhere to persist independently — see the PR body.
 type DraftSet = {
   key: string;

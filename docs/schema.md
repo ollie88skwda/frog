@@ -79,7 +79,7 @@ machine picker has its uuid stored in `machines.catalog_key`. See AGENTS.md's
 | image_urls | jsonb? | string[], how-to frames (detail screen only) |
 | mechanic | text? | `compound` \| `isolation`; explicit, overrides the muscle-count proxy in `generator/generate.ts` |
 | movement_pattern | text? | `horizontal-push` \| `vertical-push` \| `horizontal-pull` \| `vertical-pull` \| `squat` \| `hinge` \| `lunge` \| `carry` \| `rotation` \| `isolation` |
-| laterality | text? | `bilateral` \| `unilateral` \| `alternating`; unilateral logs each set as a ᴸ/ᴿ pair of `set_logs` rows sharing one `set_no` (see [set_logs](#set_logs)), alternating labels the reps column "total reps" in-session. Muscle credit is per physical set, the same for all three. |
+| laterality | text? | `bilateral` \| `unilateral` \| `alternating`; unilateral logs each set as a left/right pair of `set_logs` rows sharing one `set_no` (see [set_logs](#set_logs)), alternating labels the reps column "total reps" in-session. Muscle credit is per physical set, the same for all three. |
 | default_reps_min / default_reps_max | integer? | prefill only — routine editor "Add exercise" + generator; never rewrites a logged/prescribed value |
 | default_rest_sec | integer? | prefill only — seeds `routine_exercises.rest_sec` when the routine editor adds this exercise; no session-side reader (rest is an untargeted stopwatch) |
 | notes | text? | the user's own note about the exercise (setup, cue); shown read-only under the block header in a session |

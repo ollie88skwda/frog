@@ -101,6 +101,7 @@ test("Log goes to the next exercise when the current one has no planned sets lef
   await addExerciseToSession(page, B);
   await page.getByTestId("exercise-prev").click();
   await expect(page.getByTestId("exercise-name")).toContainText(A);
+  await expect(page.getByTestId("weight-field")).toBeVisible();
 
   await logBilateralSet(page, "50", "8");
   await expect(page.getByTestId("exercise-name")).toContainText(B);
@@ -138,6 +139,9 @@ test("Log stays on the exercise while planned sets remain", async ({
   await expect(page).toHaveURL(/\/session\//);
 
   await expect(page.getByTestId("exercise-name")).toContainText(A);
+  // The entry panel can still be painting here; fillSet would read it as
+  // "no open set" and click Add a set, giving A a fourth set.
+  await expect(page.getByTestId("weight-field")).toBeVisible();
   await logBilateralSet(page, "40", "8"); // set 1 of 3: stay
   await expect(page.getByTestId("exercise-name")).toContainText(A);
   await expect(page.getByTestId("set-number")).toContainText("Set 2");

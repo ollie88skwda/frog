@@ -3366,7 +3366,6 @@ function ExerciseSpotlight({
                   >
                     {Array.from({ length: total }, (_, i) => i).map((i) => (
                       <span
-                        // biome-ignore lint/suspicious/noArrayIndexKey: fixed 1..total strip
                         key={i}
                         className={cn(
                           "h-1.5 rounded-xs transition-all duration-150",
