@@ -156,7 +156,7 @@ export default function ImportScreen() {
           <div className="mt-4 flex gap-2">
             <Link
               to="/history"
-              className="flex h-10 flex-1 items-center justify-center rounded-sm bg-action px-3 text-sm font-medium text-on-action"
+              className="flex h-11 flex-1 items-center justify-center rounded-sm bg-action px-3 text-sm font-medium text-on-action"
               data-testid="import-view-history"
             >
               View History
@@ -320,7 +320,7 @@ export default function ImportScreen() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6 pb-28 md:pb-6">
+    <div className="mx-auto max-w-2xl px-4 py-6 pb-6">
       <div className="mb-4 flex items-center gap-2">
         <BackButton to="/you?s=settings" label="Back" />
         <h1 className="text-lg font-semibold tracking-tight">Import</h1>
@@ -387,7 +387,7 @@ function MappingPanel({
             type="button"
             aria-pressed={unit === u}
             onClick={() => onUnit(u)}
-            className={`h-10 rounded-sm px-3 text-xs font-semibold md:h-8 ${unit === u ? "bg-accent-soft text-accent-ink" : "bg-secondary/60 text-on-secondary"}`}
+            className={`h-11 rounded-sm px-3 text-xs font-semibold md:h-8 ${unit === u ? "bg-accent-soft text-accent-ink" : "bg-secondary/60 text-on-secondary"}`}
           >
             {u}
           </button>
