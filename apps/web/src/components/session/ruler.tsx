@@ -42,6 +42,11 @@ type Props = {
   jump?: number;
   onChange: (v: number) => void;
   onStart?: () => void;
+  /** Readout and tick-label text for a value, e.g. 5 → "5+", -1 → "–". */
+  format?: (v: number) => string;
+  /** Readout while the value is still unset (RIR never prefills); a tap on
+   * the ruler then picks the value under the needle. */
+  emptyText?: string;
 };
 
 export function Ruler(props: Props) {
@@ -118,7 +123,8 @@ export function Ruler(props: Props) {
       ctx.stroke();
       if (isMajor && !selected) {
         ctx.fillStyle = faintInk;
-        ctx.fillText(String(Math.round(val * 100) / 100), x, h - th - 6);
+        const v = Math.round(val * 100) / 100;
+        ctx.fillText(p.format ? p.format(v) : String(v), x, h - th - 6);
       }
       ctx.globalAlpha = 1;
     }
@@ -245,7 +251,9 @@ export function Ruler(props: Props) {
     draw();
   }
 
-  const shown = Math.round(props.value * 100) / 100;
+  const rounded = Math.round(props.value * 100) / 100;
+  const shown =
+    props.emptyText ?? (props.format ? props.format(rounded) : rounded);
   const jumpBy = (dir: 1 | -1) => {
     const p = live.current;
     const next = snapToStep(
@@ -300,7 +308,7 @@ export function Ruler(props: Props) {
             aria-valuemin={min}
             aria-valuemax={max}
             aria-valuenow={props.value}
-            aria-valuetext={`${props.value}${unit ? ` ${unit}` : ""}`}
+            aria-valuetext={`${shown}${unit ? ` ${unit}` : ""}`}
             data-testid={testId}
             className={cn(
               "block h-[clamp(40px,6.4dvh,56px)] w-full cursor-ew-resize rounded-sm outline-offset-2 select-none",
@@ -352,6 +360,8 @@ export function Ruler(props: Props) {
               if (st.moved < 4) {
                 st.pos = st.emitted;
                 draw();
+                if (live.current.emptyText != null)
+                  live.current.onChange(st.emitted);
                 return;
               }
               if (performance.now() - st.lastT > 80) st.vel = 0;

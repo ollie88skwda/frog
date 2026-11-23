@@ -46,16 +46,16 @@ export async function fillSet(page: Page, weight: string, reps: string) {
   await page.getByTestId("reps-field").fill(reps);
 }
 
-/** Per-side: selects a side tab, then fills that side's own numbers. */
+/** Per-side: fills the shared weight and that side's own reps (both sides
+ * are always on screen; see e2e/perside-entry.spec.ts). */
 export async function fillSide(
   page: Page,
   side: "left" | "right",
   weight: string,
   reps: string,
 ) {
-  await page.getByTestId(`side-tab-${side}`).click();
   await page.getByTestId("weight-field").fill(weight);
-  await page.getByTestId("reps-field").fill(reps);
+  await page.getByTestId(`reps-field-${side}`).fill(reps);
 }
 
 /** Commits the current spotlight set via the Log button. */

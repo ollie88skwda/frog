@@ -91,8 +91,7 @@ test("a per-side set carries the L+R tag on its mark; a bilateral one does not",
 
   // A bilateral set logged next carries no side-tag on its own mark.
   await page.getByTestId("add-set").click();
-  await openSetTypeMenu(page);
-  await page.getByTestId("set-type-perside").click(); // toggle off
+  await page.getByTestId("laterality-both").click(); // back to both sides
   await logBilateralSet(page, "45", "10");
   await expect(page.getByTestId("set-mark-1-side-tag")).toHaveCount(0);
 });
@@ -110,8 +109,8 @@ test("an uneven per-side set shows both sides in the set list, not just the left
 
   const sides = page.getByTestId("set-mark-0-sides");
   await expect(sides).toBeVisible();
-  await expect(sides).toContainText(/30 (kg|lbs?) × 10/);
-  await expect(sides).toContainText(/30 (kg|lbs?) × 8/);
+  await expect(sides).toContainText(/30 × 10/);
+  await expect(sides).toContainText(/30 × 8/);
   await expect(sides.getByRole("img", { name: "left side" })).toBeVisible();
   await expect(sides.getByRole("img", { name: "right side" })).toBeVisible();
   // Both sides are shown, so the generic L+R tag is not.
@@ -121,8 +120,8 @@ test("an uneven per-side set shows both sides in the set list, not just the left
   await finishSession(page);
   await startSessionWith(page, EX);
   const last = page.getByTestId("set-mark-last-sides");
-  await expect(last).toContainText(/30 (kg|lbs?) × 10/);
-  await expect(last).toContainText(/30 (kg|lbs?) × 8/);
+  await expect(last).toContainText(/30 × 10/);
+  await expect(last).toContainText(/30 × 8/);
 });
 
 test("tapping a done mark reopens that finished set for editing", async ({
