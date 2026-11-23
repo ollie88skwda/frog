@@ -167,6 +167,7 @@ import {
 import { IconButton } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
 import { SideTag } from "@/components/ui/side-tag";
+import { ChipGroup, ChipItem } from "@/components/ui/chip";
 import { loadFirstSide, otherSide, saveFirstSide } from "@/lib/first-side";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
@@ -2506,7 +2507,14 @@ function SetRows({
   rows,
 }: {
   marks: Mark[];
-  rows: { text: string; lastText: string; rirText: string; hasNote: boolean }[];
+  rows: {
+    text: string;
+    rText?: string | null;
+    lastR?: string | null;
+    lastText: string;
+    rirText: string;
+    hasNote: boolean;
+  }[];
 }) {
   return (
     <div className="flex flex-col gap-1 px-4" data-testid="marks-band">
@@ -2541,8 +2549,17 @@ function SetRows({
               {m.kind === "warmup" ? "W" : i + 1}
             </span>
             <span className="num flex min-w-0 items-center gap-1.5 font-semibold">
-              <span className="min-w-0 truncate">{now ? "Now" : r.text}</span>
-              {m.paired && (
+              {!now && r.rText ? (
+                <span className="flex min-w-0 items-center gap-1 truncate">
+                  <SideTag side="left" />
+                  {r.text.replace(/ kg| lbs?/, "")}
+                  <SideTag side="right" className="ml-1" />
+                  {r.rText.replace(/ kg| lbs?/, "")}
+                </span>
+              ) : (
+                <span className="min-w-0 truncate">{now ? "Now" : r.text}</span>
+              )}
+              {m.paired && !r.rText && (
                 <SideTag side="both" testId={`set-mark-${i}-side-tag`} />
               )}
               {m.pr && (
@@ -2553,7 +2570,18 @@ function SetRows({
               )}
             </span>
             <span className="num flex items-center gap-2 text-sm text-soft">
-              {now ? (r.lastText ? `last ${r.lastText}` : "") : r.rirText}
+              {now && r.lastR ? (
+                <span className="flex items-center gap-1">
+                  last <SideTag side="left" />
+                  {r.lastR.split(" / ")[0]}
+                  <SideTag side="right" className="ml-0.5" />
+                  {r.lastR.split(" / ")[1]}
+                </span>
+              ) : now ? (
+                r.lastText ? `last ${r.lastText}` : ""
+              ) : (
+                r.rirText
+              )}
               {r.hasNote && (
                 <Notebook className="size-4 shrink-0 text-accent-ink" />
               )}
@@ -3483,7 +3511,24 @@ function ExerciseSpotlight({
               .filter((t) => t !== "—")
               .join(" × ");
             const rirText = g ? rirLabel(g[0]) : "";
+            const rText =
+              g?.[1] &&
+              (g[1].reps !== g[0].reps || g[1].weightKg !== g[0].weightKg)
+                ? fieldsFor(type)
+                    .map((k) => fieldText(k, g[1], blockUnit, distUnit))
+                    .filter((t) => t !== "—")
+                    .join(" × ")
+                : null;
+            const gh = ghostFor(ghost, i) as GhostSet;
+            const lastR =
+              gh?.otherSide &&
+              (gh.otherSide.reps !== gh.reps ||
+                gh.otherSide.weightKg !== gh.weightKg)
+                ? `${gh.reps ?? "–"} / ${gh.otherSide.reps ?? "–"}`
+                : null;
             return {
+              lastR,
+              rText,
               text,
               lastText,
               rirText,
@@ -4094,9 +4139,9 @@ function Spotlight({
   // this set already carries a value for one); `metricDraft` is their raw
   // text, parsed by type at commit.
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [activeCol, setActiveCol] = useState<"weight" | "reps" | "rir">(
-    "weight",
-  );
+  const [activeCol, setActiveCol] = useState<
+    "weight" | "reps" | "rir" | "reps2" | "rir2"
+  >("weight");
   const [note, setNote] = useState(
     () => draft?.note ?? (isEditing ? (left?.note ?? "") : ""),
   );
@@ -4952,7 +4997,204 @@ function Spotlight({
           </span>
         </div>
 
-        {isUnilateral && (
+        {false && (
+          <div className="pb-2" data-testid="laterality-switch">
+            <ChipGroup
+              value={isUnilateral ? "per" : "both"}
+              onValueChange={(v) => {
+                if (!v) return;
+                const next = v === "per";
+                if (next === isUnilateral) return;
+                if (isEditing) onSetLaterality(next);
+                else {
+                  setIsUnilateral(next);
+                  onLateralityOverrideChange(next ? "unilateral" : "bilateral");
+                }
+                setActiveCol("weight");
+              }}
+              className="grid grid-cols-2 flex-nowrap rounded-sm bg-surface-2 p-1 dark:bg-bg"
+              aria-label="How to log this set"
+            >
+              <ChipItem value="both" className="h-10 md:h-8">
+                <SideTag side="both" />
+                Both sides
+              </ChipItem>
+              <ChipItem value="per" className="h-10 md:h-8">
+                <SideTag side="left" />
+                <SideTag side="right" />
+                Per side
+              </ChipItem>
+            </ChipGroup>
+            <p className="px-1 pt-1.5 text-2xs leading-4 text-soft" data-testid="laterality-help">
+              {isUnilateral
+                ? "Separate reps and RIR for your left and right side."
+                : "One entry, logged the same for left and right."}
+            </p>
+          </div>
+        )}
+        {isUnilateral && ((() => {
+          const sideCol = (
+            key: "weight" | "reps" | "rir" | "reps2" | "rir2",
+            label: string,
+            text: string,
+            setText: ((v: string) => void) | null,
+            cmp: { text: string; state: string } | null,
+            unitTxt?: string,
+          ) => {
+            const on = activeCol === key;
+            return (
+              <div
+                key={key}
+                className={cn(
+                  "relative flex min-w-0 flex-col items-center pb-[clamp(2px,1.1dvh,10px)]",
+                  on ? "text-ink" : "text-soft",
+                )}
+              >
+                {setText ? (
+                  <span className="relative flex h-[clamp(40px,5.8dvh,48px)] w-full items-center justify-center">
+                    <input
+                      inputMode={key === "weight" ? "decimal" : "numeric"}
+                      autoComplete="off"
+                      data-big-input
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      onFocus={() => setActiveCol(key)}
+                      className="peer num absolute inset-0 size-full min-w-0 bg-transparent p-0 text-center leading-none font-bold tracking-tight outline-none"
+                      style={{ fontSize }}
+                      aria-label={label}
+                      data-testid={`e2-${key}`}
+                    />
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "num leading-none font-bold tracking-tight whitespace-pre peer-focus:invisible",
+                        text !== "" && "invisible",
+                      )}
+                      style={{ fontSize }}
+                    >
+                      {text === "" ? "–" : text}
+                      {unitTxt && (
+                        <span className="visible inline-block w-0 whitespace-nowrap">
+                          <small className="pl-1 text-[13px] font-semibold tracking-normal text-soft">
+                            {unitTxt}
+                          </small>
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setActiveCol(key)}
+                    className="num h-[clamp(40px,5.8dvh,48px)] w-full text-center leading-none font-bold tracking-tight"
+                    style={{ fontSize }}
+                    data-testid={`e2-${key}`}
+                  >
+                    {text === "" ? "–" : text}
+                  </button>
+                )}
+                <span className="flex h-7 items-center justify-center text-xs font-semibold text-soft">
+                  {label}
+                </span>
+                <span
+                  className={cn(
+                    "num min-h-4 px-1 text-center text-2xs leading-4 font-semibold text-balance",
+                    cmp?.state === "up" && "text-accent-ink",
+                    cmp?.state === "down" && "text-warn",
+                    (!cmp || cmp.state === "same" || cmp.state === "none") && "font-normal text-soft",
+                  )}
+                >
+                  {cmp?.text ?? ""}
+                </span>
+                {on && (
+                  <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-xs bg-accent-ink" />
+                )}
+              </div>
+            );
+          };
+          const rirText = (lo: string, hi: string) => {
+            const v = rirSegmentOf(lo, hi);
+            return v == null ? "" : v === 4 ? "4+" : String(v);
+          };
+          const repCmp = (cur: string, last: number | null | undefined) =>
+            compareToLast(cur.trim() === "" ? null : Number.parseFloat(cur), last ?? null, "");
+          // E-style mirror: Left | weight box | Right. Reps are the big number,
+          // RIR a smaller tappable value under it; the weight box is shared.
+          const side = (sd: "left" | "right", repKey: "reps" | "reps2", rirKey: "rir" | "rir2", val: string, setVal: (v: string) => void, rir: string, last: number | null | undefined) => {
+            const repOn = activeCol === repKey;
+            const rirOn = activeCol === rirKey;
+            const c = repCmp(val, last);
+            return (
+              <div className="flex min-w-0 flex-col items-center" data-testid={`e2-side-${sd}`}>
+                <span className="text-xs font-semibold text-soft">{sd === "left" ? "Left" : "Right"}</span>
+                <span className="relative flex h-[clamp(48px,7dvh,60px)] w-full items-center justify-center">
+                  <input
+                    inputMode="numeric"
+                    autoComplete="off"
+                    data-big-input
+                    value={val}
+                    onChange={(e) => setVal(e.target.value)}
+                    onFocus={() => setActiveCol(repKey)}
+                    className={cn("peer num absolute inset-0 size-full min-w-0 bg-transparent p-0 text-center leading-none font-bold tracking-tight outline-none", repOn ? "text-ink" : "text-soft")}
+                    style={{ fontSize: "clamp(40px,7dvh,56px)" }}
+                    aria-label={`${sd} reps`}
+                    data-testid={`e2-${repKey}`}
+                  />
+                  <span aria-hidden="true" className={cn("num leading-none font-bold peer-focus:invisible text-soft", val !== "" && "invisible")} style={{ fontSize: "clamp(40px,7dvh,56px)" }}>–</span>
+                </span>
+                <span className={cn("relative pb-1.5 text-xs font-semibold", c.state === "down" ? "text-warn" : c.state === "up" ? "text-accent-ink" : "text-soft")}>
+                  reps
+                  {repOn && <span className="absolute inset-x-[-10px] bottom-0 h-[3px] rounded-xs bg-accent-ink" />}
+                </span>
+                {effort && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setActiveCol(rirKey)}
+                    className={cn(
+                      "num mt-2 flex h-10 min-w-[84px] items-center justify-center gap-1.5 rounded-sm px-3 text-sm font-semibold md:h-8",
+                      rirOn ? "bg-accent-soft text-accent-ink" : "bg-surface-2 text-ink dark:bg-bg",
+                    )}
+                    data-testid={`e2-${rirKey}`}
+                  >
+                    <span className="text-xs text-soft">RIR</span>
+                    {rir === "" ? "–" : rir}
+                  </button>
+                )}
+              </div>
+            );
+          };
+          const wOn = activeCol === "weight";
+          return (
+            <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 pt-1 pb-3">
+              {side("left", "reps", "rir", reps, setReps, rirText(rirMin, rirMax), ghost.reps)}
+              <label
+                className={cn(
+                  "flex w-[104px] flex-col items-center rounded-md px-2 py-3",
+                  wOn ? "bg-accent-soft" : "bg-surface-2 dark:bg-bg",
+                )}
+              >
+                <span className="text-2xs font-semibold text-soft">Weight</span>
+                <input
+                  inputMode="decimal"
+                  autoComplete="off"
+                  data-big-input
+                  value={weight}
+                  placeholder="–"
+                  onChange={(e) => { setWeight(e.target.value); setWeight2(e.target.value); }}
+                  onFocus={() => setActiveCol("weight")}
+                  className={cn("num h-9 w-full bg-transparent p-0 text-center text-[28px] leading-none font-bold tracking-tight outline-none placeholder:text-soft", wOn ? "text-accent-ink" : "text-ink")}
+                  aria-label="Weight, both sides"
+                  data-testid="e2-weight"
+                />
+                <span className="text-2xs text-soft">{wUnit} · each</span>
+              </label>
+              {side("right", "reps2", "rir2", reps2, setReps2, rirText(rirMin2, rirMax2), ghostRight.reps)}
+            </div>
+          );
+        })())}
+        {false && (
           <div
             className="flex gap-1 pb-1"
             role="tablist"
@@ -4989,7 +5231,7 @@ function Spotlight({
             unit hangs off the number in a zero-width box, so it never pushes
             the number off centre, and the input covers the whole column so
             the tap target is the column, not the glyphs. */}
-        <div className="grid auto-cols-fr grid-flow-col">
+        <div className={cn("grid auto-cols-fr grid-flow-col", isUnilateral && "hidden")}>
           {cols.map(({ key, beat }) => {
             const on = activeCol === key;
             const label =
@@ -5138,10 +5380,54 @@ function Spotlight({
               onStart={() => {
                 if (restStartedAt != null) onStopRest();
               }}
-              onChange={(v) => setSW(String(v))}
+              onChange={(v) => {
+                setSW(String(v));
+                if (isUnilateral) setWeight2(String(v));
+              }}
             />
           )}
-          {activeCol === "reps" && (
+          {isUnilateral && (activeCol === "reps" || activeCol === "reps2") && (
+            <Ruler
+              key={activeCol}
+              value={Number.parseFloat(activeCol === "reps" ? reps : reps2) || 0}
+              min={0}
+              max={100}
+              step={1}
+              majorEvery={5}
+              midEvery={1}
+              pxPerStep={18}
+              ghost={activeCol === "reps" ? (ghost.reps ?? null) : (ghostRight.reps ?? null)}
+              label={activeCol === "reps" ? "Left reps ruler" : "Right reps ruler"}
+              unit={activeCol === "reps" ? "reps · left" : "reps · right"}
+              testId="reps-ruler"
+              onChange={(v) => (activeCol === "reps" ? setReps(String(v)) : setReps2(String(v)))}
+            />
+          )}
+          {isUnilateral && effort && (activeCol === "rir" || activeCol === "rir2") && (
+            <Ruler
+              key={activeCol}
+              value={(() => {
+                const m = activeCol === "rir" ? rirMin : rirMin2;
+                return m.trim() === "" ? (rirHintValue ?? 2) : Math.min(4, Number.parseInt(m, 10));
+              })()}
+              min={0}
+              max={4}
+              step={1}
+              majorEvery={1}
+              pxPerStep={52}
+              jump={1}
+              ghost={rirHintValue}
+              label={activeCol === "rir" ? "Left RIR ruler" : "Right RIR ruler"}
+              unit={activeCol === "rir" ? "RIR · left" : "RIR · right"}
+              testId="rir-ruler"
+              onChange={(v) => {
+                const f2 = segmentToFields(v);
+                if (activeCol === "rir") { setRirMin(f2.min); setRirMax(f2.max); }
+                else { setRirMin2(f2.min); setRirMax2(f2.max); }
+              }}
+            />
+          )}
+          {!isUnilateral && activeCol === "reps" && (
             <Ruler
               key={`r-${activeSide}`}
               value={Number.parseFloat(sr) || 0}
@@ -5161,7 +5447,7 @@ function Spotlight({
               onChange={(v) => setSR(String(v))}
             />
           )}
-          {effort && (
+          {effort && !isUnilateral && (
             <div className={cn("p-1.5", activeCol !== "rir" && "hidden")}>
               <RirSegmented
                 bare
