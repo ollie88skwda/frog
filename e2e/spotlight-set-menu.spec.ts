@@ -37,8 +37,8 @@ test("per-side splits the current set's reps by side", async ({ page }) => {
 
   await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click();
-  await expect(page.getByTestId("side-tab-left")).toBeVisible();
-  await expect(page.getByTestId("side-tab-right")).toBeVisible();
+  await expect(page.getByTestId("reps-field-left")).toBeVisible();
+  await expect(page.getByTestId("reps-field-right")).toBeVisible();
 });
 
 test("delete removes the current set", async ({ page }) => {
