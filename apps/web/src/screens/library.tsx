@@ -71,6 +71,7 @@ import {
   startBulkAddRun,
   useBulkAddFailures,
 } from "@/lib/bulk-add-failures";
+import { Collapse } from "@/lib/motion";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import {
   useResolvedUserPrefs,
@@ -357,11 +358,16 @@ export default function LibraryScreen() {
             Group &amp; quality
             <CaretDown
               aria-hidden="true"
-              className={cn("size-3", showMore && "rotate-180")}
+              className={cn(
+                "size-3 transition-transform duration-200 ease-(--ease)",
+                showMore && "rotate-180",
+              )}
             />
           </ToggleChip>
         </div>
-        {(showMore || filterTier !== "") && (
+        {/* overflow:hidden on Collapse contains the child's top margin, so
+            spacing is identical to before at rest. */}
+        <Collapse open={showMore || filterTier !== ""}>
           <div className="mt-2 flex flex-col gap-2">
             <div className="mt-2 flex items-center gap-2">
               <span className="text-2xs text-faint">Group</span>
@@ -390,7 +396,7 @@ export default function LibraryScreen() {
               onSelect={(v) => setFilterTier((prev) => (prev === v ? "" : v))}
             />
           </div>
-        )}
+        </Collapse>
       </div>
 
       <div className="rounded-md mt-4 overflow-hidden bg-surface">
@@ -1068,7 +1074,7 @@ const ExerciseRow = memo(function ExerciseRow({
           </div>
         </div>
       </div>
-      {expanded && (
+      <Collapse open={expanded}>
         <div className="rounded-sm bg-surface-2 px-4 py-2 pl-10">
           {setMetrics.length === 0 ? (
             <p className="text-2xs text-faint">
@@ -1197,7 +1203,7 @@ const ExerciseRow = memo(function ExerciseRow({
               </div>
             ))}
         </div>
-      )}
+      </Collapse>
     </li>
   );
 });

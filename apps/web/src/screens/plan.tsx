@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { SegmentBar, useSegment } from "@/components/segments";
 import { Button } from "@/components/ui/button";
 import { lazyRoute } from "@/lib/lazy-route";
+import { FadeSwap } from "@/lib/motion";
 import { useActiveProgram } from "@/lib/program-queries";
 import { useRoutineFolders, useRoutines } from "@/lib/routine-queries";
 
@@ -88,9 +89,11 @@ export default function PlanScreen() {
         ]}
       />
       <Suspense fallback={null}>
-        {segment === "program" && <ProgramsScreen />}
-        {segment === "routines" && <RoutinesScreen />}
-        {segment === "library" && <LibraryScreen />}
+        <FadeSwap swapKey={segment}>
+          {segment === "program" && <ProgramsScreen />}
+          {segment === "routines" && <RoutinesScreen />}
+          {segment === "library" && <LibraryScreen />}
+        </FadeSwap>
       </Suspense>
     </div>
   );

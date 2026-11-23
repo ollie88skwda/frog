@@ -24,6 +24,7 @@ import {
   PROGRAM_CATALOG,
   type ProgramCatalogEntry,
 } from "@/data/program-catalog";
+import { Collapse } from "@/lib/motion";
 import {
   useActiveBuilderConfig,
   useMaterializeProgram,
@@ -126,8 +127,8 @@ function ProgramCatalog() {
         >
           More templates ({PROGRAM_CATALOG.length})
         </Button>
-        {more && (
-          <div className="mt-2 flex flex-col gap-2">
+        <Collapse open={more}>
+          <div className="flex flex-col gap-2 pt-2">
             <p className="px-1 text-xs text-soft">
               Older split programs. No weekly set meter.
             </p>
@@ -143,7 +144,7 @@ function ProgramCatalog() {
               </p>
             )}
           </div>
-        )}
+        </Collapse>
       </div>
     </div>
   );

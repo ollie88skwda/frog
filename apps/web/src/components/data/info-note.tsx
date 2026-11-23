@@ -21,7 +21,7 @@ export function InfoNote({
     <Dialog>
       <DialogTrigger
         className={cn(
-          "relative rounded-xs bg-surface-2 p-1 text-soft transition-colors duration-100 after:absolute after:-inset-2.5 hover:text-ink",
+          "relative rounded-xs bg-surface-2 p-1 text-soft press duration-100 after:absolute after:-inset-2.5 hover:text-ink",
           className,
         )}
         aria-label={title}

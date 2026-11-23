@@ -20,6 +20,7 @@ import {
 import { useProgressData } from "@/components/progress/use-progress";
 import { ChipGroup, ChipItem } from "@/components/ui/chip";
 import { QueryState } from "@/components/ui/query-state";
+import { FadeSwap } from "@/lib/motion";
 
 const SECTIONS = [
   ["coach", "Coach"],
@@ -110,16 +111,18 @@ export default function ProgressScreen() {
             )
           }
         />
-        {section === "coach" && <CoachSection />}
-        {section === "volume" && <VolumeSection d={d} now={now} />}
-        {section === "strength" && (
-          <StrengthSection d={d} scope={scope} now={now} />
-        )}
-        {section === "effort" && (
-          <EffortSection d={d} scope={scope} now={now} />
-        )}
-        {section === "body" && <BodySection d={d} now={now} />}
-        {section === "lab" && <LabSection />}
+        <FadeSwap swapKey={section}>
+          {section === "coach" && <CoachSection />}
+          {section === "volume" && <VolumeSection d={d} now={now} />}
+          {section === "strength" && (
+            <StrengthSection d={d} scope={scope} now={now} />
+          )}
+          {section === "effort" && (
+            <EffortSection d={d} scope={scope} now={now} />
+          )}
+          {section === "body" && <BodySection d={d} now={now} />}
+          {section === "lab" && <LabSection />}
+        </FadeSwap>
       </QueryState>
     </div>
   );

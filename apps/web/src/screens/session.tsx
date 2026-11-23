@@ -168,6 +168,14 @@ import { IconButton } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
 import { PreviousSets, SideTag } from "@/components/ui/side-tag";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
+import {
+  AnimatePresence,
+  COLLAPSED,
+  EXPANDED,
+  FADE_OUT,
+  m as motionEl,
+  useMotionReady,
+} from "@/lib/motion";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
 import {
@@ -2519,120 +2527,145 @@ function SetRows({
   }[];
   fmtWeight: (kg: number) => string;
 }) {
+  const motionReady = useMotionReady();
   return (
-    <div className="flex flex-col gap-1 px-4" data-testid="marks-band">
-      {marks.map((m, i) => {
-        const r = rows[i];
-        const now = m.kind === "current";
-        return (
-          <button
-            // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
-            key={`${m.kind}-${i}`}
-            type="button"
-            disabled={!m.onTap}
-            onClick={(e) => {
-              // A per-side pair opens on the side that was tapped: from the
-              // R value rightwards is the right side (a matched pair, shown
-              // as one value, splits at the row's middle).
-              const box = e.currentTarget.getBoundingClientRect();
-              const r = e.currentTarget
-                .querySelector("[data-pair-right]")
-                ?.getBoundingClientRect();
-              // A wrapped pair (R half on its own line) splits by line.
-              const wrapped = r != null && r.top > box.top + box.height / 3;
-              const isRight = wrapped
-                ? e.clientY >= r.top - 2
-                : e.clientX >= (r ? r.left - 4 : box.left + box.width / 2);
-              m.onTap?.(m.paired ? (isRight ? "right" : "left") : null);
-            }}
-            className={cn(
-              "grid min-h-[clamp(40px,5.4dvh,48px)] w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 text-left text-[17px] text-ink transition-colors duration-100",
-              now ? "bg-accent-soft" : "bg-surface hover:bg-surface-hover",
-            )}
-            data-testid={`set-mark-${i}`}
-          >
-            <span
-              className={cn(
-                "num flex size-6 items-center justify-center rounded-sm text-xs font-semibold",
-                now
-                  ? "bg-accent text-on-accent"
-                  : m.kind === "warmup"
-                    ? "bg-surface-2 text-warn"
-                    : "bg-accent-soft text-accent-ink",
-              )}
-              data-testid={`set-mark-${i}-state`}
-              data-state={m.kind}
+    <div className="flex flex-col px-4" data-testid="marks-band">
+      {/* A logged set morphs in place (same key, new state); an added set
+          grows in and a removed one folds away instead of the list jumping.
+          The wrapper owns the 4px gap (as top padding) so a folding row takes
+          its gap with it. */}
+      <AnimatePresence initial={false}>
+        {marks.map((m, i) => {
+          const r = rows[i];
+          const now = m.kind === "current";
+          return (
+            <motionEl.div
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
+              key={`set-${i}`}
+              className={cn(i > 0 && "pt-1")}
+              initial={motionReady ? COLLAPSED : false}
+              animate={EXPANDED}
+              exit={{
+                ...COLLAPSED,
+                pointerEvents: "none",
+                transition: FADE_OUT,
+              }}
             >
-              {m.kind === "warmup" ? "W" : i + 1}
-            </span>
-            <span className="num flex min-w-0 items-center gap-2 font-semibold">
-              {(() => {
-                if (now) return <span className="min-w-0 truncate">Now</span>;
-                const sides = r.pair
-                  ? formatPreviousSides(r.pair, fmtWeight)
-                  : null;
-                // Uneven per-side pair: label each side. A matched pair
-                // collapses to one value plus the L+R tag.
-                if (sides?.right != null)
-                  return (
-                    // Wraps the R half under the L half rather than clipping
-                    // it when a narrow row can't fit both.
-                    <span
-                      className="flex min-w-0 flex-wrap items-center gap-x-1 py-1 leading-6"
-                      data-testid={`set-mark-${i}-sides`}
-                    >
-                      <SideTag side="left" />
-                      {sides.left}
+              <button
+                type="button"
+                disabled={!m.onTap}
+                onClick={(e) => {
+                  // A per-side pair opens on the side that was tapped: from the
+                  // R value rightwards is the right side (a matched pair, shown
+                  // as one value, splits at the row's middle).
+                  const box = e.currentTarget.getBoundingClientRect();
+                  const r = e.currentTarget
+                    .querySelector("[data-pair-right]")
+                    ?.getBoundingClientRect();
+                  // A wrapped pair (R half on its own line) splits by line.
+                  const wrapped = r != null && r.top > box.top + box.height / 3;
+                  const isRight = wrapped
+                    ? e.clientY >= r.top - 2
+                    : e.clientX >= (r ? r.left - 4 : box.left + box.width / 2);
+                  m.onTap?.(m.paired ? (isRight ? "right" : "left") : null);
+                }}
+                className={cn(
+                  "grid min-h-[clamp(40px,5.4dvh,48px)] w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 text-left text-[17px] text-ink press duration-100",
+                  now ? "bg-accent-soft" : "bg-surface hover:bg-surface-hover",
+                )}
+                data-testid={`set-mark-${i}`}
+              >
+                <span
+                  className={cn(
+                    "num flex size-6 items-center justify-center rounded-sm text-xs font-semibold",
+                    now
+                      ? "bg-accent text-on-accent"
+                      : m.kind === "warmup"
+                        ? "bg-surface-2 text-warn"
+                        : "bg-accent-soft text-accent-ink",
+                  )}
+                  data-testid={`set-mark-${i}-state`}
+                  data-state={m.kind}
+                >
+                  {m.kind === "warmup" ? "W" : i + 1}
+                </span>
+                <span className="num flex min-w-0 items-center gap-2 font-semibold">
+                  {(() => {
+                    if (now)
+                      return <span className="min-w-0 truncate">Now</span>;
+                    const sides = r.pair
+                      ? formatPreviousSides(r.pair, fmtWeight)
+                      : null;
+                    // Uneven per-side pair: label each side. A matched pair
+                    // collapses to one value plus the L+R tag.
+                    if (sides?.right != null)
+                      return (
+                        // Wraps the R half under the L half rather than clipping
+                        // it when a narrow row can't fit both.
+                        <span
+                          className="flex min-w-0 flex-wrap items-center gap-x-1 py-1 leading-6"
+                          data-testid={`set-mark-${i}-sides`}
+                        >
+                          <SideTag side="left" />
+                          {sides.left}
+                          <span
+                            data-pair-right
+                            className="ml-1 inline-flex items-center gap-1"
+                          >
+                            <SideTag side="right" />
+                            {sides.right}
+                          </span>
+                        </span>
+                      );
+                    return (
+                      <>
+                        <span className="min-w-0 truncate">{r.text}</span>
+                        {m.paired && (
+                          <SideTag
+                            side="both"
+                            testId={`set-mark-${i}-side-tag`}
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
+                  {m.pr && (
+                    <Medal
+                      className="size-4 shrink-0 text-accent-ink"
+                      data-testid={`set-mark-${i}-medal`}
+                    />
+                  )}
+                </span>
+                <span className="num flex items-center gap-2 text-sm text-soft">
+                  {now ? (
+                    r.lastPair ? (
                       <span
-                        data-pair-right
-                        className="ml-1 inline-flex items-center gap-1"
+                        className="inline-flex items-center gap-1"
+                        data-testid="set-mark-last-sides"
                       >
-                        <SideTag side="right" />
-                        {sides.right}
+                        last
+                        <PreviousSets
+                          ghost={r.lastPair}
+                          formatWeight={fmtWeight}
+                        />
                       </span>
-                    </span>
-                  );
-                return (
-                  <>
-                    <span className="min-w-0 truncate">{r.text}</span>
-                    {m.paired && (
-                      <SideTag side="both" testId={`set-mark-${i}-side-tag`} />
-                    )}
-                  </>
-                );
-              })()}
-              {m.pr && (
-                <Medal
-                  className="size-4 shrink-0 text-accent-ink"
-                  data-testid={`set-mark-${i}-medal`}
-                />
-              )}
-            </span>
-            <span className="num flex items-center gap-2 text-sm text-soft">
-              {now ? (
-                r.lastPair ? (
-                  <span
-                    className="inline-flex items-center gap-1"
-                    data-testid="set-mark-last-sides"
-                  >
-                    last
-                    <PreviousSets ghost={r.lastPair} formatWeight={fmtWeight} />
-                  </span>
-                ) : r.lastText ? (
-                  `last ${r.lastText}`
-                ) : (
-                  ""
-                )
-              ) : (
-                r.rirText
-              )}
-              {r.hasNote && (
-                <Notebook className="size-4 shrink-0 text-accent-ink" />
-              )}
-            </span>
-          </button>
-        );
-      })}
+                    ) : r.lastText ? (
+                      `last ${r.lastText}`
+                    ) : (
+                      ""
+                    )
+                  ) : (
+                    r.rirText
+                  )}
+                  {r.hasNote && (
+                    <Notebook className="size-4 shrink-0 text-accent-ink" />
+                  )}
+                </span>
+              </button>
+            </motionEl.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 }
@@ -3566,7 +3599,7 @@ function ExerciseSpotlight({
               onAddSet();
               focusLive();
             }}
-            className="flex min-h-11 w-full items-center gap-2 rounded-md bg-surface-2/60 pl-12 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-2"
+            className="flex min-h-11 w-full items-center gap-2 rounded-md bg-surface-2/60 pl-12 text-left text-sm font-medium text-soft press duration-100 hover:bg-surface-2"
             data-testid="add-set"
           >
             + Add a set
