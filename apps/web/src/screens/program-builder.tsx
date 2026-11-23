@@ -55,6 +55,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { HintTip } from "@/components/ui/hint-tip";
 import { IconButton } from "@/components/ui/icon-button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -215,13 +216,13 @@ export default function ProgramBuilderScreen() {
             />
           ))}
         </ol>
-        <p className="num text-xs text-soft">
+        <p className="num flex items-center gap-2 text-xs text-soft">
           {step + 1} of {WIZARD_STEPS.length}
+          <HintTip title="Defaults">
+            Defaults are preselected; change only what differs.
+          </HintTip>
         </p>
         <WizardStep step={step} answers={answers} onChange={setAnswers} />
-        <p className="text-xs text-soft">
-          Defaults are preselected; change only what differs.
-        </p>
       </Shell>
     );
   }
@@ -667,10 +668,12 @@ function Review(p: ReviewProps) {
             4-8 reps on isolation
           </label>
         </div>
-        <p className="px-4 pt-1 text-xs text-soft">
-          Top set first is a method, not a research rule. Isolation can grow at
-          4-8 or 10-15 (R8).
-        </p>
+        <div className="px-4 pt-1">
+          <HintTip title="Method notes">
+            Top set first is a method, not a research rule. Isolation can grow
+            at 4-8 or 10-15 (R8).
+          </HintTip>
+        </div>
       </section>
 
       <section>
@@ -839,10 +842,13 @@ function Review(p: ReviewProps) {
               />
             </label>
           )}
-          <p className="text-xs text-soft">
-            Half the sets, same loads, 3-4 RIR. A deload is for fatigue and
-            recovery; its effect on size is unknown. Frog also proposes one if
-            strength drops two weeks running.
+          <p className="flex items-center gap-2 text-xs text-soft">
+            Half the sets, same loads, 3-4 RIR.
+            <HintTip title="Deload">
+              Half the sets, same loads, 3-4 RIR. A deload is for fatigue and
+              recovery; its effect on size is unknown. Frog also proposes one if
+              strength drops two weeks running.
+            </HintTip>
           </p>
           <Button
             size="sm"

@@ -1164,7 +1164,7 @@ export default function RoutineEditScreen() {
                               />
                               <Field
                                 inputMode="numeric"
-                                placeholder="Rep range max (optional)"
+                                placeholder="Rep range max"
                                 title="Optional rep-range max"
                                 value={s.repsMax}
                                 onChange={(e) =>

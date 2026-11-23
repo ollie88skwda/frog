@@ -91,11 +91,14 @@ export default function HistoryScreen() {
                       <span className="truncate text-sm">
                         {s.title ?? formatDate(s.startedAt)}
                       </span>
-                      {s.title != null && (
-                        <span className="num truncate text-xs text-faint">
-                          {formatDate(s.startedAt)}
-                        </span>
-                      )}
+                      <span className="num truncate text-xs text-faint">
+                        {s.title != null && `${formatDate(s.startedAt)}`}
+                        {s.title != null && summary?.get(s.id) && " · "}
+                        {summary?.get(s.id) &&
+                          `${summary.get(s.id)?.hardSets} ${summary.get(s.id)?.hardSets === 1 ? "set" : "sets"}`}
+                        {summary?.get(s.id)?.rirAvg != null &&
+                          ` · RIR ${Math.round((summary.get(s.id)?.rirAvg ?? 0) * 10) / 10}`}
+                      </span>
                     </span>
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
