@@ -3,6 +3,7 @@ import { EMAIL, PASSWORD, signIn } from "./helpers";
 import {
   fillSet,
   fillSide,
+  finishSession,
   logBilateralSet,
   makeExercise,
   openSetTypeMenu,
@@ -84,7 +85,7 @@ test("a per-side set carries the L+R tag on its mark; a bilateral one does not",
   await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click();
   await fillSide(page, "left", "40", "8");
-  await fillSide(page, "right", "40", "7");
+  await fillSide(page, "right", "40", "8");
   await page.getByTestId("log-set").click();
   await expect(page.getByTestId("set-mark-0-side-tag")).toBeVisible();
 
@@ -94,6 +95,34 @@ test("a per-side set carries the L+R tag on its mark; a bilateral one does not",
   await page.getByTestId("set-type-perside").click(); // toggle off
   await logBilateralSet(page, "45", "10");
   await expect(page.getByTestId("set-mark-1-side-tag")).toHaveCount(0);
+});
+
+test("an uneven per-side set shows both sides in the set list, not just the left", async ({
+  page,
+}) => {
+  const EX = await makeExercise(page, "MarksUneven");
+  await startSessionWith(page, EX);
+  await openSetTypeMenu(page);
+  await page.getByTestId("set-type-perside").click();
+  await fillSide(page, "left", "30", "10");
+  await fillSide(page, "right", "30", "8");
+  await page.getByTestId("log-set").click();
+
+  const sides = page.getByTestId("set-mark-0-sides");
+  await expect(sides).toBeVisible();
+  await expect(sides).toContainText(/30 (kg|lbs?) × 10/);
+  await expect(sides).toContainText(/30 (kg|lbs?) × 8/);
+  await expect(sides.getByRole("img", { name: "left side" })).toBeVisible();
+  await expect(sides.getByRole("img", { name: "right side" })).toBeVisible();
+  // Both sides are shown, so the generic L+R tag is not.
+  await expect(page.getByTestId("set-mark-0-side-tag")).toHaveCount(0);
+
+  // Next time, the Now row's "last" hint shows both sides too.
+  await finishSession(page);
+  await startSessionWith(page, EX);
+  const last = page.getByTestId("set-mark-last-sides");
+  await expect(last).toContainText(/30 (kg|lbs?) × 10/);
+  await expect(last).toContainText(/30 (kg|lbs?) × 8/);
 });
 
 test("tapping a done mark reopens that finished set for editing", async ({
