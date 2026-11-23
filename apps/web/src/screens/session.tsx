@@ -4039,6 +4039,7 @@ function Spotlight({
   const [isUnilateral, setIsUnilateral] = useState(initialUnilateral);
   const [reps2, setReps2Raw] = useState(() => seedRightReps());
   const setReps2 = (v: string) => setReps2Raw(sanitizeNumeric(v));
+  const rightReps = !f.weight && reps2.trim() === "" ? reps : reps2;
   const [rDuration, setRDuration] = useState(
     () =>
       draft?.rDuration ??
@@ -4095,7 +4096,7 @@ function Spotlight({
   // text, parsed by type at commit.
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [activeCol, setActiveCol] = useState<"weight" | "reps" | "rir">(
-    "weight",
+    f.weight ? "weight" : "reps",
   );
   const [note, setNote] = useState(
     () => draft?.note ?? (isEditing ? (left?.note ?? "") : ""),
@@ -4243,8 +4244,8 @@ function Spotlight({
       const d = Number.parseFloat(weight2);
       weightKg = Number.isNaN(d) ? null : unit === "lb" ? lbToKg(d) : d;
     }
-    if (f.reps && reps2.trim() !== "") {
-      const r = Number.parseInt(reps2, 10);
+    if (f.reps && rightReps.trim() !== "") {
+      const r = Number.parseInt(rightReps, 10);
       repsN = Number.isNaN(r) ? null : r;
     }
     return { weightKg, reps: repsN, durationSec, distanceM };
@@ -4843,13 +4844,13 @@ function Spotlight({
   const restLabel =
     left?.restSec != null ? formatDurationSeconds(left.restSec * 1000) : null;
 
-  const simple = f.weight && f.reps && !f.duration && !f.distance;
+  const simple = f.reps && !f.duration && !f.distance;
   if (simple) {
     // Each side of a unilateral set is its own set of numbers: the panel
     // shows whichever side is active and never writes the other.
     const sideR = isUnilateral && activeSide === "right";
     const sw = sideR ? weight2 : weight;
-    const sr = sideR ? reps2 : reps;
+    const sr = sideR ? rightReps : reps;
     const setSW = sideR ? setWeight2 : setWeight;
     const setSR = sideR ? setReps2 : setReps;
     const sRirMin = sideR ? rirMin2 : rirMin;
@@ -4877,7 +4878,9 @@ function Spotlight({
       key: "weight" | "reps" | "rir";
       beat: boolean;
     }[] = [
-      { key: "weight", beat: wCmp.state === "up" },
+      ...(f.weight
+        ? [{ key: "weight" as const, beat: wCmp.state === "up" }]
+        : []),
       { key: "reps", beat: rCmp.state === "up" },
       ...(effort ? [{ key: "rir" as const, beat: false }] : []),
     ];
