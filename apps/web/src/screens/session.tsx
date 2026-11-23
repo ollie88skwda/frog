@@ -26,6 +26,7 @@ import {
   type ExercisePref,
   type ExerciseRecords,
   type ExerciseType,
+  formatPreviousSides,
   formatWeight,
   fractionalHardSets,
   type GhostSet,
@@ -166,7 +167,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
-import { SideTag } from "@/components/ui/side-tag";
+import { PreviousSets, SideTag } from "@/components/ui/side-tag";
 import { loadFirstSide, otherSide, saveFirstSide } from "@/lib/first-side";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
@@ -1886,7 +1887,7 @@ function FinishOverlay({
               onChange={(e) => setNotesDraft(e.target.value)}
               placeholder="How did it go? PRs, aches, focus…"
               data-testid="finish-notes"
-              className="w-full resize-y rounded-sm border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
+              className="w-full resize-y rounded-sm border border-field bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-focus"
             />
           </label>
 
@@ -1898,7 +1899,7 @@ function FinishOverlay({
                 type="checkbox"
                 checked={updateValues}
                 onChange={(e) => setUpdateValues(e.target.checked)}
-                className="mt-0.5 size-4 accent-(--color-accent-mark)"
+                className="mt-1 size-4 accent-(--color-accent-mark)"
                 data-testid="finish-update-values"
               />
               <span className="text-xs text-soft">
@@ -2055,7 +2056,7 @@ function ExercisePicker({
                 onClick={() => setYoursOnly((v) => !v)}
                 aria-pressed={yoursOnly}
                 className={cn(
-                  "h-8 shrink-0 px-2.5 text-2xs transition-colors duration-150",
+                  "h-11 shrink-0 px-3 text-2xs transition-colors duration-150 md:h-8",
                   yoursOnly
                     ? "bg-accent-soft text-accent-ink"
                     : "bg-translucent text-soft hover:bg-surface-hover hover:text-ink",
@@ -2114,10 +2115,10 @@ function ExercisePicker({
             <div className="rounded-md overflow-hidden bg-surface">
               {groups.map((group) => (
                 <section key={group.key}>
-                  <p className="bg-surface-2 px-4 py-1 text-2xs font-medium tracking-widest text-faint uppercase">
+                  <p className="bg-surface-2 px-4 py-2 text-2xs font-medium tracking-widest text-faint uppercase">
                     {group.label}
                   </p>
-                  <ul className="[&>*+*]:mt-0.5">
+                  <ul className="[&>*+*]:mt-1">
                     {group.items.map((ex) => (
                       <PickerRow
                         key={ex.id}
@@ -2204,7 +2205,7 @@ function VoiceMatchPicker({
               )}
             </p>
           ) : (
-            <ul className="rounded-md [&>*+*]:mt-0.5 overflow-hidden bg-surface">
+            <ul className="rounded-md [&>*+*]:mt-1 overflow-hidden bg-surface">
               {rows.map((row) => (
                 <li key={row.id}>
                   <button
@@ -2256,7 +2257,7 @@ function PickerRow({
             machine={machine}
           />
           {pending && (
-            <span className="mt-0.5 block text-2xs text-faint">Saving…</span>
+            <span className="mt-1 block text-2xs text-faint">Saving…</span>
           )}
         </button>
         <button
@@ -2504,9 +2505,20 @@ function rirLabel(r: {
 function SetRows({
   marks,
   rows,
+  fmtWeight,
 }: {
   marks: Mark[];
-  rows: { text: string; lastText: string; rirText: string; hasNote: boolean }[];
+  rows: {
+    text: string;
+    lastText: string;
+    rirText: string;
+    hasNote: boolean;
+    /** A per-side pair, both sides labelled (PreviousSets). */
+    pair?: GhostSet | null;
+    /** Last time's values when that set was a per-side pair. */
+    lastPair?: GhostSet | null;
+  }[];
+  fmtWeight: (kg: number) => string;
 }) {
   return (
     <div className="flex flex-col gap-1 px-4" data-testid="marks-band">
@@ -2540,11 +2552,35 @@ function SetRows({
             >
               {m.kind === "warmup" ? "W" : i + 1}
             </span>
-            <span className="num flex min-w-0 items-center gap-1.5 font-semibold">
-              <span className="min-w-0 truncate">{now ? "Now" : r.text}</span>
-              {m.paired && (
-                <SideTag side="both" testId={`set-mark-${i}-side-tag`} />
-              )}
+            <span className="num flex min-w-0 items-center gap-2 font-semibold">
+              {(() => {
+                if (now) return <span className="min-w-0 truncate">Now</span>;
+                const sides = r.pair
+                  ? formatPreviousSides(r.pair, fmtWeight)
+                  : null;
+                // Uneven per-side pair: label each side. A matched pair
+                // collapses to one value plus the L+R tag.
+                if (sides?.right != null)
+                  return (
+                    <span
+                      className="flex min-w-0 items-center gap-1 truncate"
+                      data-testid={`set-mark-${i}-sides`}
+                    >
+                      <SideTag side="left" />
+                      {sides.left}
+                      <SideTag side="right" className="ml-1" />
+                      {sides.right}
+                    </span>
+                  );
+                return (
+                  <>
+                    <span className="min-w-0 truncate">{r.text}</span>
+                    {m.paired && (
+                      <SideTag side="both" testId={`set-mark-${i}-side-tag`} />
+                    )}
+                  </>
+                );
+              })()}
               {m.pr && (
                 <Medal
                   className="size-4 shrink-0 text-accent-ink"
@@ -2553,7 +2589,23 @@ function SetRows({
               )}
             </span>
             <span className="num flex items-center gap-2 text-sm text-soft">
-              {now ? (r.lastText ? `last ${r.lastText}` : "") : r.rirText}
+              {now ? (
+                r.lastPair ? (
+                  <span
+                    className="inline-flex items-center gap-1"
+                    data-testid="set-mark-last-sides"
+                  >
+                    last
+                    <PreviousSets ghost={r.lastPair} formatWeight={fmtWeight} />
+                  </span>
+                ) : r.lastText ? (
+                  `last ${r.lastText}`
+                ) : (
+                  ""
+                )
+              ) : (
+                r.rirText
+              )}
               {r.hasNote && (
                 <Notebook className="size-4 shrink-0 text-accent-ink" />
               )}
@@ -2641,7 +2693,7 @@ function ExerciseSettingsMenu({
           )}
           {showUnitOverride && (
             <>
-              <DropdownMenuLabel className="pt-2.5 font-semibold tracking-widest text-soft uppercase">
+              <DropdownMenuLabel className="pt-3 font-semibold tracking-widest text-soft uppercase">
                 Weight unit
               </DropdownMenuLabel>
               {[
@@ -2663,7 +2715,7 @@ function ExerciseSettingsMenu({
               ))}
             </>
           )}
-          <DropdownMenuLabel className="pt-2.5 font-semibold tracking-widest text-soft uppercase">
+          <DropdownMenuLabel className="pt-3 font-semibold tracking-widest text-soft uppercase">
             Default laterality
           </DropdownMenuLabel>
           {LATERALITY.map((l) => (
@@ -2857,7 +2909,7 @@ function TargetLine({
         : " ↓"
       : "";
   return (
-    <div className="mt-1.5 flex flex-col gap-1">
+    <div className="mt-2 flex flex-col gap-1">
       <button
         type="button"
         onClick={onWhy}
@@ -3343,54 +3395,60 @@ function ExerciseSpotlight({
               busy={copying || copyError != null}
             />
           </div>
-          {(total > 1 || machine) && (
-            <div className="mt-1 flex items-center gap-2">
-              {total > 1 && (
-                <>
-                  <IconButton
-                    onClick={() => onSwipe(-1)}
-                    disabled={prevName == null}
-                    title={
-                      prevName
-                        ? `Previous: ${prevName}`
-                        : "No previous exercise"
-                    }
-                    className={CHROME_BTN}
-                    data-testid="exercise-prev"
-                  >
-                    <CaretLeft className="size-5" weight="bold" />
-                  </IconButton>
-                  <div
-                    className="flex min-w-0 flex-1 items-center justify-center gap-1.5"
-                    data-testid="exercise-strip"
-                  >
-                    {Array.from({ length: total }, (_, i) => i).map((i) => (
-                      <span
-                        key={i}
-                        className={cn(
-                          "h-1.5 rounded-xs transition-all duration-150",
-                          i + 1 === position
-                            ? "w-5 bg-accent-ink"
-                            : "w-1.5 bg-surface-2",
-                        )}
-                      />
-                    ))}
-                  </div>
-                  <IconButton
-                    onClick={() => onSwipe(1)}
-                    disabled={nextName == null}
-                    title={nextName ? `Next: ${nextName}` : "No next exercise"}
-                    className={CHROME_BTN}
-                    data-testid="exercise-next"
-                  >
-                    <CaretRight className="size-5" weight="bold" />
-                  </IconButton>
-                </>
-              )}
+          {total > 1 && (
+            <div className="mt-2 flex items-center gap-2">
+              <IconButton
+                onClick={() => onSwipe(-1)}
+                disabled={prevName == null}
+                title={
+                  prevName ? `Previous: ${prevName}` : "No previous exercise"
+                }
+                className={CHROME_BTN}
+                data-testid="exercise-prev"
+              >
+                <CaretLeft className="size-5" weight="bold" />
+              </IconButton>
+              <div
+                className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1"
+                data-testid="exercise-strip"
+              >
+                <span
+                  className="num text-xs font-semibold text-soft"
+                  data-testid="exercise-position"
+                >
+                  {position} of {total}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="flex max-w-full items-center justify-center gap-1 overflow-hidden"
+                >
+                  {Array.from({ length: total }, (_, i) => i).map((i) => (
+                    <span
+                      // biome-ignore lint/suspicious/noArrayIndexKey: fixed 1..total strip
+                      key={i}
+                      className={cn(
+                        "h-1 shrink-0 rounded-xs transition-all duration-150",
+                        i + 1 === position
+                          ? "w-4 bg-accent-ink"
+                          : "w-1 bg-surface-2",
+                      )}
+                    />
+                  ))}
+                </span>
+              </div>
+              <IconButton
+                onClick={() => onSwipe(1)}
+                disabled={nextName == null}
+                title={nextName ? `Next: ${nextName}` : "No next exercise"}
+                className={CHROME_BTN}
+                data-testid="exercise-next"
+              >
+                <CaretRight className="size-5" weight="bold" />
+              </IconButton>
             </div>
           )}
           {machine && (
-            <div className="mt-1">
+            <div className="mt-2">
               <MachineChip
                 machine={machine}
                 blockName={block.name}
@@ -3399,9 +3457,11 @@ function ExerciseSpotlight({
               />
             </div>
           )}
-          <span className="num sr-only" data-testid="exercise-position">
-            {position} of {total}
-          </span>
+          {total <= 1 && (
+            <span className="num sr-only" data-testid="exercise-position">
+              {position} of {total}
+            </span>
+          )}
           {(() => {
             const gw = ghost.reduce<number | null>(
               (max, g) =>
@@ -3416,7 +3476,7 @@ function ExerciseSpotlight({
               toDisplayWeight(gw, blockUnit) + fieldStep("weight", blockUnit);
             return (
               <p
-                className="flex gap-1.5 pt-0.5 text-[13px] text-soft"
+                className="flex gap-1 pt-1 text-[13px] text-soft"
                 data-testid="goal-line"
               >
                 Goal
@@ -3446,7 +3506,7 @@ function ExerciseSpotlight({
             <div
               role="status"
               data-testid={`block-${block.name}-copy-error`}
-              className="mt-2 flex items-center justify-between gap-2 px-2 py-1.5"
+              className="mt-2 flex items-center justify-between gap-2 px-2 py-2"
             >
               <span className="min-w-0 text-2xs text-neg">
                 {copyError.unresolved
@@ -3469,8 +3529,28 @@ function ExerciseSpotlight({
         {/* 3. Set band. */}
         <SetRows
           marks={marks}
+          fmtWeight={(kg) =>
+            `${toDisplayWeight(kg, blockUnit)} ${unitLabel(blockUnit)}`
+          }
           rows={marks.map((_m, i) => {
             const g = committedGroups[i];
+            // ghostFor is typed on DraftSet; useGhost rows are GhostSets.
+            const lastGhost = ghostFor(ghost, i) as GhostSet;
+            // A per-side pair shows both sides (PreviousSets: one value when
+            // they match, L and R when they differ), never just the left.
+            const pair: GhostSet | null =
+              g && g.length === 2
+                ? {
+                    weightKg: g[0].weightKg ?? null,
+                    reps: g[0].reps ?? null,
+                    durationSec: g[0].durationSec ?? null,
+                    otherSide: {
+                      weightKg: g[1].weightKg ?? null,
+                      reps: g[1].reps ?? null,
+                      durationSec: g[1].durationSec ?? null,
+                    },
+                  }
+                : null;
             const text = g
               ? fieldsFor(type)
                   .map((k) => fieldText(k, g[0], blockUnit, distUnit))
@@ -3478,15 +3558,22 @@ function ExerciseSpotlight({
                   .join(" × ")
               : "";
             const lastText = fieldsFor(type)
-              .map((k) => fieldText(k, ghostFor(ghost, i), blockUnit, distUnit))
+              .map((k) => fieldText(k, lastGhost, blockUnit, distUnit))
               .filter((t) => t !== "—")
               .join(" × ");
-            const rirText = g ? rirLabel(g[0]) : "";
+            const rirL = g ? rirLabel(g[0]) : "";
+            const rirR = g && g.length === 2 ? rirLabel(g[1]) : "";
+            const rirText =
+              rirR && rirR !== rirL
+                ? `${rirL || "RIR —"} / ${rirR.replace("RIR ", "")}`
+                : rirL;
             return {
               text,
               lastText,
               rirText,
               hasNote: !!g?.some((r) => r.note),
+              pair,
+              lastPair: lastGhost.otherSide ? lastGhost : null,
             };
           })}
         />
@@ -3506,14 +3593,14 @@ function ExerciseSpotlight({
 
         {(lastState || nudge || directThis) && (
           <div
-            className="flex flex-col gap-1.5 px-4 pt-3"
+            className="flex flex-col gap-2 px-4 pt-3"
             data-testid="set-result"
           >
             {lastState && lastWorking && (
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={cn(
-                    "num inline-flex h-5 items-center rounded-xs px-1.5 text-2xs font-semibold",
+                    "num inline-flex h-5 items-center rounded-xs px-2 text-2xs font-semibold",
                     lastState.kind === "over"
                       ? "bg-accent-soft text-accent-ink"
                       : "bg-hover text-soft",
@@ -3577,7 +3664,7 @@ function ExerciseSpotlight({
         )}
 
         <div
-          className="flex flex-col gap-1 px-4 pt-[clamp(4px,1.2dvh,12px)] pb-[clamp(8px,1.6dvh,16px)]"
+          className="flex flex-col gap-2 px-4 pt-[clamp(8px,1.2dvh,12px)] pb-[clamp(8px,1.6dvh,16px)]"
           data-testid="exercise-extras"
         >
           {exercise?.isCustom &&
@@ -3589,15 +3676,20 @@ function ExerciseSpotlight({
                   setSetupDraft(exercise.notes ?? "");
                   setSetupOpen(true);
                 }}
-                className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm text-soft transition-colors duration-100 hover:bg-surface-hover"
+                className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 py-2 text-left transition-colors duration-100 hover:bg-surface-hover"
                 data-testid="setup-row"
               >
                 <Wrench className="size-5 shrink-0 text-accent-ink" />
-                <span className="min-w-0 flex-1 truncate">
-                  <b className="mr-1.5 font-semibold text-ink">
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="text-2xs font-bold tracking-widest text-soft uppercase">
                     Setup &amp; form
-                  </b>
-                  {exercise.notes}
+                  </span>
+                  <span
+                    className="line-clamp-2 text-sm break-words text-ink"
+                    data-testid="setup-note"
+                  >
+                    {exercise.notes}
+                  </span>
                 </span>
                 <CaretRight className="size-4 shrink-0 text-soft" />
               </button>
@@ -3608,11 +3700,11 @@ function ExerciseSpotlight({
                   setSetupDraft("");
                   setSetupOpen(true);
                 }}
-                className="flex min-h-[clamp(40px,5.2dvh,44px)] w-full items-center gap-3 rounded-md bg-surface px-3 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
+                className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 py-2 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
                 data-testid="setup-add"
               >
                 <Plus className="size-5 shrink-0 text-soft" />
-                Add setup or form notes
+                <span className="min-w-0 flex-1">Add setup or form notes</span>
               </button>
             ))}
           <div className="flex min-h-[clamp(40px,5.2dvh,44px)] flex-wrap items-center gap-2">
@@ -3657,7 +3749,7 @@ function ExerciseSpotlight({
               value={setupDraft}
               onChange={(e) => setSetupDraft(e.target.value)}
               data-testid="setup-notes"
-              className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint"
+              className="w-full resize-y border border-field bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-faint"
             />
             <Button
               className="mt-3 h-11 w-full md:h-11"
@@ -4544,7 +4636,7 @@ function Spotlight({
     return (
       <div
         key={key}
-        className={cn("rounded-md p-2.5", beat ? "bg-accent-soft" : "bg-bg")}
+        className={cn("rounded-md p-3", beat ? "bg-accent-soft" : "bg-bg")}
         data-beat={beat ? "true" : "false"}
       >
         <div className="flex items-baseline justify-between gap-2">
@@ -4566,7 +4658,7 @@ function Spotlight({
         </div>
         <div
           className={cn(
-            "rounded-sm mt-1.5 mb-2 flex items-center justify-center gap-2 bg-surface px-1.5 py-1.5",
+            "rounded-sm mt-2 mb-2 flex items-center justify-center gap-2 bg-surface p-2",
             beat && "bg-bg",
           )}
         >
@@ -4744,7 +4836,7 @@ function Spotlight({
     <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
       <DialogContent title={`Set ${index + 1} details`}>
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <span className="text-2xs font-bold tracking-widest text-faint uppercase">
               RIR
             </span>
@@ -4760,7 +4852,7 @@ function Spotlight({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               data-testid={`set-${index}-note`}
-              className="w-full resize-y border border-field bg-surface-2 px-2 py-1.5 text-sm text-ink placeholder:text-faint focus:border-focus"
+              className="w-full resize-y border border-field bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-faint focus:border-focus"
             />
           </label>
           {enabledMetrics
@@ -4802,7 +4894,7 @@ function Spotlight({
               </div>
             ))}
           {enabledMetrics.some((m) => !extras.has(m.id)) && (
-            <div className="flex flex-wrap gap-1.5 pt-3">
+            <div className="flex flex-wrap gap-2 pt-1">
               {enabledMetrics
                 .filter((m) => !extras.has(m.id))
                 .map((m) => (
@@ -4811,7 +4903,7 @@ function Spotlight({
                     type="button"
                     onClick={() => toggleExtra(m.id)}
                     data-testid={`set-${index}-add-${m.id}`}
-                    className="rounded-sm flex items-center gap-1 bg-surface-2 px-2.5 py-1 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink"
+                    className="rounded-sm flex h-11 items-center gap-1 bg-surface-2 px-3 text-2xs text-soft transition-colors duration-100 hover:bg-surface-hover hover:text-ink md:h-8"
                   >
                     <Plus className="size-3" />
                     {m.name}
@@ -4829,7 +4921,7 @@ function Spotlight({
                 );
               }}
               data-testid={`set-${index}-plates`}
-              className="flex items-center gap-2 pt-3 text-left text-xs text-soft transition-colors duration-150 hover:text-ink"
+              className="flex min-h-11 items-center gap-2 rounded-sm bg-surface-2 px-3 text-left text-xs text-soft transition-colors duration-150 hover:text-ink md:min-h-8"
             >
               <Calculator className="size-3.5" />
               Plate calculator
@@ -4900,14 +4992,14 @@ function Spotlight({
           </span>
           {topSet && setType !== "warmup" && (
             <span
-              className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-bold tracking-widest text-accent-ink uppercase"
+              className="rounded-xs bg-accent-soft px-2 py-1 text-2xs font-bold tracking-widest text-accent-ink uppercase"
               data-testid="top-set-label"
             >
               Top set
             </span>
           )}
           {setType === "warmup" && (
-            <span className="rounded-xs bg-secondary px-1.5 py-0.5 text-2xs font-bold tracking-widest text-warn uppercase">
+            <span className="rounded-xs bg-secondary px-2 py-1 text-2xs font-bold tracking-widest text-warn uppercase">
               Warm-up
             </span>
           )}
@@ -5072,7 +5164,7 @@ function Spotlight({
                     </span>
                   </span>
                 )}
-                <span className="flex h-7 items-center justify-center gap-1.5 text-xs font-semibold text-soft">
+                <span className="flex h-7 items-center justify-center gap-2 text-xs font-semibold text-soft">
                   {label}
                   {key === "weight" && barLoaded && (
                     <button
@@ -5168,7 +5260,7 @@ function Spotlight({
             />
           )}
           {effort && (
-            <div className={cn("p-1.5", activeCol !== "rir" && "hidden")}>
+            <div className={cn("p-2", activeCol !== "rir" && "hidden")}>
               <RirSegmented
                 bare
                 min={sRirMin}
@@ -5228,14 +5320,14 @@ function Spotlight({
         </span>
         {topSet && setType !== "warmup" && (
           <span
-            className="rounded-xs bg-accent-soft px-1.5 py-0.5 text-2xs font-bold tracking-widest text-accent-ink uppercase"
+            className="rounded-xs bg-accent-soft px-2 py-1 text-2xs font-bold tracking-widest text-accent-ink uppercase"
             data-testid="top-set-label"
           >
             Top set
           </span>
         )}
         {setType === "warmup" && (
-          <span className="rounded-xs bg-secondary px-1.5 py-0.5 text-2xs font-bold tracking-widest text-warn uppercase">
+          <span className="rounded-xs bg-secondary px-2 py-1 text-2xs font-bold tracking-widest text-warn uppercase">
             Warm-up
           </span>
         )}
@@ -5328,7 +5420,7 @@ function Spotlight({
       )}
 
       {f.weight && (
-        <p className="num px-0.5 text-xs text-soft" data-testid="stats-line">
+        <p className="num text-xs text-soft" data-testid="stats-line">
           {(() => {
             if (!prSnapshot || Number.isNaN(currentReps)) return "Best —";
             const rec = prSnapshot.get(exerciseId);

@@ -16,6 +16,28 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
+/** A private (unshared) custom exercise: the setup & form row only shows on
+ * exercises the user owns, and the library editor publishes by default. */
+async function makePrivateExercise(
+  page: import("@playwright/test").Page,
+  label: string,
+): Promise<string> {
+  await page.goto("/library");
+  const name = `${label} ${Date.now()}`;
+  await page.evaluate(async (n) => {
+    const now = Date.now();
+    const res = await window.__frog.db.from("exercises").insert({
+      id: crypto.randomUUID(),
+      created_at: now,
+      updated_at: now,
+      name: n,
+      is_custom: true,
+    });
+    if (res.error) throw new Error(res.error.message);
+  }, name);
+  return name;
+}
+
 async function addExerciseToSession(
   page: import("@playwright/test").Page,
   name: string,
@@ -165,6 +187,37 @@ test("previous and next controls move between exercises", async ({ page }) => {
   await page.getByTestId("exercise-next").click();
   await expect(page.getByTestId("exercise-name")).toContainText(B);
   await expect(page.getByTestId("exercise-strip")).toBeVisible();
+  // Position is visible text, not screen-reader only.
+  await expect(page.getByTestId("exercise-position")).toBeVisible();
+  await expect(page.getByTestId("exercise-position")).toHaveText("2 of 2");
+  for (const id of ["exercise-prev", "exercise-next"]) {
+    const box = await page.getByTestId(id).boundingBox();
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+    expect(box?.width).toBeGreaterThanOrEqual(44);
+  }
+});
+
+test("setup & form note shows as a label with the note on its own line", async ({
+  page,
+}) => {
+  await startSessionWith(page, await makePrivateExercise(page, "SetupNote"));
+  await expect(page.getByTestId("setup-add")).toContainText(
+    "Add setup or form notes",
+  );
+  await page.getByTestId("setup-add").click();
+  await page.getByTestId("setup-notes").fill("Seat 4, grip wide");
+  await page.getByTestId("setup-save").click();
+
+  const row = page.getByTestId("setup-row");
+  await expect(row).toContainText("Setup & form");
+  const note = page.getByTestId("setup-note");
+  await expect(note).toHaveText("Seat 4, grip wide");
+  const label = row.getByText("Setup & form", { exact: true });
+  const labelBox = await label.boundingBox();
+  const noteBox = await note.boundingBox();
+  expect(labelBox && noteBox && noteBox.y >= labelBox.y + labelBox.height).toBe(
+    true,
+  );
 });
 
 test("Add machine lives in the exercise settings menu at the top, not beside the entry area", async ({
