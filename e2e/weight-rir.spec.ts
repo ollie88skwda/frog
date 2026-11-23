@@ -6,6 +6,7 @@ import {
   signIn,
   waitForExercise,
 } from "./helpers";
+import { ensureOpenSet } from "./spotlight-helpers";
 
 // A weighted set never saves without a weight; bodyweight exercises may be
 // blank; RIR is per set and never carried forward.
@@ -42,6 +43,7 @@ test("weighted exercise refuses a set with no weight and shows the inline error"
     "done",
   );
 
+  await ensureOpenSet(page);
   await page.getByTestId("weight-field").fill("60");
   await expect(page.getByTestId("weight-error")).toHaveCount(0);
   await page.getByTestId("log-set").click();
@@ -81,6 +83,7 @@ test("RIR on set 1 only leaves sets 2-3 blank in history", async ({ page }) => {
   const id = await startWith(page, EX);
 
   for (let i = 0; i < 3; i++) {
+    await ensureOpenSet(page);
     await page.getByTestId("weight-field").fill("100");
     await page.getByTestId("reps-field").fill("6");
     if (i === 0) {
@@ -159,6 +162,7 @@ test("planned RIR is an outlined hint: untouched saves blank, tapping it saves t
       "aria-pressed",
       "false",
     );
+  await ensureOpenSet(page);
   await page.getByTestId("weight-field").fill("100");
   await page.getByTestId("reps-field").fill("6");
   await page.getByTestId("log-set").click();
@@ -172,6 +176,7 @@ test("planned RIR is an outlined hint: untouched saves blank, tapping it saves t
     "data-hint",
     "true",
   );
+  await ensureOpenSet(page);
   await page.getByTestId("weight-field").fill("100");
   await page.getByTestId("reps-field").fill("6");
   await page.getByTestId("rir-column").click();

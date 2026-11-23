@@ -82,6 +82,7 @@ test("a pre-rename set draft survives the rebrand and dies on commit", async ({
   // Committing auto-advances straight into the next set (no separate "add"
   // tap under Spotlight) — it must not inherit anything from the stale
   // legacy blob either.
+  await page.getByTestId("add-set").click();
   await expect(page.getByTestId("weight-field")).toHaveValue("");
   await expect.poll(() => draftKeys(page)).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("draft-cleared.png") });

@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/chart";
 import { IconButton } from "@/components/ui/icon-button";
 import { rowClass } from "@/components/ui/row";
+import { SideTag } from "@/components/ui/side-tag";
 import { formatDate, formatDateTime, formatMMSS } from "@/lib/format";
 import { useUserPrefs } from "@/lib/profile-queries";
 import {
@@ -649,11 +650,7 @@ function HistoryTab({
                   >
                     <span className="w-5 text-faint">
                       {set.setNo + 1}
-                      {set.side === "left"
-                        ? "ᴸ"
-                        : set.side === "right"
-                          ? "ᴿ"
-                          : ""}
+                      {set.side && <SideTag side={set.side} className="ml-1" />}
                     </span>
                     <span>{formatSet(type, set, unit, distUnit)}</span>
                   </li>

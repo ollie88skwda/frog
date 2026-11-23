@@ -8,7 +8,11 @@ import {
   signIn,
   waitForExercise,
 } from "./helpers";
-import { expectConditionsText, openConditions } from "./spotlight-helpers";
+import {
+  ensureOpenSet,
+  expectConditionsText,
+  openConditions,
+} from "./spotlight-helpers";
 
 // Seed ids of the globally-seeded conditions (seed-ids.ts). The strip test
 // below records the Stress scale, NOT the Sleep input: the earlier
@@ -86,6 +90,7 @@ async function logSession(
   await page.getByTestId(`pick-exercise-${name}`).click();
   const fieldTestId = field === "reps" ? "reps-field" : "duration-field";
   for (const [i, value] of values.entries()) {
+    await ensureOpenSet(page);
     await page.getByTestId(fieldTestId).fill(value);
     await page.getByTestId("log-set").click();
     await expect(page.getByTestId(`set-mark-${i}-state`)).toHaveAttribute(
@@ -222,6 +227,7 @@ test("one layout engine paints every frame × ground of a session card", async (
     ["100", "8"],
     ["120", "3"],
   ].entries()) {
+    await ensureOpenSet(page);
     await page.getByTestId("weight-field").fill(w);
     await page.getByTestId("reps-field").fill(r);
     await page.getByTestId("log-set").click();

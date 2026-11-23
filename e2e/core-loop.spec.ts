@@ -77,5 +77,7 @@ test("logging a set via Log persists to set_logs and advances the spotlight", as
     "data-state",
     "done",
   );
+  // Log never creates a set; "Add a set" opens set 2.
+  await page.getByTestId("add-set").click();
   await expect(page.getByTestId("set-number")).toContainText("2");
 });

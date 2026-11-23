@@ -71,3 +71,28 @@ export function formatPrevious(
   if (right == null || right === left) return left;
   return left == null ? right : `${left} / ${right}`;
 }
+
+export type PreviousSides = {
+  /** The first-logged side's text (the set itself when not paired). */
+  left: string | null;
+  /** Present only when a unilateral pair differs; null when it matched. */
+  right: string | null;
+  paired: boolean;
+};
+
+/**
+ * Structured form of formatPrevious for UI that wants to label each side
+ * (the shared side tag) instead of a bare "a / b" string. Same collapse rule:
+ * a matched pair has `paired: true, right: null`.
+ */
+export function formatPreviousSides(
+  g: GhostSet,
+  formatWeight: (kg: number) => string,
+): PreviousSides {
+  const left = formatOneSide(g, formatWeight);
+  if (!g.otherSide) return { left, right: null, paired: false };
+  const right = formatOneSide(g.otherSide, formatWeight);
+  if (right == null || right === left)
+    return { left, right: null, paired: true };
+  return { left, right, paired: true };
+}
