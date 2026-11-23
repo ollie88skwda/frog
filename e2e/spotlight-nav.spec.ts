@@ -87,12 +87,12 @@ test("exercise-position advances and a logged set on one exercise doesn't bleed 
   );
 });
 
-test("the machine chip reads a placeholder until a machine is attached", async ({
+test("no machine chip shows until a machine is attached (Add machine lives in the settings menu)", async ({
   page,
 }) => {
   const EX = await makeExercise(page, "NavMachineChip");
   await startSessionWith(page, EX);
-  await expect(page.getByTestId("exercise-machine-chip")).toContainText(
-    "add machine",
-  );
+  await expect(page.getByTestId("exercise-machine-chip")).toHaveCount(0);
+  await page.getByTestId(`block-${EX}-menu`).click();
+  await expect(page.getByTestId(`block-${EX}-machine`)).toBeVisible();
 });

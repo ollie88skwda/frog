@@ -52,8 +52,11 @@ test("opening a set pre-fills from last session's same set index, with no user a
   await expect(page.getByTestId("reps-field")).toHaveValue("10");
   await expect(page.getByTestId("set-mark-0")).toBeVisible();
 
-  // Committing set 0 advances to set 1, pre-filled from session 1's set 1.
+  // Committing set 0 advances to set 1 (a planned set from last time is NOT
+  // created by Log: it is the user's own "Add a set"), pre-filled from
+  // session 1's set 1.
   await logSet(page);
+  await page.getByTestId("add-set").click();
   await expect(page.getByTestId("weight-field")).toHaveValue("85");
   await expect(page.getByTestId("reps-field")).toHaveValue("8");
 });
@@ -80,11 +83,15 @@ test("the weight and reps rulers mutate the field immediately, no dialog", async
 
   await page.getByTestId("weight-field").fill("100");
   await page.getByTestId("weight-ruler").focus();
+  // The ruler is for small moves: one tick is 1 lb (0.5 kg).
   await page.keyboard.press("ArrowRight");
-  await expect(page.getByTestId("weight-field")).toHaveValue("105");
+  await expect(page.getByTestId("weight-field")).toHaveValue("101");
   await page.keyboard.press("ArrowLeft");
   await page.keyboard.press("ArrowLeft");
-  await expect(page.getByTestId("weight-field")).toHaveValue("95");
+  await expect(page.getByTestId("weight-field")).toHaveValue("99");
+  // The jump buttons move a whole plate (5 lb) for bigger changes.
+  await page.getByTestId("weight-ruler-plus").click();
+  await expect(page.getByTestId("weight-field")).toHaveValue("104");
 
   await page.getByTestId("reps-field").fill("5");
   await page.getByTestId("reps-ruler").focus();
@@ -137,7 +144,7 @@ test("beating last session's value flips data-beat true and states the gain", as
   await page.getByTestId("weight-ruler").focus();
   await page.keyboard.press("ArrowRight");
   await expect(weightRow).toHaveAttribute("data-beat", "true");
-  await expect(page.getByTestId("weight-compare")).toContainText("+5");
+  await expect(page.getByTestId("weight-compare")).toContainText("+1");
 
   // Drop back below last session's value.
   await page.keyboard.press("ArrowLeft");

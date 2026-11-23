@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 import {
   fillSet,
+  fillSide,
   logBilateralSet,
   makeExercise,
   openSetTypeMenu,
@@ -23,10 +24,8 @@ test("marks progress todo -> current -> done as sets are logged", async ({
   const EX = await makeExercise(page, "MarksProgress");
   await startSessionWith(page, EX);
 
-  // Ad-hoc session (no routine seed): marks only exist for committed sets
-  // plus the one currently open — there's no known future set count to
-  // pre-render as "todo" (session.tsx: totalMarks = max(committed+1,
-  // seedSets+1), and seedSets is empty here). Set 0 is the only mark yet.
+  // Ad-hoc session (no routine seed): one set is offered. Marks exist only
+  // for committed sets plus the open one; Log never creates another.
   await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
     "data-state",
     "current",
@@ -35,11 +34,15 @@ test("marks progress todo -> current -> done as sets are logged", async ({
 
   await logBilateralSet(page, "60", "10");
 
-  // Set 0 is now done; set 1 (the next open set) is current.
+  // Set 0 is done and NO new set was created by Log.
   await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
     "data-state",
     "done",
   );
+  await expect(page.getByTestId("set-mark-1")).toHaveCount(0);
+
+  // "Add a set" is the only way to get set 1, and it opens as current.
+  await page.getByTestId("add-set").click();
   await expect(page.getByTestId("set-mark-1-state")).toHaveAttribute(
     "data-state",
     "current",
@@ -69,7 +72,7 @@ test("a completed warm-up set carries the warmup mark state, not done", async ({
   );
 });
 
-test("a per-side set carries the ᴸᴿ tag on its mark; a bilateral one does not", async ({
+test("a per-side set carries the L+R tag on its mark; a bilateral one does not", async ({
   page,
 }) => {
   const EX = await makeExercise(page, "MarksSideTag");
@@ -80,13 +83,13 @@ test("a per-side set carries the ᴸᴿ tag on its mark; a bilateral one does no
   // the per-side toggle) — it needs an actual logged pair to check.
   await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click();
-  await page.getByTestId("weight-field").fill("40");
-  await page.getByTestId("reps-field-left").fill("8");
-  await page.getByTestId("reps-field-right").fill("7");
+  await fillSide(page, "left", "40", "8");
+  await fillSide(page, "right", "40", "7");
   await page.getByTestId("log-set").click();
   await expect(page.getByTestId("set-mark-0-side-tag")).toBeVisible();
 
   // A bilateral set logged next carries no side-tag on its own mark.
+  await page.getByTestId("add-set").click();
   await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click(); // toggle off
   await logBilateralSet(page, "45", "10");

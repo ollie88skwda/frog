@@ -6,6 +6,7 @@ import {
   signIn,
   waitForExercise,
 } from "./helpers";
+import { ensureOpenSet } from "./spotlight-helpers";
 
 // M5 exercise detail: log an exercise across two sessions, then the detail
 // screen (reached from the library) shows the Summary chart + records panel +
@@ -22,6 +23,7 @@ test.beforeEach(async ({ page }) => {
 // Re-aimed for the Spotlight session screen (fm/frog-session-spotlight):
 // sets are logged one at a time through the always-current spotlight fields.
 async function logSet(page: Page, index: number, weight: string, reps: string) {
+  await ensureOpenSet(page);
   await page.getByTestId("weight-field").fill(weight);
   await page.getByTestId("reps-field").fill(reps);
   await page.getByTestId("log-set").click();

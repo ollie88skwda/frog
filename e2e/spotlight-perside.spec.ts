@@ -7,6 +7,7 @@ import {
   waitForExercise,
 } from "./helpers";
 import {
+  fillSide,
   logBilateralSet,
   makeExercise,
   openSetTypeMenu,
@@ -37,15 +38,11 @@ test("a per-side set shares one weight field but splits reps per side", async ({
   await startSessionWith(page, EX);
   await makePerSide(page);
 
-  await expect(page.getByTestId("weight-field")).toBeVisible();
-  await expect(page.getByTestId("reps-field-left")).toBeVisible();
-  await expect(page.getByTestId("reps-field-right")).toBeVisible();
-  // No single shared reps field once per-side is on.
-  await expect(page.getByTestId("reps-field")).toHaveCount(0);
+  await expect(page.getByTestId("side-tab-left")).toBeVisible();
+  await expect(page.getByTestId("side-tab-right")).toBeVisible();
 
-  await page.getByTestId("weight-field").fill("40");
-  await page.getByTestId("reps-field-left").fill("8");
-  await page.getByTestId("reps-field-right").fill("6");
+  await fillSide(page, "left", "40", "8");
+  await fillSide(page, "right", "40", "6");
   await page.getByTestId("log-set").click();
 
   // Two set_logs rows sharing set_no=0, one per side — scoped to this
@@ -94,11 +91,12 @@ test("per-side RIR is independent per side", async ({ page }) => {
   await startSessionWith(page, EX);
   await makePerSide(page);
 
-  await page.getByTestId("weight-field").fill("40");
-  await page.getByTestId("reps-field-left").fill("8");
-  await page.getByTestId("reps-field-right").fill("8");
-  await page.getByTestId("rir-option-1-left").click();
-  await page.getByTestId("rir-option-3-right").click();
+  await fillSide(page, "left", "40", "8");
+  await page.getByTestId("rir-column").click();
+  await page.getByTestId("rir-option-1").click();
+  await fillSide(page, "right", "40", "8");
+  await page.getByTestId("rir-column").click();
+  await page.getByTestId("rir-option-3").click();
   await page.getByTestId("log-set").click();
 
   const rows = await page.evaluate(async (exerciseName) => {
@@ -132,27 +130,56 @@ test("per-side RIR is independent per side", async ({ page }) => {
   expect(leftRir).not.toBe(rightRir);
 });
 
-test("unlinking the shared weight reveals a right-side override; linking hides it again", async ({
+test("left and right keep fully independent weight, reps and RIR", async ({
   page,
 }) => {
-  // weight-field IS the left/primary value in per-side mode (testid-contract.
-  // md: "the shared weight ... stays weight-field") — unlinking adds only a
-  // weight-field-right override next to it, it never becomes weight-field-left.
-  const EX = await makeExercise(page, "PerSideLink");
+  const EX = await makeExercise(page, "PerSideIndep");
   await startSessionWith(page, EX);
   await makePerSide(page);
 
-  // Linked (default per the mockup): one shared weight-field, no right override.
-  await expect(page.getByTestId("weight-field")).toBeVisible();
-  await expect(page.getByTestId("weight-field-right")).toHaveCount(0);
+  await fillSide(page, "left", "40", "8");
+  await fillSide(page, "right", "35", "6");
+  // Editing the right side never moves the left.
+  await page.getByTestId("side-tab-left").click();
+  await expect(page.getByTestId("weight-field")).toHaveValue("40");
+  await expect(page.getByTestId("reps-field")).toHaveValue("8");
+  await page.getByTestId("side-tab-right").click();
+  await expect(page.getByTestId("weight-field")).toHaveValue("35");
+  await expect(page.getByTestId("reps-field")).toHaveValue("6");
+  // And the other way round: typing on the left leaves the right alone.
+  await page.getByTestId("side-tab-left").click();
+  await page.getByTestId("weight-field").fill("45");
+  await page.getByTestId("side-tab-right").click();
+  await expect(page.getByTestId("weight-field")).toHaveValue("35");
+});
 
-  await page.getByTestId("weight-link-toggle").click();
-  await expect(page.getByTestId("weight-field")).toBeVisible();
-  await expect(page.getByTestId("weight-field-right")).toBeVisible();
+test("the user chooses which side comes first", async ({ page }) => {
+  const EX = await makeExercise(page, "PerSideFirst");
+  await startSessionWith(page, EX);
+  await makePerSide(page);
 
-  await page.getByTestId("weight-link-toggle").click();
-  // Re-linked: the right override disappears again.
-  await expect(page.getByTestId("weight-field-right")).toHaveCount(0);
+  // Default: left first, left tab selected.
+  await expect(page.getByTestId("side-tab-left")).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  const tabs = page.getByTestId("side-tabs").getByRole("tab");
+  await expect(tabs.first()).toContainText("Left");
+
+  await openSetTypeMenu(page);
+  await page.getByTestId("set-type-first-side").click();
+  await expect(tabs.first()).toContainText("Right");
+  await expect(page.getByTestId("side-tab-right")).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  // The choice is remembered on this device.
+  await page.reload();
+  await expect(page.getByTestId("exercise-name")).toBeVisible();
+  const first = await page.evaluate(() =>
+    localStorage.getItem("frog.firstSide"),
+  );
+  expect(first).toBe("right");
 });
 
 test("a per-side set and a bilateral set can sit back to back in one exercise", async ({
@@ -163,20 +190,19 @@ test("a per-side set and a bilateral set can sit back to back in one exercise", 
 
   // Set 0: per-side.
   await makePerSide(page);
-  await page.getByTestId("weight-field").fill("40");
-  await page.getByTestId("reps-field-left").fill("8");
-  await page.getByTestId("reps-field-right").fill("8");
+  await fillSide(page, "left", "40", "8");
+  await fillSide(page, "right", "40", "8");
   await page.getByTestId("log-set").click();
   await expect(page.getByTestId("set-mark-0-side-tag")).toBeVisible();
 
-  // Laterality is sticky (session.tsx's "Default laterality" menu item
-  // implies per-set state carries forward) — set 1 opens per-side too until
-  // explicitly toggled off via the same set-type-perside item.
-  await expect(page.getByTestId("reps-field-left")).toBeVisible();
+  // Log never creates a set; "Add a set" opens the next one, still per-side
+  // (laterality carries forward) until toggled off.
+  await page.getByTestId("add-set").click();
+  await expect(page.getByTestId("side-tabs")).toBeVisible();
   await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click();
+  await expect(page.getByTestId("side-tabs")).toHaveCount(0);
   await expect(page.getByTestId("reps-field")).toBeVisible();
-  await expect(page.getByTestId("reps-field-left")).toHaveCount(0);
   await logBilateralSet(page, "45", "10");
   await expect(page.getByTestId("set-mark-1-side-tag")).toHaveCount(0);
 });
@@ -230,7 +256,5 @@ test("a routine's per-set laterality prescription re-syncs as the live set advan
   // it must open per-side automatically, matching its own prescription,
   // with no manual set-type-menu toggle from this test.
   await expect(page.getByTestId("set-number")).toContainText("3");
-  await expect(page.getByTestId("reps-field-left")).toBeVisible();
-  await expect(page.getByTestId("reps-field-right")).toBeVisible();
-  await expect(page.getByTestId("reps-field")).toHaveCount(0);
+  await expect(page.getByTestId("side-tabs")).toBeVisible();
 });

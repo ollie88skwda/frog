@@ -24,8 +24,36 @@ export async function startSessionWith(page: Page, exerciseName: string) {
   await expect(page.getByTestId("weight-field")).toBeVisible();
 }
 
-/** Fills the spotlight weight/reps fields directly (bilateral). */
+/** Opens the next set the way a user does: "Add a set". Log never creates
+ * one, so a spec that logs a second set on an unplanned exercise calls this
+ * (fillSet does it automatically when no entry panel is showing). */
+export async function addSet(page: Page) {
+  await page.getByTestId("add-set").click();
+  await expect(page.getByTestId("log-set")).toBeVisible();
+}
+
+/** Opens a set for entry when none is open (Log never creates one). */
+export async function ensureOpenSet(page: Page) {
+  if (await page.getByTestId("log-set").isVisible()) return;
+  if (await page.getByTestId("add-set").isVisible()) await addSet(page);
+}
+
+/** Fills the spotlight weight/reps fields directly (bilateral, or the active
+ * side of a per-side set). */
 export async function fillSet(page: Page, weight: string, reps: string) {
+  if (!(await page.getByTestId("weight-field").isVisible())) await addSet(page);
+  await page.getByTestId("weight-field").fill(weight);
+  await page.getByTestId("reps-field").fill(reps);
+}
+
+/** Per-side: selects a side tab, then fills that side's own numbers. */
+export async function fillSide(
+  page: Page,
+  side: "left" | "right",
+  weight: string,
+  reps: string,
+) {
+  await page.getByTestId(`side-tab-${side}`).click();
   await page.getByTestId("weight-field").fill(weight);
   await page.getByTestId("reps-field").fill(reps);
 }
