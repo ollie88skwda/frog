@@ -11,6 +11,7 @@ import {
   type ImportResult,
   isConfidentMatch,
   isLowConfidence,
+  isUnilateralName,
   matchExerciseName,
   type NewRoutineInput,
   setDraftUnit,
@@ -489,6 +490,26 @@ export function ImportReview({
           s.startedAt == null ? { ...s, startedAt: now - 60_000 * n++ } : s,
         ),
       };
+      // Session import creates unknown exercises server-side with no
+      // laterality, so create the one-sided ones here first (private) and
+      // the importer then finds them by name.
+      const have = new Set(exercises.map((x) => norm(x.name)));
+      const createdIds = new Map<string, string>();
+      for (const e of chosen.flatMap((x) => x.exercises)) {
+        const nm = nameFor(e.rawName).trim();
+        if (
+          resolve(e.rawName).kind === "create" &&
+          isUnilateralName(e.rawName) &&
+          !have.has(norm(nm))
+        ) {
+          have.add(norm(nm));
+          const row = await repo.createExercise(nm, {
+            share: false,
+            laterality: "unilateral",
+          });
+          createdIds.set(norm(nm), row.id);
+        }
+      }
       const payload = draftToImportedSessions(dated, nameFor, included);
       const result: ImportResult =
         payload.length > 0
@@ -504,6 +525,9 @@ export function ImportReview({
               ? res.id
               : (
                   exercises.find((x) => norm(x.name) === norm(e.rawName)) ??
+                  (createdIds.has(norm(e.rawName))
+                    ? { id: createdIds.get(norm(e.rawName)) as string }
+                    : undefined) ??
                   (await repo.createExercise(e.rawName.trim(), {
                     share: false,
                   }))
@@ -516,6 +540,9 @@ export function ImportReview({
               targetReps: e.reps,
               targetRepsMax: e.repsMax,
               targetWeightKg: weightToKg(e.weight, draft.unit),
+              ...(isUnilateralName(e.rawName)
+                ? { laterality: "unilateral" }
+                : {}),
             })),
           });
         }
