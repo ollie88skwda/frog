@@ -41,40 +41,59 @@ export function MachineChip({
   disabled,
   onPick,
 }: {
-  machine: Machine | null;
+  machine: Machine;
   blockName: string;
-  /** True while a copy-on-write fork is in flight — the write would target a
-   * not-yet-inserted exercise row. */
+  /** True while a copy-on-write fork is in flight. */
   disabled?: boolean;
   onPick: (machineId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button
-        variant="outline"
-        size="sm"
+      <button
+        type="button"
         disabled={disabled}
         onClick={() => setOpen(true)}
-        title={machine ? "Change machine" : "Pick the machine you're on"}
-        className="h-11 max-w-full self-start md:h-11"
+        title="Change machine"
+        className="flex min-h-9 max-w-full items-center gap-1.5 rounded-sm bg-surface-2 px-2.5 text-xs font-semibold text-soft transition-colors duration-100 hover:bg-surface-hover disabled:opacity-50"
         data-testid="exercise-machine-chip"
       >
-        {machine && <Wrench className="size-3.5 shrink-0" />}
-        <span className="truncate">
-          {machine ? machineLabel(machine) : "+ add machine"}
-        </span>
-      </Button>
-      <MachineCommandDialog
+        <Wrench className="size-3.5 shrink-0" />
+        <span className="truncate">{machineLabel(machine)}</span>
+      </button>
+      <MachinePickerDialog
         open={open}
         onOpenChange={setOpen}
         blockName={blockName}
-        onPick={(id) => {
-          onPick(id);
-          setOpen(false);
-        }}
+        onPick={onPick}
       />
     </>
+  );
+}
+
+/** Controlled picker, opened from the exercise settings menu ("Add machine")
+ * or from the chip that shows an attached machine. */
+export function MachinePickerDialog({
+  open,
+  onOpenChange,
+  blockName,
+  onPick,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  blockName: string;
+  onPick: (machineId: string) => void;
+}) {
+  return (
+    <MachineCommandDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      blockName={blockName}
+      onPick={(id) => {
+        onPick(id);
+        onOpenChange(false);
+      }}
+    />
   );
 }
 

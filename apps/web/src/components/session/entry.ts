@@ -62,7 +62,7 @@ export function logLabel(opts: {
   if (opts.weightUnit && (w || w2))
     parts.push(`${pair(w || "–", w2)} ${opts.weightUnit}`);
   if (r || r2) parts.push(pair(r || "–", r2));
-  const side = opts.unilateral ? " · ᴸ + ᴿ" : "";
+  const side = opts.unilateral ? " · L + R" : "";
   if (!parts.length) return `Log set ${opts.setNo}${side}`;
   return `Log ${parts.join(" × ")}${side}`;
 }

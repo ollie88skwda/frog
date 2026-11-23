@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 import {
+  ensureOpenSet,
   fillSet,
   logBilateralSet,
   makeExercise,
@@ -69,6 +70,7 @@ test("first input to the next set stops the stopwatch and stamps the following s
 
   // Any input to the next (now-current) set stops it — typing into weight
   // is enough, no Log required.
+  await ensureOpenSet(page);
   await page.getByTestId("weight-field").fill("105");
   await expect(page.getByTestId("rest-stopwatch")).toHaveCount(0);
 

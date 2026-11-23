@@ -8,6 +8,7 @@ import {
   signIn,
   waitForExercise,
 } from "./helpers";
+import { ensureOpenSet } from "./spotlight-helpers";
 
 // M9: the post-save celebration summary (ordinal + overview slides), the
 // share-as-image card (client-rendered PNG, asserted via a download event), and
@@ -45,6 +46,7 @@ async function startAndLog(
   // Re-aimed for the Spotlight session screen (fm/frog-session-spotlight):
   // sets are logged one at a time through the always-current spotlight fields.
   for (let i = 0; i < sets.length; i++) {
+    await ensureOpenSet(page);
     await page.getByTestId("weight-field").fill(sets[i][0]);
     await page.getByTestId("reps-field").fill(sets[i][1]);
     await page.getByTestId("log-set").click();

@@ -49,13 +49,13 @@ describe("entry logic", () => {
   it("labels unilateral sets with both sides only when they differ", () => {
     const base = { weightUnit: "kg", setNo: 1, unilateral: true };
     expect(logLabel({ ...base, weight: "40", reps: "8" })).toBe(
-      "Log 40 kg × 8 · ᴸ + ᴿ",
+      "Log 40 kg × 8 · L + R",
     );
     expect(logLabel({ ...base, weight: "40", reps: "8", rightReps: "8" })).toBe(
-      "Log 40 kg × 8 · ᴸ + ᴿ",
+      "Log 40 kg × 8 · L + R",
     );
     expect(logLabel({ ...base, weight: "40", reps: "8", rightReps: "6" })).toBe(
-      "Log 40 kg × 8/6 · ᴸ + ᴿ",
+      "Log 40 kg × 8/6 · L + R",
     );
     expect(
       logLabel({
@@ -65,7 +65,7 @@ describe("entry logic", () => {
         rightWeight: "35",
         rightReps: "6",
       }),
-    ).toBe("Log 40/35 kg × 8/6 · ᴸ + ᴿ");
+    ).toBe("Log 40/35 kg × 8/6 · L + R");
   });
   it("snaps to the nearest step and clamps to the range", () => {
     expect(snapToStep(81.3, 2.5, 0, 500)).toBe(82.5);

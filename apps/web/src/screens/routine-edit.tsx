@@ -74,6 +74,7 @@ import { Field } from "@/components/ui/field";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { SideTag } from "@/components/ui/side-tag";
 import {
   formatMMSS,
   parseDuration,
@@ -117,7 +118,7 @@ type SetLaterality = "bilateral" | "unilateral";
 // `reps` doubles as the per-side target on a unilateral set (session-redesign-
 // r3 A3): routine_sets carries one reps value per row, which the session
 // already reads as "reps per side" for a unilateral prescription, so the
-// ᴸ/ᴿ grid below edits the same field from both columns rather than a second
+// left/right grid below edits the same field from both columns rather than a second
 // column with nowhere to persist independently — see the PR body.
 type DraftSet = {
   key: string;
@@ -1092,8 +1093,8 @@ export default function RoutineEditScreen() {
                           (unilateral ? (
                             <div className="flex flex-col gap-1">
                               <div className="grid grid-cols-2 gap-2 text-2xs font-medium tracking-widest text-faint uppercase">
-                                <span>ᴸ Left</span>
-                                <span>ᴿ Right</span>
+                                <SideTag side="left" long />
+                                <SideTag side="right" long />
                               </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <AdjustField
@@ -1182,7 +1183,7 @@ export default function RoutineEditScreen() {
                               Time
                             </span>
                             <Field
-                              inputMode="numeric"
+                              inputMode="text"
                               placeholder="mm:ss"
                               value={s.duration}
                               onChange={(e) =>

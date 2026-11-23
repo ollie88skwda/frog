@@ -8,7 +8,7 @@ import {
   signIn,
   waitForExercise,
 } from "./helpers";
-import { openSetTypeMenu } from "./spotlight-helpers";
+import { ensureOpenSet, openSetTypeMenu } from "./spotlight-helpers";
 
 // G2 + G3: edit/delete logged data + exercise tags.
 
@@ -36,9 +36,11 @@ test("edit a committed set; delete a set; both survive reload", async ({
 
   // Log two sets through the spotlight (Spotlight redesign — no separate
   // per-index "Add set" button; committing one advances to the next).
+  await ensureOpenSet(page);
   await page.getByTestId("weight-field").fill("100");
   await page.getByTestId("reps-field").fill("5");
   await page.getByTestId("log-set").click();
+  await ensureOpenSet(page);
   await page.getByTestId("weight-field").fill("110");
   await page.getByTestId("reps-field").fill("3");
   await page.getByTestId("log-set").click();
@@ -48,6 +50,7 @@ test("edit a committed set; delete a set; both survive reload", async ({
 
   // Edit set 0: tap its mark to reopen it, change the weight, Log to save.
   await page.getByTestId("set-mark-0").click();
+  await ensureOpenSet(page);
   await page.getByTestId("weight-field").fill("105");
   await page.getByTestId("log-set").click();
 
@@ -75,10 +78,9 @@ test("edit a committed set; delete a set; both survive reload", async ({
   await page.reload();
   await page.getByTestId("set-mark-0").click();
   await expect(page.getByTestId("weight-field")).toHaveValue("105");
-  await expect(page.getByTestId("set-mark-1-state")).toHaveAttribute(
-    "data-state",
-    "current",
-  );
+  // The deleted set stays gone; an unlogged "added" set is not persisted, so
+  // no empty slot reappears after reload.
+  await expect(page.getByTestId("set-mark-1")).toHaveCount(0);
 });
 
 test("delete a custom exercise removes it from the picker; tags round-trip", async ({
