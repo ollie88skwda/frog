@@ -1,5 +1,6 @@
 // Lift page header (F7): e1RM · status · best top set · next prescription,
 // plus the BandChart with the personal baseline and "within normal swing" band.
+
 import {
   type RecordsSessionInput,
   toDisplayWeight,
@@ -22,6 +23,7 @@ import {
   TierBadge,
 } from "@/components/data";
 import { type ChartConfig, ChartContainer } from "@/components/ui/chart";
+import { HintTip } from "@/components/ui/hint-tip";
 import { formatDate } from "@/lib/format";
 import { useUnit } from "@/lib/settings";
 import { trendYDomain } from "@/lib/trend-domain";
@@ -225,11 +227,13 @@ export function LiftHeader({
               />
             </ComposedChart>
           </ChartContainer>
-          <p className="mt-1 text-2xs text-soft">
-            {band
-              ? "Shaded = within 10% of your last-6 median (normal swing). "
-              : ""}
-            Sessions: {data.length}.
+          <p className="mt-1 flex items-center gap-2 text-2xs text-soft">
+            Sessions: {data.length}
+            {band && (
+              <HintTip title="Shaded band">
+                Shaded = within 10% of your last-6 median (normal swing).
+              </HintTip>
+            )}
           </p>
         </div>
       ) : (
