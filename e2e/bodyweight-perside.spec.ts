@@ -38,7 +38,7 @@ async function start(page: Page, name: string) {
 async function makePerSide(page: Page) {
   await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click();
-  await expect(page.getByTestId("side-tab-right")).toBeVisible();
+  await expect(page.getByTestId("reps-field-right")).toBeVisible();
 }
 
 /** set_logs rows (side, reps) for this exercise's newest session_exercise. */
@@ -80,22 +80,14 @@ test("unilateral bodyweight: right reps defaults to the left value when left bla
   // No weight column on a bodyweight type.
   await expect(page.getByTestId("weight-field")).toHaveCount(0);
 
-  await page.getByTestId("side-tab-left").click();
-  await page.getByTestId("reps-field").fill("10");
-  await page.getByTestId("side-tab-right").click();
+  await page.getByTestId("reps-field-left").fill("10");
   // The right input itself is empty; the left value is only its ghost.
-  await expect(page.getByTestId("reps-field")).toHaveValue("");
-  await expect(
-    page.getByTestId("reps-field").locator("xpath=following-sibling::span[1]"),
-  ).toContainText("10");
-  // Unfocused, the ghost is what the user sees in the empty right field.
-  await page.getByTestId("reps-field").blur();
-  await expect(
-    page.getByTestId("reps-field").locator("xpath=following-sibling::span[1]"),
-  ).toBeVisible();
-  await page.screenshot({
-    path: `${process.env.EVIDENCE_DIR ?? "test-results"}/bw-uni-right-ghost.png`,
-  });
+  const right = page.getByTestId("reps-field-right");
+  await expect(right).toHaveValue("");
+  await expect(right.locator("xpath=following-sibling::span[1]")).toContainText(
+    "10",
+  );
+  await expect(right.locator("xpath=following-sibling::span[1]")).toBeVisible();
 
   await page.getByTestId("log-set").click();
   await expect.poll(() => readRows(page, EX)).toHaveLength(2);
@@ -113,10 +105,8 @@ test("unilateral bodyweight: right reps can be cleared and retyped (no snap-back
   await start(page, EX);
   await makePerSide(page);
 
-  await page.getByTestId("side-tab-left").click();
-  await page.getByTestId("reps-field").fill("10");
-  await page.getByTestId("side-tab-right").click();
-  const reps = page.getByTestId("reps-field");
+  await page.getByTestId("reps-field-left").fill("10");
+  const reps = page.getByTestId("reps-field-right");
   await reps.click();
   await reps.pressSequentially("12");
   await expect(reps).toHaveValue("12");
@@ -126,13 +116,9 @@ test("unilateral bodyweight: right reps can be cleared and retyped (no snap-back
   await expect(reps).toHaveValue("");
   await reps.pressSequentially("8");
   await expect(reps).toHaveValue("8");
-  await page.screenshot({
-    path: `${process.env.EVIDENCE_DIR ?? "test-results"}/bw-uni-right-8.png`,
-  });
 
   // Left side still holds its own value.
-  await page.getByTestId("side-tab-left").click();
-  await expect(page.getByTestId("reps-field")).toHaveValue("10");
+  await expect(page.getByTestId("reps-field-left")).toHaveValue("10");
 
   await page.getByTestId("log-set").click();
   await expect.poll(() => readRows(page, EX)).toHaveLength(2);
@@ -149,18 +135,14 @@ test("unilateral bodyweight: editing a logged set changes the right reps", async
   const EX = await makeBodyweight(page, "BwUniEdit");
   await start(page, EX);
   await makePerSide(page);
-  await page.getByTestId("side-tab-left").click();
-  await page.getByTestId("reps-field").fill("10");
-  await page.getByTestId("side-tab-right").click();
-  await page.getByTestId("reps-field").fill("9");
+  await page.getByTestId("reps-field-left").fill("10");
+  await page.getByTestId("reps-field-right").fill("9");
   await page.getByTestId("log-set").click();
   await expect.poll(() => readRows(page, EX)).toHaveLength(2);
 
   await page.getByTestId("set-mark-0").click();
-  await expect(page.getByTestId("side-tab-right")).toBeVisible();
-  await page.getByTestId("side-tab-right").click();
-  await expect(page.getByTestId("reps-field")).toHaveValue("9");
-  await page.getByTestId("reps-field").fill("7");
+  await expect(page.getByTestId("reps-field-right")).toHaveValue("9");
+  await page.getByTestId("reps-field-right").fill("7");
   await page.getByTestId("log-set").click();
 
   await expect
@@ -176,14 +158,14 @@ test("bilateral bodyweight keeps the generic panel with the Last time row", asyn
 }) => {
   const EX = await makeBodyweight(page, "BwBilateral");
   await start(page, EX);
-  await expect(page.getByTestId("side-tab-left")).toHaveCount(0);
+  await expect(page.getByTestId("perside-row")).toHaveCount(0);
   await page.getByTestId("reps-field").fill("12");
   await page.getByTestId("log-set").click();
   await expect.poll(() => readRows(page, EX)).toHaveLength(1);
   await finishSession(page);
 
   await start(page, EX);
-  await expect(page.getByTestId("side-tab-left")).toHaveCount(0);
+  await expect(page.getByTestId("perside-row")).toHaveCount(0);
   await expect(page.getByTestId("last-time-row")).toBeVisible();
   await expect(page.getByTestId("last-time-row")).toContainText("12");
   await expect(page.getByTestId("last-time-reset")).toBeVisible();
