@@ -36,6 +36,10 @@ type Props = {
   label: string;
   unit?: string;
   testId: string;
+  /** Big exact-value readout above the needle (default on). */
+  readout?: boolean;
+  /** Jump buttons either side for big moves, e.g. a plate (2.5 kg / 5 lb). */
+  jump?: number;
   onChange: (v: number) => void;
   onStart?: () => void;
 };
@@ -64,8 +68,12 @@ export function Ruler(props: Props) {
     if (!cv) return;
     const ctx = cv.getContext("2d");
     if (!ctx) return;
-    const { w, h, pos } = s.current;
+    const { w, h } = s.current;
     const p = live.current;
+    // Ticks always sit on the grid: while dragging the ruler hops tick to
+    // tick (like a notched dial) instead of sliding between them, so the
+    // tick under the needle is the selected value, never "somewhere between".
+    const pos = Math.round(s.current.pos / p.step) * p.step;
     const dpr = window.devicePixelRatio || 1;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
@@ -89,19 +97,26 @@ export function Ruler(props: Props) {
       const isMajor = isMajorTick(k, p.majorEvery);
       const isMid =
         !isMajor && p.midEvery != null && isMajorTick(k, p.midEvery);
-      const th = isMajor ? h * 0.7 : isMid ? h * 0.5 : h * 0.3;
+      const selected = Math.abs(val - pos) < p.step / 2;
+      const th = selected
+        ? h * 0.78
+        : isMajor
+          ? h * 0.66
+          : isMid
+            ? h * 0.46
+            : h * 0.28;
       const d = Math.min(1, Math.abs(x - w / 2) / (w / 2));
       // Full strength across the middle 70%, so every tick and label a thumb
       // can reach reads at its token contrast; only the outer edges fade.
       const fade = Math.max(0, (d - 0.7) / 0.3);
       ctx.globalAlpha = Math.max(0.1, 1 - fade * fade * 0.9);
-      ctx.strokeStyle = isMajor || isMid ? major : minor;
-      ctx.lineWidth = isMajor ? 2 : isMid ? 1.5 : 1;
+      ctx.strokeStyle = selected ? accent : isMajor || isMid ? major : minor;
+      ctx.lineWidth = selected ? 3 : isMajor ? 2 : isMid ? 1.5 : 1;
       ctx.beginPath();
       ctx.moveTo(x, h);
       ctx.lineTo(x, h - th);
       ctx.stroke();
-      if (isMajor) {
+      if (isMajor && !selected) {
         ctx.fillStyle = faintInk;
         ctx.fillText(String(Math.round(val * 100) / 100), x, h - th - 6);
       }
@@ -119,15 +134,17 @@ export function Ruler(props: Props) {
     // Needle + pointer.
     ctx.strokeStyle = accent;
     ctx.fillStyle = accent;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 1;
+    ctx.globalAlpha = 0.35;
     ctx.beginPath();
     ctx.moveTo(w / 2, 10);
-    ctx.lineTo(w / 2, h - 4);
+    ctx.lineTo(w / 2, h);
     ctx.stroke();
+    ctx.globalAlpha = 1;
     ctx.beginPath();
-    ctx.moveTo(w / 2 - 6, 0);
-    ctx.lineTo(w / 2 + 6, 0);
-    ctx.lineTo(w / 2, 8);
+    ctx.moveTo(w / 2 - 7, 0);
+    ctx.lineTo(w / 2 + 7, 0);
+    ctx.lineTo(w / 2, 9);
     ctx.fill();
   }
 
@@ -228,85 +245,145 @@ export function Ruler(props: Props) {
     draw();
   }
 
+  const shown = Math.round(props.value * 100) / 100;
+  const jumpBy = (dir: 1 | -1) => {
+    const p = live.current;
+    const next = snapToStep(
+      s.current.emitted + dir * (p.jump ?? p.step),
+      p.step,
+      p.min,
+      p.max,
+    );
+    cancelAnimationFrame(s.current.raf);
+    s.current.vel = 0;
+    s.current.pos = next;
+    p.onStart?.();
+    emit(next);
+    draw();
+  };
+  const jumpBtn =
+    "num flex h-11 min-w-11 shrink-0 items-center justify-center rounded-sm bg-secondary px-2 text-sm font-bold text-ink transition-colors duration-100 hover:bg-active";
   return (
-    <canvas
-      ref={ref}
-      role="slider"
-      tabIndex={0}
-      aria-label={label}
-      aria-orientation="horizontal"
-      aria-valuemin={min}
-      aria-valuemax={max}
-      aria-valuenow={props.value}
-      aria-valuetext={`${props.value}${unit ? ` ${unit}` : ""}`}
-      data-testid={testId}
-      className={cn(
-        "block h-[clamp(40px,6.4dvh,56px)] w-full cursor-ew-resize rounded-sm outline-offset-2 select-none",
+    <div className="flex flex-col" data-testid={`${testId}-wrap`}>
+      {props.readout !== false && (
+        <div
+          className="num flex items-baseline justify-center gap-1 pt-1 leading-none"
+          aria-hidden="true"
+          data-testid={`${testId}-readout`}
+        >
+          <span className="text-[22px] font-bold text-accent-ink">{shown}</span>
+          {unit && (
+            <span className="text-xs font-semibold text-soft">{unit}</span>
+          )}
+        </div>
       )}
-      style={{
-        touchAction: "pan-y",
-        WebkitMaskImage:
-          "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)",
-        maskImage:
-          "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)",
-      }}
-      onKeyDown={(e) => {
-        const k = e.key;
-        if (k === "ArrowRight" || k === "ArrowUp") nudge(1);
-        else if (k === "ArrowLeft" || k === "ArrowDown") nudge(-1);
-        else if (k === "PageUp") nudge(10);
-        else if (k === "PageDown") nudge(-10);
-        else return;
-        e.preventDefault();
-      }}
-      onPointerDown={(e) => {
-        const st = s.current;
-        cancelAnimationFrame(st.raf);
-        st.drag = true;
-        st.vel = 0;
-        st.moved = 0;
-        st.lastX = e.clientX;
-        st.lastT = performance.now();
-        e.currentTarget.setPointerCapture(e.pointerId);
-        live.current.onStart?.();
-      }}
-      onPointerMove={(e) => {
-        const st = s.current;
-        if (!st.drag) return;
-        const now = performance.now();
-        const dx = e.clientX - st.lastX;
-        if (st.moved < 4 && Math.abs(dx) < 4) return;
-        const dt = Math.max(1, now - st.lastT);
-        st.moved += Math.abs(dx);
-        setPos(st.pos - (dx / pps) * live.current.step);
-        st.vel = st.vel * 0.6 + (-dx / dt) * 0.4;
-        st.lastX = e.clientX;
-        st.lastT = now;
-      }}
-      onPointerUp={() => {
-        const st = s.current;
-        if (!st.drag) return;
-        st.drag = false;
-        if (st.moved < 4) {
-          st.pos = st.emitted;
-          draw();
-          return;
-        }
-        if (performance.now() - st.lastT > 80) st.vel = 0;
-        settle();
-      }}
-      onPointerCancel={() => {
-        const st = s.current;
-        st.drag = false;
-        if (st.moved < 4) {
-          st.pos = st.emitted;
-          draw();
-          return;
-        }
-        settle();
-      }}
-      onTouchStart={(e) => e.stopPropagation()}
-      onTouchEnd={(e) => e.stopPropagation()}
-    />
+      <div className="flex items-center gap-1">
+        {props.jump != null && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => jumpBy(-1)}
+            className={jumpBtn}
+            aria-label={`${label} minus ${props.jump}`}
+            data-testid={`${testId}-minus`}
+          >
+            −{props.jump}
+          </button>
+        )}
+        <div className="min-w-0 flex-1">
+          <canvas
+            ref={ref}
+            role="slider"
+            tabIndex={0}
+            aria-label={label}
+            aria-orientation="horizontal"
+            aria-valuemin={min}
+            aria-valuemax={max}
+            aria-valuenow={props.value}
+            aria-valuetext={`${props.value}${unit ? ` ${unit}` : ""}`}
+            data-testid={testId}
+            className={cn(
+              "block h-[clamp(40px,6.4dvh,56px)] w-full cursor-ew-resize rounded-sm outline-offset-2 select-none",
+            )}
+            style={{
+              touchAction: "pan-y",
+              WebkitMaskImage:
+                "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)",
+              maskImage:
+                "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)",
+            }}
+            onKeyDown={(e) => {
+              const k = e.key;
+              if (k === "ArrowRight" || k === "ArrowUp") nudge(1);
+              else if (k === "ArrowLeft" || k === "ArrowDown") nudge(-1);
+              else if (k === "PageUp") nudge(10);
+              else if (k === "PageDown") nudge(-10);
+              else return;
+              e.preventDefault();
+            }}
+            onPointerDown={(e) => {
+              const st = s.current;
+              cancelAnimationFrame(st.raf);
+              st.drag = true;
+              st.vel = 0;
+              st.moved = 0;
+              st.lastX = e.clientX;
+              st.lastT = performance.now();
+              e.currentTarget.setPointerCapture(e.pointerId);
+              live.current.onStart?.();
+            }}
+            onPointerMove={(e) => {
+              const st = s.current;
+              if (!st.drag) return;
+              const now = performance.now();
+              const dx = e.clientX - st.lastX;
+              if (st.moved < 4 && Math.abs(dx) < 4) return;
+              const dt = Math.max(1, now - st.lastT);
+              st.moved += Math.abs(dx);
+              setPos(st.pos - (dx / pps) * live.current.step);
+              st.vel = st.vel * 0.6 + (-dx / dt) * 0.4;
+              st.lastX = e.clientX;
+              st.lastT = now;
+            }}
+            onPointerUp={() => {
+              const st = s.current;
+              if (!st.drag) return;
+              st.drag = false;
+              if (st.moved < 4) {
+                st.pos = st.emitted;
+                draw();
+                return;
+              }
+              if (performance.now() - st.lastT > 80) st.vel = 0;
+              settle();
+            }}
+            onPointerCancel={() => {
+              const st = s.current;
+              st.drag = false;
+              if (st.moved < 4) {
+                st.pos = st.emitted;
+                draw();
+                return;
+              }
+              settle();
+            }}
+            onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+          />
+        </div>
+        {props.jump != null && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => jumpBy(1)}
+            className={jumpBtn}
+            aria-label={`${label} plus ${props.jump}`}
+            data-testid={`${testId}-plus`}
+          >
+            +{props.jump}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }

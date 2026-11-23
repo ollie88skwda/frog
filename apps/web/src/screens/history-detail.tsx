@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { QueryState } from "@/components/ui/query-state";
+import { SideTag } from "@/components/ui/side-tag";
 import { Toolbar } from "@/components/ui/toolbar";
 import { formatDate } from "@/lib/format";
 import { useAllSessions, useUserPrefs } from "@/lib/profile-queries";
@@ -568,7 +569,7 @@ export default function HistoryDetailScreen() {
               >
                 <span className="num text-xs text-faint">
                   {set.setNo + 1}
-                  {set.side === "left" ? "ᴸ" : set.side === "right" ? "ᴿ" : ""}
+                  {set.side && <SideTag side={set.side} className="ml-1" />}
                 </span>
                 <span className="num text-sm">
                   {set.weightKg != null

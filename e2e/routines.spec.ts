@@ -580,10 +580,13 @@ test("exercise menu laterality/warm-up round-trip into the session", async ({
   // screen (testid-contract.md: no superset control anywhere) — only the
   // warm-up + unilateral seeding is checkable here now. Set 0's mark reads
   // warmup with a side-tag (paired) once logged.
-  await expect(page.getByTestId("reps-field-left")).toBeVisible();
+  await expect(page.getByTestId("side-tabs")).toBeVisible();
+  await page.getByTestId("side-tab-left").click();
   await page.getByTestId("weight-field").fill("20");
-  await page.getByTestId("reps-field-left").fill("8");
-  await page.getByTestId("reps-field-right").fill("8");
+  await page.getByTestId("reps-field").fill("8");
+  await page.getByTestId("side-tab-right").click();
+  await page.getByTestId("weight-field").fill("20");
+  await page.getByTestId("reps-field").fill("8");
   await page.getByTestId("log-set").click();
   await expect(page.getByTestId("set-mark-0-state")).toHaveAttribute(
     "data-state",

@@ -49,3 +49,27 @@ describe("previousCells", () => {
     expect(cells[0].previous?.otherSide).toEqual({ weightKg: 28, reps: 8 });
   });
 });
+
+import { formatPreviousSides } from "./previous";
+
+describe("formatPreviousSides", () => {
+  it("matches formatPrevious's collapse rule", () => {
+    expect(formatPreviousSides({ weightKg: 100, reps: 8 }, fmtKg)).toEqual({
+      left: "100 × 8",
+      right: null,
+      paired: false,
+    });
+    expect(
+      formatPreviousSides(
+        { weightKg: 30, reps: 10, otherSide: { weightKg: 30, reps: 10 } },
+        fmtKg,
+      ),
+    ).toEqual({ left: "30 × 10", right: null, paired: true });
+    expect(
+      formatPreviousSides(
+        { weightKg: 30, reps: 10, otherSide: { weightKg: 28, reps: 8 } },
+        fmtKg,
+      ),
+    ).toEqual({ left: "30 × 10", right: "28 × 8", paired: true });
+  });
+});

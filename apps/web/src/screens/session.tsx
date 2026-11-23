@@ -62,6 +62,7 @@ import {
   rirMidpoint,
   type Session,
   type SetType,
+  sanitizeNumeric,
   sessionDirectCheck,
   shouldStartRest,
   startRest,
@@ -77,6 +78,7 @@ import {
   ArrowCounterClockwise,
   Calculator,
   CaretDown,
+  CaretLeft,
   CaretRight,
   Check,
   Clock,
@@ -125,7 +127,15 @@ import {
 import { InfoTip } from "@/components/lesson";
 import { fieldStep, logLabel, stepValue } from "@/components/session/entry";
 import { ScrubSurface, Stepper } from "@/components/session/entry-tile";
-import { MachineChip } from "@/components/session/machine-chip";
+import {
+  afterLog,
+  hasOpenSet,
+  plannedSetCount,
+} from "@/components/session/log-nav";
+import {
+  MachineChip,
+  MachinePickerDialog,
+} from "@/components/session/machine-chip";
 import { PlateSheet } from "@/components/session/plate-sheet";
 import { PrBanner, type PrBannerData } from "@/components/session/pr-banner";
 import {
@@ -156,6 +166,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
+import { SideTag } from "@/components/ui/side-tag";
+import { loadFirstSide, otherSide, saveFirstSide } from "@/lib/first-side";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
@@ -608,6 +620,15 @@ export default function SessionScreen() {
     {},
   );
   const [blockNonce, setBlockNonce] = useState<Record<string, number>>({});
+  // Sets the user added with "Add a set", per exercise. Log never adds one:
+  // an exercise offers its planned sets (at least one) plus these, nothing
+  // else (log-nav.ts).
+  const [addedSets, setAddedSets] = useState<Record<string, number>>({});
+  const addSetTo = useCallback(
+    (seId: string) =>
+      setAddedSets((prev) => ({ ...prev, [seId]: (prev[seId] ?? 0) + 1 })),
+    [],
+  );
 
   const [paused, setPaused] = useState(false);
   const [pausedMs, setPausedMs] = useState(0);
@@ -1028,6 +1049,19 @@ export default function SessionScreen() {
       ctx.exerciseType,
     );
     setRest(starting ? { seId, state: startRest(Date.now()) } : null);
+
+    // Where to go next: more planned sets here, else the next exercise.
+    if (block && blocks) {
+      const idx = blocks.findIndex((b) => b.seId === seId);
+      const nextBlock = blocks[idx + 1];
+      const where = afterLog({
+        committedAfter: countSets(block.committed) + 1,
+        planned: plannedSetCount((seedOverride[seId] ?? seedFor(block)).length),
+        added: addedSets[seId] ?? 0,
+        hasNextExercise: nextBlock != null,
+      });
+      if (where === "next-exercise" && nextBlock) setActiveSeId(nextBlock.seId);
+    }
   }
 
   function addWarmup(seId: string, workingWeightKg: number) {
@@ -1483,11 +1517,13 @@ export default function SessionScreen() {
       <header className="sticky top-0 z-10 bg-bg">
         <div className="mx-auto flex h-[clamp(52px,6.6dvh,56px)] max-w-2xl items-center justify-between gap-2 px-4">
           <h1 className="sr-only">{session?.title ?? "Session"}</h1>
-          {rest && activeBlock && rest.seId === activeBlock.seId ? (
+          {rest && blocks.some((b) => b.seId === rest.seId) ? (
             <RestStopwatch
               compact
               startedAt={rest.state.startedAt}
-              setNumber={countSets(activeBlock.committed)}
+              setNumber={countSets(
+                blocks.find((b) => b.seId === rest.seId)?.committed ?? [],
+              )}
               onStop={dismissRest}
             />
           ) : session ? (
@@ -1610,6 +1646,10 @@ export default function SessionScreen() {
             onRemoveBlock={() => removeBlock(activeBlock.seId)}
             onOpenSwitcher={() => setSwitcherOpen(true)}
             onSwipe={gotoOffset}
+            addedSets={addedSets[activeBlock.seId] ?? 0}
+            onAddSet={() => addSetTo(activeBlock.seId)}
+            prevName={blocks[activeIdx - 1]?.name ?? null}
+            nextName={blocks[activeIdx + 1]?.name ?? null}
             prSetIds={prSetIds}
             prSnapshot={prSnapshot}
             voiceFill={voiceFill?.seId === activeBlock.seId ? voiceFill : null}
@@ -2503,12 +2543,7 @@ function SetRows({
             <span className="num flex min-w-0 items-center gap-1.5 font-semibold">
               <span className="min-w-0 truncate">{now ? "Now" : r.text}</span>
               {m.paired && (
-                <span
-                  data-testid={`set-mark-${i}-side-tag`}
-                  className="shrink-0 text-2xs font-bold text-soft"
-                >
-                  ᴸᴿ
-                </span>
+                <SideTag side="both" testId={`set-mark-${i}-side-tag`} />
               )}
               {m.pr && (
                 <Medal
@@ -2546,8 +2581,12 @@ function ExerciseSettingsMenu({
   onLateralityChange,
   onRemoveBlock,
   onAddWarmup,
+  hasMachine,
+  onPickMachine,
   busy,
 }: {
+  hasMachine: boolean;
+  onPickMachine: () => void;
   blockName: string;
   unit: Unit;
   showUnitOverride: boolean;
@@ -2581,6 +2620,15 @@ function ExerciseSettingsMenu({
           className="max-h-[min(26rem,var(--radix-dropdown-menu-content-available-height))] w-60 overflow-y-auto"
           data-testid={`block-${blockName}-menu-popup`}
         >
+          <DropdownMenuItem
+            className="min-h-11"
+            disabled={busy}
+            onSelect={onPickMachine}
+            data-testid={`block-${blockName}-machine`}
+          >
+            <Wrench className="size-4 shrink-0 text-soft" />
+            {hasMachine ? "Change machine" : "Add machine"}
+          </DropdownMenuItem>
           {warmupEligible && (
             <DropdownMenuItem
               className="min-h-11"
@@ -2663,12 +2711,16 @@ function SetActionsMenu({
   onToggleWarmup,
   isUnilateral,
   onToggleUnilateral,
+  firstSide,
+  onFirstSide,
   onDelete,
 }: {
   isWarmup: boolean;
   onToggleWarmup: () => void;
   isUnilateral: boolean;
   onToggleUnilateral: () => void;
+  firstSide: "left" | "right";
+  onFirstSide: (s: "left" | "right") => void;
   /** Present only when focused on an already-committed set. */
   onDelete: (() => void) | null;
 }) {
@@ -2729,6 +2781,22 @@ function SetActionsMenu({
               <span>Log left/right separately</span>
               {isUnilateral && <Check className="size-4 text-accent-ink" />}
             </button>
+            {isUnilateral && (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  onFirstSide(firstSide === "left" ? "right" : "left");
+                  setOpen(false);
+                }}
+                className="flex min-h-11 w-full items-center justify-between gap-2 rounded-sm px-3 text-left text-sm text-ink transition-colors duration-100 hover:bg-surface-hover"
+                data-testid="set-type-first-side"
+              >
+                <span>
+                  Start with {firstSide === "left" ? "right" : "left"} side
+                </span>
+              </button>
+            )}
             {onDelete && (
               <button
                 type="button"
@@ -2830,6 +2898,10 @@ function ExerciseSpotlight({
   onRemoveBlock,
   onOpenSwitcher,
   onSwipe,
+  addedSets,
+  onAddSet,
+  prevName,
+  nextName,
   prSetIds,
   prSnapshot,
   voiceFill,
@@ -2845,6 +2917,11 @@ function ExerciseSpotlight({
   saveStateOf,
   onRetrySets,
 }: {
+  /** Sets added with "Add a set" (beyond the planned ones). */
+  addedSets: number;
+  onAddSet: () => void;
+  prevName: string | null;
+  nextName: string | null;
   block: BlockState;
   sessionMuscles: Record<string, MuscleHardSets>;
   /** F15: per-set save state from the screen's write queue. */
@@ -2928,7 +3005,7 @@ function ExerciseSpotlight({
     if (voiceFill) focusLive();
   }, [voiceFill, focusLive]);
   // Per-set laterality override, lifted up here (not owned by the live input
-  // component) so the marks band's current-set ᴸᴿ tag can read it too.
+  // component) so the marks band's current-set L+R tag can read it too.
   const [lateralityOverride, setLateralityOverride] =
     useState<Laterality | null>(
       () =>
@@ -3142,6 +3219,7 @@ function ExerciseSpotlight({
   const mechanic = exercise?.mechanic ?? null;
   const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [setupOpen, setSetupOpen] = useState(false);
+  const [machineOpen, setMachineOpen] = useState(false);
   const [setupDraft, setSetupDraft] = useState("");
   const working = committedGroups
     .flatMap((g, i) => (g[0].setType === "warmup" ? [] : [{ g, i }]))
@@ -3172,7 +3250,12 @@ function ExerciseSpotlight({
     .filter((c) => c.kind === "direct")
     .map((c) => sessionMuscles[c.muscle])
     .find((m) => m != null && sessionDirectCheck(m.direct) === "high");
-  const totalMarks = committedGroups.length + 1;
+  const openSet = hasOpenSet({
+    planned: plannedSetCount(seedSets.length),
+    added: addedSets,
+    committed: committedGroups.length,
+  });
+  const totalMarks = committedGroups.length + (openSet ? 1 : 0);
   const marks: Mark[] = [];
   for (let i = 0; i < totalMarks; i++) {
     if (i < committedGroups.length) {
@@ -3210,18 +3293,19 @@ function ExerciseSpotlight({
   }
 
   return (
-    <div
-      className="flex min-h-0 flex-1 flex-col"
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-    >
+    <div className="flex min-h-0 flex-1 flex-col">
       <div
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
         data-testid="session-scroll"
       >
         {/* 2. Exercise header. */}
-        <header className="px-4 pt-1 pb-3" data-testid={`block-${block.name}`}>
-          <div className="flex items-center">
+        <header
+          className="px-4 pt-1 pb-3"
+          data-testid={`block-${block.name}`}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={onOpenSwitcher}
@@ -3235,8 +3319,88 @@ function ExerciseSpotlight({
                 {block.name}
               </span>
             </button>
+            <ExerciseSettingsMenu
+              blockName={block.name}
+              unit={blockUnit}
+              showUnitOverride={TYPE_FIELDS[type].weight}
+              unitOverride={override}
+              globalUnit={unit}
+              onSetUnitOverride={(u) =>
+                setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
+              }
+              warmupEligible={warmupEligible}
+              heaviestDisplay={
+                heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
+              }
+              laterality={exercise?.laterality ?? null}
+              onLateralityChange={(l) => editOrCopy({ laterality: l })}
+              onRemoveBlock={onRemoveBlock}
+              onAddWarmup={(w) =>
+                onAddWarmup(blockUnit === "lb" ? lbToKg(w) : w)
+              }
+              hasMachine={machine != null}
+              onPickMachine={() => setMachineOpen(true)}
+              busy={copying || copyError != null}
+            />
           </div>
-          <span className="sr-only" data-testid="exercise-position">
+          {(total > 1 || machine) && (
+            <div className="mt-1 flex items-center gap-2">
+              {total > 1 && (
+                <>
+                  <IconButton
+                    onClick={() => onSwipe(-1)}
+                    disabled={prevName == null}
+                    title={
+                      prevName
+                        ? `Previous: ${prevName}`
+                        : "No previous exercise"
+                    }
+                    className={CHROME_BTN}
+                    data-testid="exercise-prev"
+                  >
+                    <CaretLeft className="size-5" weight="bold" />
+                  </IconButton>
+                  <div
+                    className="flex min-w-0 flex-1 items-center justify-center gap-1.5"
+                    data-testid="exercise-strip"
+                  >
+                    {Array.from({ length: total }, (_, i) => i).map((i) => (
+                      <span
+                        // biome-ignore lint/suspicious/noArrayIndexKey: fixed 1..total strip
+                        key={i}
+                        className={cn(
+                          "h-1.5 rounded-xs transition-all duration-150",
+                          i + 1 === position
+                            ? "w-5 bg-accent-ink"
+                            : "w-1.5 bg-surface-2",
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <IconButton
+                    onClick={() => onSwipe(1)}
+                    disabled={nextName == null}
+                    title={nextName ? `Next: ${nextName}` : "No next exercise"}
+                    className={CHROME_BTN}
+                    data-testid="exercise-next"
+                  >
+                    <CaretRight className="size-5" weight="bold" />
+                  </IconButton>
+                </>
+              )}
+            </div>
+          )}
+          {machine && (
+            <div className="mt-1">
+              <MachineChip
+                machine={machine}
+                blockName={block.name}
+                disabled={copying}
+                onPick={(machineId) => editOrCopy({ machineId })}
+              />
+            </div>
+          )}
+          <span className="num sr-only" data-testid="exercise-position">
             {position} of {total}
           </span>
           {(() => {
@@ -3330,7 +3494,10 @@ function ExerciseSpotlight({
         <div className="px-4 pt-1">
           <button
             type="button"
-            onClick={focusLive}
+            onClick={() => {
+              onAddSet();
+              focusLive();
+            }}
             className="flex min-h-11 w-full items-center gap-2 rounded-md bg-surface-2/60 pl-12 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-2"
             data-testid="add-set"
           >
@@ -3450,12 +3617,6 @@ function ExerciseSpotlight({
               </button>
             ))}
           <div className="flex min-h-[clamp(40px,5.2dvh,44px)] flex-wrap items-center gap-2">
-            <MachineChip
-              machine={machine ?? null}
-              blockName={block.name}
-              disabled={copying}
-              onPick={(machineId) => editOrCopy({ machineId })}
-            />
             {override && (
               <button
                 type="button"
@@ -3481,34 +3642,14 @@ function ExerciseSpotlight({
                 rest {formatRest(avgRestSec)} avg
               </span>
             )}
-            <span className="ml-auto flex">
-              <ExerciseSettingsMenu
-                blockName={block.name}
-                unit={blockUnit}
-                showUnitOverride={TYPE_FIELDS[type].weight}
-                unitOverride={override}
-                globalUnit={unit}
-                onSetUnitOverride={(u) =>
-                  setWeightUnit.mutate({
-                    exerciseId: block.exerciseId,
-                    unit: u,
-                  })
-                }
-                warmupEligible={warmupEligible}
-                heaviestDisplay={
-                  heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
-                }
-                laterality={exercise?.laterality ?? null}
-                onLateralityChange={(l) => editOrCopy({ laterality: l })}
-                onRemoveBlock={onRemoveBlock}
-                onAddWarmup={(w) =>
-                  onAddWarmup(blockUnit === "lb" ? lbToKg(w) : w)
-                }
-                busy={copying || copyError != null}
-              />
-            </span>
           </div>
         </div>
+        <MachinePickerDialog
+          open={machineOpen}
+          onOpenChange={setMachineOpen}
+          blockName={block.name}
+          onPick={(machineId) => editOrCopy({ machineId })}
+        />
         <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
           <DialogContent title="Setup & form">
             <Textarea
@@ -3546,7 +3687,43 @@ function ExerciseSpotlight({
           user action" has to be true the instant it's visible, not after a
           blank flash). Editing an already-committed set never depends on
           ghost — its values come straight from `committedGroup`. */}
-      {committedGroups[focusedIndex] == null && ghostLoading ? (
+      {committedGroups[focusedIndex] == null && !openSet ? (
+        <div
+          className="z-10 shrink-0 rounded-t-lg bg-surface px-4 pt-3 pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]"
+          data-testid="sets-done"
+        >
+          <p className="pb-3 text-center text-sm font-semibold text-soft">
+            {countSets(block.committed)}{" "}
+            {countSets(block.committed) === 1 ? "set" : "sets"} logged
+          </p>
+          <div className="flex flex-col gap-2">
+            <Button
+              size="lg"
+              variant="outline"
+              className="h-12 w-full"
+              onClick={() => {
+                onAddSet();
+                focusLive();
+              }}
+              data-testid="add-set-panel"
+            >
+              <Plus className="size-4" />
+              Add a set
+            </Button>
+            {nextName && (
+              <Button
+                size="lg"
+                className="h-12 w-full"
+                onClick={() => onSwipe(1)}
+                data-testid="next-exercise"
+              >
+                Next: {nextName}
+                <CaretRight className="size-4" weight="bold" />
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : committedGroups[focusedIndex] == null && ghostLoading ? (
         <p
           className="px-4 py-10 text-center text-xs text-soft"
           data-testid="spotlight-loading"
@@ -3756,6 +3933,9 @@ function Spotlight({
   const f = TYPE_FIELDS[type];
   const effort = supportsEffort(type);
   const fields = fieldsFor(type);
+  // The ruler panel (weight + reps, optionally per side) vs. the generic
+  // stacked panel for time/distance types.
+  const perSideWeight = f.weight && f.reps && !f.duration && !f.distance;
 
   // "Already loaded with last time's numbers — no tap required" (locked
   // decision): prefill priority is any uncommitted draft, else last time
@@ -3797,27 +3977,38 @@ function Spotlight({
       return String(toDisplayDistance(ghost.distanceM, distUnit));
     return "";
   };
+  // The right side is its own set of values: seeded once from ITS last-time
+  // numbers (else the left's, as a starting point only), then never tied to
+  // the left again.
+  const ghostRight = ghost.otherSide ?? ghost;
   const seedRightReps = () => {
     if (isEditing) return right?.reps != null ? String(right.reps) : "";
-    return draft?.rReps ?? "";
+    if (draft?.rReps) return draft.rReps;
+    return ghostRight.reps != null ? String(ghostRight.reps) : "";
   };
   const seedRightWeight = () => {
     if (isEditing)
       return right?.weightKg != null
         ? String(toDisplayWeight(right.weightKg, unit))
         : "";
-    return "";
+    if (draft?.rWeight) return draft.rWeight;
+    return ghostRight.weightKg != null
+      ? String(toDisplayWeight(ghostRight.weightKg, unit))
+      : "";
   };
 
   const [weight, setWeightRaw] = useState(() => seedFrom("weight"));
   const [weightError, setWeightError] = useState(false);
   const setWeight = (v: string) => {
     setWeightError(false);
-    setWeightRaw(v);
+    setWeightRaw(sanitizeNumeric(v, { decimal: true }));
   };
-  const [reps, setReps] = useState(() => seedFrom("reps"));
+  const [reps, setRepsRaw] = useState(() => seedFrom("reps"));
+  const setReps = (v: string) => setRepsRaw(sanitizeNumeric(v));
   const [duration, setDuration] = useState(() => seedFrom("duration"));
-  const [distance, setDistance] = useState(() => seedFrom("distance"));
+  const [distance, setDistanceRaw] = useState(() => seedFrom("distance"));
+  const setDistance = (v: string) =>
+    setDistanceRaw(sanitizeNumeric(v, { decimal: true }));
   // Planned RIR for THIS set (routine target / exercise snapshot) is stored
   // with the set for the coach, but never fills the effort strip: each set's
   // RIR is its own, and blank stays blank (no carry from a previous set or the
@@ -3846,9 +4037,30 @@ function Spotlight({
       "normal",
   );
   const [isUnilateral, setIsUnilateral] = useState(initialUnilateral);
-  const [reps2, setReps2] = useState(() => seedRightReps());
-  const [rDuration, setRDuration] = useState(() => draft?.rDuration ?? "");
-  const [rDistance, setRDistance] = useState(() => draft?.rDistance ?? "");
+  const [reps2, setReps2Raw] = useState(() => seedRightReps());
+  const setReps2 = (v: string) => setReps2Raw(sanitizeNumeric(v));
+  const [rDuration, setRDuration] = useState(
+    () =>
+      draft?.rDuration ??
+      (isEditing
+        ? right?.durationSec != null
+          ? formatMMSS(right.durationSec)
+          : ""
+        : ghostRight.durationSec != null
+          ? formatMMSS(ghostRight.durationSec)
+          : ""),
+  );
+  const [rDistance, setRDistance] = useState(
+    () =>
+      draft?.rDistance ??
+      (isEditing
+        ? right?.distanceM != null
+          ? String(toDisplayDistance(right.distanceM, distUnit))
+          : ""
+        : ghostRight.distanceM != null
+          ? String(toDisplayDistance(ghostRight.distanceM, distUnit))
+          : ""),
+  );
   const [rirMin2, setRirMin2] = useState(() =>
     right?.rirMin != null ? String(right.rirMin) : "",
   );
@@ -3859,10 +4071,15 @@ function Spotlight({
   // Weight-link (per-side mode): linked = one shared field (weight-field);
   // unlinked = weight-field-left/-right, its own jump rows each. Defaults to
   // whatever the stored pair actually is when editing an uneven set.
-  const [weightLinked, setWeightLinked] = useState(
-    () => !isEditing || !right || left?.weightKg === right.weightKg,
-  );
-  const [weight2, setWeight2] = useState(() => seedRightWeight());
+  const [weight2, setWeight2Raw] = useState(() => seedRightWeight());
+  const setWeight2 = (v: string) => {
+    setWeightError(false);
+    setWeight2Raw(sanitizeNumeric(v, { decimal: true }));
+  };
+  // Which side's numbers the entry panel shows. The user picks the side they
+  // do first (device preference); each side keeps its own weight/reps/RIR.
+  const [firstSide, setFirstSide] = useState(() => loadFirstSide());
+  const [activeSide, setActiveSide] = useState<"left" | "right">(firstSide);
   // Scoped by training session (not exercise) so it survives switching
   // exercises within one session but starts fresh for a new session opened
   // in the same tab — an unscoped key would otherwise carry a stale
@@ -3932,6 +4149,7 @@ function Spotlight({
       setType,
       extras: [...extras],
       metricDraft,
+      rWeight: weight2,
       rReps: reps2,
       rDuration,
       rDistance,
@@ -3951,6 +4169,7 @@ function Spotlight({
     setType,
     extras,
     metricDraft,
+    weight2,
     reps2,
     rDuration,
     rDistance,
@@ -3967,7 +4186,7 @@ function Spotlight({
       setWeightError(false);
       setWeightRaw(String(toDisplayWeight(voiceFill.weightKg, unit)));
     }
-    if (f.reps && voiceFill.reps != null) setReps(String(voiceFill.reps));
+    if (f.reps && voiceFill.reps != null) setRepsRaw(String(voiceFill.reps));
     onVoiceFillConsumed();
   }, [voiceFill, isEditing, f.weight, f.reps, unit, onVoiceFillConsumed]);
 
@@ -4010,28 +4229,23 @@ function Spotlight({
     return { weightKg, reps: repsN, durationSec, distanceM };
   }, [f, weight, reps, durationDisplay, distance, unit, distUnit]);
 
-  function parseRightFields(left2: ReturnType<typeof parseFields>) {
-    let repsN = left2.reps;
-    let durationSec = left2.durationSec;
-    let distanceM = left2.distanceM;
-    let weightKg = left2.weightKg;
-    if (!weightLinked && f.weight && weight2.trim() !== "") {
+  // The right side parses only its own fields: a blank right value stays
+  // blank (null); it is never copied from the left.
+  // Fields with no right-side control (time, distance, weight on a type
+  // without reps) are the same for both sides, so they copy the left.
+  function parseRightFields(v: ReturnType<typeof parseFields>) {
+    let weightKg: number | null =
+      f.weight && !perSideWeight ? v.weightKg : null;
+    let repsN: number | null = null;
+    const durationSec: number | null = v.durationSec;
+    const distanceM: number | null = v.distanceM;
+    if (f.weight && perSideWeight && weight2.trim() !== "") {
       const d = Number.parseFloat(weight2);
       weightKg = Number.isNaN(d) ? null : unit === "lb" ? lbToKg(d) : d;
     }
     if (f.reps && reps2.trim() !== "") {
       const r = Number.parseInt(reps2, 10);
       repsN = Number.isNaN(r) ? null : r;
-    }
-    if (f.duration && rDuration.trim() !== "")
-      durationSec = parseDuration(rDuration);
-    if (f.distance && rDistance.trim() !== "") {
-      const d = Number.parseFloat(rDistance);
-      distanceM = Number.isNaN(d)
-        ? null
-        : distUnit === "km"
-          ? kmToM(d)
-          : miToM(d);
     }
     return { weightKg, reps: repsN, durationSec, distanceM };
   }
@@ -4052,6 +4266,17 @@ function Spotlight({
       (f.distance && v.distanceM != null);
     if (!anyPresent) return;
     if (weightRequired && v.weightKg == null) {
+      if (isUnilateral) setActiveSide("left");
+      setWeightError(true);
+      return;
+    }
+    if (
+      isUnilateral &&
+      weightRequired &&
+      f.weight &&
+      parseRightFields(v).weightKg == null
+    ) {
+      setActiveSide("right");
       setWeightError(true);
       return;
     }
@@ -4091,6 +4316,18 @@ function Spotlight({
     if (!left) return;
     const v = parseFields();
     if (weightRequired && v.weightKg == null) {
+      if (isUnilateral) setActiveSide("left");
+      setWeightError(true);
+      return;
+    }
+    if (
+      isUnilateral &&
+      right &&
+      weightRequired &&
+      f.weight &&
+      parseRightFields(v).weightKg == null
+    ) {
+      setActiveSide("right");
       setWeightError(true);
       return;
     }
@@ -4162,10 +4399,10 @@ function Spotlight({
     side: "left" | "right" = "left",
   ) {
     const setters: Record<FieldKey, Dispatch<SetStateAction<string>>> = {
-      weight: side === "left" ? setWeightRaw : setWeight2,
-      reps: side === "left" ? setReps : setReps2,
-      duration: side === "left" ? setDuration : setRDuration,
-      distance: side === "left" ? setDistance : setRDistance,
+      weight: side === "left" ? setWeightRaw : setWeight2Raw,
+      reps: side === "left" ? setRepsRaw : setReps2Raw,
+      duration: setDuration,
+      distance: setDistanceRaw,
     };
     const fallback =
       side === "left" ? "" : { weight, reps, duration, distance }[kind];
@@ -4354,7 +4591,15 @@ function Spotlight({
                     : "decimal"
               }
               value={value}
-              onChange={(e) => setValue(e.target.value)}
+              onChange={(e) =>
+                setValue(
+                  key === "duration"
+                    ? e.target.value.replace(/[^\d:]/g, "")
+                    : sanitizeNumeric(e.target.value, {
+                        decimal: key !== "reps",
+                      }),
+                )
+              }
               onKeyDown={(e) => {
                 if (e.key === "Enter") e.preventDefault();
               }}
@@ -4492,7 +4737,7 @@ function Spotlight({
     .filter((t) => t !== "—")
     .join(" × ");
 
-  const primaryFields = fields.filter((k) => k !== "reps" || !isUnilateral);
+  const primaryFields = fields;
 
   const detailsDialog = (
     <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
@@ -4598,19 +4843,30 @@ function Spotlight({
   const restLabel =
     left?.restSec != null ? formatDurationSeconds(left.restSec * 1000) : null;
 
-  const simple =
-    f.weight && f.reps && !f.duration && !f.distance && !isUnilateral;
+  const simple = f.weight && f.reps && !f.duration && !f.distance;
   if (simple) {
-    const wCmp = comparison("weight", weight);
-    const rCmp = comparison("reps", reps);
+    // Each side of a unilateral set is its own set of numbers: the panel
+    // shows whichever side is active and never writes the other.
+    const sideR = isUnilateral && activeSide === "right";
+    const sw = sideR ? weight2 : weight;
+    const sr = sideR ? reps2 : reps;
+    const setSW = sideR ? setWeight2 : setWeight;
+    const setSR = sideR ? setReps2 : setReps;
+    const sRirMin = sideR ? rirMin2 : rirMin;
+    const sRirMax = sideR ? rirMax2 : rirMax;
+    const ghostSide = sideR ? (ghost.otherSide ?? ghost) : ghost;
+    const wCmp = comparison("weight", sw);
+    const rCmp = comparison("reps", sr);
     const ghostW =
-      ghost.weightKg != null ? toDisplayWeight(ghost.weightKg, unit) : null;
-    const ghostR = ghost.reps ?? null;
-    const rirSel = rirSegmentOf(rirMin, rirMax);
+      ghostSide.weightKg != null
+        ? toDisplayWeight(ghostSide.weightKg, unit)
+        : null;
+    const ghostR = ghostSide.reps ?? null;
+    const rirSel = rirSegmentOf(sRirMin, sRirMax);
     const wUnit = weightLabel(type, unitLabel(unit));
     // One size for all three numbers: 44px until the longest would outgrow a
     // third of a 390 column ("102.5 lbs").
-    const longest = Math.max(weight.length, reps.length);
+    const longest = Math.max(sw.length, sr.length);
     const fontSize =
       longest <= 4
         ? "clamp(30px,6dvh,44px)"
@@ -4675,6 +4931,12 @@ function Spotlight({
                 setSetType(next);
                 if (isEditing) onSaveType({ setType: next });
               }}
+              firstSide={firstSide}
+              onFirstSide={(sd) => {
+                setFirstSide(sd);
+                saveFirstSide(sd);
+                setActiveSide(sd);
+              }}
               isUnilateral={isUnilateral}
               onToggleUnilateral={() => {
                 const next = !isUnilateral;
@@ -4690,6 +4952,39 @@ function Spotlight({
           </span>
         </div>
 
+        {isUnilateral && (
+          <div
+            className="flex gap-1 pb-1"
+            role="tablist"
+            aria-label="Side"
+            data-testid="side-tabs"
+          >
+            {[firstSide, otherSide(firstSide)].map((sd, n) => (
+              <button
+                key={sd}
+                type="button"
+                role="tab"
+                aria-selected={activeSide === sd}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setActiveSide(sd)}
+                className={cn(
+                  "flex h-11 flex-1 items-center justify-center gap-2 rounded-sm text-sm font-semibold transition-colors duration-100",
+                  activeSide === sd
+                    ? "bg-accent-soft text-accent-ink"
+                    : "bg-secondary text-soft hover:bg-active",
+                )}
+                data-testid={`side-tab-${sd}`}
+              >
+                <SideTag side={sd} long />
+                {n === 0 && (
+                  <span className="text-2xs font-semibold text-soft">
+                    first
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
         {/* Equal columns; each number sits on its column's centre line. The
             unit hangs off the number in a zero-width box, so it never pushes
             the number off centre, and the input covers the whole column so
@@ -4699,7 +4994,7 @@ function Spotlight({
             const on = activeCol === key;
             const label =
               key === "weight" ? "Weight" : key === "reps" ? "Reps" : "RIR";
-            const text = key === "weight" ? weight : key === "reps" ? reps : "";
+            const text = key === "weight" ? sw : key === "reps" ? sr : "";
             const cmp = key === "weight" ? wCmp : rCmp;
             return (
               <div
@@ -4726,12 +5021,14 @@ function Spotlight({
                   <span className="relative flex h-[clamp(40px,5.8dvh,48px)] w-full items-center justify-center">
                     <input
                       inputMode={key === "weight" ? "decimal" : "numeric"}
+                      pattern={key === "weight" ? "[0-9]*[.]?[0-9]*" : "[0-9]*"}
+                      autoComplete="off"
                       data-big-input
                       value={text}
                       onChange={(e) =>
                         key === "weight"
-                          ? setWeight(e.target.value)
-                          : setReps(e.target.value)
+                          ? setSW(e.target.value)
+                          : setSR(e.target.value)
                       }
                       onKeyDown={(e) => {
                         if (e.key === "Enter") e.preventDefault();
@@ -4777,9 +5074,7 @@ function Spotlight({
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() =>
                         onOpenPlates(
-                          weight.trim() === ""
-                            ? null
-                            : Number.parseFloat(weight),
+                          sw.trim() === "" ? null : Number.parseFloat(sw),
                         )
                       }
                       className="relative flex h-7 items-center rounded-sm bg-secondary px-2 text-xs font-semibold text-ink transition-colors duration-100 after:absolute after:-inset-x-1 after:-inset-y-2 hover:bg-active"
@@ -4827,50 +5122,59 @@ function Spotlight({
         <div className="mt-2 rounded-sm bg-surface-2 dark:bg-bg">
           {activeCol === "weight" && (
             <Ruler
-              value={Number.parseFloat(weight) || 0}
+              key={`w-${activeSide}`}
+              value={Number.parseFloat(sw) || 0}
               min={0}
               max={unit === "lb" ? 1000 : 500}
-              step={fieldStep("weight", unit)}
-              majorEvery={unit === "lb" ? 10 : 20}
-              midEvery={unit === "lb" ? 2 : 4}
-              pxPerStep={10}
+              step={unit === "lb" ? 1 : 0.5}
+              majorEvery={10}
+              midEvery={5}
+              pxPerStep={unit === "lb" ? 8 : 9}
+              jump={fieldStep("weight", unit)}
               ghost={ghostW}
-              label="Weight ruler"
+              label={sideR ? "Right weight ruler" : "Weight ruler"}
               unit={wUnit}
               testId="weight-ruler"
               onStart={() => {
                 if (restStartedAt != null) onStopRest();
               }}
-              onChange={(v) => setWeight(String(v))}
+              onChange={(v) => setSW(String(v))}
             />
           )}
           {activeCol === "reps" && (
             <Ruler
-              value={Number.parseFloat(reps) || 0}
+              key={`r-${activeSide}`}
+              value={Number.parseFloat(sr) || 0}
               min={0}
               max={100}
               step={1}
               majorEvery={5}
-              pxPerStep={22}
+              midEvery={1}
+              pxPerStep={18}
               ghost={ghostR}
-              label="Reps ruler"
+              label={sideR ? "Right reps ruler" : "Reps ruler"}
               unit="reps"
               testId="reps-ruler"
               onStart={() => {
                 if (restStartedAt != null) onStopRest();
               }}
-              onChange={(v) => setReps(String(v))}
+              onChange={(v) => setSR(String(v))}
             />
           )}
           {effort && (
             <div className={cn("p-1.5", activeCol !== "rir" && "hidden")}>
               <RirSegmented
                 bare
-                min={rirMin}
-                max={rirMax}
+                min={sRirMin}
+                max={sRirMax}
                 onChange={(v) => {
-                  setRirMin(v.min);
-                  setRirMax(v.max);
+                  if (sideR) {
+                    setRirMin2(v.min);
+                    setRirMax2(v.max);
+                  } else {
+                    setRirMin(v.min);
+                    setRirMax(v.max);
+                  }
                 }}
                 hint={rirHintValue}
               />
@@ -4893,9 +5197,9 @@ function Spotlight({
                   reps,
                   weightUnit: unitLabel(unit),
                   setNo: index + 1,
-                  unilateral: false,
-                  rightWeight: "",
-                  rightReps: "",
+                  unilateral: isUnilateral,
+                  rightWeight: weight2,
+                  rightReps: reps2,
                 })}
           </Button>
         </div>
@@ -4959,6 +5263,12 @@ function Spotlight({
               setSetType(next);
               if (isEditing) onSaveType({ setType: next });
             }}
+            firstSide={firstSide}
+            onFirstSide={(sd) => {
+              setFirstSide(sd);
+              saveFirstSide(sd);
+              setActiveSide(sd);
+            }}
             isUnilateral={isUnilateral}
             onToggleUnilateral={() => {
               const next = !isUnilateral;
@@ -5000,128 +5310,7 @@ function Spotlight({
         </div>
       )}
 
-      {primaryFields.map((k) =>
-        k === "weight" && isUnilateral ? (
-          <div key="weight" className="flex flex-col gap-1">
-            {fieldRow("weight")}
-            <button
-              type="button"
-              onClick={() => setWeightLinked((v) => !v)}
-              className="flex min-h-11 items-center self-start rounded-sm bg-secondary px-3 text-xs font-semibold text-ink transition-colors duration-100 hover:bg-active"
-              data-testid="weight-link-toggle"
-            >
-              {weightLinked ? (
-                <>
-                  <LinkSimple className="mr-1.5 inline size-4" />
-                  Linked · tap to set sides separately
-                </>
-              ) : (
-                "Unlinked · tap to link"
-              )}
-            </button>
-            {!weightLinked && (
-              <div className="rounded-md bg-bg p-2.5">
-                <div className="flex h-12 items-center justify-center rounded-sm bg-surface px-2">
-                  <input
-                    inputMode="decimal"
-                    value={weight2}
-                    placeholder={weight}
-                    onChange={(e) => setWeight2(e.target.value)}
-                    data-big-input
-                    className="num h-full w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
-                    data-testid="weight-field-right"
-                  />
-                </div>
-                <div className="mt-1.5 flex gap-1">
-                  {WEIGHT_NEG.map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => bump("weight", d, "right")}
-                      className="num h-11 flex-1 rounded-sm bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
-                      data-testid={`weight-adjust-${d}-right`}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                  {WEIGHT_POS.map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => bump("weight", d, "right")}
-                      className="num h-11 flex-1 rounded-sm bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
-                      data-testid={`weight-adjust-${d}-right`}
-                    >
-                      +{d}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          fieldRow(k)
-        ),
-      )}
-
-      {isUnilateral && f.reps && (
-        <div className="flex flex-col gap-1">
-          <div className="grid grid-cols-2 gap-2">
-            <span className="text-center text-2xs font-bold tracking-widest text-accent-ink uppercase">
-              ᴸ Left
-            </span>
-            <span className="text-center text-2xs font-bold tracking-widest text-accent-ink uppercase">
-              ᴿ Right
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {(["left", "right"] as const).map((side) => (
-              <div key={side} className="rounded-md bg-bg p-2.5">
-                <div className="flex h-12 items-center justify-center rounded-sm bg-surface px-2">
-                  <input
-                    inputMode="numeric"
-                    value={side === "left" ? reps : reps2}
-                    placeholder={side === "right" ? reps || "reps" : undefined}
-                    onChange={(e) =>
-                      side === "left"
-                        ? setReps(e.target.value)
-                        : setReps2(e.target.value)
-                    }
-                    onFocus={() => {
-                      if (restStartedAt != null) onStopRest();
-                    }}
-                    data-big-input
-                    className="num h-full w-full min-w-0 bg-transparent text-center text-[28px] leading-none font-bold text-ink"
-                    data-testid={`reps-field-${side}`}
-                  />
-                </div>
-                <div className="mt-1.5 flex gap-1">
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => bump("reps", -1, side)}
-                    className="num h-11 flex-1 rounded-sm bg-surface text-sm font-bold text-soft transition-colors duration-100 hover:bg-surface-hover"
-                    data-testid={`reps-adjust--1-${side}`}
-                  >
-                    −1
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => bump("reps", 1, side)}
-                    className="num h-11 flex-1 rounded-sm bg-accent-soft text-sm font-bold text-accent-ink transition-colors duration-100 hover:bg-accent-soft/80"
-                    data-testid={`reps-adjust-1-${side}`}
-                  >
-                    +1
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {primaryFields.map((k) => fieldRow(k))}
 
       {deltaLine && (
         <p
@@ -5202,7 +5391,7 @@ function Spotlight({
                 weightUnit: f.weight ? unitLabel(unit) : null,
                 setNo: index + 1,
                 unilateral: isUnilateral,
-                rightWeight: weightLinked ? "" : weight2,
+                rightWeight: weight2,
                 rightReps: reps2,
               })}
         </Button>
