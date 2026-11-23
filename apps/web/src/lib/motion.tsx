@@ -124,6 +124,34 @@ export function Collapse({
   );
 }
 
+/**
+ * Segment swap (Plan / Progress `?s=`): the new segment's content fades in
+ * over 200 ms. Opacity only (a transform would re-anchor fixed children) and
+ * no exit, so the old content leaves at once and input is never delayed.
+ */
+export function FadeSwap({
+  swapKey,
+  children,
+}: {
+  swapKey: string;
+  children: ReactNode;
+}) {
+  const motionReady = useMotionReady();
+  const first = useRef(swapKey);
+  return (
+    <m.div
+      key={swapKey}
+      initial={
+        motionReady && swapKey !== first.current ? { opacity: 0 } : false
+      }
+      animate={{ opacity: 1 }}
+      transition={FADE_IN}
+    >
+      {children}
+    </m.div>
+  );
+}
+
 const reducedMotion = () =>
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 

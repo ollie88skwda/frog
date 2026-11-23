@@ -6,6 +6,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -52,12 +53,26 @@ export function DialogContent({
   className,
   children,
   title,
+  onPointerDownOutside,
+  onFocusOutside,
   ...props
 }: ComponentProps<typeof DialogPrimitive.Content> & { title: ReactNode }) {
   const open = useContext(OpenContext);
   const motionReady = useMotionReady();
   const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // The content stays mounted through its exit, so Radix's outside-tap and
+  // outside-focus listeners are still live. On touch, Radix fires the outside
+  // tap on the *click*, after React has handled it: the very tap that reopens
+  // this dialog would close it again. Ignore any outside event that began
+  // before the dialog last opened.
+  const openedAt = useRef(0);
+  useLayoutEffect(() => {
+    if (open) openedAt.current = performance.now();
+  }, [open]);
+  const stale = (e: { detail: { originalEvent: Event } }) =>
+    e.detail.originalEvent.timeStamp < openedAt.current;
 
   // The on-screen keyboard shrinks the *visual* viewport without resizing the
   // layout viewport, so a focused field near the bottom of the sheet can end
@@ -117,7 +132,19 @@ export function DialogContent({
               exit={{ opacity: 0, transition: FADE_OUT }}
             />
           </DialogPrimitive.Overlay>
-          <DialogPrimitive.Content forceMount asChild {...props}>
+          <DialogPrimitive.Content
+            forceMount
+            asChild
+            onPointerDownOutside={(e) => {
+              if (stale(e)) e.preventDefault();
+              else onPointerDownOutside?.(e);
+            }}
+            onFocusOutside={(e) => {
+              if (stale(e)) e.preventDefault();
+              else onFocusOutside?.(e);
+            }}
+            {...props}
+          >
             <m.div
               ref={contentRef}
               initial={motionReady ? hidden : false}
