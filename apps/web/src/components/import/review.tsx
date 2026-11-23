@@ -139,7 +139,7 @@ function SetRow({
     <NumField
       value={value}
       label={label}
-      className={cn("num", width, low && "bg-transparent")}
+      className={cn("num px-2", width, low && "bg-transparent")}
       onCommit={(n) =>
         onChange({
           ...set,
@@ -153,11 +153,11 @@ function SetRow({
   );
   return (
     <li
-      className={cn("rounded-sm px-2 py-1.5", low && LOW)}
+      className={cn("rounded-sm px-2 py-2", low && LOW)}
       data-testid="review-set"
       data-low={low ? "1" : undefined}
     >
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1">
         {set.setType === "warmup" ? (
           <Badge className="w-9 justify-center">W</Badge>
         ) : set.side ? (
@@ -228,12 +228,12 @@ function ExercisePickerDialog({
           placeholder="Search your library"
           aria-label="Search exercises"
         />
-        <ul className="mt-3 space-y-0.5">
+        <ul className="mt-3 space-y-2">
           {shown.map((e) => (
             <li key={e.id}>
               <button
                 type="button"
-                className="flex h-10 w-full items-center rounded-sm bg-surface-2 px-3 text-left text-sm hover:bg-surface-hover"
+                className="flex h-11 w-full items-center rounded-sm bg-surface-2 px-3 text-left text-sm hover:bg-surface-hover"
                 onClick={() => onPick(e)}
                 data-testid={`review-pick-${e.name}`}
               >
@@ -282,14 +282,14 @@ function ExerciseBlock({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{ex.rawName}</p>
           {resolution.kind === "match" ? (
-            <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-2xs text-soft">
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-2xs text-soft">
               <Badge tone="accent">Matched</Badge>
               <span className="truncate" data-testid="review-matched-name">
                 {resolution.name}
               </span>
             </p>
           ) : (
-            <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-2xs text-soft">
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-2xs text-soft">
               <Badge tone="warn">New exercise</Badge>
               <span>Frog will add it to your library</span>
             </p>
@@ -299,7 +299,7 @@ function ExerciseBlock({
           <Trash className="size-4" />
         </IconButton>
       </div>
-      <div className="mt-2 flex flex-wrap gap-1.5">
+      <div className="mt-2 flex flex-wrap gap-2">
         <Button
           size="sm"
           variant="ghost"
@@ -329,7 +329,7 @@ function ExerciseBlock({
           </Button>
         )}
       </div>
-      <ul className="mt-2 space-y-0.5">
+      <ul className="mt-2 space-y-1">
         {ex.sets.map((s, i) => (
           <SetRow
             key={s.id}
@@ -562,7 +562,7 @@ export function ImportReview({
                 onClick={() => onDraftChange(setDraftUnit(draft, u))}
                 data-testid={`review-unit-${u}`}
                 className={cn(
-                  "h-10 rounded-sm px-3 text-xs font-semibold md:h-8",
+                  "h-11 rounded-sm px-3 text-xs font-semibold md:h-8",
                   draft.unit === u
                     ? "bg-accent-soft text-accent-ink"
                     : "bg-secondary/60 text-on-secondary",
@@ -601,7 +601,7 @@ export function ImportReview({
             <div className="flex items-center gap-2">
               <label
                 htmlFor={`inc-${s.id}`}
-                className="flex min-h-10 min-w-0 flex-1 items-center gap-2"
+                className="flex min-h-11 min-w-0 flex-1 items-center gap-2"
               >
                 <Checkbox
                   id={`inc-${s.id}`}
@@ -663,7 +663,7 @@ export function ImportReview({
               />
             </div>
             {low && s.flags.length > 0 && (
-              <p className="mt-1.5 text-2xs text-attn">{s.flags.join(" · ")}</p>
+              <p className="mt-2 text-2xs text-attn">{s.flags.join(" · ")}</p>
             )}
             {s.exercises.map((e) => (
               <ExerciseBlock
@@ -706,7 +706,7 @@ export function ImportReview({
           </p>
           <Input
             aria-label="Routine name"
-            className="mt-1"
+            className="mt-2"
             value={r.name ?? ""}
             placeholder="Routine name"
             onChange={(e) =>
@@ -775,10 +775,10 @@ export function ImportReview({
           className="mt-3 rounded-md bg-surface p-3"
           data-testid="review-unparsed"
         >
-          <summary className="min-h-10 cursor-pointer text-xs font-medium">
+          <summary className="min-h-11 cursor-pointer py-3 text-xs font-medium">
             {draft.unparsed.length} lines not used
           </summary>
-          <ul className="mt-1 space-y-0.5 text-2xs text-faint">
+          <ul className="mt-1 space-y-1 text-2xs text-faint">
             {draft.unparsed.slice(0, 40).map((l, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: static list of strings
               <li key={i} className="truncate">
@@ -819,7 +819,7 @@ export function ImportReview({
         </p>
       )}
 
-      <div className="sticky bottom-16 z-10 mt-4 flex gap-2 rounded-md bg-surface p-3 shadow-lg md:bottom-4">
+      <div className="sticky bottom-4 z-10 mt-4 flex gap-2 rounded-md bg-surface p-3 shadow-lg">
         <Button
           variant="ghost"
           className="flex-1"
