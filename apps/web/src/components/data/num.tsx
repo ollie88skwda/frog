@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 const SIZE = {
@@ -21,11 +21,24 @@ export function Num({
   size?: keyof typeof SIZE;
   className?: string;
 }) {
+  // Remount the digits (and play `num-tick`) only when a plain number/string
+  // actually changes; first paint and rich nodes render as-is.
+  const plain = typeof value === "string" || typeof value === "number";
+  const first = useRef(value);
+  const dirty = useRef(false);
+  if (plain && value !== first.current) dirty.current = true;
+  const changed = plain && dirty.current;
   return (
     <span
       className={cn("num whitespace-nowrap text-ink", SIZE[size], className)}
     >
-      {value}
+      {changed ? (
+        <span key={String(value)} className="num-tick">
+          {value}
+        </span>
+      ) : (
+        value
+      )}
       {unit && (
         <span className="ml-1 text-[0.6em] font-semibold text-soft">
           {unit}

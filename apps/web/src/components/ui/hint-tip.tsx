@@ -18,7 +18,7 @@ export function HintTip({
   return (
     <Dialog>
       <DialogTrigger
-        className="relative inline-flex size-5 shrink-0 items-center justify-center rounded-xs bg-surface-2 text-soft transition-colors duration-100 after:absolute after:-inset-3 hover:text-ink"
+        className="relative inline-flex size-5 shrink-0 items-center justify-center rounded-xs bg-surface-2 text-soft press duration-100 after:absolute after:-inset-3 hover:text-ink"
         aria-label={`About ${title}`}
         title={`About ${title}`}
       >

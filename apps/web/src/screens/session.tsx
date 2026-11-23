@@ -169,6 +169,14 @@ import { Input, Textarea } from "@/components/ui/input";
 import { SideTag } from "@/components/ui/side-tag";
 import { loadFirstSide, otherSide, saveFirstSide } from "@/lib/first-side";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
+import {
+  AnimatePresence,
+  COLLAPSED,
+  EXPANDED,
+  FADE_OUT,
+  m as motionEl,
+  useMotionReady,
+} from "@/lib/motion";
 import { usePendingExercises } from "@/lib/pending-exercises";
 import { useUpdateUserPrefs, useUserPrefs } from "@/lib/profile-queries";
 import {
@@ -2508,59 +2516,79 @@ function SetRows({
   marks: Mark[];
   rows: { text: string; lastText: string; rirText: string; hasNote: boolean }[];
 }) {
+  const motionReady = useMotionReady();
   return (
-    <div className="flex flex-col gap-1 px-4" data-testid="marks-band">
-      {marks.map((m, i) => {
-        const r = rows[i];
-        const now = m.kind === "current";
-        return (
-          <button
-            // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
-            key={`${m.kind}-${i}`}
-            type="button"
-            disabled={!m.onTap}
-            onClick={m.onTap}
-            className={cn(
-              "grid min-h-[clamp(40px,5.4dvh,48px)] w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 text-left text-[17px] text-ink transition-colors duration-100",
-              now ? "bg-accent-soft" : "bg-surface hover:bg-surface-hover",
-            )}
-            data-testid={`set-mark-${i}`}
-          >
-            <span
-              className={cn(
-                "num flex size-6 items-center justify-center rounded-sm text-xs font-semibold",
-                now
-                  ? "bg-accent text-on-accent"
-                  : m.kind === "warmup"
-                    ? "bg-surface-2 text-warn"
-                    : "bg-accent-soft text-accent-ink",
-              )}
-              data-testid={`set-mark-${i}-state`}
-              data-state={m.kind}
+    <div className="flex flex-col px-4" data-testid="marks-band">
+      {/* A logged set morphs in place (same key, new state); an added set
+          grows in and a removed one folds away instead of the list jumping.
+          The wrapper owns the 4px gap (as top padding) so a folding row takes
+          its gap with it. */}
+      <AnimatePresence initial={false}>
+        {marks.map((m, i) => {
+          const r = rows[i];
+          const now = m.kind === "current";
+          return (
+            <motionEl.div
+              // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
+              key={`set-${i}`}
+              className={cn(i > 0 && "pt-1")}
+              initial={motionReady ? COLLAPSED : false}
+              animate={EXPANDED}
+              exit={{
+                ...COLLAPSED,
+                pointerEvents: "none",
+                transition: FADE_OUT,
+              }}
             >
-              {m.kind === "warmup" ? "W" : i + 1}
-            </span>
-            <span className="num flex min-w-0 items-center gap-1.5 font-semibold">
-              <span className="min-w-0 truncate">{now ? "Now" : r.text}</span>
-              {m.paired && (
-                <SideTag side="both" testId={`set-mark-${i}-side-tag`} />
-              )}
-              {m.pr && (
-                <Medal
-                  className="size-4 shrink-0 text-accent-ink"
-                  data-testid={`set-mark-${i}-medal`}
-                />
-              )}
-            </span>
-            <span className="num flex items-center gap-2 text-sm text-soft">
-              {now ? (r.lastText ? `last ${r.lastText}` : "") : r.rirText}
-              {r.hasNote && (
-                <Notebook className="size-4 shrink-0 text-accent-ink" />
-              )}
-            </span>
-          </button>
-        );
-      })}
+              <button
+                type="button"
+                disabled={!m.onTap}
+                onClick={m.onTap}
+                className={cn(
+                  "grid min-h-[clamp(40px,5.4dvh,48px)] w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 text-left text-[17px] text-ink press duration-100",
+                  now ? "bg-accent-soft" : "bg-surface hover:bg-surface-hover",
+                )}
+                data-testid={`set-mark-${i}`}
+              >
+                <span
+                  className={cn(
+                    "num flex size-6 items-center justify-center rounded-sm text-xs font-semibold",
+                    now
+                      ? "bg-accent text-on-accent"
+                      : m.kind === "warmup"
+                        ? "bg-surface-2 text-warn"
+                        : "bg-accent-soft text-accent-ink",
+                  )}
+                  data-testid={`set-mark-${i}-state`}
+                  data-state={m.kind}
+                >
+                  {m.kind === "warmup" ? "W" : i + 1}
+                </span>
+                <span className="num flex min-w-0 items-center gap-1.5 font-semibold">
+                  <span className="min-w-0 truncate">
+                    {now ? "Now" : r.text}
+                  </span>
+                  {m.paired && (
+                    <SideTag side="both" testId={`set-mark-${i}-side-tag`} />
+                  )}
+                  {m.pr && (
+                    <Medal
+                      className="size-4 shrink-0 text-accent-ink"
+                      data-testid={`set-mark-${i}-medal`}
+                    />
+                  )}
+                </span>
+                <span className="num flex items-center gap-2 text-sm text-soft">
+                  {now ? (r.lastText ? `last ${r.lastText}` : "") : r.rirText}
+                  {r.hasNote && (
+                    <Notebook className="size-4 shrink-0 text-accent-ink" />
+                  )}
+                </span>
+              </button>
+            </motionEl.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 }
@@ -3498,7 +3526,7 @@ function ExerciseSpotlight({
               onAddSet();
               focusLive();
             }}
-            className="flex min-h-11 w-full items-center gap-2 rounded-md bg-surface-2/60 pl-12 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-2"
+            className="flex min-h-11 w-full items-center gap-2 rounded-md bg-surface-2/60 pl-12 text-left text-sm font-medium text-soft press duration-100 hover:bg-surface-2"
             data-testid="add-set"
           >
             + Add a set

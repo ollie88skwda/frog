@@ -2,6 +2,7 @@ import { IconContext } from "@phosphor-icons/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app";
+import { MotionProvider } from "./lib/motion";
 import "./lib/test-hooks";
 import { registerServiceWorker } from "./lib/pwa";
 import "./styles/theme.css";
@@ -11,7 +12,9 @@ if (!root) throw new Error("missing #root");
 createRoot(root).render(
   <StrictMode>
     <IconContext.Provider value={{ "aria-hidden": true }}>
-      <App />
+      <MotionProvider>
+        <App />
+      </MotionProvider>
     </IconContext.Provider>
   </StrictMode>,
 );

@@ -23,6 +23,7 @@ import {
   useCoach,
 } from "@/lib/coach-queries";
 import { formatDaysAgo, formatTime } from "@/lib/format";
+import { Collapse } from "@/lib/motion";
 import { useAllSessions } from "@/lib/profile-queries";
 import { useActiveProgram } from "@/lib/program-queries";
 import { useActiveSession } from "@/lib/queries";
@@ -276,16 +277,19 @@ export function HomeHero() {
             onClick={() => setShowLifts((v) => !v)}
             aria-expanded={showLifts}
             data-testid="hero-lifts-toggle"
-            className="mt-2 flex h-11 w-full items-center justify-between rounded-sm bg-translucent px-3 text-xs font-semibold text-soft transition-colors duration-150 hover:bg-surface-hover"
+            className="mt-2 flex h-11 w-full items-center justify-between rounded-sm bg-translucent px-3 text-xs font-semibold text-soft press duration-150 hover:bg-surface-hover"
           >
             {showLifts ? "Hide lifts" : "See lifts"}
             <CaretDown
-              className={cn("size-4", showLifts && "rotate-180")}
+              className={cn(
+                "size-4 transition-transform duration-200 ease-(--ease)",
+                showLifts && "rotate-180",
+              )}
               aria-hidden
             />
           </button>
 
-          {showLifts && (
+          <Collapse open={showLifts}>
             <ul className="mt-1 flex flex-col">
               {rows.map((p) => {
                 const reps = formatReps(p);
@@ -323,7 +327,7 @@ export function HomeHero() {
                 <li className="num pb-1 text-2xs text-faint">+{more} more</li>
               )}
             </ul>
-          )}
+          </Collapse>
 
           <button
             type="button"

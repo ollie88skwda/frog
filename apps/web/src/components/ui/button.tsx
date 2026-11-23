@@ -48,7 +48,7 @@ export function Button({
         (size.startsWith("icon") ? props.title : undefined)
       }
       className={cn(
-        "inline-flex min-w-11 shrink-0 items-center justify-center gap-2 rounded-sm font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-not-allowed disabled:bg-hover disabled:text-disabled",
+        "press inline-flex min-w-11 shrink-0 items-center justify-center gap-2 rounded-sm font-semibold whitespace-nowrap duration-150 disabled:cursor-not-allowed disabled:bg-hover disabled:text-disabled",
         VARIANT[variant],
         SIZE[size],
         className,
