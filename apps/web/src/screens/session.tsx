@@ -4231,7 +4231,8 @@ function Spotlight({
   }, [f, weight, reps, durationDisplay, distance, unit, distUnit]);
 
   // The right side parses only its own fields: a blank right value stays
-  // blank (null); it is never copied from the left.
+  // blank (null), except reps on a type without weight, where a blank right
+  // value defaults to the left's reps (shown as the right field's ghost).
   // Fields with no right-side control (time, distance, weight on a type
   // without reps) are the same for both sides, so they copy the left.
   function parseRightFields(v: ReturnType<typeof parseFields>) {
@@ -4844,13 +4845,15 @@ function Spotlight({
   const restLabel =
     left?.restSec != null ? formatDurationSeconds(left.restSec * 1000) : null;
 
-  const simple = f.reps && !f.duration && !f.distance;
+  const simple =
+    f.reps && !f.duration && !f.distance && (f.weight || isUnilateral);
   if (simple) {
     // Each side of a unilateral set is its own set of numbers: the panel
     // shows whichever side is active and never writes the other.
     const sideR = isUnilateral && activeSide === "right";
     const sw = sideR ? weight2 : weight;
     const sr = sideR ? rightReps : reps;
+    const srInput = sideR ? reps2 : reps;
     const setSW = sideR ? setWeight2 : setWeight;
     const setSR = sideR ? setReps2 : setReps;
     const sRirMin = sideR ? rirMin2 : rirMin;
@@ -4997,7 +5000,8 @@ function Spotlight({
             const on = activeCol === key;
             const label =
               key === "weight" ? "Weight" : key === "reps" ? "Reps" : "RIR";
-            const text = key === "weight" ? sw : key === "reps" ? sr : "";
+            const text = key === "weight" ? sw : key === "reps" ? srInput : "";
+            const ghostText = key === "reps" && sr !== "" ? sr : "–";
             const cmp = key === "weight" ? wCmp : rCmp;
             return (
               <div
@@ -5058,7 +5062,7 @@ function Spotlight({
                       )}
                       style={{ fontSize }}
                     >
-                      {text === "" ? "–" : text}
+                      {text === "" ? ghostText : text}
                       {key === "weight" && (
                         <span className="visible inline-block w-0 whitespace-nowrap">
                           <small className="pl-1 text-[13px] font-semibold tracking-normal text-soft">
