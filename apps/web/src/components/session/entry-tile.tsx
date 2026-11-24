@@ -94,6 +94,8 @@ export function ScrubSurface({
     <div
       className="flex min-w-0 flex-1 items-center justify-center gap-2"
       style={{ touchAction: "pan-y" }}
+      // Its horizontal drag scrubs the value; never also an exercise swipe.
+      data-no-swipe=""
       onPointerDown={(e) => {
         s.current = {
           x: e.clientX,

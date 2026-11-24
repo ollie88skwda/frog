@@ -292,6 +292,30 @@ export type SeedSet = {
   rirMax?: number | null;
 };
 
+const SWIPE_IGNORE =
+  'input, textarea, select, [contenteditable="true"], [role="slider"], [data-ruler], [data-no-swipe], [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]';
+
+/** True when a touch starting on `target` belongs to something other than the
+ * exercise swipe: a control with its own drag/typing, a sheet or menu
+ * (including portalled ones, which sit outside `root` in the DOM), or a
+ * horizontally scrollable strip between the target and the panel. */
+function swipeIgnored(target: EventTarget, root: Element): boolean {
+  if (!(target instanceof Element)) return true;
+  if (!root.contains(target)) return true;
+  if (target.closest(SWIPE_IGNORE)) return true;
+  for (
+    let el: Element | null = target;
+    el && el !== root;
+    el = el.parentElement
+  ) {
+    if (el.scrollWidth > el.clientWidth + 1) {
+      const ox = getComputedStyle(el).overflowX;
+      if (ox === "auto" || ox === "scroll") return true;
+    }
+  }
+  return false;
+}
+
 function totalVolumeKg(blocks: BlockState[], includeWarmups: boolean): number {
   return blocks.reduce(
     (sum, b) =>
@@ -3345,7 +3369,14 @@ function ExerciseSpotlight({
     }
   }
 
+  // Swipe between exercises from anywhere on the panel (restored after #125
+  // narrowed it to the header). Gestures that belong to something else are
+  // ignored at touchstart: the ruler's own drag, text inputs, sheets/dialogs
+  // (React bubbles portal events up here), opt-outs and horizontal scrollers.
   function onTouchStart(e: ReactTouchEvent) {
+    touchRef.current = null;
+    if (e.touches.length !== 1) return;
+    if (swipeIgnored(e.target, e.currentTarget)) return;
     const t = e.touches[0];
     touchRef.current = { x: t.clientX, y: t.clientY };
   }
@@ -3354,26 +3385,33 @@ function ExerciseSpotlight({
     touchRef.current = null;
     if (!start) return;
     const t = e.changedTouches[0];
+    if (!t) return;
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
+    // A tap or jitter never counts (movement guard), and the gesture must be
+    // clearly horizontal so vertical scrolling is never read as a swipe.
+    if (Math.hypot(dx, dy) < 12) return;
     if (Math.abs(dx) > 56 && Math.abs(dx) > Math.abs(dy) * 1.5) {
       onSwipe(dx < 0 ? 1 : -1);
     }
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      data-testid="session-panel"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={() => {
+        touchRef.current = null;
+      }}
+    >
       <div
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
         data-testid="session-scroll"
       >
         {/* 2. Exercise header. */}
-        <header
-          className="px-4 pt-1 pb-3"
-          data-testid={`block-${block.name}`}
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
-        >
+        <header className="px-4 pt-1 pb-3" data-testid={`block-${block.name}`}>
           <div className="flex items-center gap-2">
             <button
               type="button"

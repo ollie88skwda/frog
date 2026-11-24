@@ -83,74 +83,82 @@ export function Ruler(props: Props) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     const css = getComputedStyle(cv);
-    // Labels are 12px text (4.5:1), so step 11 like the major ticks; minor
-    // ticks are non-text marks (3:1) on step 10. Step 9 (disabled) failed
-    // both on the tinted well.
-    const minor = css.getPropertyValue("--chart-tick").trim();
-    const major = css.getPropertyValue("--color-text-secondary").trim();
-    const faintInk = major;
+    // Minimal scale (2026-11-24): one hairline baseline, ticks only where
+    // they carry information (labelled majors, a quiet mid tick, step
+    // hairlines only when there is room), and one slim accent needle. The
+    // CSS mask on the canvas fades both ends so it reads as a continuous
+    // scale. Labels are text (4.5:1, text-secondary); hairlines are
+    // non-text marks on --chart-tick.
+    const hair = css.getPropertyValue("--chart-tick").trim();
+    const ink = css.getPropertyValue("--color-text-secondary").trim();
     const accent = css.getPropertyValue("--color-accent-mark").trim();
+    const base = h - 6;
+    const majorH = Math.round(h * 0.3);
+    const midH = Math.round(h * 0.18);
+    const minorH = Math.round(h * 0.1);
+    // Thin the scale out so marks never crowd: step hairlines only with
+    // 14px+ between them, a mid tick only with 28px+.
+    const showMinor = pps >= 14;
+    const showMid = p.midEvery != null && p.midEvery * pps >= 28;
     const half = Math.ceil(w / 2 / pps) + 2;
     const centre = Math.round(pos / p.step);
-    ctx.lineCap = "round";
+    ctx.lineCap = "butt";
     ctx.textAlign = "center";
-    ctx.font = "600 12px Geologica, system-ui, sans-serif";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "500 11px Geologica, system-ui, sans-serif";
+    // Baseline.
+    const x0 = Math.max(0, w / 2 + ((p.min - pos) / p.step) * pps);
+    const x1 = Math.min(w, w / 2 + ((p.max - pos) / p.step) * pps);
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = hair;
+    ctx.fillRect(x0, base, x1 - x0, 1);
+    ctx.globalAlpha = 1;
     for (let k = centre - half; k <= centre + half; k++) {
       const val = k * p.step;
       if (val < p.min - 1e-9 || val > p.max + 1e-9) continue;
-      const x = w / 2 + ((val - pos) / p.step) * pps;
+      const x = Math.round(w / 2 + ((val - pos) / p.step) * pps);
       const isMajor = isMajorTick(k, p.majorEvery);
-      const isMid =
-        !isMajor && p.midEvery != null && isMajorTick(k, p.midEvery);
-      const selected = Math.abs(val - pos) < p.step / 2;
-      const th = selected
-        ? h * 0.78
-        : isMajor
-          ? h * 0.66
-          : isMid
-            ? h * 0.46
-            : h * 0.28;
-      const d = Math.min(1, Math.abs(x - w / 2) / (w / 2));
-      // Full strength across the middle 70%, so every tick and label a thumb
-      // can reach reads at its token contrast; only the outer edges fade.
-      const fade = Math.max(0, (d - 0.7) / 0.3);
-      ctx.globalAlpha = Math.max(0.1, 1 - fade * fade * 0.9);
-      ctx.strokeStyle = selected ? accent : isMajor || isMid ? major : minor;
-      ctx.lineWidth = selected ? 3 : isMajor ? 2 : isMid ? 1.5 : 1;
-      ctx.beginPath();
-      ctx.moveTo(x, h);
-      ctx.lineTo(x, h - th);
-      ctx.stroke();
-      if (isMajor && !selected) {
-        ctx.fillStyle = faintInk;
-        const v = Math.round(val * 100) / 100;
-        ctx.fillText(p.format ? p.format(v) : String(v), x, h - th - 6);
+      const isMid = !isMajor && showMid && isMajorTick(k, p.midEvery as number);
+      if (!isMajor && !isMid && !showMinor) continue;
+      const th = isMajor ? majorH : isMid ? midH : minorH;
+      ctx.fillStyle = isMajor ? ink : hair;
+      ctx.globalAlpha = isMajor ? 0.55 : isMid ? 0.6 : 0.3;
+      ctx.fillRect(x, base - th, 1, th);
+      if (isMajor) {
+        // The readout already shows the value under the needle, so the
+        // label there fades out instead of colliding with the needle.
+        const near = Math.abs(x - w / 2);
+        const a = Math.min(1, Math.max(0, (near - 10) / 14));
+        if (a > 0) {
+          ctx.globalAlpha = a;
+          ctx.fillStyle = ink;
+          const v = Math.round(val * 100) / 100;
+          ctx.fillText(
+            p.format ? p.format(v) : String(v),
+            x + 0.5,
+            base - majorH - 6,
+          );
+        }
       }
       ctx.globalAlpha = 1;
     }
     if (p.ghost != null) {
       const gx = w / 2 + ((p.ghost - pos) / p.step) * pps;
       if (gx > 6 && gx < w - 6) {
+        ctx.globalAlpha = 0.7;
         ctx.fillStyle = accent;
         ctx.beginPath();
-        ctx.arc(gx, h - 4, 3, 0, Math.PI * 2);
+        ctx.arc(gx, base + 0.5, 2.5, 0, Math.PI * 2);
         ctx.fill();
+        ctx.globalAlpha = 1;
       }
     }
-    // Needle + pointer.
-    ctx.strokeStyle = accent;
+    // Needle: one 1px accent line with a small dot cap.
+    const nx = Math.round(w / 2);
     ctx.fillStyle = accent;
-    ctx.lineWidth = 1;
-    ctx.globalAlpha = 0.35;
+    ctx.fillRect(nx, 6, 1, base - 6 + 1);
     ctx.beginPath();
-    ctx.moveTo(w / 2, 10);
-    ctx.lineTo(w / 2, h);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    ctx.beginPath();
-    ctx.moveTo(w / 2 - 7, 0);
-    ctx.lineTo(w / 2 + 7, 0);
-    ctx.lineTo(w / 2, 9);
+    ctx.arc(nx + 0.5, 5, 2.5, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -275,13 +283,20 @@ export function Ruler(props: Props) {
     <div className="flex flex-col" data-testid={`${testId}-wrap`}>
       {props.readout !== false && (
         <div
-          className="num flex items-baseline justify-center gap-1 pt-1 leading-none"
+          className="num flex items-baseline justify-center gap-1.5 pt-1 pb-0.5 leading-none"
           aria-hidden="true"
           data-testid={`${testId}-readout`}
         >
-          <span className="text-[22px] font-bold text-accent-ink">{shown}</span>
+          <span
+            className={cn(
+              "text-[clamp(22px,3.4dvh,28px)] font-semibold tracking-tight",
+              props.emptyText != null ? "text-soft" : "text-ink",
+            )}
+          >
+            {shown}
+          </span>
           {unit && (
-            <span className="text-xs font-semibold text-soft">{unit}</span>
+            <span className="text-xs font-medium text-soft">{unit}</span>
           )}
         </div>
       )}
@@ -310,15 +325,16 @@ export function Ruler(props: Props) {
             aria-valuenow={props.value}
             aria-valuetext={`${shown}${unit ? ` ${unit}` : ""}`}
             data-testid={testId}
+            data-ruler=""
             className={cn(
               "block h-[clamp(40px,6.4dvh,56px)] w-full cursor-ew-resize rounded-sm outline-offset-2 select-none",
             )}
             style={{
               touchAction: "pan-y",
               WebkitMaskImage:
-                "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)",
+                "linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent)",
               maskImage:
-                "linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent)",
+                "linear-gradient(90deg, transparent, #000 20%, #000 80%, transparent)",
             }}
             onKeyDown={(e) => {
               const k = e.key;
