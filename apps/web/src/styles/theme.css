@@ -92,6 +92,10 @@
   --space-10:40px;
   --space-12:48px;
   --space-16:64px;
+  /* Motion scale (lib/motion.tsx mirrors it): instant = press feedback,
+     fast = exits and small state changes, base = entrances, sheets,
+     disclosures. One curve, --ease, for all of it. */
+  --dur-instant:100ms;
   --dur-fast:150ms;
   --dur-base:200ms;
   --dur-sidebar:220ms;
@@ -366,7 +370,12 @@
   --text-2xl: 28px;
   --text-2xl--line-height: 34px;
 
-  --ease-out-quad: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* One easing curve app-wide: the legacy out-quad name and Tailwind's bare
+     `transition-*` default both resolve to --ease, and bare transitions take
+     the fast duration. */
+  --ease-out-quad: var(--ease);
+  --default-transition-timing-function: var(--ease);
+  --default-transition-duration: var(--dur-fast);
 }
 
 /* Tabular numerals for data: Geologica ships tnum (no second typeface). */
@@ -536,28 +545,18 @@
   0% { box-shadow: inset 0 0 0 2px var(--color-accent-solid); }
   100% { box-shadow: inset 0 0 0 2px transparent; }
 }
-@utility commit-flash { animation: commit-flash 480ms var(--ease-out-quad); }
+@utility commit-flash { animation: commit-flash 480ms var(--ease); }
 
-/* MuscleMeter fill grows on mount (100-150 ms CSS only; reduced motion = instant). */
-@keyframes meter-grow {
-  from { transform: scaleX(0); }
-  to { transform: scaleX(1); }
-}
-@utility meter-grow {
-  transform-origin: left center;
-  animation: meter-grow 150ms var(--ease-out-quad);
-}
-
-/* Floating-layer entrance: fade + 2px rise, 160ms out-quad. */
+/* Floating-layer entrance: fade + 2px rise (fast in, instant out). */
 @keyframes float-in {
   from { opacity: 0; transform: translateY(2px) scale(0.99); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 @utility float-in {
-  animation: float-in 160ms var(--ease-out-quad);
+  animation: float-in var(--dur-fast) var(--ease);
   /* Radix menus/selects keep the layer mounted until this exit animation ends
      (their Presence waits on animationend), so it fades instead of vanishing. */
-  &[data-state="closed"] { animation: float-out 120ms var(--ease-out-quad) forwards; pointer-events: none; }
+  &[data-state="closed"] { animation: float-out var(--dur-instant) var(--ease) forwards; pointer-events: none; }
 }
 @keyframes float-out {
   from { opacity: 1; transform: translateY(0) scale(1); }
@@ -584,10 +583,10 @@
   }
 }
 
-/* A number that just changed settles in: fade + 2px drop, 180ms. Applied only
+/* A number that just changed settles in: fade + 2px drop. Applied only
    on a change, never on first paint (components/data/num.tsx). */
 @keyframes num-tick {
   from { opacity: 0.35; transform: translateY(-2px); }
   to { opacity: 1; transform: translateY(0); }
 }
-@utility num-tick { display: inline-block; animation: num-tick 180ms var(--ease); }
+@utility num-tick { display: inline-block; animation: num-tick var(--dur-fast) var(--ease); }

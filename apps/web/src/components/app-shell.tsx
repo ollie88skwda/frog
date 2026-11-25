@@ -13,7 +13,7 @@ import { NavLink, Outlet, useLocation } from "react-router";
 import { FrogMark } from "@/components/frog-mark";
 import { IconButton } from "@/components/ui/icon-button";
 import { useChangelogHasUnseen } from "@/lib/changelog-prefs";
-import { m, useRouteFade } from "@/lib/motion";
+import { m, SLIDE, useReducedMotion, useRouteFade } from "@/lib/motion";
 import { useActiveSession } from "@/lib/queries";
 import { useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -122,16 +122,16 @@ export function AppShell() {
                         className="rounded-sm bg-surface-active"
                       />
                     )}
-                    <span className="relative shrink-0">
+                    <span className="relative z-[1] shrink-0">
                       <Icon className="size-4" />
                       {badge && (
                         <span className="absolute top-0 right-0 size-1.5 bg-accent" />
                       )}
                     </span>
-                    <span className="relative min-w-0 flex-1 truncate">
+                    <span className="relative z-[1] min-w-0 flex-1 truncate">
                       {label}
                     </span>
-                    {key && <kbd className="relative keycap">{key}</kbd>}
+                    {key && <kbd className="relative z-[1] keycap">{key}</kbd>}
                   </>
                 )}
               </NavLink>
@@ -206,13 +206,13 @@ export function AppShell() {
                   {(forceActive ?? isActive) && (
                     <NavPill id="tab-pill" className="bg-accent-soft" />
                   )}
-                  <span className="relative shrink-0">
+                  <span className="relative z-[1] shrink-0">
                     <Icon className="size-5" />
                     {badge && (
                       <span className="absolute top-0 right-0 size-1.5 bg-accent" />
                     )}
                   </span>
-                  <span className="relative leading-none whitespace-nowrap">
+                  <span className="relative z-[1] leading-none whitespace-nowrap">
                     {label}
                   </span>
                 </>
@@ -231,15 +231,19 @@ export function AppShell() {
 
 /**
  * The active-tab fill. One shared `layoutId` per nav, so switching tabs slides
- * the fill to the new tab with a soft spring instead of blinking it across.
+ * the fill to the new tab instead of blinking it across. A layout move is not
+ * covered by MotionConfig's reducedMotion, so reduced motion jumps it here.
+ * The tab's icon and label sit at z-[1] so the travelling fill passes under
+ * the neighbouring tabs instead of painting over them mid-slide.
  */
 function NavPill({ id, className }: { id: string; className: string }) {
+  const reduced = useReducedMotion();
   return (
     <m.span
       layoutId={id}
       aria-hidden
       className={cn("absolute inset-0", className)}
-      transition={{ type: "spring", visualDuration: 0.26, bounce: 0 }}
+      transition={reduced ? { duration: 0 } : SLIDE}
     />
   );
 }
