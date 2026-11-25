@@ -1,0 +1,32 @@
+/* Focused-field visibility (boss UX batch 2026-11-25): one glance should say
+   which box is live and what the next keystroke replaces.
+
+   Deliberately unlayered so it outranks the Tailwind utilities call sites put
+   on bare inputs (`bg-transparent`, `outline-none` on the session's big
+   weight/reps fields) without touching those screens. Uses only Fern tokens. */
+
+:where(input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]), textarea) {
+  caret-color: var(--color-accent-mark);
+}
+
+/* Selected text inside a field: the solid accent with on-accent text, much
+   stronger than the page-level ::selection tint (which nearly vanishes on the
+   night ground). */
+:where(input, textarea)::selection {
+  background: var(--color-accent-solid);
+  color: var(--color-text-on-accent);
+}
+
+/* Numeric fields (weight, reps, RIR, measures): a tinted plate plus a 2px inset
+   accent ring while focused. box-shadow rather than outline so an
+   `outline-none` utility can't cancel it. */
+input:is([inputmode="decimal"], [inputmode="numeric"], [type="number"]):focus:not([readonly]) {
+  background-color: var(--color-accent-bg-subtle);
+  box-shadow: inset 0 0 0 2px var(--color-accent-mark);
+}
+
+/* Boxed text fields: thicken the one 1px line to 2px in the focus colour. */
+input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"], [inputmode="decimal"], [inputmode="numeric"], [type="number"]):focus,
+textarea:focus {
+  box-shadow: inset 0 0 0 1px var(--color-border-focus);
+}
