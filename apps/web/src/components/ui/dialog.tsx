@@ -15,7 +15,7 @@ import {
   FADE_IN,
   FADE_OUT,
   m,
-  SPRING,
+  SLIDE,
   useMotionReady,
 } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -148,10 +148,10 @@ export function DialogContent({
             <m.div
               ref={contentRef}
               initial={motionReady ? hidden : false}
-              animate={{ y: 0, opacity: 1, scale: 1, transition: SPRING }}
+              animate={{ y: 0, opacity: 1, scale: 1, transition: SLIDE }}
               exit={{
                 ...hidden,
-                transition: { ...FADE_OUT, duration: sheet ? 0.2 : 0.15 },
+                transition: FADE_OUT,
               }}
               className={cn(
                 "fixed z-50 flex w-full flex-col bg-raised shadow-lg data-[state=closed]:pointer-events-none",

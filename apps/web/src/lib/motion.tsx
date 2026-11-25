@@ -5,6 +5,7 @@ import {
   MotionConfig,
   m,
   type Transition,
+  useReducedMotion,
 } from "motion/react";
 import {
   type ReactNode,
@@ -14,28 +15,38 @@ import {
   useSyncExternalStore,
 } from "react";
 
-// App-wide motion (docs/DECISIONS.md 2026-11-23). Subtle by rule: 150-300 ms,
-// ease-out or a no-bounce spring, nothing that delays input. Components use the
+// App-wide motion (docs/DECISIONS.md 2026-11-23, retuned 2026-11-25). One
+// scale, mirrored in theme.css: FAST 150 ms (exits, small state changes) and
+// BASE 200 ms (entrances, sheets, disclosures, pills), all on the one `--ease`
+// curve. Tweens, not springs: a no-bounce spring's settle tail kept sheets and
+// pills creeping for ~450 ms after they looked done. Nothing delays input. Components use the
 // lightweight `m.*` elements; the animation engine (domMax) arrives in a lazy
 // chunk. Until it has loaded, `useMotionReady()` is false and callers pass
 // `initial={false}`, so everything renders in its final state: a failed or slow
 // chunk can never leave a screen or a dialog stuck invisible.
 
-export { AnimatePresence, LayoutGroup, m };
+export { AnimatePresence, LayoutGroup, m, useReducedMotion };
 
 /** The Because `--ease` curve (theme.css): fast start, soft landing. */
 export const EASE_OUT = [0.2, 0, 0, 1] as const;
 /** Exits get out of the way a little faster than entrances arrive. */
 export const EASE_IN = [0.4, 0, 1, 1] as const;
 
-/** Sheets, dialogs and sliding pills: a soft spring, no overshoot. */
-export const SPRING: Transition = {
-  type: "spring",
-  visualDuration: 0.28,
-  bounce: 0,
-};
-export const FADE_IN: Transition = { duration: 0.22, ease: EASE_OUT };
-export const FADE_OUT: Transition = { duration: 0.15, ease: EASE_IN };
+/** The duration scale, in seconds (theme.css `--dur-fast` / `--dur-base`). */
+export const DUR_FAST = 0.15;
+export const DUR_BASE = 0.2;
+
+/** Sheets, dialogs, disclosures and sliding pills: arrive and stop, no tail. */
+export const SLIDE: Transition = { duration: DUR_BASE, ease: EASE_OUT };
+export const FADE_IN: Transition = { duration: DUR_BASE, ease: EASE_OUT };
+export const FADE_OUT: Transition = { duration: DUR_FAST, ease: EASE_IN };
+
+/**
+ * Content swaps (route sections, Plan/Progress segments) settle from half
+ * opacity instead of from blank: a fade from 0 read as the screen flashing
+ * white on every tab tap, even when the content was already cached.
+ */
+const SETTLE_FROM = 0.5;
 
 /**
  * Height disclosure states. Overflow is clipped only while the height moves,
@@ -46,7 +57,7 @@ export const EXPANDED = {
   height: "auto",
   opacity: 1,
   overflow: "hidden",
-  transition: SPRING,
+  transition: SLIDE,
   transitionEnd: { overflow: "visible" },
 } as const;
 
@@ -125,8 +136,8 @@ export function Collapse({
 }
 
 /**
- * Segment swap (Plan / Progress `?s=`): the new segment's content fades in
- * over 200 ms. Opacity only (a transform would re-anchor fixed children) and
+ * Segment swap (Plan / Progress `?s=`): the new segment's content settles in
+ * from half opacity over 150 ms. Opacity only (a transform would re-anchor fixed children) and
  * no exit, so the old content leaves at once and input is never delayed.
  */
 export function FadeSwap({
@@ -142,10 +153,12 @@ export function FadeSwap({
     <m.div
       key={swapKey}
       initial={
-        motionReady && swapKey !== first.current ? { opacity: 0 } : false
+        motionReady && swapKey !== first.current
+          ? { opacity: SETTLE_FROM }
+          : false
       }
       animate={{ opacity: 1 }}
-      transition={FADE_IN}
+      transition={{ duration: DUR_FAST, ease: EASE_OUT }}
     >
       {children}
     </m.div>
@@ -156,7 +169,7 @@ const reducedMotion = () =>
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
 /**
- * Route change: a 200 ms opacity fade of the page container when the top-level
+ * Route change: a 150 ms settle (half opacity to full) of the page container when the top-level
  * section changes (`/plan` -> `/progress`, `/` -> `/session/...`). Driven
  * imperatively rather than by keying the outlet, so a same-screen navigation
  * (`/routines/new` -> `/routines/:id/edit` after a save) never remounts the
@@ -174,9 +187,9 @@ export function useRouteFade(
     prev.current = section;
     const el = ref.current;
     if (!el?.animate || reducedMotion()) return;
-    el.animate([{ opacity: 0 }, { opacity: 1 }], {
-      duration: 200,
-      easing: "cubic-bezier(0.2, 0, 0, 1)",
+    el.animate([{ opacity: SETTLE_FROM }, { opacity: 1 }], {
+      duration: DUR_FAST * 1000,
+      easing: `cubic-bezier(${EASE_OUT.join(", ")})`,
     });
   }, [ref, section]);
 }
