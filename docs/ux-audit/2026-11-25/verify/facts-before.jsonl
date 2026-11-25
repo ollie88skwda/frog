@@ -1,0 +1,83 @@
+{"item": "12", "key": "touch-hold-reveal-visible", "value": false}
+{"item": "12", "key": "touch-hold-reveal-text", "value": null}
+{"item": "12", "key": "after-release-reveal-visible", "value": false}
+{"item": "12", "key": "after-release-menu-open", "value": 0}
+{"item": "12", "key": "mouse-hold-reveal-visible", "value": false}
+{"item": "12", "key": "rest-clock", "value": {"testid": "rest-stopwatch", "text": "0:00 Stop", "title": "Resting after set 1 \u2014 tap to stop", "kind": null}}
+{"item": "12", "key": "rest-hold-reveal-visible", "value": false}
+{"item": "12", "key": "rest-hold-reveal-text", "value": null}
+{"item": "12", "key": "rest-after-release-clock", "value": {"testid": "session-clock", "text": "0:07", "title": "Duration \u00b7 pause / edit start", "kind": null}}
+{"item": "3", "key": "geometry-390", "value": {"weight": {"x": 145, "y": 566, "w": 100, "h": 51}, "repsL": {"x": 16, "y": 566, "w": 72, "h": 51}, "rirL": {"x": 88, "y": 566, "w": 57, "h": 51}, "repsR": {"x": 302, "y": 566, "w": 72, "h": 51}, "rirR": {"x": 245, "y": 566, "w": 57, "h": 51}}}
+{"item": "3", "key": "geometry-360", "value": {"weight": {"x": 134, "y": 414, "w": 92, "h": 40}, "repsL": {"x": 16, "y": 414, "w": 66, "h": 40}, "rirR": {"x": 226, "y": 414, "w": 52, "h": 40}, "log": {"x": 16, "y": 572, "w": 328, "h": 48}, "overflowX": 0}}
+{"item": "9", "key": "log-one-side", "value": {"text": "Log 30 kg \u00d7 10 \u00b7 L + R", "ready": null, "disabled": false, "bg": "rgb(37, 29, 26)"}}
+{"item": "9", "key": "log-both-sides", "value": {"text": "Log 30 kg \u00d7 10/8 \u00b7 L + R", "ready": null, "bg": "rgb(107, 128, 100)"}}
+{"item": "8", "key": "set-mark-0-html-text", "value": "1L30 \u00d7 10R30 \u00d7 8"}
+{"item": "8", "key": "side-tags", "value": 0}
+{"item": "8", "key": "sides-box", "value": {"x": 64, "y": 143, "w": 163, "h": 32}}
+{"item": "7", "key": "perside-bottom-text", "value": "VfUni 1795645140822-xhpn\n1 of 1\n1\nL\n30 \u00d7 10\nR\n30 \u00d7 8\n+ Add a set\n\n1 set logged\n\nAdd a set"}
+{"item": "7", "key": "sets-done-summary-visible", "value": false}
+{"item": "13", "key": "setup-add-visible", "value": false}
+{"item": "13", "key": "setup-row-visible", "value": false}
+{"item": "13", "key": "presets-visible", "value": false}
+{"item": "13", "key": "setting-chips", "value": []}
+{"item": "13", "key": "value-chips", "value": 0}
+{"item": "14", "key": "resume-lands-on", "value": "VfResA 1795645154140-h86f"}
+{"item": "14", "key": "fresh-tab-lands-on", "value": "VfResA 1795645154140-h86f"}
+{"item": "14", "key": "reload-lands-on", "value": "VfResA 1795645154140-h86f"}
+{"item": "14", "key": "after-prev", "value": "VfResA 1795645154140-h86f"}
+{"item": "14", "key": "resume-after-prev-lands-on", "value": "VfResA 1795645154140-h86f"}
+{"item": "14", "key": "names", "value": {"A": "VfResA 1795645154140-h86f", "B": "VfResB 1795645156028-6rn2"}}
+{"item": "16", "key": "route-fade-opacity-first-frames", "value": [1, 1, 0, 0.06, 0.29, 0.5, 0.64, 0.73]}
+{"item": "16", "key": "route-fade-min-opacity", "value": 0}
+{"item": "16", "key": "meter-animations-on-return", "value": 0}
+{"item": "16", "key": "animations-at-today-return", "value": []}
+{"item": "16", "key": "today-label-topmost-during-slide", "value": ["absolute inset-0 bg-accent-sof", "absolute inset-0 bg-accent-sof", "absolute inset-0 bg-accent-sof", "absolute inset-0 bg-accent-sof", "label", "label", "label", "label", "label", "label", "label", "label"]}
+{"item": "16", "key": "tab-pill-left-by-frame", "value": [199, 199, 199, 197, 187, 174, 161, 145, 130, 117, 107, 95, 87, 80, 75, 69, 65, 62, 59, 57]}
+{"item": "16", "key": "sheet-settle-ms", "value": 440}
+{"item": "16", "key": "sheet-top-series", "value": [[0, 843], [27, 816], [66, 762], [107, 714], [147, 683], [186, 664], [228, 652], [267, 646], [308, 642], [347, 640], [387, 639], [428, 639], [467, 638], [507, 638], [549, 638]]}
+{"item": "17", "key": "route-fade-opacity-first-frames", "value": [1, 1, 1, 1, 1, 1, 1, 1]}
+{"item": "17", "key": "route-fade-min-opacity", "value": 1}
+{"item": "17", "key": "meter-animations-on-return", "value": 0}
+{"item": "17", "key": "animations-at-today-return", "value": []}
+{"item": "17", "key": "today-label-topmost-during-slide", "value": ["label", "label", "label", "label", "label", "label", "label", "label", "label", "label", "label", "label"]}
+{"item": "17", "key": "tab-pill-left-by-frame", "value": [199, 199, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47, 47]}
+{"item": "17", "key": "sheet-settle-ms", "value": 18}
+{"item": "17", "key": "sheet-top-series", "value": [[0, 844], [31, 638], [72, 638], [110, 638], [152, 638], [190, 638], [231, 638], [273, 638], [311, 638], [352, 638], [392, 638], [432, 638], [470, 638], [511, 638], [552, 638]]}
+{"item": "17", "key": "session-running-animations", "value": []}
+{"item":"2","key":"rulers-first-set-weight","value":["weight-ruler"]}
+{"item":"2","key":"rulers-first-set-reps","value":["reps-ruler"]}
+{"item":"15","key":"weight-selection-after-tap","value":{"value":"100","start":2,"end":2}}
+{"item":"15","key":"weight-focus-style","value":{"bg":"rgba(0, 0, 0, 0)","shadow":"none","caret":"rgb(56, 97, 52)","outline":"none"}}
+{"item":"15","key":"weight-after-typing-80","value":"10800"}
+{"item":"15","key":"weight-second-tap","value":{"start":2,"end":2}}
+{"item":"15","key":"reps-12-tap-type-9","value":"192"}
+{"item":"11","key":"clock-rest","value":{"testid":"rest-stopwatch","text":"0:00 Stop","title":"Resting after set 1 — tap to stop","kind":null}}
+{"item":"11","key":"clock-set-open","value":{"testid":"rest-stopwatch","text":"0:00 Stop","title":"Resting after set 1 — tap to stop","kind":null}}
+{"item":"2","key":"rulers-second-set-weight","value":["weight-ruler"]}
+{"item":"5","key":"weight-geometry","value":{"minus":{"x":16,"y":697,"w":50,"h":44},"plus":{"x":325,"y":697,"w":50,"h":44},"ruler":{"x":70,"y":692,"w":251,"h":54},"wrap":{"x":16,"y":658,"w":358,"h":88}}}
+{"item":"5","key":"weight-plus-click","value":{"before":"","after":"2.5"}}
+{"item":"5","key":"reps-geometry","value":{"minus":null,"plus":null,"ruler":{"x":16,"y":692,"w":358,"h":54},"wrap":{"x":16,"y":658,"w":358,"h":88}}}
+{"item":"5","key":"rir-geometry","value":{"minus":null,"plus":null,"ruler":null,"wrap":null}}
+{"item":"4","key":"rulers-on-rir","value":["rir-option-0","rir-option-1","rir-option-2","rir-option-3","rir-option-4plus"]}
+{"item":"4","key":"rir-column-tag","value":"BUTTON"}
+{"item":"1","key":"after-rir-type-3","value":{"reps":"130","rir":"–","rulers":["rir-option-0","rir-option-1","rir-option-2","rir-option-3","rir-option-4plus"],"focused":"reps-field"}}
+{"item":"1","key":"after-retap-reps","value":{"rulers":["rir-option-0","rir-option-1","rir-option-2","rir-option-3","rir-option-4plus"],"repsActive":null,"rirActive":null,"underline":[{"t":"reps-field","active":null},{"t":"rir-column","active":null}]}}
+{"item":"1","key":"after-retap-type-8","value":{"reps":"1380","rir":"–"}}
+{"item":"6","key":"now-row","value":{"x":16,"y":185,"w":358,"h":46}}
+{"item":"6","key":"entry-panel","value":{"x":0,"y":525,"w":390,"h":319}}
+{"item":"6","key":"now-link","value":null}
+{"item":"6","key":"exercise-progress","value":null}
+{"item":"6","key":"now-row-style","value":{"border":"0px rgb(33, 24, 22)","outline":"none","shadow":"none"}}
+{"item":"10","key":"set-mark-0","value":{"selected":null,"ariaCurrent":null,"style":"0px rgb(33, 24, 22) rgb(255, 254, 251)"}}
+{"item":"10","key":"set-mark-1-style","value":"0px rgb(33, 24, 22) rgb(224, 241, 222)"}
+{"item":"10","key":"panel-weight","value":"60"}
+{"item":"10","key":"set-number","value":"Set 1"}
+{"item":"7","key":"bilateral-bottom-text","value":"VfBi 1795645235137-qsoh\n1 of 1\n1\n60 kg × 10\n2\n62.5 kg × 8\n+ Add a set\nrest 0:09 avg\n\n2 sets logged\n\nAdd a set"}
+{"item":"7","key":"sets-done-summary","value":null}
+{"item":"13","key":"setup-add-visible","value":false}
+{"item":"13","key":"setup-row-visible","value":false}
+{"item":"13","key":"presets-visible","value":false}
+{"item":"13","key":"setting-chips","value":[]}
+{"item":"13","key":"value-chips","value":0}
+{"item":"16","key":"meter-return-1","value":{"fills":1,"meterGrowEls":1,"firstFrames":[[],[],[0],[4],[7],[11]],"last":[22]}}
+{"item":"16","key":"meter-return-2","value":{"fills":1,"meterGrowEls":1,"firstFrames":[[],[],[0],[4],[7],[11]],"last":[22]}}
