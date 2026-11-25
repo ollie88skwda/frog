@@ -58,6 +58,14 @@ export async function fillSide(
   await page.getByTestId(`reps-field-${side}`).fill(reps);
 }
 
+/** The ruler only shows once the exercise has a logged set this session
+ * (2026-11-25), so a ruler spec logs a throwaway first set and opens set 2. */
+export async function openRulerSet(page: Page, weight = "20", reps = "5") {
+  await fillSet(page, weight, reps);
+  await logSet(page);
+  await addSet(page);
+}
+
 /** Commits the current spotlight set via the Log button. */
 export async function logSet(page: Page) {
   await page.getByTestId("log-set").click();

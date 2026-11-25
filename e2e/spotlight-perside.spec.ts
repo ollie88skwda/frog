@@ -10,6 +10,7 @@ import {
   fillSide,
   logBilateralSet,
   makeExercise,
+  openRulerSet,
   openSetTypeMenu,
   startSessionWith,
 } from "./spotlight-helpers";
@@ -91,6 +92,7 @@ test("a per-side set shares one weight field but splits reps per side", async ({
 test("per-side RIR is independent per side", async ({ page }) => {
   const EX = await makeExercise(page, "PerSideRir");
   await startSessionWith(page, EX);
+  await openRulerSet(page);
   await makePerSide(page);
 
   await fillSide(page, "left", "40", "8");
@@ -102,8 +104,8 @@ test("per-side RIR is independent per side", async ({ page }) => {
   await page.getByTestId("rir-column-right").click();
   await page.getByTestId("rir-ruler").focus();
   await page.keyboard.press("ArrowRight"); // 2 → 3
-  await expect(page.getByTestId("rir-column-left")).toHaveText("1");
-  await expect(page.getByTestId("rir-column-right")).toHaveText("3");
+  await expect(page.getByTestId("rir-column-left")).toHaveValue("1");
+  await expect(page.getByTestId("rir-column-right")).toHaveValue("3");
   await page.getByTestId("log-set").click();
 
   const rows = await page.evaluate(async (exerciseName) => {
@@ -124,7 +126,7 @@ test("per-side RIR is independent per side", async ({ page }) => {
       .from("set_logs")
       .select("side, rir, rir_min, rir_max")
       .eq("session_exercise_id", (se as { id: string }).id)
-      .eq("set_no", 0);
+      .eq("set_no", 1);
     if (error) throw new Error(error.message);
     return data;
   }, EX);

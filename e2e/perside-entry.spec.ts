@@ -3,6 +3,7 @@ import { EMAIL, PASSWORD, signIn } from "./helpers";
 import {
   finishSession,
   makeExercise,
+  openRulerSet,
   openSetTypeMenu,
   startSessionWith,
 } from "./spotlight-helpers";
@@ -67,6 +68,8 @@ test("per-side shows both sides, one ruler edits each value, both sides are stor
 }) => {
   const EX = await makeExercise(page, "PerSideE2");
   await startSessionWith(page, EX);
+  // The ruler shows from the second set on (2026-11-25).
+  await openRulerSet(page);
 
   // A bilateral exercise opts in from the ⋯ menu; from then on the panel
   // carries the labelled switch.
@@ -94,9 +97,9 @@ test("per-side shows both sides, one ruler edits each value, both sides are stor
   await expect(page.getByTestId("side-tabs")).toHaveCount(0);
   await expect(page.locator("[data-testid^=rir-option-]")).toHaveCount(0);
   await expect(page.locator("[data-testid$=-step-minus]")).toHaveCount(0);
-  // RIR never prefills: a dash on both sides.
-  await expect(page.getByTestId("rir-column-left")).toHaveText("–");
-  await expect(page.getByTestId("rir-column-right")).toHaveText("–");
+  // RIR never prefills: empty on both sides.
+  await expect(page.getByTestId("rir-column-left")).toHaveValue("");
+  await expect(page.getByTestId("rir-column-right")).toHaveValue("");
 
   // Shared weight, typed; reps and RIR per side through the one ruler.
   await page.getByTestId("weight-field").fill("30");
@@ -116,22 +119,22 @@ test("per-side shows both sides, one ruler edits each value, both sides are stor
 
   // RIR ruler runs 0 to 5+, starts at the default 2 once touched.
   await ruler(page, "rir-column-left", "rir-ruler", ["ArrowLeft"]);
-  await expect(page.getByTestId("rir-column-left")).toHaveText("1");
+  await expect(page.getByTestId("rir-column-left")).toHaveValue("1");
   await ruler(page, "rir-column-right", "rir-ruler", [
     "ArrowRight",
     "ArrowRight",
     "ArrowRight",
     "ArrowRight",
   ]);
-  await expect(page.getByTestId("rir-column-right")).toHaveText("5+");
+  await expect(page.getByTestId("rir-column-right")).toHaveValue("5+");
   await expect(page.getByTestId("rir-ruler")).toHaveAttribute(
     "aria-valuemax",
     "5",
   );
 
   await page.getByTestId("log-set").click();
-  await expect.poll(() => readPair(page, EX)).toHaveLength(2);
-  const rows = await readPair(page, EX);
+  await expect.poll(() => readPair(page, EX)).toHaveLength(3);
+  const rows = (await readPair(page, EX)).filter((r) => r.side != null);
   expect(
     rows.map((r) => [
       r.side,
@@ -142,17 +145,17 @@ test("per-side shows both sides, one ruler edits each value, both sides are stor
       r.rir_max,
     ]),
   ).toEqual([
-    ["left", 0, 30, 10, 1, 1],
-    ["right", 0, 30, 8, 5, null],
+    ["left", 1, 30, 10, 1, 1],
+    ["right", 1, 30, 8, 5, null],
   ]);
 
   // The logged row shows both sides.
-  const sides = page.getByTestId("set-mark-0-sides");
+  const sides = page.getByTestId("set-mark-1-sides");
   await expect(sides).toContainText(/30 × 10/);
   await expect(sides).toContainText(/30 × 8/);
 
   // Editing the pair opens on the side that was tapped.
-  const box = await page.getByTestId("set-mark-0").boundingBox();
+  const box = await page.getByTestId("set-mark-1").boundingBox();
   const r = await sides.locator("[data-pair-right]").boundingBox();
   if (!box || !r) throw new Error("set row not laid out");
   await page.mouse.click(r.x + r.width / 2, box.y + box.height / 2);
@@ -164,8 +167,10 @@ test("per-side shows both sides, one ruler edits each value, both sides are stor
 
   // Next session: the Now row's last hint shows both sides, reps prefill
   // per side, RIR stays blank.
+  // Set 2 is the pair (set 1 was the throwaway that unlocks the ruler).
   await finishSession(page);
   await startSessionWith(page, EX);
+  await openRulerSet(page);
   const last = page.getByTestId("set-mark-last-sides");
   await expect(last).toContainText(/30 × 10/);
   await expect(last).toContainText(/30 × 8/);
@@ -174,7 +179,7 @@ test("per-side shows both sides, one ruler edits each value, both sides are stor
   await page.getByTestId("set-type-perside").click();
   await expect(page.getByTestId("reps-field-left")).toHaveValue("10");
   await expect(page.getByTestId("reps-field-right")).toHaveValue("8");
-  await expect(page.getByTestId("rir-column-left")).toHaveText("–");
+  await expect(page.getByTestId("rir-column-left")).toHaveValue("");
 });
 
 test("validation names the side that's missing reps and selects it", async ({
@@ -182,6 +187,7 @@ test("validation names the side that's missing reps and selects it", async ({
 }) => {
   const EX = await makeExercise(page, "PerSideE2Valid");
   await startSessionWith(page, EX);
+  await openRulerSet(page);
   await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click();
 
@@ -237,6 +243,7 @@ for (const [w, h] of [
       await page.setViewportSize({ width: w, height: h });
       const EX = await makeExercise(page, "PerSideE2Fit");
       await startSessionWith(page, EX);
+      await openRulerSet(page);
       await openSetTypeMenu(page);
       await page.getByTestId("set-type-perside").click();
       await page.evaluate(
@@ -273,7 +280,7 @@ for (const [w, h] of [
         expect(b?.height ?? 0, id).toBeGreaterThanOrEqual(44);
       }
       // RIR reads as its own value, not clipped.
-      await expect(page.getByTestId("rir-column-right")).toHaveText("3");
+      await expect(page.getByTestId("rir-column-right")).toHaveValue("3");
       await expect(page.getByTestId("log-set")).toBeInViewport();
 
       // Split weight keeps 44px targets and the Log button on screen.
@@ -287,7 +294,7 @@ for (const [w, h] of [
       await expect(page.getByTestId("log-set")).toBeInViewport();
       await page.getByTestId("log-set").click();
       // The logged uneven pair fits the row: both sides' text is readable.
-      const sides = page.getByTestId("set-mark-0-sides");
+      const sides = page.getByTestId("set-mark-1-sides");
       await expect(sides).toContainText("102.5 × 12");
       await expect(sides).toContainText("100 × 10");
       const clipped = await sides.evaluate(
