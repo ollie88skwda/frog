@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  applySetupSetting,
   fieldStep,
   isMajorTick,
   logLabel,
+  resumeBlockIndex,
   scrubSteps,
   snapToStep,
   stepValue,
@@ -78,5 +80,43 @@ describe("entry logic", () => {
     expect(isMajorTick(0, 8)).toBe(true);
     expect(isMajorTick(8, 8)).toBe(true);
     expect(isMajorTick(7, 8)).toBe(false);
+  });
+});
+
+describe("applySetupSetting", () => {
+  it("adds a setting to an empty note", () => {
+    expect(applySetupSetting("", "Seat", "4")).toBe("Seat 4");
+  });
+  it("appends after existing text", () => {
+    expect(applySetupSetting("grip wide", "Pad", "3")).toBe("grip wide, Pad 3");
+  });
+  it("replaces that setting's existing number", () => {
+    expect(applySetupSetting("Seat 3, grip wide", "Seat", "5")).toBe(
+      "Seat 5, grip wide",
+    );
+    expect(applySetupSetting("seat 3.5", "Seat", "6")).toBe("Seat 6");
+  });
+});
+
+describe("resumeBlockIndex", () => {
+  const b = (seId: string, committed: number, planned = 3) => ({
+    seId,
+    committed,
+    planned,
+  });
+  it("prefers the saved exercise when it still exists", () => {
+    expect(resumeBlockIndex([b("a", 3), b("b", 1)], "a")).toBe(0);
+  });
+  it("lands on the exercise with unfinished sets, not exercise 1", () => {
+    expect(resumeBlockIndex([b("a", 3), b("b", 1), b("c", 0)], null)).toBe(1);
+    expect(resumeBlockIndex([b("a", 3), b("b", 1), b("c", 0)], "gone")).toBe(1);
+  });
+  it("moves past a finished exercise to the next one", () => {
+    expect(resumeBlockIndex([b("a", 3), b("b", 3), b("c", 0)], null)).toBe(2);
+    expect(resumeBlockIndex([b("a", 3), b("b", 3)], null)).toBe(1);
+  });
+  it("starts at the first exercise when nothing is logged", () => {
+    expect(resumeBlockIndex([b("a", 0), b("b", 0)], null)).toBe(0);
+    expect(resumeBlockIndex([], null)).toBe(-1);
   });
 });

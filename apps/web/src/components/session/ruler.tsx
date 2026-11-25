@@ -277,10 +277,17 @@ export function Ruler(props: Props) {
     emit(next);
     draw();
   };
+  // Fixed, equal-width step buttons inset from the panel edge so both sit
+  // symmetrically around the scale (the readout centres over the scale).
   const jumpBtn =
-    "num flex h-11 min-w-11 shrink-0 items-center justify-center rounded-sm bg-secondary px-2 text-sm font-bold text-ink transition-colors duration-100 hover:bg-active";
+    "num flex h-11 w-14 shrink-0 touch-manipulation items-center justify-center rounded-sm bg-surface text-sm font-bold text-ink transition-colors duration-100 hover:bg-surface-hover";
+  const fmtJump = (n: number) => String(Math.round(n * 100) / 100);
   return (
-    <div className="flex flex-col" data-testid={`${testId}-wrap`}>
+    <div
+      className="flex flex-col"
+      data-testid={`${testId}-wrap`}
+      data-ghost={props.ghost ?? undefined}
+    >
       {props.readout !== false && (
         <div
           className="num flex items-baseline justify-center gap-1.5 pt-1 pb-0.5 leading-none"
@@ -300,17 +307,22 @@ export function Ruler(props: Props) {
           )}
         </div>
       )}
-      <div className="flex items-center gap-1">
+      <div
+        className={cn(
+          "flex items-center",
+          props.jump != null && "gap-2 px-2 pb-2",
+        )}
+      >
         {props.jump != null && (
           <button
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => jumpBy(-1)}
             className={jumpBtn}
-            aria-label={`${label} minus ${props.jump}`}
+            aria-label={`${label} minus ${fmtJump(props.jump)}`}
             data-testid={`${testId}-minus`}
           >
-            −{props.jump}
+            −{fmtJump(props.jump)}
           </button>
         )}
         <div className="min-w-0 flex-1">
@@ -403,10 +415,10 @@ export function Ruler(props: Props) {
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => jumpBy(1)}
             className={jumpBtn}
-            aria-label={`${label} plus ${props.jump}`}
+            aria-label={`${label} plus ${fmtJump(props.jump)}`}
             data-testid={`${testId}-plus`}
           >
-            +{props.jump}
+            +{fmtJump(props.jump)}
           </button>
         )}
       </div>

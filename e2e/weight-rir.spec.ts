@@ -88,12 +88,9 @@ test("RIR on set 1 only leaves sets 2-3 blank in history", async ({ page }) => {
     await page.getByTestId("reps-field").fill("6");
     if (i === 0) {
       await page.getByTestId("rir-column").click();
-      await page.getByTestId("rir-option-2").click();
-    } else
-      await expect(page.getByTestId("rir-option-2")).not.toHaveAttribute(
-        "aria-pressed",
-        "true",
-      );
+      await page.keyboard.type("2");
+      await expect(page.getByTestId("rir-column")).toHaveValue("2");
+    } else await expect(page.getByTestId("rir-column")).toHaveValue("");
     await page.getByTestId("log-set").click();
     await expect(page.getByTestId(`set-mark-${i}-state`)).toHaveAttribute(
       "data-state",
@@ -153,15 +150,12 @@ test("planned RIR is an outlined hint: untouched saves blank, tapping it saves t
 
   // Set 1: the plan's midpoint (1-3 -> 2) is outlined, nothing is pressed,
   // and logging without a tap saves a blank RIR next to the stored plan.
-  await expect(page.getByTestId("rir-option-2")).toHaveAttribute(
+  // (2026-11-25: RIR is a typed value + ruler, no 0-3 buttons.)
+  await expect(page.getByTestId("entry-col-rir")).toHaveAttribute(
     "data-hint",
-    "true",
+    "2",
   );
-  for (const v of ["0", "1", "2", "3", "4plus"])
-    await expect(page.getByTestId(`rir-option-${v}`)).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
+  await expect(page.getByTestId("rir-column")).toHaveValue("");
   await ensureOpenSet(page);
   await page.getByTestId("weight-field").fill("100");
   await page.getByTestId("reps-field").fill("6");
@@ -172,19 +166,16 @@ test("planned RIR is an outlined hint: untouched saves blank, tapping it saves t
   );
 
   // Set 2: one tap on the hint accepts it.
-  await expect(page.getByTestId("rir-option-2")).toHaveAttribute(
-    "data-hint",
-    "true",
-  );
   await ensureOpenSet(page);
+  await expect(page.getByTestId("entry-col-rir")).toHaveAttribute(
+    "data-hint",
+    "2",
+  );
   await page.getByTestId("weight-field").fill("100");
   await page.getByTestId("reps-field").fill("6");
   await page.getByTestId("rir-column").click();
-  await page.getByTestId("rir-option-2").click();
-  await expect(page.getByTestId("rir-option-2")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await page.keyboard.type("2");
+  await expect(page.getByTestId("rir-column")).toHaveValue("2");
   await page.getByTestId("log-set").click();
   await expect(page.getByTestId("set-mark-1-state")).toHaveAttribute(
     "data-state",

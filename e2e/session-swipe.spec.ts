@@ -91,6 +91,14 @@ test("dragging the ruler adjusts the value and never swipes to another exercise"
   await page.getByTestId("exercise-prev").click();
   await expect(page.getByTestId("exercise-name")).toHaveText(A);
 
+  // The ruler shows from set 2 (2026-11-25); finishing set 1 advances to B.
+  await page.getByTestId("weight-field").fill("20");
+  await page.getByTestId("reps-field").fill("5");
+  await page.getByTestId("log-set").click();
+  if ((await page.getByTestId("exercise-name").innerText()) !== A)
+    await page.getByTestId("exercise-prev").click();
+  await expect(page.getByTestId("exercise-name")).toHaveText(A);
+  await page.getByTestId("add-set").click();
   await page.getByTestId("weight-field").fill("100");
   const ruler = page.getByTestId("weight-ruler");
   await ruler.scrollIntoViewIfNeeded();

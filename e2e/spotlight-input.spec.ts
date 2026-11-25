@@ -7,6 +7,7 @@ import {
   logBilateralSet,
   logSet,
   makeExercise,
+  openRulerSet,
   startSessionWith,
 } from "./spotlight-helpers";
 
@@ -80,6 +81,7 @@ test("the weight and reps rulers mutate the field immediately, no dialog", async
 }) => {
   const EX = await makeExercise(page, "SpotlightAdjust");
   await startSessionWith(page, EX);
+  await openRulerSet(page);
 
   await page.getByTestId("weight-field").fill("100");
   await page.getByTestId("weight-ruler").focus();
@@ -108,6 +110,7 @@ test("weight and reps never go below zero, however far the ruler is nudged", asy
 }) => {
   const EX = await makeExercise(page, "SpotlightFloor");
   await startSessionWith(page, EX);
+  await openRulerSet(page);
 
   await page.getByTestId("weight-field").fill("8");
   await page.getByTestId("weight-ruler").focus();
@@ -140,15 +143,14 @@ test("beating last session's value flips data-beat true and states the gain", as
     /same as last/i,
   );
 
-  // Push weight above last session's value.
-  await page.getByTestId("weight-ruler").focus();
-  await page.keyboard.press("ArrowRight");
+  // Push weight above last session's value (set 1 has no ruler yet, so
+  // the value is typed).
+  await page.getByTestId("weight-field").fill("101");
   await expect(weightRow).toHaveAttribute("data-beat", "true");
   await expect(page.getByTestId("weight-compare")).toContainText("+1");
 
   // Drop back below last session's value.
-  await page.keyboard.press("ArrowLeft");
-  await page.keyboard.press("ArrowLeft");
+  await page.getByTestId("weight-field").fill("99");
   await expect(weightRow).toHaveAttribute("data-beat", "false");
   await expect(page.getByTestId("weight-compare")).not.toContainText(
     /same as last/i,
@@ -170,9 +172,7 @@ test("reps-compare mirrors the same beat/same/below contract independently of we
     .filter({ has: page.getByTestId("reps-compare") });
   await expect(page.getByTestId("reps-compare")).toContainText(/same as last/i);
 
-  await page.getByTestId("reps-field").focus();
-  await page.getByTestId("reps-ruler").focus();
-  await page.keyboard.press("ArrowRight");
+  await page.getByTestId("reps-field").fill("6");
   await expect(repsRow).toHaveAttribute("data-beat", "true");
   await expect(page.getByTestId("reps-compare")).toContainText("+1");
 });

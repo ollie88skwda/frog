@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
-import { logSet, makeExercise, startSessionWith } from "./spotlight-helpers";
+import {
+  logSet,
+  makeExercise,
+  openRulerSet,
+  startSessionWith,
+} from "./spotlight-helpers";
 
 test.beforeEach(async ({ page }) => {
   test.skip(!EMAIL || !PASSWORD, "run via `bun run e2e`");
@@ -12,6 +17,7 @@ test("the ruler moves weight by the unit step (1 lb default) and reps by 1, and 
 }) => {
   test.setTimeout(60_000);
   await startSessionWith(page, await makeExercise(page, "Tiles"));
+  await openRulerSet(page);
   await page.getByTestId("weight-field").fill("80");
   await page.getByTestId("reps-field").fill("8");
   await expect(page.getByTestId("log-set")).toHaveText("Log 80 lbs × 8");
@@ -27,7 +33,7 @@ test("the ruler moves weight by the unit step (1 lb default) and reps by 1, and 
   await expect(page.getByTestId("weight-field")).toHaveValue("80");
   await logSet(page);
   await page.getByTestId("add-set").click();
-  await expect(page.getByTestId("set-number")).toContainText("Set 2");
+  await expect(page.getByTestId("set-number")).toContainText("Set 3");
 });
 
 test("390x844 entry screenshots", async ({ page }, testInfo) => {
