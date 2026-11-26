@@ -1,0 +1,32 @@
+{
+  "set2of2-day": {
+    "nowBottom": 229,
+    "panelTop": 347,
+    "gapPx": 118,
+    "viewport": "360x640"
+  },
+  "set2of2-night": {
+    "nowBottom": 229,
+    "panelTop": 347,
+    "gapPx": 118,
+    "viewport": "360x640"
+  },
+  "set3of3-day": {
+    "nowBottom": 273,
+    "panelTop": 347,
+    "gapPx": 74,
+    "viewport": "360x640"
+  },
+  "perside-day": {
+    "nowBottom": 273,
+    "panelTop": 196,
+    "gapPx": -77,
+    "viewport": "360x640"
+  },
+  "perside-night": {
+    "nowBottom": 273,
+    "panelTop": 196,
+    "gapPx": -77,
+    "viewport": "360x640"
+  }
+}

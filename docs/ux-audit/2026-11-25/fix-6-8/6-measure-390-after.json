@@ -1,0 +1,37 @@
+{
+  "set2of2-day": {
+    "maxEmptyAbovePanelPx": 129,
+    "nowBottom": 534,
+    "panelTop": 484,
+    "gapPx": -50,
+    "viewport": "390x844"
+  },
+  "set2of2-night": {
+    "maxEmptyAbovePanelPx": 129,
+    "nowBottom": 534,
+    "panelTop": 484,
+    "gapPx": -50,
+    "viewport": "390x844"
+  },
+  "set3of3-day": {
+    "maxEmptyAbovePanelPx": 79,
+    "nowBottom": 534,
+    "panelTop": 484,
+    "gapPx": -50,
+    "viewport": "390x844"
+  },
+  "perside-day": {
+    "maxEmptyAbovePanelPx": 0,
+    "nowBottom": 362,
+    "panelTop": 312,
+    "gapPx": -50,
+    "viewport": "390x844"
+  },
+  "perside-night": {
+    "maxEmptyAbovePanelPx": 0,
+    "nowBottom": 362,
+    "panelTop": 312,
+    "gapPx": -50,
+    "viewport": "390x844"
+  }
+}
