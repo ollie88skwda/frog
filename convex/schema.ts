@@ -380,6 +380,11 @@ export default defineSchema({
     coachRulesOff: v.optional(n(v.array(v.string()))),
     showEvidenceLabels: v.optional(n(v.boolean())),
     hardSetRirMax: v.optional(n(v.number())),
+    // Display units follow the account (2026-11-25). Optional: existing rows
+    // lack them. distance/measurement null = follow the weight system.
+    weightUnit: v.optional(n(v.union(v.literal("kg"), v.literal("lb")))),
+    distanceUnit: v.optional(n(v.union(v.literal("km"), v.literal("mi")))),
+    measurementUnit: v.optional(n(v.union(v.literal("cm"), v.literal("in")))),
   })
     .index("by_uid", ["id"])
     .index("by_owner", ["ownerId", "createdAt"]),

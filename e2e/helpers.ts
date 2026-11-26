@@ -38,6 +38,18 @@ export async function signIn(page: Page) {
       .update({ ended_at: now, updated_at: now })
       .is("ended_at", null);
     if (error) throw new Error(error.message);
+    // Display units follow the account now (lib/settings.ts), and a device's
+    // cached unit is uploaded once when the account has none. Reset both so a
+    // spec that seeds `unit=kg` can't leak kg into later specs on this shared
+    // user; a spec's own addInitScript/setItem re-applies on the next load.
+    const reset = await window.__frog.db.from("user_prefs").update({
+      weight_unit: null,
+      distance_unit: null,
+      measurement_unit: null,
+    });
+    if (reset.error) throw new Error(reset.error.message);
+    for (const k of ["unit", "distanceUnit", "measurementUnit"])
+      localStorage.removeItem(k);
   });
   await page.goto("/");
   await expect(page.getByTestId("start-session-btn")).toBeVisible();

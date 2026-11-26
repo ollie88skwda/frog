@@ -1018,6 +1018,8 @@ export class ConvexRepo implements Repo {
       "bio",
       "goal",
       "trainingStatus",
+      "distanceUnit",
+      "measurementUnit",
     ]) {
       if (k in patch) row[k] = (patch as Row)[k] ?? null;
     }

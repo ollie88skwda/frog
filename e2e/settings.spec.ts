@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { EMAIL, PASSWORD, signIn } from "./helpers";
 
-// M12: settings hub — device-local unit prefs persist, and the warm-up method
+// M12: settings hub — unit prefs persist (account-backed, see unit-account.spec.ts), and the warm-up method
 // editor edits the stored ramp. (First-day-of-week was a user_prefs setting;
 // the week now hardcodes to Sunday everywhere — see docs/DECISIONS.md
 // 2026-07-30 — and the picker here is gone.)

@@ -32,6 +32,12 @@ describe("resolveUserPrefs (redesign §9.2)", () => {
     expect(p.coachRulesOff).toEqual([]);
     expect(p.showEvidenceLabels).toBe(true);
     expect(p.hardSetRirMax).toBe(4); // R6
+    // units predate the account: lb, distance/measurement follow it
+    expect([p.weightUnit, p.distanceUnit, p.measurementUnit]).toEqual([
+      "lb",
+      "mi",
+      "in",
+    ]);
     expect(p.goal).toBeNull();
     // existing users keep their saved warm-up choice (R17b only flips new users)
     expect(p.includeWarmupsInStats).toBe(true);

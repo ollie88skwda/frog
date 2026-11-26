@@ -697,6 +697,9 @@ export type UserPrefsPatch = Partial<{
   coachRulesOff: string[];
   showEvidenceLabels: boolean;
   hardSetRirMax: number;
+  weightUnit: "kg" | "lb";
+  distanceUnit: "km" | "mi" | null;
+  measurementUnit: "cm" | "in" | null;
   includeWarmupsInStats: boolean;
   defaultRestSec: number | null;
   previousValuesScope: "any" | "routine";
