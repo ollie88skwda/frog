@@ -1,0 +1,57 @@
+{
+  "5-selection": {
+    "value": "100",
+    "start": 2,
+    "end": 2
+  },
+  "1-logged-label": {
+    "x": 16,
+    "y": 669,
+    "w": 358,
+    "h": 36,
+    "cx": 195
+  },
+  "6-ruler": {
+    "count": 1,
+    "inViewport": true,
+    "box": {
+      "x": 88,
+      "y": 684,
+      "w": 214,
+      "h": 54,
+      "cx": 195
+    },
+    "panel": {
+      "x": 0,
+      "y": 484,
+      "w": 390,
+      "h": 360,
+      "cx": 195
+    }
+  },
+  "4-note-btn": {
+    "x": 255,
+    "y": 493,
+    "w": 67,
+    "h": 36,
+    "cx": 288
+  },
+  "3-weight": {
+    "weightCx": 195,
+    "panelCx": 195,
+    "offset": 0
+  },
+  "7-unit-in-menu": false,
+  "9-fields": {
+    "ghostColor": "rgb(120, 108, 99)",
+    "weight": "",
+    "reps": "",
+    "weightGhost": "40",
+    "lastLine": "1\nNow\n1\nSet 1\n· now\nNote"
+  },
+  "8-template-prompt": true,
+  "sweep-360x640-day": [],
+  "sweep-360x640-night": [],
+  "sweep-390x844-day": [],
+  "sweep-390x844-night": []
+}

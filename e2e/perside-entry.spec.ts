@@ -165,20 +165,24 @@ test("per-side shows both sides, one ruler edits each value, both sides are stor
   );
   await expect(page.getByTestId("reps-field-right")).toHaveValue("8");
 
-  // Next session: the Now row's last hint shows both sides, reps prefill
-  // per side, RIR stays blank.
+  // Next session: last time's reps are per-side grey ghosts in the fields
+  // (boss r2 note 9), not prefilled values; RIR stays blank.
   // Set 2 is the pair (set 1 was the throwaway that unlocks the ruler).
   await finishSession(page);
   await startSessionWith(page, EX);
   await openRulerSet(page);
-  const last = page.getByTestId("set-mark-last-sides");
-  await expect(last).toContainText(/30 × 10/);
-  await expect(last).toContainText(/30 × 8/);
   // The exercise itself is still bilateral, so per-side is opted into again.
   await openSetTypeMenu(page);
   await page.getByTestId("set-type-perside").click();
-  await expect(page.getByTestId("reps-field-left")).toHaveValue("10");
-  await expect(page.getByTestId("reps-field-right")).toHaveValue("8");
+  await expect(page.getByTestId("reps-field-left")).toHaveValue("");
+  await expect(page.getByTestId("reps-field-left")).toHaveAttribute(
+    "placeholder",
+    "10",
+  );
+  await expect(page.getByTestId("reps-field-right")).toHaveAttribute(
+    "placeholder",
+    "8",
+  );
   await expect(page.getByTestId("rir-column-left")).toHaveValue("");
 });
 
@@ -392,6 +396,15 @@ for (const [w, h] of [
       await page.setViewportSize({ width: w, height: Math.round(h * 0.62) });
       await expectListInView(page, 2, "keyboard up");
       await page.setViewportSize({ width: w, height: h });
+      // The column follows visualViewport, whose resize can land a frame
+      // late: let it grow back before scrolling the list.
+      await expect
+        .poll(() =>
+          page
+            .getByTestId("session-column")
+            .evaluate((el) => Math.round(el.getBoundingClientRect().bottom)),
+        )
+        .toBe(h);
       // Reading older sets still scrolls: the list is not locked.
       const top = await page.getByTestId("session-scroll").evaluate((el) => {
         el.scrollTop = 0;

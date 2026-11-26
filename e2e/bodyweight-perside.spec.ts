@@ -153,7 +153,7 @@ test("unilateral bodyweight: editing a logged set changes the right reps", async
     ]);
 });
 
-test("bilateral bodyweight keeps the generic panel with the Last time row", async ({
+test("bilateral bodyweight keeps the generic panel, last time as a ghost", async ({
   page,
 }) => {
   const EX = await makeBodyweight(page, "BwBilateral");
@@ -166,9 +166,13 @@ test("bilateral bodyweight keeps the generic panel with the Last time row", asyn
 
   await start(page, EX);
   await expect(page.getByTestId("perside-row")).toHaveCount(0);
-  await expect(page.getByTestId("last-time-row")).toBeVisible();
-  await expect(page.getByTestId("last-time-row")).toContainText("12");
-  await expect(page.getByTestId("last-time-reset")).toBeVisible();
+  // Last time is the field's grey placeholder (boss r2 note 9), not a row.
+  await expect(page.getByTestId("last-time-row")).toHaveCount(0);
+  await expect(page.getByTestId("reps-field")).toHaveValue("");
+  await expect(page.getByTestId("reps-field")).toHaveAttribute(
+    "placeholder",
+    "12",
+  );
   await page.getByTestId("reps-field").fill("14");
   await expect(page.getByTestId("set-delta")).toBeVisible();
   await page.screenshot({

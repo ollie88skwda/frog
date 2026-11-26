@@ -7,11 +7,9 @@ import {
   waitForExercise,
 } from "./helpers";
 
-// Guards select-on-focus for numeric fields (components/ui/select-on-focus.ts):
-// tapping a weight/reps box selects its whole value, so typing replaces the
-// number instead of appending to it or landing mid-number.
-
-const EVIDENCE = process.env.UX_EVIDENCE_DIR;
+// Guards the caret rule for numeric fields (boss r2 note 5, 2026-11-25):
+// tapping a weight/reps box places a caret and selects nothing, reversing the
+// earlier select-on-focus. Fails on the select-on-focus build (0..3 selected).
 
 async function openLoggingRow(page: Page, name: string) {
   await page.goto("/library");
@@ -40,49 +38,22 @@ test.beforeEach(async ({ page }) => {
   await signIn(page);
 });
 
-test("tapping a numeric field selects its value; typing replaces it", async ({
+test("tapping a numeric field leaves a caret, not a selection", async ({
   page,
 }) => {
   await openLoggingRow(page, `Focus ${Date.now()}`);
   const weight = page.getByTestId("weight-field");
   await weight.fill("100");
   await weight.evaluate((el) => (el as HTMLInputElement).blur());
-
   await weight.tap();
-  if (EVIDENCE) {
-    // Before/after evidence: the tapped field in day and night, then the value
-    // after typing "80". Tag = before|after (UX_EVIDENCE_TAG).
-    const tag = process.env.UX_EVIDENCE_TAG ?? "after";
-    await page.waitForTimeout(300);
-    for (const mode of ["night", "day"] as const) {
-      await page.evaluate(
-        (m) => document.documentElement.setAttribute("data-mode", m),
-        mode,
-      );
-      await page.screenshot({
-        path: `${EVIDENCE}/select-on-focus-${mode}-${tag}.png`,
-      });
-    }
-    await page.keyboard.type("80");
-    await page.screenshot({ path: `${EVIDENCE}/type-replaces-${tag}.png` });
-    await page.keyboard.press("Backspace");
-    await page.keyboard.press("Backspace");
-    await weight.evaluate((el) => (el as HTMLInputElement).blur());
-    await weight.fill("100");
-    await weight.evaluate((el) => (el as HTMLInputElement).blur());
-    await weight.tap();
-  }
-  await expect
-    .poll(() => selection(page, "weight-field"))
-    .toEqual({ value: "100", start: 0, end: 3 });
-
-  await page.keyboard.type("80");
-  await expect(weight).toHaveValue("80");
+  // select-on-focus re-applied its selection a frame after focus.
+  await page.waitForTimeout(100);
+  const sel = await selection(page, "weight-field");
+  expect(sel.value).toBe("100");
+  expect(sel.start).toBe(sel.end);
 });
 
-test("text fields keep a normal caret (no select-on-focus)", async ({
-  page,
-}) => {
+test("text fields keep a normal caret", async ({ page }) => {
   await page.goto("/library");
   const search = page.getByTestId("exercise-search-input");
   await search.fill("bench");

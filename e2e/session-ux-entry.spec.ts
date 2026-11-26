@@ -57,7 +57,14 @@ test("item 1: the last tapped value owns the keyboard, the ruler and the highlig
     "data-active",
     "false",
   );
+  // The caret lands where tapped (boss r2 note 5), so the digit goes into
+  // reps at the caret; park it after the existing value.
+  await page
+    .getByTestId("reps-field")
+    .evaluate((el: HTMLInputElement) =>
+      el.setSelectionRange(el.value.length, el.value.length),
+    );
   await page.keyboard.type("8");
-  await expect(page.getByTestId("reps-field")).toHaveValue("8");
+  await expect(page.getByTestId("reps-field")).toHaveValue("108");
   await expect(page.getByTestId("rir-column")).toHaveValue("3");
 });

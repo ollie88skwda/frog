@@ -35,7 +35,7 @@ test("a brand-new exercise's first set opens empty, with no last-time row", asyn
   );
 });
 
-test("opening a set pre-fills from last session's same set index, with no user action", async ({
+test("last session's same set index shows as grey ghosts; a tap takes it, an untouched ghost is not logged", async ({
   page,
 }) => {
   const EX = await makeExercise(page, "SpotlightPrefill");
@@ -46,20 +46,41 @@ test("opening a set pre-fills from last session's same set index, with no user a
   await logBilateralSet(page, "85", "8");
   await finishSession(page);
 
-  // Session 2: opening the exercise, set 0's fields already carry session
-  // 1's set-0 values — before any tap on weight-field/reps-field/last-time.
+  // Session 2 (boss r2 note 9): set 0's fields are empty, with session 1's
+  // set-0 values as grey placeholders.
   await startSessionWith(page, EX);
+  await expect(page.getByTestId("weight-field")).toHaveValue("");
+  await expect(page.getByTestId("weight-field")).toHaveAttribute(
+    "placeholder",
+    "80",
+  );
+  await expect(page.getByTestId("reps-field")).toHaveAttribute(
+    "placeholder",
+    "10",
+  );
+  // Untouched ghosts are not logged: Log with only ghosts commits nothing.
+  await page.getByTestId("log-set").click();
+  await expect(page.getByTestId("set-mark-0-state")).not.toHaveAttribute(
+    "data-state",
+    "done",
+  );
+  // A tap takes the ghost.
+  await page.getByTestId("weight-field").click();
   await expect(page.getByTestId("weight-field")).toHaveValue("80");
+  await page.getByTestId("reps-field").click();
   await expect(page.getByTestId("reps-field")).toHaveValue("10");
-  await expect(page.getByTestId("set-mark-0")).toBeVisible();
-
-  // Committing set 0 advances to set 1 (a planned set from last time is NOT
-  // created by Log: it is the user's own "Add a set"), pre-filled from
-  // session 1's set 1.
   await logSet(page);
+
+  // Set 1 (the user's own "Add a set") ghosts session 1's set 1.
   await page.getByTestId("add-set").click();
-  await expect(page.getByTestId("weight-field")).toHaveValue("85");
-  await expect(page.getByTestId("reps-field")).toHaveValue("8");
+  await expect(page.getByTestId("weight-field")).toHaveAttribute(
+    "placeholder",
+    "85",
+  );
+  await expect(page.getByTestId("reps-field")).toHaveAttribute(
+    "placeholder",
+    "8",
+  );
 });
 
 test("both fields accept direct typing at any time, with no preliminary tap", async ({
@@ -172,6 +193,8 @@ test("reps-compare mirrors the same beat/same/below contract independently of we
     .filter({ has: page.getByTestId("reps-compare") });
   await expect(page.getByTestId("reps-compare")).toContainText(/same as last/i);
 
+  // Take last time's weight (ghost tap) so only reps differs.
+  await page.getByTestId("weight-field").click();
   await page.getByTestId("reps-field").fill("6");
   await expect(repsRow).toHaveAttribute("data-beat", "true");
   await expect(page.getByTestId("reps-compare")).toContainText("+1");

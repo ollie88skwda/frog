@@ -70,7 +70,7 @@ test("duration exercise logs a typed m:ss time and shows the inline timer", asyn
   await expect(page.getByTestId("duration-field")).toHaveValue("1:30");
 });
 
-test("weighted-bodyweight exercise carries a +weight unit suffix and honours a per-exercise unit override", async ({
+test("weighted-bodyweight exercise carries a +weight unit suffix; the session offers no unit switch", async ({
   page,
 }) => {
   const EX = `WPullup ${Date.now()}`;
@@ -84,14 +84,15 @@ test("weighted-bodyweight exercise carries a +weight unit suffix and honours a p
   await expect(weightRow).toContainText("+");
   await expect(page.getByTestId("reps-field")).toBeVisible();
 
-  // Override this exercise to kg via the exercise ⋯ menu → suffix reads +kg
-  // regardless of the global display unit.
+  // Settings' unit is the only unit (boss r2 note 7): the exercise ⋯ menu
+  // has no kg/lb choice and the suffix follows the global unit.
+  await expect(weightRow).toContainText(/\+(kg|lbs)/);
   await page.getByTestId(`block-${EX}-menu`).click();
-  await page.getByTestId(`block-${EX}-unit-kg`).click();
-  await expect(weightRow).toContainText("+kg");
-  await expect(page.getByTestId(`block-${EX}-unit-clear`)).toBeVisible();
+  await expect(page.getByTestId(`remove-block-${EX}`)).toBeVisible();
+  await expect(page.getByTestId(`block-${EX}-unit-kg`)).toHaveCount(0);
+  await page.keyboard.press("Escape");
 
-  // A logged set survives with the override in place.
+  // A logged set survives.
   await page.getByTestId("weight-field").fill("20");
   await page.getByTestId("reps-field").fill("6");
   await page.getByTestId("log-set").click();

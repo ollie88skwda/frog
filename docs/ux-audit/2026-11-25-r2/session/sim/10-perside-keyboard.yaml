@@ -1,0 +1,31 @@
+appId: com.apple.mobilesafari
+---
+- openLink: http://127.0.0.1:4592/
+- extendedWaitUntil:
+    visible: "Resume session"
+    timeout: 15000
+- tapOn: "Resume session"
+- extendedWaitUntil:
+    visible: "Add a set"
+    timeout: 15000
+- tapOn:
+    text: "Add a set"
+    index: 1
+- extendedWaitUntil:
+    visible: "Log .*"
+    timeout: 15000
+- tapOn:
+    text: "Per side"
+    optional: true
+- waitForAnimationToEnd
+- tapOn:
+    text: "Same"
+    optional: true
+- tapOn:
+    text: "Weight, both sides"
+    optional: true
+- tapOn:
+    text: "Left weight"
+    optional: true
+- waitForAnimationToEnd
+- takeScreenshot: /tmp/ux2-maestro/k10
