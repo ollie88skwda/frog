@@ -106,6 +106,7 @@ import {
   type SetStateAction,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -3324,6 +3325,60 @@ function ExerciseSpotlight({
   }
   const touchRef = useRef<{ x: number; y: number } | null>(null);
 
+  // The set list is bottom-anchored on the entry panel, so when it overflows
+  // (360x640 at set 3, or a taller per-side panel / keyboard shrinking the
+  // scroll area) it must stay scrolled to the bottom or the newest rows slide
+  // under the panel (item 6 follow-up). Stick to the bottom while the user is
+  // there, re-stick whenever a new set opens, and leave the position alone
+  // once they scroll up to read older sets. A tapped past set is brought into
+  // view instead.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pinnedRef = useRef(true);
+  const pinnedIndexRef = useRef(activeIndex);
+  const shownFocusRef = useRef<number | null>(manualFocus);
+  const keepListInView = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (pinnedRef.current) el.scrollTop = el.scrollHeight;
+  }, []);
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (pinnedIndexRef.current !== activeIndex) {
+      pinnedIndexRef.current = activeIndex;
+      pinnedRef.current = true;
+    }
+    if (shownFocusRef.current !== manualFocus) {
+      shownFocusRef.current = manualFocus;
+      if (manualFocus == null) pinnedRef.current = true;
+      else {
+        const row = el.querySelector<HTMLElement>(
+          `[data-testid="set-mark-${manualFocus}"]`,
+        );
+        if (row) {
+          const s = el.getBoundingClientRect();
+          const r = row.getBoundingClientRect();
+          if (r.bottom > s.bottom) el.scrollTop += r.bottom - s.bottom;
+          else if (r.top < s.top) el.scrollTop -= s.top - r.top;
+          pinnedRef.current =
+            el.scrollHeight - el.scrollTop - el.clientHeight <= 2;
+          return;
+        }
+      }
+    }
+    keepListInView();
+  });
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    // The scroll area shrinks when the panel grows (per-side, split weight,
+    // errors) or the viewport does (keyboard); its rows grow as sets land.
+    const ro = new ResizeObserver(keepListInView);
+    ro.observe(el);
+    for (const c of el.children) ro.observe(c);
+    return () => ro.disconnect();
+  }, [keepListInView]);
+
   const [copying, setCopying] = useState(false);
   const [copyError, setCopyError] = useState<{
     patch: ExercisePatch;
@@ -3651,7 +3706,16 @@ function ExerciseSpotlight({
       }}
     >
       <div
-        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+        ref={scrollRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          pinnedRef.current =
+            el.scrollHeight - el.scrollTop - el.clientHeight <= 2;
+        }}
+        // Never thinner than one set row plus its gap, so the last logged
+        // set stays readable even when the keyboard leaves little room; the
+        // entry panel gives way (scrolls inside itself) instead.
+        className="flex min-h-[calc(clamp(40px,5.4dvh,48px)+20px)] flex-1 flex-col overflow-y-auto overscroll-contain"
         data-testid="session-scroll"
       >
         {/* 2. Exercise header. */}
@@ -4133,12 +4197,13 @@ function ExerciseSpotlight({
             {nextName && (
               <Button
                 size="lg"
-                className="h-12 w-full"
+                className="h-12 w-full min-w-0"
                 onClick={() => onSwipe(1)}
                 data-testid="next-exercise"
               >
-                Next: {nextName}
-                <CaretRight className="size-4" weight="bold" />
+                {/* A long name truncates to one line; the chevron stays. */}
+                <span className="min-w-0 truncate">Next: {nextName}</span>
+                <CaretRight className="size-4 shrink-0" weight="bold" />
               </Button>
             )}
           </div>
@@ -5906,8 +5971,9 @@ function Spotlight({
         "flex min-h-[clamp(36px,5.2dvh,44px)] items-center gap-2",
         // Live set: the Now row is this header, one accent band across the
         // panel's top edge (item 6, docs/ux-audit/2026-11-25/fix-6-8).
+        // Sticky: when space is short the panel scrolls, the Now row stays.
         tab &&
-          "-mx-4 -mt-2 mb-1 min-h-[clamp(48px,6.4dvh,56px)] rounded-t-lg bg-accent-soft py-1 pr-4 pl-7",
+          "sticky -top-2 z-10 -mx-4 -mt-2 mb-1 min-h-[clamp(48px,6.4dvh,56px)] rounded-t-lg bg-accent-soft py-1 pr-4 pl-7",
       )}
       data-testid={tab ? "now-tab" : undefined}
     >
@@ -5981,7 +6047,7 @@ function Spotlight({
     const logQuiet = missingSide != null;
     return (
       <div
-        className="relative z-10 shrink-0 rounded-t-lg bg-surface px-4 pt-2"
+        className="relative z-10 min-h-0 overflow-y-auto overscroll-contain rounded-t-lg bg-surface px-4 pt-2"
         data-testid="entry-panel"
         data-set-index={index}
       >
