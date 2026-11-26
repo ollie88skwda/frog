@@ -78,20 +78,16 @@ test("Today -> routine -> log sets -> finish -> vs-plan report -> history", asyn
   await expect(target).toContainText("4-6");
   await expect(target).toContainText("RIR");
   await expect(page.getByTestId("top-set-label")).toHaveText(/top set/i);
-  await expect(page.getByTestId("rir-option-2")).toHaveAttribute(
+  // (2026-11-25: RIR is a typed value + ruler, no 0-3 buttons.)
+  await expect(page.getByTestId("entry-col-rir")).toHaveAttribute(
     "data-hint",
-    "true",
+    "2",
   );
-  await expect(
-    page.locator('[data-testid^="rir-option-"][aria-pressed="true"]'),
-  ).toHaveCount(0);
-  // One tap accepts the hint.
+  await expect(page.getByTestId("rir-column")).toHaveValue("");
+  // Tapping RIR and typing the planned value accepts it.
   await page.getByTestId("rir-column").click();
-  await page.getByTestId("rir-option-2").click();
-  await expect(page.getByTestId("rir-option-2")).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await page.keyboard.type("2");
+  await expect(page.getByTestId("rir-column")).toHaveValue("2");
 
   // Top set 100 x 6 -> top of range, with a Brzycki e1RM line, live strip.
   await page.getByTestId("weight-field").fill("100");

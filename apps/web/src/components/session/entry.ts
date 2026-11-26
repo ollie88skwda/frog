@@ -82,3 +82,44 @@ export function snapToStep(
 export function isMajorTick(index: number, majorEvery: number): boolean {
   return index % majorEvery === 0;
 }
+
+/**
+ * Writes `label value` into a setup note, replacing that label's existing
+ * number ("Seat 3" → "Seat 5") or appending it ("…, Seat 5").
+ */
+export function applySetupSetting(
+  draft: string,
+  label: string,
+  value: string,
+): string {
+  const re = new RegExp(`\\b${label}\\s+\\d+(?:\\.\\d+)?`, "i");
+  const piece = `${label} ${value}`;
+  if (re.test(draft)) return draft.replace(re, piece);
+  const t = draft.trim();
+  return t ? `${t.replace(/[,;]\s*$/, "")}, ${piece}` : piece;
+}
+
+/**
+ * Which exercise a reopened session lands on: the one the user was last on
+ * (saved per session on this device) when it still exists, else the
+ * exercise they are actually on by set state: the last one with logged sets
+ * if it still has planned sets open, otherwise the next one after it.
+ */
+export function resumeBlockIndex(
+  blocks: { seId: string; committed: number; planned: number }[],
+  savedSeId: string | null,
+): number {
+  if (blocks.length === 0) return -1;
+  if (savedSeId) {
+    const i = blocks.findIndex((b) => b.seId === savedSeId);
+    if (i >= 0) return i;
+  }
+  let last = -1;
+  blocks.forEach((b, i) => {
+    if (b.committed > 0) last = i;
+  });
+  if (last < 0) return 0;
+  const b = blocks[last];
+  if (b.committed < b.planned) return last;
+  return Math.min(last + 1, blocks.length - 1);
+}

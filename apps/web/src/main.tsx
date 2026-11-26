@@ -6,6 +6,10 @@ import { MotionProvider } from "./lib/motion";
 import "./lib/test-hooks";
 import { registerServiceWorker } from "./lib/pwa";
 import "./styles/theme.css";
+import "./components/ui/input-focus.css";
+import { installSelectOnFocus } from "./components/ui/select-on-focus";
+
+installSelectOnFocus();
 
 const root = document.getElementById("root");
 if (!root) throw new Error("missing #root");

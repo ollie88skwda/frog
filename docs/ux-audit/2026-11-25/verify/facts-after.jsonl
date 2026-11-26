@@ -1,0 +1,82 @@
+{"item":"2","key":"rulers-first-set-weight","value":[]}
+{"item":"2","key":"rulers-first-set-reps","value":[]}
+{"item":"15","key":"weight-selection-after-tap","value":{"value":"100","start":0,"end":3}}
+{"item":"15","key":"weight-focus-style","value":{"bg":"rgb(224, 241, 222)","shadow":"rgb(56, 97, 52) 0px 0px 0px 2px inset","caret":"rgb(56, 97, 52)","outline":"none"}}
+{"item":"15","key":"weight-after-typing-80","value":"80"}
+{"item":"15","key":"weight-second-tap","value":{"start":1,"end":1}}
+{"item":"15","key":"reps-12-tap-type-9","value":"9"}
+{"item":"11","key":"clock-rest","value":{"testid":"rest-stopwatch","text":"REST 0:00 Stop","title":"Resting after set 1 — tap to stop, hold for session length","kind":"rest"}}
+{"item":"11","key":"clock-set-open","value":{"testid":"rest-stopwatch","text":"REST 0:00 Stop","title":"Resting after set 1 — tap to stop, hold for session length","kind":"rest"}}
+{"item":"2","key":"rulers-second-set-weight","value":["weight-ruler"]}
+{"item":"5","key":"weight-geometry","value":{"minus":{"x":24,"y":689,"w":56,"h":44},"plus":{"x":310,"y":689,"w":56,"h":44},"ruler":{"x":88,"y":684,"w":214,"h":54},"wrap":{"x":16,"y":650,"w":358,"h":96}}}
+{"item":"5","key":"weight-plus-click","value":{"before":"","after":"2.5"}}
+{"item":"5","key":"reps-geometry","value":{"minus":{"x":24,"y":689,"w":56,"h":44},"plus":{"x":310,"y":689,"w":56,"h":44},"ruler":{"x":88,"y":684,"w":214,"h":54},"wrap":{"x":16,"y":650,"w":358,"h":96}}}
+{"item":"5","key":"reps-plus-click","value":{"before":"","after":"1"}}
+{"item":"5","key":"rir-geometry","value":{"minus":{"x":24,"y":689,"w":56,"h":44},"plus":{"x":310,"y":689,"w":56,"h":44},"ruler":{"x":88,"y":684,"w":214,"h":54},"wrap":{"x":16,"y":650,"w":358,"h":96}}}
+{"item":"5","key":"rir-plus-click","value":{"before":"","after":"3"}}
+{"item":"4","key":"rulers-on-rir","value":["rir-ruler"]}
+{"item":"4","key":"rir-column-tag","value":"INPUT"}
+{"item":"1","key":"after-rir-type-3","value":{"reps":"10","rir":"3","rulers":["rir-ruler"],"focused":"rir-column"}}
+{"item":"1","key":"after-retap-reps","value":{"rulers":["reps-ruler"],"repsActive":"true","rirActive":"false","underline":[{"t":"reps-field","active":"true"},{"t":"rir-column","active":"false"}]}}
+{"item":"1","key":"after-retap-type-8","value":{"reps":"8","rir":"3"}}
+{"item":"6","key":"now-row","value":{"x":16,"y":211,"w":358,"h":46}}
+{"item":"6","key":"entry-panel","value":{"x":0,"y":490,"w":390,"h":354}}
+{"item":"6","key":"now-link","value":{"x":105,"y":226,"w":16,"h":16}}
+{"item":"6","key":"exercise-progress","value":"1 of 2 sets done·1 to go"}
+{"item":"6","key":"now-row-style","value":{"border":"0px rgb(33, 24, 22)","outline":"none","shadow":"rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgba(0, 0, 0, 0) 0px 0px 0px 0px, rgb(56, 97, 52) 0px 0px 0px 2px inset, rgba(0, 0, 0, 0) 0px 0px 0px 0px"}}
+{"item":"10","key":"set-mark-0","value":{"selected":"true","ariaCurrent":"true","style":"0px rgb(33, 24, 22) rgb(224, 241, 222)"}}
+{"item":"10","key":"set-mark-1-style","value":"0px rgb(33, 24, 22) oklab(0.940337 -0.0245014 0.0189626 / 0.5)"}
+{"item":"10","key":"panel-weight","value":"60"}
+{"item":"10","key":"set-number","value":"1Set 1· editing"}
+{"item":"7","key":"bilateral-bottom-text","value":"VfBi 1795645009031-n3o5\n1 of 1\n\n2 of 2 sets done\n·\nall logged\n\n1\n60 kg × 10\n2\n62.5 kg × 8\nRIR 3\n+ Add a set\nAdd setup or form notes\nrest 0:07 avg\n\n2 sets logged\n\nSet 1\n60 kg × 10\nSet 2\n62.5 kg × 8\nAdd a set"}
+{"item":"7","key":"sets-done-summary","value":"Set 160 kg × 10Set 262.5 kg × 8"}
+{"item":"12","key":"touch-hold-reveal-visible","value":true}
+{"item":"12","key":"touch-hold-reveal-text","value":"Session0:02"}
+{"item":"12","key":"after-release-reveal-visible","value":false}
+{"item":"12","key":"after-release-menu-open","value":0}
+{"item":"12","key":"mouse-hold-reveal-visible","value":true}
+{"item":"12","key":"rest-clock","value":{"testid":"rest-stopwatch","text":"REST 0:00 Stop","title":"Resting after set 1 — tap to stop, hold for session length","kind":"rest"}}
+{"item":"12","key":"rest-hold-reveal-visible","value":true}
+{"item":"12","key":"rest-hold-reveal-text","value":"Session0:06"}
+{"item":"12","key":"rest-after-release-clock","value":{"testid":"rest-stopwatch","text":"REST 0:02 Stop","title":"Resting after set 1 — tap to stop, hold for session length","kind":"rest"}}
+{"item":"3","key":"geometry-390","value":{"weight":{"x":16,"y":554,"w":276,"h":51},"repsL":{"x":16,"y":662,"w":88,"h":51},"rirL":{"x":104,"y":662,"w":88,"h":51},"repsR":{"x":199,"y":662,"w":88,"h":51},"rirR":{"x":287,"y":662,"w":88,"h":51}}}
+{"item":"3","key":"geometry-360","value":{"weight":{"x":16,"y":393,"w":246,"h":44},"repsL":{"x":16,"y":488,"w":80,"h":44},"rirR":{"x":264,"y":488,"w":80,"h":44},"log":{"x":16,"y":572,"w":328,"h":48},"overflowX":0}}
+{"item":"9","key":"log-one-side","value":{"text":"Add right reps to log","ready":"false","disabled":false,"bg":"rgb(247, 241, 232)"}}
+{"item":"9","key":"log-both-sides","value":{"text":"Log 30 kg × 10/8 · L + R","ready":"true","bg":"rgb(32, 27, 24)"}}
+{"item":"8","key":"set-mark-0-html-text","value":"1L30 × 10R30 × 8"}
+{"item":"8","key":"side-tags","value":0}
+{"item":"8","key":"sides-box","value":{"x":64,"y":167,"w":170,"h":36}}
+{"item":"7","key":"perside-bottom-text","value":"VfUni 1795645034013-ibn0\n1 of 1\n\n1 of 1 set done\n·\nall logged\n\n1\nL\n30 × 10\nR\n30 × 8\n+ Add a set\nAdd setup or form notes\n\n1 set logged\n\nSet 1\nL\n30 kg × 10\nR\n30 kg × 8\nAdd a set"}
+{"item":"7","key":"sets-done-summary-visible","value":true}
+{"item":"13","key":"setup-add-visible","value":true}
+{"item":"13","key":"setup-row-visible","value":false}
+{"item":"13","key":"presets-visible","value":true}
+{"item":"13","key":"setting-chips","value":["Seat","Pad","Back","Handles","Pin"]}
+{"item":"13","key":"value-chips","value":14}
+{"item":"13","key":"note-after-pad-5","value":"Pad 5"}
+{"item":"13","key":"row-after-save","value":"Setup & formPad 5"}
+{"item":"14","key":"resume-lands-on","value":"VfResB 1795645048219-l4da"}
+{"item":"14","key":"fresh-tab-lands-on","value":"VfResB 1795645048219-l4da"}
+{"item":"14","key":"reload-lands-on","value":"VfResB 1795645048219-l4da"}
+{"item":"14","key":"after-prev","value":"VfResA 1795645046959-k6l7"}
+{"item":"14","key":"resume-after-prev-lands-on","value":"VfResA 1795645046959-k6l7"}
+{"item":"14","key":"names","value":{"A":"VfResA 1795645046959-k6l7","B":"VfResB 1795645048219-l4da"}}
+{"item":"16","key":"route-fade-opacity-first-frames","value":[1,1,0.5,0.56,0.72,0.82,0.88,0.92]}
+{"item":"16","key":"route-fade-min-opacity","value":0.5}
+{"item":"16","key":"meter-animations-on-return","value":0}
+{"item":"16","key":"animations-at-today-return","value":[]}
+{"item":"16","key":"today-label-topmost-during-slide","value":["label","label","label","label","label","label","label","label","label","label","label","label"]}
+{"item":"16","key":"tab-pill-left-by-frame","value":[199,199,199,195,166,133,107,90,79,71,65,59,55,52,50,48,47,47,47,47]}
+{"item":"16","key":"sheet-settle-ms","value":186}
+{"item":"16","key":"sheet-top-series","value":[[0,844],[27,758],[67,685],[107,655],[146,642],[186,638],[228,638],[268,638],[308,638],[349,638],[387,638],[427,638],[468,638],[506,638],[549,638]]}
+{"item":"17","key":"route-fade-opacity-first-frames","value":[1,1,1,1,1,1,1,1]}
+{"item":"17","key":"route-fade-min-opacity","value":1}
+{"item":"17","key":"meter-animations-on-return","value":0}
+{"item":"17","key":"animations-at-today-return","value":[]}
+{"item":"17","key":"today-label-topmost-during-slide","value":["label","label","label","label","label","label","label","label","label","label","label","label"]}
+{"item":"17","key":"tab-pill-left-by-frame","value":[199,199,47,47,47,47,47,47,47,47,47,47,47,47,47,47,47,47,47,47]}
+{"item":"17","key":"sheet-settle-ms","value":19}
+{"item":"17","key":"sheet-top-series","value":[[0,844],[32,638],[72,638],[111,638],[152,638],[192,638],[233,638],[272,638],[314,638],[353,638],[394,638],[433,638],[472,638],[512,638],[554,638]]}
+{"item":"17","key":"session-running-animations","value":[]}
+{"item":"16","key":"meter-return-1","value":{"fills":1,"meterGrowEls":0,"firstFrames":[[],[],[22],[22],[22],[22]],"last":[22]}}
+{"item":"16","key":"meter-return-2","value":{"fills":1,"meterGrowEls":0,"firstFrames":[[],[],[22],[22],[22],[22]],"last":[22]}}

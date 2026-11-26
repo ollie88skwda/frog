@@ -101,6 +101,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   type Dispatch,
+  type ReactNode,
   type TouchEvent as ReactTouchEvent,
   type SetStateAction,
   useCallback,
@@ -124,11 +125,18 @@ import {
   filterExercises,
 } from "@/components/exercise-filter";
 import { InfoTip } from "@/components/lesson";
-import { fieldStep, logLabel, stepValue } from "@/components/session/entry";
+import {
+  applySetupSetting,
+  fieldStep,
+  logLabel,
+  resumeBlockIndex,
+  stepValue,
+} from "@/components/session/entry";
 import { ScrubSurface, Stepper } from "@/components/session/entry-tile";
 import {
   afterLog,
   hasOpenSet,
+  offeredSets,
   plannedSetCount,
 } from "@/components/session/log-nav";
 import {
@@ -148,8 +156,13 @@ import {
   rirHint,
   setTarget,
 } from "@/components/session/prescription";
-import { RestStopwatch } from "@/components/session/rest-stopwatch";
+import {
+  RestStopwatch,
+  SessionLengthReveal,
+  useHoldReveal,
+} from "@/components/session/rest-stopwatch";
 import { Ruler } from "@/components/session/ruler";
+import { SideCell } from "@/components/session/side-cell";
 import {
   FinishPhotoStrip,
   type PendingPhoto,
@@ -441,6 +454,9 @@ function fieldText(
 
 // The screen's quiet square controls (menus, note, clock): 44px, one resting
 // fill that reads on the page and on the entry panel in both modes.
+// Last exercise shown per session on this device (resume lands back on it).
+const ACTIVE_KEY = "frog.session.active.";
+
 const CHROME_BTN = "size-11 bg-secondary text-ink hover:bg-active md:size-11";
 
 const RIR_SEGMENTS = [0, 1, 2, 3, 4] as const;
@@ -862,14 +878,6 @@ export default function SessionScreen() {
       })),
     );
   }, [restored, blocks, sessionLoaded, session?.routineId, routineLoading]);
-
-  // Default the spotlight to the first exercise once blocks land; if the
-  // active exercise gets removed, fall back to whatever's now first.
-  useEffect(() => {
-    if (!blocks || blocks.length === 0) return;
-    if (activeSeId && blocks.some((b) => b.seId === activeSeId)) return;
-    setActiveSeId(blocks[0].seId);
-  }, [blocks, activeSeId]);
 
   const autoOpenedPicker = useRef(false);
   useEffect(() => {
@@ -1331,6 +1339,45 @@ export default function SessionScreen() {
     [routineByReId, copySeed],
   );
 
+  // Once blocks land, open on the exercise the user is actually on: the one
+  // last shown on this device for this session, else the one with unfinished
+  // sets by set state (resumeBlockIndex) — not exercise 1. If the active
+  // exercise gets removed, fall back to whatever's now first.
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (!blocks || blocks.length === 0) return;
+    if (activeSeId && blocks.some((b) => b.seId === activeSeId)) return;
+    if (!resumed.current) {
+      resumed.current = true;
+      let saved: string | null = null;
+      try {
+        saved = localStorage.getItem(ACTIVE_KEY + sessionId);
+      } catch {
+        /* storage unavailable: fall back to set state */
+      }
+      const i = resumeBlockIndex(
+        blocks.map((b) => ({
+          seId: b.seId,
+          committed: countSets(b.committed),
+          planned: plannedSetCount((seedOverride[b.seId] ?? seedFor(b)).length),
+        })),
+        saved,
+      );
+      setActiveSeId(blocks[Math.max(0, i)].seId);
+      return;
+    }
+    setActiveSeId(blocks[0].seId);
+  }, [blocks, activeSeId, sessionId, seedOverride, seedFor]);
+  // Remember which exercise is open so reopening the app lands back on it.
+  useEffect(() => {
+    if (!activeSeId || !sessionId) return;
+    try {
+      localStorage.setItem(ACTIVE_KEY + sessionId, activeSeId);
+    } catch {
+      /* storage unavailable: resume falls back to set state */
+    }
+  }, [activeSeId, sessionId]);
+
   const structuralChange = useMemo(() => {
     if (!session?.routineId || !routineDetail || !blocks) return false;
     if (blocks.some((b) => !b.routineExerciseId)) return true;
@@ -1556,6 +1603,15 @@ export default function SessionScreen() {
                 blocks.find((b) => b.seId === rest.seId)?.committed ?? [],
               )}
               onStop={dismissRest}
+              sessionText={() =>
+                session
+                  ? clockText(
+                      (session.endedAt ?? Date.now()) -
+                        session.startedAt -
+                        currentPausedMs(),
+                    )
+                  : "—"
+              }
             />
           ) : session ? (
             <SessionDurationControl
@@ -2532,13 +2588,23 @@ function rirLabel(r: {
 
 // Set list: one 48px card per logged set plus the current "Now" row; tap a row
 // to open that set in the entry panel. Planned sets are never drawn. Same
-// set-mark-* test hooks as the old marks band.
+// set-mark-* test hooks as the old marks band. While logging live, the Now row
+// is not drawn in the list: `variant="tab"` renders it as the entry panel's
+// own top band (Spotlight's `tab` slot), so the row and the panel are one
+// surface, and the list (bottom-anchored in the scroll area) sits directly on
+// it (item 6, docs/ux-audit/2026-11-25/fix-6-8).
 function SetRows({
   marks,
   rows,
   fmtWeight,
+  selectedIndex,
+  variant = "list",
 }: {
   marks: Mark[];
+  /** The set the entry panel below is showing (live or a tapped past set). */
+  selectedIndex: number;
+  /** "tab": only the live Now row, as the entry panel's top band. */
+  variant?: "list" | "tab";
   rows: {
     text: string;
     lastText: string;
@@ -2552,21 +2618,171 @@ function SetRows({
   fmtWeight: (kg: number) => string;
 }) {
   const motionReady = useMotionReady();
+  // The live Now row (selected, not yet logged) belongs to the panel.
+  const tabIndex =
+    marks[selectedIndex]?.kind === "current" ? selectedIndex : -1;
+  if (variant === "tab") {
+    if (tabIndex < 0) return null;
+    return renderRow(tabIndex, true);
+  }
+  function renderRow(i: number, tab: boolean) {
+    const m = marks[i];
+    const r = rows[i];
+    const now = m.kind === "current";
+    // The row the entry panel is showing: the Now row while logging live,
+    // or the past set that was tapped (edit mode).
+    const selected = i === selectedIndex;
+    return (
+      <button
+        type="button"
+        disabled={!m.onTap}
+        onClick={(e) => {
+          // A per-side pair opens on the side that was tapped: from the
+          // R value rightwards is the right side (a matched pair, shown
+          // as one value, splits at the row's middle).
+          const box = e.currentTarget.getBoundingClientRect();
+          const r = e.currentTarget
+            .querySelector("[data-pair-right]")
+            ?.getBoundingClientRect();
+          // A wrapped pair (R half on its own line) splits by line.
+          const wrapped = r != null && r.top > box.top + box.height / 3;
+          const isRight = wrapped
+            ? e.clientY >= r.top - 2
+            : e.clientX >= (r ? r.left - 4 : box.left + box.width / 2);
+          m.onTap?.(m.paired ? (isRight ? "right" : "left") : null);
+        }}
+        className={cn(
+          "relative grid min-h-[clamp(40px,5.4dvh,48px)] w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 px-3 text-left text-[17px] text-ink press duration-100",
+          tab
+            ? "min-w-0 flex-1 rounded-none bg-transparent px-0"
+            : selected
+              ? "rounded-md bg-accent-soft ring-2 ring-accent-ink ring-inset"
+              : now
+                ? "rounded-md bg-accent-soft/50"
+                : "rounded-md bg-surface hover:bg-surface-hover",
+        )}
+        aria-current={selected ? "true" : undefined}
+        data-selected={selected ? "true" : "false"}
+        data-tab={tab ? "true" : undefined}
+        data-testid={`set-mark-${i}`}
+      >
+        <span
+          className={cn(
+            "num flex size-6 items-center justify-center rounded-sm text-xs font-semibold",
+            selected
+              ? "bg-accent-ink text-bg"
+              : now
+                ? "bg-accent text-on-accent"
+                : m.kind === "warmup"
+                  ? "bg-surface-2 text-warn"
+                  : "bg-accent-soft text-accent-ink",
+          )}
+          data-testid={`set-mark-${i}-state`}
+          data-state={m.kind}
+        >
+          {m.kind === "warmup" ? "W" : i + 1}
+        </span>
+        <span className="num flex min-w-0 items-center gap-2 font-semibold">
+          {(() => {
+            if (now)
+              return (
+                <span className="flex min-w-0 items-center gap-1 truncate">
+                  Now
+                  {selected && (
+                    <CaretDown
+                      aria-label="logging below"
+                      className="size-4 shrink-0 text-accent-ink"
+                      weight="bold"
+                      data-testid="now-link"
+                    />
+                  )}
+                </span>
+              );
+            const sides = r.pair
+              ? formatPreviousSides(r.pair, fmtWeight)
+              : null;
+            // Uneven per-side pair: label each side. A matched pair
+            // collapses to one value plus the L+R tag.
+            if (sides?.right != null)
+              return (
+                // Two outlined cells, one per side, so a per-side set
+                // reads as split at a glance (SideCell, >= 3:1 on
+                // every row fill). Wraps the R cell under the L cell
+                // rather than clipping on a narrow row.
+                <span
+                  className="flex min-w-0 flex-wrap items-center gap-1.5 py-1 text-[15px] leading-6"
+                  data-testid={`set-mark-${i}-sides`}
+                >
+                  <SideCell side="left">{sides.left}</SideCell>
+                  <SideCell side="right" data-pair-right>
+                    {sides.right}
+                  </SideCell>
+                </span>
+              );
+            return (
+              <>
+                <span className="min-w-0 truncate">{r.text}</span>
+                {m.paired && (
+                  <SideTag side="both" testId={`set-mark-${i}-side-tag`} />
+                )}
+              </>
+            );
+          })()}
+          {m.pr && (
+            <Medal
+              className="size-4 shrink-0 text-accent-ink"
+              data-testid={`set-mark-${i}-medal`}
+            />
+          )}
+        </span>
+        <span
+          className={cn(
+            "num flex items-center gap-2 text-sm text-soft",
+            tab && "min-w-0 overflow-hidden whitespace-nowrap",
+          )}
+        >
+          {now ? (
+            r.lastPair ? (
+              <span
+                className="inline-flex items-center gap-1"
+                data-testid="set-mark-last-sides"
+              >
+                last
+                <PreviousSets ghost={r.lastPair} formatWeight={fmtWeight} />
+              </span>
+            ) : r.lastText ? (
+              `last ${r.lastText}`
+            ) : (
+              ""
+            )
+          ) : (
+            r.rirText
+          )}
+          {r.hasNote && (
+            <Notebook className="size-4 shrink-0 text-accent-ink" />
+          )}
+        </span>
+      </button>
+    );
+  }
   return (
-    <div className="flex flex-col px-4" data-testid="marks-band">
+    <div className="flex flex-col px-4 pb-2" data-testid="marks-band">
       {/* A logged set morphs in place (same key, new state); an added set
           grows in and a removed one folds away instead of the list jumping.
           The wrapper owns the 4px gap (as top padding) so a folding row takes
           its gap with it. */}
       <AnimatePresence initial={false}>
-        {marks.map((m, i) => {
-          const r = rows[i];
-          const now = m.kind === "current";
+        {marks.map((_m, i) => {
+          // The live Now row is drawn by the panel (variant "tab"); its slot
+          // stays here, empty, so logging it morphs it in place into a done
+          // row (no grow-in under the user's thumb) and a set that becomes
+          // the Now row never lingers here as an exiting duplicate.
+          const inPanel = i === tabIndex;
           return (
             <motionEl.div
               // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
               key={`set-${i}`}
-              className={cn(i > 0 && "pt-1")}
+              className={cn(i > 0 && !inPanel && "pt-1")}
               initial={motionReady ? COLLAPSED : false}
               animate={EXPANDED}
               exit={{
@@ -2575,121 +2791,96 @@ function SetRows({
                 transition: FADE_OUT,
               }}
             >
-              <button
-                type="button"
-                disabled={!m.onTap}
-                onClick={(e) => {
-                  // A per-side pair opens on the side that was tapped: from the
-                  // R value rightwards is the right side (a matched pair, shown
-                  // as one value, splits at the row's middle).
-                  const box = e.currentTarget.getBoundingClientRect();
-                  const r = e.currentTarget
-                    .querySelector("[data-pair-right]")
-                    ?.getBoundingClientRect();
-                  // A wrapped pair (R half on its own line) splits by line.
-                  const wrapped = r != null && r.top > box.top + box.height / 3;
-                  const isRight = wrapped
-                    ? e.clientY >= r.top - 2
-                    : e.clientX >= (r ? r.left - 4 : box.left + box.width / 2);
-                  m.onTap?.(m.paired ? (isRight ? "right" : "left") : null);
-                }}
-                className={cn(
-                  "grid min-h-[clamp(40px,5.4dvh,48px)] w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 text-left text-[17px] text-ink press duration-100",
-                  now ? "bg-accent-soft" : "bg-surface hover:bg-surface-hover",
-                )}
-                data-testid={`set-mark-${i}`}
-              >
-                <span
-                  className={cn(
-                    "num flex size-6 items-center justify-center rounded-sm text-xs font-semibold",
-                    now
-                      ? "bg-accent text-on-accent"
-                      : m.kind === "warmup"
-                        ? "bg-surface-2 text-warn"
-                        : "bg-accent-soft text-accent-ink",
-                  )}
-                  data-testid={`set-mark-${i}-state`}
-                  data-state={m.kind}
-                >
-                  {m.kind === "warmup" ? "W" : i + 1}
-                </span>
-                <span className="num flex min-w-0 items-center gap-2 font-semibold">
-                  {(() => {
-                    if (now)
-                      return <span className="min-w-0 truncate">Now</span>;
-                    const sides = r.pair
-                      ? formatPreviousSides(r.pair, fmtWeight)
-                      : null;
-                    // Uneven per-side pair: label each side. A matched pair
-                    // collapses to one value plus the L+R tag.
-                    if (sides?.right != null)
-                      return (
-                        // Wraps the R half under the L half rather than clipping
-                        // it when a narrow row can't fit both.
-                        <span
-                          className="flex min-w-0 flex-wrap items-center gap-x-1 py-1 leading-6"
-                          data-testid={`set-mark-${i}-sides`}
-                        >
-                          <SideTag side="left" />
-                          {sides.left}
-                          <span
-                            data-pair-right
-                            className="ml-1 inline-flex items-center gap-1"
-                          >
-                            <SideTag side="right" />
-                            {sides.right}
-                          </span>
-                        </span>
-                      );
-                    return (
-                      <>
-                        <span className="min-w-0 truncate">{r.text}</span>
-                        {m.paired && (
-                          <SideTag
-                            side="both"
-                            testId={`set-mark-${i}-side-tag`}
-                          />
-                        )}
-                      </>
-                    );
-                  })()}
-                  {m.pr && (
-                    <Medal
-                      className="size-4 shrink-0 text-accent-ink"
-                      data-testid={`set-mark-${i}-medal`}
-                    />
-                  )}
-                </span>
-                <span className="num flex items-center gap-2 text-sm text-soft">
-                  {now ? (
-                    r.lastPair ? (
-                      <span
-                        className="inline-flex items-center gap-1"
-                        data-testid="set-mark-last-sides"
-                      >
-                        last
-                        <PreviousSets
-                          ghost={r.lastPair}
-                          formatWeight={fmtWeight}
-                        />
-                      </span>
-                    ) : r.lastText ? (
-                      `last ${r.lastText}`
-                    ) : (
-                      ""
-                    )
-                  ) : (
-                    r.rirText
-                  )}
-                  {r.hasNote && (
-                    <Notebook className="size-4 shrink-0 text-accent-ink" />
-                  )}
-                </span>
-              </button>
+              {!inPanel && renderRow(i, false)}
             </motionEl.div>
           );
         })}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Setup presets: one tap writes "Seat 4" into the setup note ───────────
+
+const SETUP_SETTINGS = ["Seat", "Pad", "Back", "Handles", "Pin"] as const;
+const SETUP_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+
+function SetupPresets({
+  draft,
+  onChange,
+}: {
+  draft: string;
+  onChange: (next: string) => void;
+}) {
+  const [label, setLabel] = useState<string>("Seat");
+  const [custom, setCustom] = useState("");
+  const current = draft.match(
+    new RegExp(`\\b${label}\\s+(\\d+(?:\\.\\d+)?)`, "i"),
+  )?.[1];
+  return (
+    <div className="mb-3 flex flex-col gap-2" data-testid="setup-presets">
+      <ChipGroup
+        value={label}
+        onValueChange={(v) => {
+          if (v) setLabel(v);
+        }}
+        className="flex-nowrap gap-1 overflow-x-auto"
+        aria-label="Machine setting"
+      >
+        {SETUP_SETTINGS.map((l) => (
+          <ChipItem
+            key={l}
+            value={l}
+            className="h-11 md:h-8"
+            data-testid={`setup-setting-${l.toLowerCase()}`}
+          >
+            {l}
+          </ChipItem>
+        ))}
+      </ChipGroup>
+      <div className="grid grid-cols-6 gap-1">
+        {SETUP_VALUES.map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(applySetupSetting(draft, label, String(n)))}
+            aria-pressed={current === String(n)}
+            className={cn(
+              "num h-11 rounded-sm text-sm font-semibold transition-colors duration-100 md:h-8",
+              current === String(n)
+                ? "bg-action text-on-action"
+                : "bg-secondary text-ink hover:bg-active",
+            )}
+            data-testid={`setup-value-${n}`}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <Input
+          inputMode="decimal"
+          placeholder={`${label} number`}
+          value={custom}
+          onChange={(e) =>
+            setCustom(sanitizeNumeric(e.target.value, { decimal: true }))
+          }
+          className="num h-11 min-w-0 flex-1"
+          data-testid="setup-value-custom"
+        />
+        <Button
+          variant="outline"
+          className="h-11 md:h-11"
+          disabled={custom.trim() === ""}
+          onClick={() => {
+            onChange(applySetupSetting(draft, label, custom.trim()));
+            setCustom("");
+          }}
+          data-testid="setup-value-add"
+        >
+          Set {label.toLowerCase()}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -3369,6 +3560,59 @@ function ExerciseSpotlight({
     }
   }
 
+  // The set list and the entry panel's Now tab render from the same rows.
+  const setRowProps = {
+    marks,
+    selectedIndex: openSet || manualFocus != null ? focusedIndex : -1,
+    // Pair rows carry two values; the unit is on the entry panel, so
+    // they drop it to fit both sides on a 360px row.
+    fmtWeight: (kg: number) => String(toDisplayWeight(kg, blockUnit)),
+    rows: marks.map((_m, i) => {
+      const g = committedGroups[i];
+      // ghostFor is typed on DraftSet; useGhost rows are GhostSets.
+      const lastGhost = ghostFor(ghost, i) as GhostSet;
+      // A per-side pair shows both sides (PreviousSets: one value when
+      // they match, L and R when they differ), never just the left.
+      const pair: GhostSet | null =
+        g && g.length === 2
+          ? {
+              weightKg: g[0].weightKg ?? null,
+              reps: g[0].reps ?? null,
+              durationSec: g[0].durationSec ?? null,
+              otherSide: {
+                weightKg: g[1].weightKg ?? null,
+                reps: g[1].reps ?? null,
+                durationSec: g[1].durationSec ?? null,
+              },
+            }
+          : null;
+      const text = g
+        ? fieldsFor(type)
+            .map((k) => fieldText(k, g[0], blockUnit, distUnit))
+            .filter((t) => t !== "—")
+            .join(" × ")
+        : "";
+      const lastText = fieldsFor(type)
+        .map((k) => fieldText(k, lastGhost, blockUnit, distUnit))
+        .filter((t) => t !== "—")
+        .join(" × ");
+      const rirL = g ? rirLabel(g[0]) : "";
+      const rirR = g && g.length === 2 ? rirLabel(g[1]) : "";
+      const rirText =
+        rirR && rirR !== rirL
+          ? `${rirL || "RIR —"} / ${rirR.replace("RIR ", "")}`
+          : rirL;
+      return {
+        text,
+        lastText,
+        rirText,
+        hasNote: !!g?.some((r) => r.note),
+        pair,
+        lastPair: lastGhost.otherSide ? lastGhost : null,
+      };
+    }),
+  };
+
   // Swipe between exercises from anywhere on the panel (restored after #125
   // narrowed it to the header). Gestures that belong to something else are
   // ignored at touchstart: the ruler's own drag, text inputs, sheets/dialogs
@@ -3407,7 +3651,7 @@ function ExerciseSpotlight({
       }}
     >
       <div
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
         data-testid="session-scroll"
       >
         {/* 2. Exercise header. */}
@@ -3579,74 +3823,84 @@ function ExerciseSpotlight({
           )}
         </header>
 
-        {/* 3. Set band. */}
-        <SetRows
-          marks={marks}
-          // Pair rows carry two values; the unit is on the entry panel, so
-          // they drop it to fit both sides on a 360px row.
-          fmtWeight={(kg) => String(toDisplayWeight(kg, blockUnit))}
-          rows={marks.map((_m, i) => {
-            const g = committedGroups[i];
-            // ghostFor is typed on DraftSet; useGhost rows are GhostSets.
-            const lastGhost = ghostFor(ghost, i) as GhostSet;
-            // A per-side pair shows both sides (PreviousSets: one value when
-            // they match, L and R when they differ), never just the left.
-            const pair: GhostSet | null =
-              g && g.length === 2
-                ? {
-                    weightKg: g[0].weightKg ?? null,
-                    reps: g[0].reps ?? null,
-                    durationSec: g[0].durationSec ?? null,
-                    otherSide: {
-                      weightKg: g[1].weightKg ?? null,
-                      reps: g[1].reps ?? null,
-                      durationSec: g[1].durationSec ?? null,
-                    },
-                  }
-                : null;
-            const text = g
-              ? fieldsFor(type)
-                  .map((k) => fieldText(k, g[0], blockUnit, distUnit))
-                  .filter((t) => t !== "—")
-                  .join(" × ")
-              : "";
-            const lastText = fieldsFor(type)
-              .map((k) => fieldText(k, lastGhost, blockUnit, distUnit))
-              .filter((t) => t !== "—")
-              .join(" × ");
-            const rirL = g ? rirLabel(g[0]) : "";
-            const rirR = g && g.length === 2 ? rirLabel(g[1]) : "";
-            const rirText =
-              rirR && rirR !== rirL
-                ? `${rirL || "RIR —"} / ${rirR.replace("RIR ", "")}`
-                : rirL;
-            return {
-              text,
-              lastText,
-              rirText,
-              hasNote: !!g?.some((r) => r.note),
-              pair,
-              lastPair: lastGhost.otherSide ? lastGhost : null,
-            };
-          })}
-        />
-        <div className="px-4 pt-1">
-          <button
-            type="button"
-            onClick={() => {
-              onAddSet();
-              focusLive();
-            }}
-            className="flex min-h-11 w-full items-center gap-2 rounded-md bg-surface-2/60 pl-12 text-left text-sm font-medium text-soft press duration-100 hover:bg-surface-2"
-            data-testid="add-set"
-          >
-            + Add a set
-          </button>
+        {/* Everything below the header is bottom-anchored as one cluster
+            (setup, result, set list), so the logged sets sit directly on the
+            entry panel and any spare height stays under the exercise title
+            instead of between the sets and the panel (item 6). */}
+        <div
+          className="mt-auto flex flex-col gap-2 px-4 pb-[clamp(8px,1.2dvh,12px)]"
+          data-testid="exercise-extras"
+        >
+          {exercise &&
+            (exercise.notes ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSetupDraft(exercise.notes ?? "");
+                  setSetupOpen(true);
+                }}
+                className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 py-2 text-left transition-colors duration-100 hover:bg-surface-hover"
+                data-testid="setup-row"
+              >
+                <Wrench className="size-5 shrink-0 text-accent-ink" />
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="text-2xs font-bold tracking-widest text-soft uppercase">
+                    Setup &amp; form
+                  </span>
+                  <span
+                    className="line-clamp-2 text-sm break-words text-ink"
+                    data-testid="setup-note"
+                  >
+                    {exercise.notes}
+                  </span>
+                </span>
+                <CaretRight className="size-4 shrink-0 text-soft" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setSetupDraft("");
+                  setSetupOpen(true);
+                }}
+                className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 py-2 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
+                data-testid="setup-add"
+              >
+                <Plus className="size-5 shrink-0 text-soft" />
+                <span className="min-w-0 flex-1">Add setup or form notes</span>
+              </button>
+            ))}
+          <div className="flex min-h-[clamp(40px,5.2dvh,44px)] flex-wrap items-center gap-2">
+            {override && (
+              <button
+                type="button"
+                onClick={() =>
+                  setWeightUnit.mutate({
+                    exerciseId: block.exerciseId,
+                    unit: null,
+                  })
+                }
+                className="num flex h-11 shrink-0 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-ink transition-colors duration-100 hover:bg-active"
+                title="Using a per-exercise weight unit override — tap to clear"
+                data-testid={`block-${block.name}-unit-clear`}
+              >
+                {unitLabel(override)} only
+              </button>
+            )}
+            {avgRestSec != null && (
+              <span
+                className="num shrink-0 text-xs text-soft"
+                title="Average rest between sets of this exercise"
+                data-testid={`block-${block.name}-rest-avg`}
+              >
+                rest {formatRest(avgRestSec)} avg
+              </span>
+            )}
+          </div>
         </div>
-
         {(lastState || nudge || directThis) && (
           <div
-            className="flex flex-col gap-2 px-4 pt-3"
+            className="flex flex-col gap-2 px-4 pt-1"
             data-testid="set-result"
           >
             {lastState && lastWorking && (
@@ -3716,77 +3970,49 @@ function ExerciseSpotlight({
           </div>
         )}
 
-        <div
-          className="flex flex-col gap-2 px-4 pt-[clamp(8px,1.2dvh,12px)] pb-[clamp(8px,1.6dvh,16px)]"
-          data-testid="exercise-extras"
-        >
-          {exercise?.isCustom &&
-            exercise.ownerId !== null &&
-            (exercise.notes ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSetupDraft(exercise.notes ?? "");
-                  setSetupOpen(true);
-                }}
-                className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 py-2 text-left transition-colors duration-100 hover:bg-surface-hover"
-                data-testid="setup-row"
-              >
-                <Wrench className="size-5 shrink-0 text-accent-ink" />
-                <span className="flex min-w-0 flex-1 flex-col gap-1">
-                  <span className="text-2xs font-bold tracking-widest text-soft uppercase">
-                    Setup &amp; form
+        {/* 3. Set band: the last block above the entry panel; the live Now
+            row is the panel's own header (SetRows variant="tab"). */}
+        <div className="pt-2">
+          {(() => {
+            // Where this exercise stands: set N of M and how many are left,
+            // so the top of the screen says more than one row.
+            const offered = offeredSets({
+              planned: plannedSetCount(seedSets.length),
+              added: addedSets,
+              committed: committedGroups.length,
+            });
+            const left = Math.max(0, offered - committedGroups.length);
+            return (
+              <div className="flex items-center gap-2 px-4 pb-2">
+                <p
+                  className="num flex min-w-0 flex-1 items-center gap-2 text-xs font-semibold text-soft"
+                  data-testid="exercise-progress"
+                >
+                  <span className="text-ink">
+                    {committedGroups.length} of {offered}{" "}
+                    {offered === 1 ? "set" : "sets"} done
                   </span>
-                  <span
-                    className="line-clamp-2 text-sm break-words text-ink"
-                    data-testid="setup-note"
-                  >
-                    {exercise.notes}
-                  </span>
-                </span>
-                <CaretRight className="size-4 shrink-0 text-soft" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setSetupDraft("");
-                  setSetupOpen(true);
-                }}
-                className="flex min-h-11 w-full items-center gap-3 rounded-md bg-surface px-3 py-2 text-left text-sm font-medium text-soft transition-colors duration-100 hover:bg-surface-hover"
-                data-testid="setup-add"
-              >
-                <Plus className="size-5 shrink-0 text-soft" />
-                <span className="min-w-0 flex-1">Add setup or form notes</span>
-              </button>
-            ))}
-          <div className="flex min-h-[clamp(40px,5.2dvh,44px)] flex-wrap items-center gap-2">
-            {override && (
-              <button
-                type="button"
-                onClick={() =>
-                  setWeightUnit.mutate({
-                    exerciseId: block.exerciseId,
-                    unit: null,
-                  })
-                }
-                className="num flex h-11 shrink-0 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-ink transition-colors duration-100 hover:bg-active"
-                title="Using a per-exercise weight unit override — tap to clear"
-                data-testid={`block-${block.name}-unit-clear`}
-              >
-                {unitLabel(override)} only
-              </button>
-            )}
-            {avgRestSec != null && (
-              <span
-                className="num shrink-0 text-xs text-soft"
-                title="Average rest between sets of this exercise"
-                data-testid={`block-${block.name}-rest-avg`}
-              >
-                rest {formatRest(avgRestSec)} avg
-              </span>
-            )}
-          </div>
+                  <span aria-hidden="true">·</span>
+                  <span>{left === 0 ? "all logged" : `${left} to go`}</span>
+                </p>
+                {/* Sits above the list so the Now row can stay the last row,
+                  attached to the entry panel. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAddSet();
+                    focusLive();
+                  }}
+                  className="flex min-h-11 shrink-0 items-center gap-1 rounded-md bg-surface-2 px-3 text-sm font-medium text-ink press duration-100 hover:bg-surface-hover"
+                  data-testid="add-set"
+                >
+                  <Plus className="size-4" />
+                  Add a set
+                </button>
+              </div>
+            );
+          })()}
+          <SetRows {...setRowProps} />
         </div>
         <MachinePickerDialog
           open={machineOpen}
@@ -3796,6 +4022,7 @@ function ExerciseSpotlight({
         />
         <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
           <DialogContent title="Setup & form">
+            <SetupPresets draft={setupDraft} onChange={setSetupDraft} />
             <Textarea
               rows={4}
               placeholder="Seat height, grip, cues, left knee…"
@@ -3836,10 +4063,59 @@ function ExerciseSpotlight({
           className="z-10 shrink-0 rounded-t-lg bg-surface px-4 pt-3 pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]"
           data-testid="sets-done"
         >
-          <p className="pb-3 text-center text-sm font-semibold text-soft">
+          <p className="pb-2 text-sm font-semibold text-soft">
             {countSets(block.committed)}{" "}
             {countSets(block.committed) === 1 ? "set" : "sets"} logged
           </p>
+          {/* What was done, where the weight and reps normally sit: one tile
+              per set, a per-side set split into its two sides. */}
+          <div
+            className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-2 pb-3"
+            data-testid="sets-done-summary"
+          >
+            {committedGroups.map((g, i) => {
+              const one = (r: LoggedSet) =>
+                fieldsFor(type)
+                  .map((k) => fieldText(k, r, blockUnit, distUnit))
+                  .filter((t) => t !== "—")
+                  .join(" × ");
+              const warm = g[0].setType === "warmup";
+              return (
+                <button
+                  type="button"
+                  // biome-ignore lint/suspicious/noArrayIndexKey: fixed set order
+                  key={i}
+                  onClick={() => {
+                    setManualFocus(i);
+                    setFocusSide(null);
+                  }}
+                  className="num flex min-h-11 flex-col items-start gap-0.5 rounded-sm bg-surface-2 px-2 py-1.5 text-left text-sm font-semibold text-ink transition-colors duration-100 hover:bg-surface-hover"
+                  data-testid={`sets-done-${i}`}
+                >
+                  <span
+                    className={cn(
+                      "text-2xs font-bold",
+                      warm ? "text-warn" : "text-soft",
+                    )}
+                  >
+                    {warm ? "Warm-up" : `Set ${i + 1}`}
+                  </span>
+                  {g.length === 2 ? (
+                    // Same two outlined side cells as the set list above.
+                    <span
+                      className="flex flex-col items-start gap-1"
+                      data-testid={`sets-done-${i}-sides`}
+                    >
+                      <SideCell side="left">{one(g[0])}</SideCell>
+                      <SideCell side="right">{one(g[1])}</SideCell>
+                    </span>
+                  ) : (
+                    <span>{one(g[0]) || "—"}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
           <div className="flex flex-col gap-2">
             <Button
               size="lg"
@@ -3879,7 +4155,13 @@ function ExerciseSpotlight({
           key={`${block.seId}-${focusedIndex}-${seedNonce}-${
             committedGroups[focusedIndex]?.map((r) => r.id).join(",") ?? "live"
           }-${manualFocus != null ? (focusSide ?? "") : ""}`}
+          tab={
+            marks[setRowProps.selectedIndex]?.kind === "current" ? (
+              <SetRows {...setRowProps} variant="tab" />
+            ) : undefined
+          }
           initialSide={manualFocus != null ? focusSide : null}
+          rulerEnabled={block.committed.length > 0}
           seId={block.seId}
           index={focusedIndex}
           unit={blockUnit}
@@ -4025,7 +4307,14 @@ function Spotlight({
   onVoiceFillConsumed,
   enabledMetrics,
   initialSide,
+  rulerEnabled,
+  tab,
 }: {
+  /** The live Now row, drawn as the panel's own top band (SetRows "tab"). */
+  tab?: ReactNode;
+  /** The ruler is for fine-tuning: shown once this exercise has a logged set
+   * in this session; before that the values are plain keyboard inputs. */
+  rulerEnabled: boolean;
   /** Editing a per-side pair: the side tapped in the set list opens
    * selected. Null = default (weight, else left reps). */
   initialSide: "left" | "right" | null;
@@ -5035,7 +5324,10 @@ function Spotlight({
     setActiveCol(f.weight ? "weight" : "reps");
   };
   const lateralitySwitch = showLateralitySwitch ? (
-    <div className="pb-2" data-testid="laterality-switch">
+    <div
+      className="pb-2 [@media(max-height:700px)]:pb-1"
+      data-testid="laterality-switch"
+    >
       <ChipGroup
         value={isUnilateral ? "per" : "both"}
         onValueChange={(v) => {
@@ -5060,7 +5352,7 @@ function Spotlight({
         </ChipItem>
       </ChipGroup>
       <p
-        className="px-1 pt-1 text-2xs leading-4 text-soft"
+        className="px-1 pt-1 text-2xs leading-4 text-soft [@media(max-height:700px)]:sr-only"
         data-testid="laterality-help"
       >
         {isUnilateral
@@ -5070,12 +5362,15 @@ function Spotlight({
     </div>
   ) : null;
 
-  // ── Per-side (unilateral) entry: one mirrored row,
-  // `L Reps · RIR | Weight | RIR · Reps R`, one ruler for whichever value is
-  // underlined. Weight is shared unless split; RIR runs 0 to 5+ and never
-  // prefills (a blank side reads "–").
-  type PerSideKey = "weight" | "weightR" | "reps" | "repsR" | "rir" | "rirR";
-  const perSideRirOf = (min: string, max: string) => {
+  // ── Ruler entry: weight / reps / RIR, bilateral or per side ──────────────
+  // One rule for every value: each is a real <input>, and the value tapped
+  // last is the active one. It takes the keyboard, the ruler below drives
+  // it, and its underline marks it. Before 2026-11-25 RIR was a focus-less
+  // button: tapping it moved the ruler but left the keyboard on reps (typed
+  // digits landed in reps), and re-tapping the still-focused reps input fired
+  // no focus event, so the ruler and the underline stayed on RIR.
+  type EntryKey = "weight" | "weightR" | "reps" | "repsR" | "rir" | "rirR";
+  const rirOf = (min: string, max: string) => {
     const lo = min.trim() === "" ? null : Number.parseInt(min, 10);
     const hi = max.trim() === "" ? null : Number.parseInt(max, 10);
     if (lo == null) return { value: null, text: "–" };
@@ -5087,324 +5382,462 @@ function Spotlight({
   };
   const rirFieldsFor = (v: number) =>
     v >= 5 ? { min: "5", max: "" } : { min: String(v), max: String(v) };
-
-  function perSideRow() {
-    const wUnit = weightLabel(type, unitLabel(unit));
-    const sizeFor = (text: string) =>
-      text.length <= 3
+  const setRirSide = (sd: "left" | "right", v: number | null) => {
+    const fv = v == null ? { min: "", max: "" } : rirFieldsFor(v);
+    if (sd === "right") {
+      setRirMin2(fv.min);
+      setRirMax2(fv.max);
+    } else {
+      setRirMin(fv.min);
+      setRirMax(fv.max);
+    }
+  };
+  const inputRefs = useRef<Partial<Record<EntryKey, HTMLInputElement | null>>>(
+    {},
+  );
+  const justFocused = useRef<EntryKey | null>(null);
+  const activate = (key: EntryKey) => {
+    setActiveCol(key);
+    if (restStartedAt != null) onStopRest();
+  };
+  const fontFor = (text: string, big: boolean) =>
+    text.length <= 3
+      ? big
         ? "clamp(30px,6dvh,44px)"
-        : text.length === 4
-          ? "clamp(26px,5dvh,36px)"
-          : "clamp(22px,4.2dvh,30px)";
-    const underline = (on: boolean) =>
-      on ? (
-        <span className="absolute inset-x-2 bottom-0 h-[3px] rounded-xs bg-accent-ink" />
-      ) : null;
-    const cell =
-      "relative flex min-w-0 flex-col items-center pb-[clamp(4px,1.1dvh,10px)]";
-    const labelCls =
-      "flex h-6 items-center justify-center text-xs font-semibold";
+        : "clamp(28px,5.4dvh,38px)"
+      : text.length === 4
+        ? "clamp(26px,5dvh,36px)"
+        : "clamp(22px,4.2dvh,30px)";
 
-    const repsCell = (sd: "left" | "right") => {
-      const key: PerSideKey = sd === "left" ? "reps" : "repsR";
-      const on = activeCol === key;
-      const val = sd === "left" ? reps : reps2;
-      const set = sd === "left" ? setReps : setReps2;
-      // Bodyweight: a blank right side logs the left's reps, so show them.
-      const placeholder =
-        sd === "right" && !f.weight && reps.trim() !== "" ? reps : "–";
-      const last = sd === "left" ? ghost.reps : ghostRight.reps;
-      const cmp = compareToLast(
-        val.trim() === "" ? null : Number.parseFloat(val),
-        last ?? null,
-        "",
-      );
-      return (
-        <div key={key} className={cn(cell, on ? "text-ink" : "text-soft")}>
-          <span className="relative flex h-[clamp(40px,6dvh,52px)] w-full items-center justify-center">
-            <input
-              inputMode="numeric"
-              pattern="[0-9]*"
-              autoComplete="off"
-              data-big-input
-              value={val}
-              onChange={(e) => {
-                setRepsError(null);
-                set(e.target.value);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.preventDefault();
-              }}
-              onFocus={() => {
-                setActiveCol(key);
-                if (restStartedAt != null) onStopRest();
-              }}
-              // Already-focused input (the RIR buttons don't take focus):
-              // a tap still has to move the ruler back here.
-              onClick={() => setActiveCol(key)}
-              className="peer num absolute inset-0 size-full min-w-0 bg-transparent p-0 text-center leading-none font-bold tracking-tight outline-none"
-              style={{ fontSize: sizeFor(val) }}
-              aria-label={`${sd === "left" ? "Left" : "Right"} reps`}
-              aria-invalid={repsError === sd ? true : undefined}
-              data-testid={`reps-field-${sd}`}
-            />
-            <span
-              aria-hidden="true"
-              className={cn(
-                "num leading-none font-bold tracking-tight peer-focus:invisible",
-                val !== "" && "invisible",
-              )}
-              style={{ fontSize: sizeFor(placeholder) }}
-            >
-              {placeholder}
-            </span>
-          </span>
-          <span
-            className={cn(
-              labelCls,
-              repsError === sd
-                ? "text-neg"
-                : cmp.state === "up"
-                  ? "text-accent-ink"
-                  : cmp.state === "down"
-                    ? "text-warn"
-                    : "text-soft",
-            )}
-          >
-            Reps
-          </span>
-          {underline(on)}
-        </div>
-      );
-    };
-
-    const rirCell = (sd: "left" | "right") => {
-      const key: PerSideKey = sd === "left" ? "rir" : "rirR";
-      const on = activeCol === key;
-      const r =
-        sd === "left"
-          ? perSideRirOf(rirMin, rirMax)
-          : perSideRirOf(rirMin2, rirMax2);
-      return (
-        <div key={key} className={cn(cell, on ? "text-ink" : "text-soft")}>
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              setActiveCol(key);
-              if (restStartedAt != null) onStopRest();
+  /** One tappable value. The input covers the whole cell (the tap target is
+   * the cell, not the glyphs); the overlay shows the placeholder/formatted
+   * text while the input is empty or unfocused. */
+  function valueCell(o: {
+    key: EntryKey;
+    testId: string;
+    cellTestId: string;
+    ariaLabel: string;
+    label: ReactNode;
+    value: string;
+    /** Overlay text (shown while the input is empty). */
+    shown: string;
+    onValue: (raw: string) => void;
+    mode: "decimal" | "numeric";
+    big?: boolean;
+    tone?: "up" | "down" | "error" | null;
+    sub?: ReactNode;
+    hint?: number | null;
+    beat?: boolean | null;
+    unitSuffix?: string;
+  }) {
+    const on = activeCol === o.key;
+    return (
+      <div
+        key={o.cellTestId}
+        className={cn(
+          "relative flex min-w-0 flex-col items-center pb-[clamp(4px,1.1dvh,10px)]",
+          on ? "text-ink" : "text-soft",
+        )}
+        data-testid={o.cellTestId}
+        data-active={on ? "true" : "false"}
+        data-hint={o.hint ?? undefined}
+        data-beat={o.beat == null ? undefined : o.beat ? "true" : "false"}
+      >
+        <span className="relative flex h-[clamp(44px,6dvh,52px)] w-full items-center justify-center">
+          <input
+            ref={(el) => {
+              inputRefs.current[o.key] = el;
             }}
-            className="num h-[clamp(40px,6dvh,52px)] w-full text-center leading-none font-bold tracking-tight"
-            style={{ fontSize: sizeFor(r.text) }}
-            aria-label={`${sd === "left" ? "Left" : "Right"} RIR ${r.value ?? "not set"}`}
-            data-testid={`rir-column-${sd}`}
+            inputMode={o.mode}
+            pattern={o.mode === "decimal" ? "[0-9]*[.]?[0-9]*" : "[0-9]*"}
+            autoComplete="off"
+            enterKeyHint="done"
+            data-big-input
+            value={o.value}
+            onChange={(e) => o.onValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.preventDefault();
+            }}
+            onFocus={(e) => {
+              activate(o.key);
+              // Tap-to-type replaces the value instead of inserting at a
+              // stray caret: select now (keyboard focus) and again on the
+              // click that follows a tap (mouseup would collapse it).
+              e.currentTarget.select();
+              justFocused.current = o.key;
+            }}
+            // An already-focused input fires no focus event, so a tap still
+            // has to move the ruler and the underline back here.
+            onPointerDown={() => setActiveCol(o.key)}
+            onClick={(e) => {
+              setActiveCol(o.key);
+              if (justFocused.current === o.key) e.currentTarget.select();
+              justFocused.current = null;
+            }}
+            onBlur={() => {
+              if (justFocused.current === o.key) justFocused.current = null;
+            }}
+            className="peer num absolute inset-0 size-full min-w-0 bg-transparent p-0 text-center leading-none font-bold tracking-tight outline-none"
+            style={{ fontSize: fontFor(o.value || o.shown, !!o.big) }}
+            aria-label={o.ariaLabel}
+            aria-invalid={o.tone === "error" ? true : undefined}
+            data-testid={o.testId}
+          />
+          <span
+            aria-hidden="true"
+            className={cn(
+              "num leading-none font-bold tracking-tight whitespace-pre peer-focus:invisible",
+              o.value !== "" && "invisible",
+            )}
+            style={{ fontSize: fontFor(o.shown, !!o.big) }}
           >
-            {r.text}
-          </button>
-          <span className={cn(labelCls, "text-soft")}>RIR</span>
-          {underline(on)}
-        </div>
-      );
-    };
+            {o.shown}
+            {o.unitSuffix && (
+              <span className="visible inline-block w-0 whitespace-nowrap">
+                <small className="pl-1 text-[13px] font-semibold tracking-normal text-soft">
+                  {o.unitSuffix}
+                </small>
+              </span>
+            )}
+          </span>
+        </span>
+        <span
+          className={cn(
+            "flex h-6 items-center justify-center gap-1 text-xs font-semibold",
+            o.tone === "error"
+              ? "text-neg"
+              : o.tone === "up"
+                ? "text-accent-ink"
+                : o.tone === "down"
+                  ? "text-warn"
+                  : "text-soft",
+          )}
+        >
+          {o.label}
+        </span>
+        {o.sub}
+        {on && (
+          <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-xs bg-accent-ink" />
+        )}
+      </div>
+    );
+  }
 
-    const weightCell = () => {
-      const on = activeCol === "weight" || activeCol === "weightR";
-      if (splitWeight) {
-        const half = (sd: "left" | "right") => {
-          const key: PerSideKey = sd === "left" ? "weight" : "weightR";
-          const val = sd === "left" ? weight : weight2;
-          const set = sd === "left" ? setWeight : setWeight2;
-          return (
-            <label
-              className={cn(
-                "relative flex h-11 w-full items-center justify-center gap-1 md:h-8",
-                activeCol === key ? "text-ink" : "text-soft",
-              )}
-            >
-              <SideTag side={sd} />
-              <input
-                inputMode="decimal"
-                pattern="[0-9]*[.]?[0-9]*"
-                autoComplete="off"
-                data-big-input
-                value={val}
-                placeholder="–"
-                onChange={(e) => set(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.preventDefault();
-                }}
-                onFocus={() => {
-                  setActiveCol(key);
-                  if (restStartedAt != null) onStopRest();
-                }}
-                onClick={() => setActiveCol(key)}
-                className={cn(
-                  "num w-[4.5ch] min-w-0 bg-transparent p-0 text-center text-[clamp(18px,2.8dvh,22px)] leading-none font-bold tracking-tight outline-none placeholder:text-soft",
-                  activeCol === key &&
-                    "underline decoration-accent-ink decoration-[3px] underline-offset-4",
-                )}
-                aria-label={`${sd === "left" ? "Left" : "Right"} weight`}
-                aria-invalid={weightError ? true : undefined}
-                data-testid={
-                  sd === "left" ? "weight-field" : "weight-field-right"
+  const wUnit = weightLabel(type, unitLabel(unit));
+
+  function weightCellFor(sd: "both" | "left" | "right", big: boolean) {
+    const key: EntryKey = sd === "right" ? "weightR" : "weight";
+    const val = sd === "right" ? weight2 : weight;
+    const set = sd === "right" ? setWeight2 : setWeight;
+    const cmp =
+      sd === "both" && !isUnilateral ? comparison("weight", val) : null;
+    return valueCell({
+      key,
+      testId: sd === "right" ? "weight-field-right" : "weight-field",
+      cellTestId:
+        sd === "right" ? "entry-col-weight-right" : "entry-col-weight",
+      ariaLabel:
+        sd === "left"
+          ? "Left weight"
+          : sd === "right"
+            ? "Right weight"
+            : isUnilateral
+              ? "Weight, both sides"
+              : "Weight",
+      label:
+        sd === "both" ? (
+          <>
+            {isUnilateral ? (
+              <>
+                {wUnit}
+                <SideTag side="both" />
+              </>
+            ) : (
+              "Weight"
+            )}
+            {barLoaded && (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() =>
+                  onOpenPlates(
+                    weight.trim() === "" ? null : Number.parseFloat(weight),
+                  )
                 }
-              />
-            </label>
-          );
-        };
-        return (
-          <div key="weight" className={cn(cell, "justify-center")}>
-            <span className="flex w-full flex-col items-center justify-center">
-              {half("left")}
-              {half("right")}
-            </span>
-            <span className={cn(labelCls, "text-soft")}>{wUnit} each</span>
-          </div>
-        );
-      }
-      return (
-        <div key="weight" className={cn(cell, on ? "text-ink" : "text-soft")}>
-          <span className="relative flex h-[clamp(40px,6dvh,52px)] w-full items-center justify-center">
-            <input
-              inputMode="decimal"
-              pattern="[0-9]*[.]?[0-9]*"
-              autoComplete="off"
-              data-big-input
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") e.preventDefault();
-              }}
-              onFocus={() => {
-                setActiveCol("weight");
-                if (restStartedAt != null) onStopRest();
-              }}
-              onClick={() => setActiveCol("weight")}
-              className="peer num absolute inset-0 size-full min-w-0 bg-transparent p-0 text-center leading-none font-bold tracking-tight outline-none"
-              style={{ fontSize: sizeFor(weight) }}
-              aria-label="Weight, both sides"
-              aria-invalid={weightError ? true : undefined}
-              data-testid="weight-field"
-            />
-            <span
-              aria-hidden="true"
-              className={cn(
-                "num leading-none font-bold tracking-tight peer-focus:invisible",
-                weight !== "" && "invisible",
-              )}
-              style={{ fontSize: sizeFor("–") }}
-            >
-              –
-            </span>
-          </span>
-          <span className={cn(labelCls, "gap-1 text-soft")}>
+                className="relative ml-1 flex h-7 items-center rounded-sm bg-secondary px-2 text-xs font-semibold text-ink transition-colors duration-100 after:absolute after:-inset-x-1 after:-inset-y-2 hover:bg-active"
+                data-testid="set-plates"
+              >
+                plates
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <SideTag side={sd} />
             {wUnit}
-            <SideTag side="both" />
+          </>
+        ),
+      value: val,
+      shown: val === "" ? "–" : val,
+      onValue: set,
+      mode: "decimal",
+      big,
+      unitSuffix: !isUnilateral ? wUnit : undefined,
+      tone: weightError ? "error" : (cmp?.state as "up" | "down" | null),
+      beat: cmp ? cmp.state === "up" : null,
+      sub: cmp ? (
+        <span
+          className={cn(
+            "num min-h-4 px-1 text-center text-2xs leading-4 font-semibold text-balance [@media(max-height:700px)]:sr-only",
+            cmp.state === "up" && "text-accent-ink",
+            cmp.state === "down" && "text-warn",
+            (cmp.state === "same" || cmp.state === "none") &&
+              "font-normal text-soft",
+          )}
+          data-testid="weight-compare"
+        >
+          {cmp.text}
+        </span>
+      ) : null,
+    });
+  }
+
+  function repsCellFor(sd: "both" | "left" | "right") {
+    const key: EntryKey = sd === "right" ? "repsR" : "reps";
+    const val = sd === "right" ? reps2 : reps;
+    const set = sd === "right" ? setReps2 : setReps;
+    // Bodyweight: a blank right side logs the left's reps, so show them.
+    const placeholder =
+      sd === "right" && !f.weight && reps.trim() !== "" ? reps : "–";
+    const last =
+      sd === "right" ? ghostRight.reps : sd === "left" ? ghost.reps : null;
+    const sideCmp =
+      sd === "both"
+        ? null
+        : compareToLast(
+            val.trim() === "" ? null : Number.parseFloat(val),
+            last ?? null,
+            "",
+          );
+    const cmp = sd === "both" ? comparison("reps", val) : null;
+    const err = repsError != null && repsError === sd;
+    return valueCell({
+      key,
+      testId: sd === "both" ? "reps-field" : `reps-field-${sd}`,
+      cellTestId: sd === "both" ? "entry-col-reps" : `entry-col-reps-${sd}`,
+      ariaLabel:
+        sd === "both" ? "Reps" : `${sd === "left" ? "Left" : "Right"} reps`,
+      label: "Reps",
+      value: val,
+      shown: val === "" ? placeholder : val,
+      onValue: (v) => {
+        setRepsError(null);
+        set(v);
+      },
+      mode: "numeric",
+      big: sd === "both",
+      tone: err
+        ? "error"
+        : (cmp ?? sideCmp)?.state === "up"
+          ? "up"
+          : (cmp ?? sideCmp)?.state === "down"
+            ? "down"
+            : null,
+      beat: cmp ? cmp.state === "up" : null,
+      sub: cmp ? (
+        <span
+          className={cn(
+            "num min-h-4 px-1 text-center text-2xs leading-4 font-semibold text-balance [@media(max-height:700px)]:sr-only",
+            cmp.state === "up" && "text-accent-ink",
+            cmp.state === "down" && "text-warn",
+            (cmp.state === "same" || cmp.state === "none") &&
+              "font-normal text-soft",
+          )}
+          data-testid="reps-compare"
+        >
+          {cmp.text}
+        </span>
+      ) : null,
+    });
+  }
+
+  function rirCellFor(sd: "both" | "left" | "right") {
+    const key: EntryKey = sd === "right" ? "rirR" : "rir";
+    const r = sd === "right" ? rirOf(rirMin2, rirMax2) : rirOf(rirMin, rirMax);
+    const showHint = rirHintValue != null && r.value == null;
+    return valueCell({
+      key,
+      testId: sd === "both" ? "rir-column" : `rir-column-${sd}`,
+      cellTestId: sd === "both" ? "entry-col-rir" : `entry-col-rir-${sd}`,
+      ariaLabel:
+        sd === "both" ? "RIR" : `${sd === "left" ? "Left" : "Right"} RIR`,
+      label: showHint ? (
+        <>
+          RIR
+          <span className="num font-normal text-soft">
+            · plan {rirHintValue === 4 ? "4+" : rirHintValue}
           </span>
-          {underline(on)}
+        </>
+      ) : (
+        "RIR"
+      ),
+      value: r.value == null ? "" : r.text,
+      shown: r.text,
+      onValue: (raw) => {
+        const prev = r.value == null ? "" : r.text;
+        const digits = raw.replace(/\D/g, "");
+        // A deletion clears; otherwise the newest digit wins, so typing
+        // over a value replaces it (RIR is one digit, 5 means 5+).
+        if (raw.length < prev.length || digits === "") {
+          setRirSide(sd === "right" ? "right" : "left", null);
+          return;
+        }
+        const d = Number.parseInt(digits.slice(-1), 10);
+        setRirSide(sd === "right" ? "right" : "left", Math.min(5, d));
+      },
+      mode: "numeric",
+      big: sd === "both",
+      hint: rirHintValue,
+    });
+  }
+
+  const SPLIT_BTN =
+    "flex h-11 shrink-0 items-center gap-1 rounded-sm bg-secondary px-3 text-xs font-semibold text-ink transition-colors duration-100 hover:bg-active md:h-8";
+  const splitToggle = (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => {
+        if (splitWeight) {
+          setSplitWeight(false);
+          setActiveCol("weight");
+        } else {
+          setWeight2Raw(weight);
+          setSplitWeight(true);
+        }
+      }}
+      className={SPLIT_BTN}
+      aria-label={
+        splitWeight ? "Same weight both sides" : "Different weight per side"
+      }
+      data-testid="weight-split-toggle"
+    >
+      <LinkSimple className="size-4" />
+      {splitWeight ? "Same" : "Split"}
+    </button>
+  );
+
+  /** Entry values. A plain bilateral exercise keeps one row (weight, reps,
+   * RIR); once per-side is in play (the Both sides / Per side switch shows)
+   * weight sits on its own line and reps/RIR run in one row underneath, one
+   * group per side. */
+  function entryValues() {
+    if (!showLateralitySwitch) {
+      return (
+        <div
+          className="grid auto-cols-fr grid-flow-col"
+          data-testid="entry-row"
+        >
+          {f.weight && weightCellFor("both", true)}
+          {repsCellFor("both")}
+          {effort && rirCellFor("both")}
         </div>
       );
-    };
-
-    const cols = [f.weight ? "1.4fr" : null, effort ? "0.8fr" : null];
-    const grid = `1fr ${cols[1] ?? ""} ${cols[0] ?? ""} ${cols[1] ?? ""} 1fr`
-      .replace(/\s+/g, " ")
-      .trim();
+    }
+    const weightLine = f.weight ? (
+      <div className="flex items-center gap-2" data-testid="entry-weight-line">
+        <div
+          className={cn(
+            "grid min-w-0 flex-1",
+            isUnilateral && splitWeight ? "grid-cols-2" : "grid-cols-1",
+          )}
+        >
+          {isUnilateral && splitWeight ? (
+            <>
+              {weightCellFor("left", false)}
+              {weightCellFor("right", false)}
+            </>
+          ) : (
+            weightCellFor("both", true)
+          )}
+        </div>
+        {isUnilateral && splitToggle}
+      </div>
+    ) : null;
+    if (!isUnilateral) {
+      return (
+        <div data-testid="entry-row">
+          {weightLine}
+          <div className="grid auto-cols-fr grid-flow-col">
+            {repsCellFor("both")}
+            {effort && rirCellFor("both")}
+          </div>
+        </div>
+      );
+    }
+    const side = (sd: "left" | "right") => (
+      <div
+        className="flex min-w-0 flex-1 flex-col rounded-md bg-surface-2/60 pt-1 dark:bg-bg"
+        data-testid={`perside-${sd}`}
+      >
+        <span className="flex justify-center" aria-hidden="true">
+          <SideTag side={sd} long />
+        </span>
+        <div className="grid auto-cols-fr grid-flow-col">
+          {repsCellFor(sd)}
+          {effort && rirCellFor(sd)}
+        </div>
+      </div>
+    );
     return (
       <div data-testid="perside-row">
-        <div
-          className="grid items-center text-xs font-semibold text-soft"
-          style={{ gridTemplateColumns: grid }}
-          aria-hidden="true"
-        >
-          <span
-            className="flex justify-center"
-            style={{ gridColumn: effort ? "span 2" : "span 1" }}
-          >
-            <SideTag side="left" long />
-          </span>
-          {f.weight && <span />}
-          <span
-            className="flex justify-center"
-            style={{ gridColumn: effort ? "span 2" : "span 1" }}
-          >
-            <SideTag side="right" long />
-          </span>
-        </div>
-        <div className="grid items-end" style={{ gridTemplateColumns: grid }}>
-          {repsCell("left")}
-          {effort && rirCell("left")}
-          {f.weight && weightCell()}
-          {effort && rirCell("right")}
-          {repsCell("right")}
+        {weightLine}
+        <div className="flex gap-2 pt-1 [@media(max-height:700px)]:pt-0">
+          {side("left")}
+          {side("right")}
         </div>
       </div>
     );
   }
 
-  function perSideRuler() {
-    const wUnit = weightLabel(type, unitLabel(unit));
+  /** The ruler for the active value: fine-tuning only, so it appears once
+   * this exercise has a logged set in this session (until then the values
+   * are plain inputs with the keyboard). */
+  function entryRuler() {
+    if (!rulerEnabled) return null;
     const stopRest = () => {
       if (restStartedAt != null) onStopRest();
     };
-    const col = activeCol as PerSideKey;
+    const sideName = (r: boolean) => (r ? "Right" : "Left");
+    const col = activeCol as EntryKey;
     if ((col === "weight" || col === "weightR") && f.weight) {
       const sideR = col === "weightR";
       const val = sideR ? weight2 : weight;
       const g = sideR ? ghostRight.weightKg : ghost.weightKg;
+      const split = isUnilateral && splitWeight;
       return (
-        <div>
-          <Ruler
-            key={col}
-            value={Number.parseFloat(val) || 0}
-            min={0}
-            max={unit === "lb" ? 1000 : 500}
-            step={unit === "lb" ? 1 : 0.5}
-            majorEvery={10}
-            midEvery={5}
-            pxPerStep={unit === "lb" ? 8 : 9}
-            ghost={g != null ? toDisplayWeight(g, unit) : null}
-            label={
-              splitWeight
-                ? `${sideR ? "Right" : "Left"} weight ruler`
-                : "Weight ruler"
-            }
-            unit={
-              splitWeight ? `${wUnit} · ${sideR ? "right" : "left"}` : wUnit
-            }
-            testId="weight-ruler"
-            onStart={stopRest}
-            onChange={(v) => (sideR ? setWeight2 : setWeight)(String(v))}
-          />
-          <div className="px-2 pb-2">
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                if (splitWeight) {
-                  setSplitWeight(false);
-                  setActiveCol("weight");
-                } else {
-                  setWeight2Raw(weight);
-                  setSplitWeight(true);
-                }
-              }}
-              className="flex h-11 w-full items-center justify-center rounded-sm bg-secondary text-sm font-semibold text-ink transition-colors duration-100 hover:bg-active md:h-8"
-              data-testid="weight-split-toggle"
-            >
-              {splitWeight
-                ? "Same weight both sides"
-                : "Different weight per side"}
-            </button>
-          </div>
-        </div>
+        <Ruler
+          key={col}
+          value={Number.parseFloat(val) || 0}
+          min={0}
+          max={unit === "lb" ? 1000 : 500}
+          step={unit === "lb" ? 1 : 0.5}
+          majorEvery={10}
+          midEvery={5}
+          pxPerStep={unit === "lb" ? 8 : 9}
+          jump={fieldStep("weight", unit)}
+          ghost={g != null ? toDisplayWeight(g, unit) : null}
+          label={split ? `${sideName(sideR)} weight ruler` : "Weight ruler"}
+          unit={split ? `${wUnit} · ${sideName(sideR).toLowerCase()}` : wUnit}
+          testId="weight-ruler"
+          onStart={stopRest}
+          onChange={(v) => (sideR ? setWeight2 : setWeight)(String(v))}
+        />
       );
     }
-    if (col === "rir" || col === "rirR") {
+    if ((col === "rir" || col === "rirR") && effort) {
       const sideR = col === "rirR";
-      const r = sideR
-        ? perSideRirOf(rirMin2, rirMax2)
-        : perSideRirOf(rirMin, rirMax);
+      const r = sideR ? rirOf(rirMin2, rirMax2) : rirOf(rirMin, rirMax);
       return (
         <Ruler
           key={col}
@@ -5414,23 +5847,15 @@ function Spotlight({
           step={1}
           majorEvery={1}
           pxPerStep={48}
+          jump={1}
           ghost={rirHintValue}
           format={(v) => (v >= 5 ? "5+" : String(v))}
           emptyText={r.value == null ? "–" : undefined}
-          label={`${sideR ? "Right" : "Left"} RIR ruler`}
-          unit={`RIR · ${sideR ? "right" : "left"}`}
+          label={isUnilateral ? `${sideName(sideR)} RIR ruler` : "RIR ruler"}
+          unit={isUnilateral ? `RIR · ${sideName(sideR).toLowerCase()}` : "RIR"}
           testId="rir-ruler"
           onStart={stopRest}
-          onChange={(v) => {
-            const fv = rirFieldsFor(v);
-            if (sideR) {
-              setRirMin2(fv.min);
-              setRirMax2(fv.max);
-            } else {
-              setRirMin(fv.min);
-              setRirMax(fv.max);
-            }
-          }}
+          onChange={(v) => setRirSide(sideR ? "right" : "left", v)}
         />
       );
     }
@@ -5446,9 +5871,10 @@ function Spotlight({
         majorEvery={5}
         midEvery={1}
         pxPerStep={18}
+        jump={1}
         ghost={(sideR ? ghostRight.reps : ghost.reps) ?? null}
-        label={`${sideR ? "Right" : "Left"} reps ruler`}
-        unit={`reps · ${sideR ? "right" : "left"}`}
+        label={isUnilateral ? `${sideName(sideR)} reps ruler` : "Reps ruler"}
+        unit={isUnilateral ? `reps · ${sideName(sideR).toLowerCase()}` : "reps"}
         testId="reps-ruler"
         onStart={stopRest}
         onChange={(v) => {
@@ -5459,13 +5885,52 @@ function Spotlight({
     );
   }
 
+  // Per side, Log stays quiet until every side has what it needs: a set with
+  // only the left side entered must not look ready to log.
+  const missingSide = (() => {
+    if (isEditing || !isUnilateral || !simple) return null;
+    if (f.weight && weightRequired) {
+      if (weight.trim() === "") return splitWeight ? "left weight" : "weight";
+      if (splitWeight && weight2.trim() === "") return "right weight";
+    }
+    if (f.reps) {
+      if (reps.trim() === "") return "left reps";
+      if (rightReps.trim() === "") return "right reps";
+    }
+    return null;
+  })();
+
   const rulerHeader = (
-    <div className="flex min-h-[clamp(36px,5.2dvh,44px)] items-center gap-2">
+    <div
+      className={cn(
+        "flex min-h-[clamp(36px,5.2dvh,44px)] items-center gap-2",
+        // Live set: the Now row is this header, one accent band across the
+        // panel's top edge (item 6, docs/ux-audit/2026-11-25/fix-6-8).
+        tab &&
+          "-mx-4 -mt-2 mb-1 min-h-[clamp(48px,6.4dvh,56px)] rounded-t-lg bg-accent-soft py-1 pr-4 pl-7",
+      )}
+      data-testid={tab ? "now-tab" : undefined}
+    >
+      {tab}
+      {/* Same numbered badge as the highlighted set row above, so the panel
+          reads as that set opened up. With the Now tab it is the tab. */}
       <span
-        className="num text-sm font-semibold text-soft"
+        className={cn(
+          "num flex items-center gap-2 text-sm font-semibold text-ink",
+          tab && "sr-only",
+        )}
         data-testid="set-number"
       >
+        <span
+          aria-hidden="true"
+          className="flex size-6 items-center justify-center rounded-sm bg-accent-ink text-xs text-bg"
+        >
+          {index + 1}
+        </span>
         Set {index + 1}
+        <span className="font-normal text-soft">
+          {isEditing ? "· editing" : "· now"}
+        </span>
       </span>
       {topSet && setType !== "warmup" && (
         <span
@@ -5512,15 +5977,17 @@ function Spotlight({
     </div>
   );
 
-  if (simple && isUnilateral) {
+  if (simple) {
+    const logQuiet = missingSide != null;
     return (
       <div
-        className="z-10 shrink-0 rounded-t-lg bg-surface px-4 pt-2"
+        className="relative z-10 shrink-0 rounded-t-lg bg-surface px-4 pt-2"
         data-testid="entry-panel"
+        data-set-index={index}
       >
         {rulerHeader}
         {lateralitySwitch}
-        {perSideRow()}
+        {entryValues()}
 
         {weightError && (
           <p
@@ -5544,293 +6011,46 @@ function Spotlight({
           </p>
         )}
 
-        <div className="mt-2 rounded-sm bg-surface-2 dark:bg-bg">
-          {perSideRuler()}
-        </div>
-
-        <div className="pt-[clamp(8px,1.4dvh,12px)] pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]">
-          <Button
-            size="lg"
-            className="h-[clamp(48px,7dvh,60px)] w-full rounded-lg bg-action text-[19px] font-bold text-on-action hover:bg-action-hover dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover"
-            onClick={submit}
-            data-testid="log-set"
-          >
-            <Check className="size-5" weight="bold" />
-            {isEditing
-              ? "Save"
-              : logLabel({
-                  weight,
-                  reps,
-                  weightUnit: unitLabel(unit),
-                  setNo: index + 1,
-                  unilateral: isUnilateral,
-                  rightWeight,
-                  rightReps: reps2,
-                })}
-          </Button>
-        </div>
-        {detailsDialog}
-      </div>
-    );
-  }
-
-  if (simple) {
-    // Both sides at once: one weight/reps/RIR (per-side returned above).
-    const sw = weight;
-    const sr = reps;
-    const srInput = reps;
-    const setSW = setWeight;
-    const setSR = setReps;
-    const sRirMin = rirMin;
-    const sRirMax = rirMax;
-    const ghostSide = ghost;
-    const wCmp = comparison("weight", sw);
-    const rCmp = comparison("reps", sr);
-    const ghostW =
-      ghostSide.weightKg != null
-        ? toDisplayWeight(ghostSide.weightKg, unit)
-        : null;
-    const ghostR = ghostSide.reps ?? null;
-    const rirSel = rirSegmentOf(sRirMin, sRirMax);
-    const wUnit = weightLabel(type, unitLabel(unit));
-    // One size for all three numbers: 44px until the longest would outgrow a
-    // third of a 390 column ("102.5 lbs").
-    const longest = Math.max(sw.length, sr.length);
-    const fontSize =
-      longest <= 4
-        ? "clamp(30px,6dvh,44px)"
-        : longest === 5
-          ? "clamp(28px,5.4dvh,40px)"
-          : "clamp(24px,4.2dvh,32px)";
-    const cols: {
-      key: "weight" | "reps" | "rir";
-      beat: boolean;
-    }[] = [
-      ...(f.weight
-        ? [{ key: "weight" as const, beat: wCmp.state === "up" }]
-        : []),
-      { key: "reps", beat: rCmp.state === "up" },
-      ...(effort ? [{ key: "rir" as const, beat: false }] : []),
-    ];
-    return (
-      <div
-        className="z-10 shrink-0 rounded-t-lg bg-surface px-4 pt-2"
-        data-testid="entry-panel"
-      >
-        {rulerHeader}
-        {lateralitySwitch}
-        {/* Equal columns; each number sits on its column's centre line. The
-            unit hangs off the number in a zero-width box, so it never pushes
-            the number off centre, and the input covers the whole column so
-            the tap target is the column, not the glyphs. */}
-        <div className="grid auto-cols-fr grid-flow-col">
-          {cols.map(({ key, beat }) => {
-            const on = activeCol === key;
-            const label =
-              key === "weight" ? "Weight" : key === "reps" ? "Reps" : "RIR";
-            const text = key === "weight" ? sw : key === "reps" ? srInput : "";
-            const ghostText = key === "reps" && sr !== "" ? sr : "–";
-            const cmp = key === "weight" ? wCmp : rCmp;
-            return (
-              <div
-                key={key}
-                className={cn(
-                  "relative flex min-w-0 flex-col items-center pb-[clamp(2px,1.1dvh,10px)]",
-                  on ? "text-ink" : "text-soft",
-                )}
-                data-beat={key === "rir" ? undefined : beat ? "true" : "false"}
-              >
-                {key === "rir" ? (
-                  <button
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setActiveCol("rir")}
-                    className="num h-[clamp(40px,5.8dvh,48px)] w-full text-center leading-none font-bold tracking-tight"
-                    style={{ fontSize }}
-                    data-testid="rir-column"
-                    aria-label={`RIR ${rirSel ?? "not set"}`}
-                  >
-                    {rirSel == null ? "–" : rirSel === 4 ? "4+" : rirSel}
-                  </button>
-                ) : (
-                  <span className="relative flex h-[clamp(40px,5.8dvh,48px)] w-full items-center justify-center">
-                    <input
-                      inputMode={key === "weight" ? "decimal" : "numeric"}
-                      pattern={key === "weight" ? "[0-9]*[.]?[0-9]*" : "[0-9]*"}
-                      autoComplete="off"
-                      data-big-input
-                      value={text}
-                      onChange={(e) =>
-                        key === "weight"
-                          ? setSW(e.target.value)
-                          : setSR(e.target.value)
-                      }
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") e.preventDefault();
-                      }}
-                      onFocus={() => {
-                        setActiveCol(key);
-                        if (restStartedAt != null) onStopRest();
-                      }}
-                      className="peer num absolute inset-0 size-full min-w-0 bg-transparent p-0 text-center leading-none font-bold tracking-tight outline-none"
-                      style={{ fontSize }}
-                      data-testid={
-                        key === "weight" ? "weight-field" : "reps-field"
-                      }
-                      aria-label={label}
-                      aria-invalid={
-                        key === "weight" && weightError ? true : undefined
-                      }
-                    />
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "num leading-none font-bold tracking-tight whitespace-pre peer-focus:invisible",
-                        text !== "" && "invisible",
-                      )}
-                      style={{ fontSize }}
-                    >
-                      {text === "" ? ghostText : text}
-                      {key === "weight" && (
-                        <span className="visible inline-block w-0 whitespace-nowrap">
-                          <small className="pl-1 text-[13px] font-semibold tracking-normal text-soft">
-                            {wUnit}
-                          </small>
-                        </span>
-                      )}
-                    </span>
-                  </span>
-                )}
-                <span className="flex h-7 items-center justify-center gap-2 text-xs font-semibold text-soft">
-                  {label}
-                  {key === "weight" && barLoaded && (
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() =>
-                        onOpenPlates(
-                          sw.trim() === "" ? null : Number.parseFloat(sw),
-                        )
-                      }
-                      className="relative flex h-7 items-center rounded-sm bg-secondary px-2 text-xs font-semibold text-ink transition-colors duration-100 after:absolute after:-inset-x-1 after:-inset-y-2 hover:bg-active"
-                      data-testid="set-plates"
-                    >
-                      plates
-                    </button>
-                  )}
-                </span>
-                {key !== "rir" && (
-                  <span
-                    className={cn(
-                      "num min-h-4 px-1 text-center text-2xs leading-4 font-semibold text-balance [@media(max-height:700px)]:sr-only",
-                      cmp.state === "up" && "text-accent-ink",
-                      cmp.state === "down" && "text-warn",
-                      (cmp.state === "same" || cmp.state === "none") &&
-                        "font-normal text-soft",
-                    )}
-                    data-testid={
-                      key === "weight" ? "weight-compare" : "reps-compare"
-                    }
-                  >
-                    {cmp.text}
-                  </span>
-                )}
-                {on && (
-                  <span className="absolute inset-x-4 bottom-0 h-[3px] rounded-xs bg-accent-ink" />
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {weightError && (
-          <p
-            id="weight-error"
-            role="alert"
-            className="pt-2 text-center text-xs font-bold text-neg"
-            data-testid="weight-error"
-          >
-            Add a weight to log this set.
-          </p>
+        {rulerEnabled && (
+          <div className="mt-2 rounded-sm bg-surface-2 dark:bg-bg">
+            {entryRuler()}
+          </div>
         )}
 
-        <div className="mt-2 rounded-sm bg-surface-2 dark:bg-bg">
-          {activeCol === "weight" && (
-            <Ruler
-              key="w"
-              value={Number.parseFloat(sw) || 0}
-              min={0}
-              max={unit === "lb" ? 1000 : 500}
-              step={unit === "lb" ? 1 : 0.5}
-              majorEvery={10}
-              midEvery={5}
-              pxPerStep={unit === "lb" ? 8 : 9}
-              jump={fieldStep("weight", unit)}
-              ghost={ghostW}
-              label="Weight ruler"
-              unit={wUnit}
-              testId="weight-ruler"
-              onStart={() => {
-                if (restStartedAt != null) onStopRest();
-              }}
-              onChange={(v) => setSW(String(v))}
-            />
-          )}
-          {activeCol === "reps" && (
-            <Ruler
-              key="r"
-              value={Number.parseFloat(sr) || 0}
-              min={0}
-              max={100}
-              step={1}
-              majorEvery={5}
-              midEvery={1}
-              pxPerStep={18}
-              ghost={ghostR}
-              label="Reps ruler"
-              unit="reps"
-              testId="reps-ruler"
-              onStart={() => {
-                if (restStartedAt != null) onStopRest();
-              }}
-              onChange={(v) => setSR(String(v))}
-            />
-          )}
-          {effort && (
-            <div className={cn("p-2", activeCol !== "rir" && "hidden")}>
-              <RirSegmented
-                bare
-                min={sRirMin}
-                max={sRirMax}
-                onChange={(v) => {
-                  setRirMin(v.min);
-                  setRirMax(v.max);
-                }}
-                hint={rirHintValue}
-              />
-            </div>
-          )}
-        </div>
-
         <div className="pt-[clamp(8px,1.4dvh,12px)] pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]">
           <Button
             size="lg"
-            className="h-[clamp(48px,7dvh,60px)] w-full rounded-lg bg-action text-[19px] font-bold text-on-action hover:bg-action-hover dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover"
+            variant={logQuiet ? "outline" : undefined}
+            className={cn(
+              "h-[clamp(48px,7dvh,60px)] w-full rounded-lg text-[19px] font-bold",
+              logQuiet
+                ? "bg-surface-2 text-soft hover:bg-surface-hover"
+                : "bg-action text-on-action hover:bg-action-hover dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover",
+            )}
             onClick={submit}
             data-testid="log-set"
+            data-ready={logQuiet ? "false" : "true"}
           >
-            <Check className="size-5" weight="bold" />
-            {isEditing
-              ? "Save"
-              : logLabel({
-                  weight,
-                  reps,
-                  weightUnit: unitLabel(unit),
-                  setNo: index + 1,
-                  unilateral: isUnilateral,
-                  rightWeight: weight2,
-                  rightReps: reps2,
-                })}
+            {logQuiet ? (
+              <span className="text-base font-semibold">
+                Add {missingSide} to log
+              </span>
+            ) : (
+              <>
+                <Check className="size-5" weight="bold" />
+                {isEditing
+                  ? "Save"
+                  : logLabel({
+                      weight,
+                      reps,
+                      weightUnit: unitLabel(unit),
+                      setNo: index + 1,
+                      unilateral: isUnilateral,
+                      rightWeight,
+                      rightReps: reps2,
+                    })}
+              </>
+            )}
           </Button>
         </div>
         {detailsDialog}
@@ -5843,6 +6063,14 @@ function Spotlight({
       className="flex max-h-[72dvh] shrink-0 flex-col gap-3 overflow-y-auto rounded-t-lg bg-surface px-4 pt-2 pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]"
       data-testid="entry-panel"
     >
+      {tab && (
+        <div
+          className="-mx-4 -mt-2 -mb-1 flex min-h-12 items-center rounded-t-lg bg-accent-soft pr-4 pl-7"
+          data-testid="now-tab"
+        >
+          {tab}
+        </div>
+      )}
       <div className="flex min-h-11 items-center gap-2">
         <span
           className="num text-sm font-semibold text-soft"
@@ -6051,24 +6279,37 @@ function SessionDurationControl({
 
   const nowRef = paused && pauseStartedAt != null ? pauseStartedAt : Date.now();
   const duration = Math.max(0, (endedAt ?? nowRef) - startedAt - pausedMs);
+  const hold = useHoldReveal();
 
   return (
     <span className="relative shrink-0">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
-        title="Duration · pause / edit start"
+        {...hold.bind}
+        onClick={() => {
+          if (hold.consumeHold()) return;
+          setOpen((o) => !o);
+        }}
+        title="Session length · tap to pause or edit start"
         className={cn(
-          "num flex h-11 items-center gap-2 rounded-sm px-3 text-sm font-semibold transition-colors duration-100",
+          "num flex h-11 touch-manipulation items-center gap-2 rounded-sm px-3 text-sm font-semibold transition-colors duration-100 select-none [-webkit-touch-callout:none]",
           paused
             ? "bg-accent-soft text-accent-ink"
             : "bg-secondary text-ink hover:bg-active",
         )}
         data-testid="session-clock"
+        data-clock-kind="session"
       >
         {paused ? <Pause className="size-5" /> : <Clock className="size-5" />}
-        {clockText(duration)}
+        <span
+          className="text-2xs font-bold tracking-widest text-soft uppercase"
+          data-testid="clock-kind"
+        >
+          {paused ? "Paused" : "Session"}
+        </span>
+        <span data-testid="session-clock-time">{clockText(duration)}</span>
       </button>
+      {hold.held && <SessionLengthReveal text={clockText(duration)} />}
       {open && (
         <>
           <button

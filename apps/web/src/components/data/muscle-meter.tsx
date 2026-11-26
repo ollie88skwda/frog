@@ -55,7 +55,9 @@ export function MuscleMeter({
           <span
             aria-hidden="true"
             className={cn(
-              "meter-grow absolute inset-y-0 left-0 rounded-xs",
+              // Moves only when the value changes; never replays on a
+              // remount (a cache-hit return to Today used to regrow it).
+              "absolute inset-y-0 left-0 rounded-xs transition-[width] duration-200",
               fill,
             )}
             style={{ width: pct(sets) }}

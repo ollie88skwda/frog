@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 // mm:ss for an elapsed second count. The one formatter the rest stopwatch and
@@ -8,6 +8,62 @@ export function mmss(totalSec: number): string {
   const s = Math.max(0, totalSec);
   const m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/**
+ * Press-and-hold on the top-bar clock: after ~450 ms it reports `held` (the
+ * caller reveals the session length while it's true) and swallows the click
+ * that follows the release, so a hold never also stops rest / opens a menu.
+ */
+export function useHoldReveal() {
+  const [held, setHeld] = useState(false);
+  const t = useRef<number | undefined>(undefined);
+  const fired = useRef(false);
+  useEffect(() => () => window.clearTimeout(t.current), []);
+  const end = () => {
+    window.clearTimeout(t.current);
+    setHeld(false);
+  };
+  return {
+    held,
+    bind: {
+      onPointerDown: (e: { pointerType: string; button: number }) => {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        fired.current = false;
+        window.clearTimeout(t.current);
+        t.current = window.setTimeout(() => {
+          fired.current = true;
+          setHeld(true);
+        }, 450);
+      },
+      onPointerUp: end,
+      onPointerLeave: end,
+      onPointerCancel: end,
+      onContextMenu: (e: { preventDefault: () => void }) => e.preventDefault(),
+    },
+    /** True (once) when the click that just happened ended a hold. */
+    consumeHold: () => {
+      const f = fired.current;
+      fired.current = false;
+      return f;
+    },
+  };
+}
+
+/** The floating "Session 12:04" readout a hold on the clock reveals. */
+export function SessionLengthReveal({ text }: { text: string }) {
+  return (
+    <span
+      role="status"
+      className="floating num pointer-events-none absolute top-full left-0 z-30 mt-1 flex items-baseline gap-2 px-3 py-2 whitespace-nowrap"
+      data-testid="session-length-reveal"
+    >
+      <span className="text-2xs font-bold tracking-widest text-soft uppercase">
+        Session
+      </span>
+      <span className="text-lg font-bold text-ink">{text}</span>
+    </span>
+  );
 }
 
 /**
@@ -26,7 +82,10 @@ export function RestStopwatch({
   setNumber,
   onStop,
   compact = false,
+  sessionText,
 }: {
+  /** Total session length, revealed while the compact clock is held. */
+  sessionText?: () => string;
   startedAt: number;
   /** 1-based number of the set this rest FOLLOWS. */
   setNumber: number;
@@ -41,27 +100,44 @@ export function RestStopwatch({
   }, []);
 
   const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+  const hold = useHoldReveal();
 
   if (compact) {
     return (
-      <button
-        type="button"
-        onClick={onStop}
-        title={`Resting after set ${setNumber} — tap to stop`}
-        className="rounded-sm num flex h-11 items-center gap-2 bg-accent-soft px-3 text-sm font-semibold text-accent-ink"
-        data-testid="rest-stopwatch"
-      >
-        <span
-          aria-hidden="true"
-          className="size-2 shrink-0 animate-pulse rounded-xs bg-accent-ink"
-        />
-        <span data-testid="rest-elapsed" className="tabular-nums">
-          {mmss(elapsed)}
-        </span>
-        <span data-testid="rest-stop" className="sr-only">
-          Stop
-        </span>
-      </button>
+      <span className="relative shrink-0">
+        <button
+          type="button"
+          {...hold.bind}
+          onClick={() => {
+            if (hold.consumeHold()) return;
+            onStop();
+          }}
+          title={`Resting after set ${setNumber} — tap to stop, hold for session length`}
+          className="rounded-sm num flex h-11 touch-manipulation items-center gap-2 bg-accent-soft px-3 text-sm font-semibold text-accent-ink select-none [-webkit-touch-callout:none]"
+          data-testid="rest-stopwatch"
+          data-clock-kind="rest"
+        >
+          <span
+            aria-hidden="true"
+            className="size-2 shrink-0 animate-pulse rounded-xs bg-accent-ink"
+          />
+          <span
+            className="text-2xs font-bold tracking-widest uppercase"
+            data-testid="clock-kind"
+          >
+            Rest
+          </span>
+          <span data-testid="rest-elapsed" className="tabular-nums">
+            {mmss(elapsed)}
+          </span>
+          <span data-testid="rest-stop" className="sr-only">
+            Stop
+          </span>
+        </button>
+        {hold.held && sessionText && (
+          <SessionLengthReveal text={sessionText()} />
+        )}
+      </span>
     );
   }
 
