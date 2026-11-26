@@ -162,6 +162,7 @@ import {
   useHoldReveal,
 } from "@/components/session/rest-stopwatch";
 import { Ruler } from "@/components/session/ruler";
+import { SideCell } from "@/components/session/side-cell";
 import {
   FinishPhotoStrip,
   type PendingPhoto,
@@ -2587,19 +2588,23 @@ function rirLabel(r: {
 
 // Set list: one 48px card per logged set plus the current "Now" row; tap a row
 // to open that set in the entry panel. Planned sets are never drawn. Same
-// set-mark-* test hooks as the old marks band.
+// set-mark-* test hooks as the old marks band. While logging live, the Now row
+// is not drawn in the list: `variant="tab"` renders it as the entry panel's
+// own top band (Spotlight's `tab` slot), so the row and the panel are one
+// surface, and the list (bottom-anchored in the scroll area) sits directly on
+// it (item 6, docs/ux-audit/2026-11-25/fix-6-8).
 function SetRows({
   marks,
   rows,
   fmtWeight,
   selectedIndex,
-  upcoming,
+  variant = "list",
 }: {
   marks: Mark[];
   /** The set the entry panel below is showing (live or a tapped past set). */
   selectedIndex: number;
-  /** Planned sets after the open one: number + last time's values. */
-  upcoming: { index: number; lastText: string }[];
+  /** "tab": only the live Now row, as the entry panel's top band. */
+  variant?: "list" | "tab";
   rows: {
     text: string;
     lastText: string;
@@ -2613,24 +2618,171 @@ function SetRows({
   fmtWeight: (kg: number) => string;
 }) {
   const motionReady = useMotionReady();
+  // The live Now row (selected, not yet logged) belongs to the panel.
+  const tabIndex =
+    marks[selectedIndex]?.kind === "current" ? selectedIndex : -1;
+  if (variant === "tab") {
+    if (tabIndex < 0) return null;
+    return renderRow(tabIndex, true);
+  }
+  function renderRow(i: number, tab: boolean) {
+    const m = marks[i];
+    const r = rows[i];
+    const now = m.kind === "current";
+    // The row the entry panel is showing: the Now row while logging live,
+    // or the past set that was tapped (edit mode).
+    const selected = i === selectedIndex;
+    return (
+      <button
+        type="button"
+        disabled={!m.onTap}
+        onClick={(e) => {
+          // A per-side pair opens on the side that was tapped: from the
+          // R value rightwards is the right side (a matched pair, shown
+          // as one value, splits at the row's middle).
+          const box = e.currentTarget.getBoundingClientRect();
+          const r = e.currentTarget
+            .querySelector("[data-pair-right]")
+            ?.getBoundingClientRect();
+          // A wrapped pair (R half on its own line) splits by line.
+          const wrapped = r != null && r.top > box.top + box.height / 3;
+          const isRight = wrapped
+            ? e.clientY >= r.top - 2
+            : e.clientX >= (r ? r.left - 4 : box.left + box.width / 2);
+          m.onTap?.(m.paired ? (isRight ? "right" : "left") : null);
+        }}
+        className={cn(
+          "relative grid min-h-[clamp(40px,5.4dvh,48px)] w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 px-3 text-left text-[17px] text-ink press duration-100",
+          tab
+            ? "min-w-0 flex-1 rounded-none bg-transparent px-0"
+            : selected
+              ? "rounded-md bg-accent-soft ring-2 ring-accent-ink ring-inset"
+              : now
+                ? "rounded-md bg-accent-soft/50"
+                : "rounded-md bg-surface hover:bg-surface-hover",
+        )}
+        aria-current={selected ? "true" : undefined}
+        data-selected={selected ? "true" : "false"}
+        data-tab={tab ? "true" : undefined}
+        data-testid={`set-mark-${i}`}
+      >
+        <span
+          className={cn(
+            "num flex size-6 items-center justify-center rounded-sm text-xs font-semibold",
+            selected
+              ? "bg-accent-ink text-bg"
+              : now
+                ? "bg-accent text-on-accent"
+                : m.kind === "warmup"
+                  ? "bg-surface-2 text-warn"
+                  : "bg-accent-soft text-accent-ink",
+          )}
+          data-testid={`set-mark-${i}-state`}
+          data-state={m.kind}
+        >
+          {m.kind === "warmup" ? "W" : i + 1}
+        </span>
+        <span className="num flex min-w-0 items-center gap-2 font-semibold">
+          {(() => {
+            if (now)
+              return (
+                <span className="flex min-w-0 items-center gap-1 truncate">
+                  Now
+                  {selected && (
+                    <CaretDown
+                      aria-label="logging below"
+                      className="size-4 shrink-0 text-accent-ink"
+                      weight="bold"
+                      data-testid="now-link"
+                    />
+                  )}
+                </span>
+              );
+            const sides = r.pair
+              ? formatPreviousSides(r.pair, fmtWeight)
+              : null;
+            // Uneven per-side pair: label each side. A matched pair
+            // collapses to one value plus the L+R tag.
+            if (sides?.right != null)
+              return (
+                // Two outlined cells, one per side, so a per-side set
+                // reads as split at a glance (SideCell, >= 3:1 on
+                // every row fill). Wraps the R cell under the L cell
+                // rather than clipping on a narrow row.
+                <span
+                  className="flex min-w-0 flex-wrap items-center gap-1.5 py-1 text-[15px] leading-6"
+                  data-testid={`set-mark-${i}-sides`}
+                >
+                  <SideCell side="left">{sides.left}</SideCell>
+                  <SideCell side="right" data-pair-right>
+                    {sides.right}
+                  </SideCell>
+                </span>
+              );
+            return (
+              <>
+                <span className="min-w-0 truncate">{r.text}</span>
+                {m.paired && (
+                  <SideTag side="both" testId={`set-mark-${i}-side-tag`} />
+                )}
+              </>
+            );
+          })()}
+          {m.pr && (
+            <Medal
+              className="size-4 shrink-0 text-accent-ink"
+              data-testid={`set-mark-${i}-medal`}
+            />
+          )}
+        </span>
+        <span
+          className={cn(
+            "num flex items-center gap-2 text-sm text-soft",
+            tab && "min-w-0 overflow-hidden whitespace-nowrap",
+          )}
+        >
+          {now ? (
+            r.lastPair ? (
+              <span
+                className="inline-flex items-center gap-1"
+                data-testid="set-mark-last-sides"
+              >
+                last
+                <PreviousSets ghost={r.lastPair} formatWeight={fmtWeight} />
+              </span>
+            ) : r.lastText ? (
+              `last ${r.lastText}`
+            ) : (
+              ""
+            )
+          ) : (
+            r.rirText
+          )}
+          {r.hasNote && (
+            <Notebook className="size-4 shrink-0 text-accent-ink" />
+          )}
+        </span>
+      </button>
+    );
+  }
   return (
-    <div className="flex flex-col px-4" data-testid="marks-band">
+    <div className="flex flex-col px-4 pb-2" data-testid="marks-band">
       {/* A logged set morphs in place (same key, new state); an added set
           grows in and a removed one folds away instead of the list jumping.
           The wrapper owns the 4px gap (as top padding) so a folding row takes
           its gap with it. */}
       <AnimatePresence initial={false}>
-        {marks.map((m, i) => {
-          const r = rows[i];
-          const now = m.kind === "current";
-          // The row the entry panel is showing: the Now row while logging
-          // live, or the past set that was tapped (edit mode).
-          const selected = i === selectedIndex;
+        {marks.map((_m, i) => {
+          // The live Now row is drawn by the panel (variant "tab"); its slot
+          // stays here, empty, so logging it morphs it in place into a done
+          // row (no grow-in under the user's thumb) and a set that becomes
+          // the Now row never lingers here as an exiting duplicate.
+          const inPanel = i === tabIndex;
           return (
             <motionEl.div
               // biome-ignore lint/suspicious/noArrayIndexKey: fixed set-1,set-2,... sequence, never reordered
               key={`set-${i}`}
-              className={cn(i > 0 && "pt-1")}
+              className={cn(i > 0 && !inPanel && "pt-1")}
               initial={motionReady ? COLLAPSED : false}
               animate={EXPANDED}
               exit={{
@@ -2639,157 +2791,11 @@ function SetRows({
                 transition: FADE_OUT,
               }}
             >
-              <button
-                type="button"
-                disabled={!m.onTap}
-                onClick={(e) => {
-                  // A per-side pair opens on the side that was tapped: from the
-                  // R value rightwards is the right side (a matched pair, shown
-                  // as one value, splits at the row's middle).
-                  const box = e.currentTarget.getBoundingClientRect();
-                  const r = e.currentTarget
-                    .querySelector("[data-pair-right]")
-                    ?.getBoundingClientRect();
-                  // A wrapped pair (R half on its own line) splits by line.
-                  const wrapped = r != null && r.top > box.top + box.height / 3;
-                  const isRight = wrapped
-                    ? e.clientY >= r.top - 2
-                    : e.clientX >= (r ? r.left - 4 : box.left + box.width / 2);
-                  m.onTap?.(m.paired ? (isRight ? "right" : "left") : null);
-                }}
-                className={cn(
-                  "relative grid min-h-[clamp(40px,5.4dvh,48px)] w-full grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 rounded-md px-3 text-left text-[17px] text-ink press duration-100",
-                  selected
-                    ? "bg-accent-soft ring-2 ring-accent-ink ring-inset"
-                    : now
-                      ? "bg-accent-soft/50"
-                      : "bg-surface hover:bg-surface-hover",
-                )}
-                aria-current={selected ? "true" : undefined}
-                data-selected={selected ? "true" : "false"}
-                data-testid={`set-mark-${i}`}
-              >
-                <span
-                  className={cn(
-                    "num flex size-6 items-center justify-center rounded-sm text-xs font-semibold",
-                    selected
-                      ? "bg-accent-ink text-bg"
-                      : now
-                        ? "bg-accent text-on-accent"
-                        : m.kind === "warmup"
-                          ? "bg-surface-2 text-warn"
-                          : "bg-accent-soft text-accent-ink",
-                  )}
-                  data-testid={`set-mark-${i}-state`}
-                  data-state={m.kind}
-                >
-                  {m.kind === "warmup" ? "W" : i + 1}
-                </span>
-                <span className="num flex min-w-0 items-center gap-2 font-semibold">
-                  {(() => {
-                    if (now)
-                      return (
-                        <span className="flex min-w-0 items-center gap-1 truncate">
-                          Now
-                          {selected && (
-                            <CaretDown
-                              aria-label="logging below"
-                              className="size-4 shrink-0 text-accent-ink"
-                              weight="bold"
-                              data-testid="now-link"
-                            />
-                          )}
-                        </span>
-                      );
-                    const sides = r.pair
-                      ? formatPreviousSides(r.pair, fmtWeight)
-                      : null;
-                    // Uneven per-side pair: label each side. A matched pair
-                    // collapses to one value plus the L+R tag.
-                    if (sides?.right != null)
-                      return (
-                        // Two tinted halves, one per side, so a per-side set
-                        // reads as split at a glance. Wraps the R half under
-                        // the L half rather than clipping on a narrow row.
-                        <span
-                          className="flex min-w-0 flex-wrap items-center gap-1 py-1 text-[15px] leading-6"
-                          data-testid={`set-mark-${i}-sides`}
-                        >
-                          <span className="inline-flex items-center gap-1 rounded-sm bg-surface-2 py-0.5 pr-2 pl-1">
-                            <SideTag side="left" className="bg-surface" />
-                            {sides.left}
-                          </span>
-                          <span
-                            data-pair-right
-                            className="inline-flex items-center gap-1 rounded-sm bg-surface-2 py-0.5 pr-2 pl-1"
-                          >
-                            <SideTag side="right" className="bg-surface" />
-                            {sides.right}
-                          </span>
-                        </span>
-                      );
-                    return (
-                      <>
-                        <span className="min-w-0 truncate">{r.text}</span>
-                        {m.paired && (
-                          <SideTag
-                            side="both"
-                            testId={`set-mark-${i}-side-tag`}
-                          />
-                        )}
-                      </>
-                    );
-                  })()}
-                  {m.pr && (
-                    <Medal
-                      className="size-4 shrink-0 text-accent-ink"
-                      data-testid={`set-mark-${i}-medal`}
-                    />
-                  )}
-                </span>
-                <span className="num flex items-center gap-2 text-sm text-soft">
-                  {now ? (
-                    r.lastPair ? (
-                      <span
-                        className="inline-flex items-center gap-1"
-                        data-testid="set-mark-last-sides"
-                      >
-                        last
-                        <PreviousSets
-                          ghost={r.lastPair}
-                          formatWeight={fmtWeight}
-                        />
-                      </span>
-                    ) : r.lastText ? (
-                      `last ${r.lastText}`
-                    ) : (
-                      ""
-                    )
-                  ) : (
-                    r.rirText
-                  )}
-                  {r.hasNote && (
-                    <Notebook className="size-4 shrink-0 text-accent-ink" />
-                  )}
-                </span>
-              </button>
+              {!inPanel && renderRow(i, false)}
             </motionEl.div>
           );
         })}
       </AnimatePresence>
-      {upcoming.map((u) => (
-        <div
-          key={`up-${u.index}`}
-          className="grid min-h-10 grid-cols-[1.5rem_minmax(0,1fr)_auto] items-center gap-3 px-3 pt-1 text-sm text-soft"
-          data-testid={`set-upcoming-${u.index}`}
-        >
-          <span className="num flex size-6 items-center justify-center rounded-sm bg-surface-2 text-xs font-semibold">
-            {u.index + 1}
-          </span>
-          <span className="font-medium">Up next</span>
-          <span className="num">{u.lastText ? `last ${u.lastText}` : ""}</span>
-        </div>
-      ))}
     </div>
   );
 }
@@ -3554,6 +3560,59 @@ function ExerciseSpotlight({
     }
   }
 
+  // The set list and the entry panel's Now tab render from the same rows.
+  const setRowProps = {
+    marks,
+    selectedIndex: openSet || manualFocus != null ? focusedIndex : -1,
+    // Pair rows carry two values; the unit is on the entry panel, so
+    // they drop it to fit both sides on a 360px row.
+    fmtWeight: (kg: number) => String(toDisplayWeight(kg, blockUnit)),
+    rows: marks.map((_m, i) => {
+      const g = committedGroups[i];
+      // ghostFor is typed on DraftSet; useGhost rows are GhostSets.
+      const lastGhost = ghostFor(ghost, i) as GhostSet;
+      // A per-side pair shows both sides (PreviousSets: one value when
+      // they match, L and R when they differ), never just the left.
+      const pair: GhostSet | null =
+        g && g.length === 2
+          ? {
+              weightKg: g[0].weightKg ?? null,
+              reps: g[0].reps ?? null,
+              durationSec: g[0].durationSec ?? null,
+              otherSide: {
+                weightKg: g[1].weightKg ?? null,
+                reps: g[1].reps ?? null,
+                durationSec: g[1].durationSec ?? null,
+              },
+            }
+          : null;
+      const text = g
+        ? fieldsFor(type)
+            .map((k) => fieldText(k, g[0], blockUnit, distUnit))
+            .filter((t) => t !== "—")
+            .join(" × ")
+        : "";
+      const lastText = fieldsFor(type)
+        .map((k) => fieldText(k, lastGhost, blockUnit, distUnit))
+        .filter((t) => t !== "—")
+        .join(" × ");
+      const rirL = g ? rirLabel(g[0]) : "";
+      const rirR = g && g.length === 2 ? rirLabel(g[1]) : "";
+      const rirText =
+        rirR && rirR !== rirL
+          ? `${rirL || "RIR —"} / ${rirR.replace("RIR ", "")}`
+          : rirL;
+      return {
+        text,
+        lastText,
+        rirText,
+        hasNote: !!g?.some((r) => r.note),
+        pair,
+        lastPair: lastGhost.otherSide ? lastGhost : null,
+      };
+    }),
+  };
+
   // Swipe between exercises from anywhere on the panel (restored after #125
   // narrowed it to the header). Gestures that belong to something else are
   // ignored at touchstart: the ruler's own drag, text inputs, sheets/dialogs
@@ -3592,7 +3651,7 @@ function ExerciseSpotlight({
       }}
     >
       <div
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
         data-testid="session-scroll"
       >
         {/* 2. Exercise header. */}
@@ -3764,191 +3823,12 @@ function ExerciseSpotlight({
           )}
         </header>
 
-        {/* 3. Set band. */}
-        {(() => {
-          // Where this exercise stands: set N of M and how many are left,
-          // so the top of the screen says more than one row.
-          const offered = offeredSets({
-            planned: plannedSetCount(seedSets.length),
-            added: addedSets,
-            committed: committedGroups.length,
-          });
-          const left = Math.max(0, offered - committedGroups.length);
-          return (
-            <p
-              className="num flex items-center gap-2 px-4 pb-2 text-xs font-semibold text-soft"
-              data-testid="exercise-progress"
-            >
-              <span className="text-ink">
-                {committedGroups.length} of {offered}{" "}
-                {offered === 1 ? "set" : "sets"} done
-              </span>
-              <span aria-hidden="true">·</span>
-              <span>{left === 0 ? "all logged" : `${left} to go`}</span>
-            </p>
-          );
-        })()}
-        <SetRows
-          marks={marks}
-          selectedIndex={openSet || manualFocus != null ? focusedIndex : -1}
-          upcoming={(() => {
-            const offered = offeredSets({
-              planned: plannedSetCount(seedSets.length),
-              added: addedSets,
-              committed: committedGroups.length,
-            });
-            const out: { index: number; lastText: string }[] = [];
-            for (let i = totalMarks; i < offered; i++) {
-              const g = ghostFor(ghost, i) as GhostSet;
-              out.push({
-                index: i,
-                lastText:
-                  ghost.length > 0
-                    ? fieldsFor(type)
-                        .map((k) => fieldText(k, g, blockUnit, distUnit))
-                        .filter((t) => t !== "—")
-                        .join(" × ")
-                    : "",
-              });
-            }
-            return out;
-          })()}
-          // Pair rows carry two values; the unit is on the entry panel, so
-          // they drop it to fit both sides on a 360px row.
-          fmtWeight={(kg) => String(toDisplayWeight(kg, blockUnit))}
-          rows={marks.map((_m, i) => {
-            const g = committedGroups[i];
-            // ghostFor is typed on DraftSet; useGhost rows are GhostSets.
-            const lastGhost = ghostFor(ghost, i) as GhostSet;
-            // A per-side pair shows both sides (PreviousSets: one value when
-            // they match, L and R when they differ), never just the left.
-            const pair: GhostSet | null =
-              g && g.length === 2
-                ? {
-                    weightKg: g[0].weightKg ?? null,
-                    reps: g[0].reps ?? null,
-                    durationSec: g[0].durationSec ?? null,
-                    otherSide: {
-                      weightKg: g[1].weightKg ?? null,
-                      reps: g[1].reps ?? null,
-                      durationSec: g[1].durationSec ?? null,
-                    },
-                  }
-                : null;
-            const text = g
-              ? fieldsFor(type)
-                  .map((k) => fieldText(k, g[0], blockUnit, distUnit))
-                  .filter((t) => t !== "—")
-                  .join(" × ")
-              : "";
-            const lastText = fieldsFor(type)
-              .map((k) => fieldText(k, lastGhost, blockUnit, distUnit))
-              .filter((t) => t !== "—")
-              .join(" × ");
-            const rirL = g ? rirLabel(g[0]) : "";
-            const rirR = g && g.length === 2 ? rirLabel(g[1]) : "";
-            const rirText =
-              rirR && rirR !== rirL
-                ? `${rirL || "RIR —"} / ${rirR.replace("RIR ", "")}`
-                : rirL;
-            return {
-              text,
-              lastText,
-              rirText,
-              hasNote: !!g?.some((r) => r.note),
-              pair,
-              lastPair: lastGhost.otherSide ? lastGhost : null,
-            };
-          })}
-        />
-        <div className="px-4 pt-1">
-          <button
-            type="button"
-            onClick={() => {
-              onAddSet();
-              focusLive();
-            }}
-            className="flex min-h-11 w-full items-center gap-2 rounded-md bg-surface-2/60 pl-12 text-left text-sm font-medium text-soft press duration-100 hover:bg-surface-2"
-            data-testid="add-set"
-          >
-            + Add a set
-          </button>
-        </div>
-
-        {(lastState || nudge || directThis) && (
-          <div
-            className="flex flex-col gap-2 px-4 pt-3"
-            data-testid="set-result"
-          >
-            {lastState && lastWorking && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={cn(
-                    "num inline-flex h-5 items-center rounded-xs px-2 text-2xs font-semibold",
-                    lastState.kind === "over"
-                      ? "bg-accent-soft text-accent-ink"
-                      : "bg-hover text-soft",
-                  )}
-                  data-testid="range-chip"
-                >
-                  {lastState.label}
-                </span>
-                {lastWorkingE1rm?.kind === "value" && (
-                  <span className="num text-2xs text-soft">
-                    e1RM {toDisplayWeight(lastWorkingE1rm.kg, blockUnit)}{" "}
-                    {unitLabel(blockUnit)}
-                  </span>
-                )}
-                {lastWorkingE1rm?.kind === "not_estimable" && (
-                  <span className="text-2xs text-soft">
-                    Over 10 reps in total: no strength estimate for this set
-                  </span>
-                )}
-                {(() => {
-                  const g = ghostFor(ghost, lastWorking[0].setNo);
-                  const w = lastWorking[0].weightKg;
-                  if (g.weightKg == null || w == null) return null;
-                  const d = toDisplayWeight(w - g.weightKg, blockUnit);
-                  if (Math.abs(d) < 0.1) return null;
-                  return (
-                    <DeltaChip
-                      delta={d}
-                      unit={` ${unitLabel(blockUnit)}`}
-                      basis="vs last time"
-                    />
-                  );
-                })()}
-                <SaveDot
-                  state={lastWorking.reduce<SaveState>(
-                    (acc, r) =>
-                      acc === "failed" || saveStateOf(r.id) === "failed"
-                        ? "failed"
-                        : acc === "queued" || saveStateOf(r.id) === "queued"
-                          ? "queued"
-                          : "saved",
-                    "saved",
-                  )}
-                  onRetry={onRetrySets}
-                />
-              </div>
-            )}
-            {nudge && (
-              <p className="text-xs text-soft" data-testid="coach-nudge">
-                {nudge}
-              </p>
-            )}
-            {directThis && (
-              <p className="text-xs text-soft" data-testid="direct-sets-note">
-                {directThis.direct} direct sets for{" "}
-                {muscleLabel(directThis.muscle)} in one session: a planning
-                range is 2-5.
-              </p>
-            )}
-          </div>
-        )}
-
+        {/* Everything below the header is bottom-anchored as one cluster
+            (setup, result, set list), so the logged sets sit directly on the
+            entry panel and any spare height stays under the exercise title
+            instead of between the sets and the panel (item 6). */}
         <div
-          className="flex flex-col gap-2 px-4 pt-[clamp(8px,1.2dvh,12px)] pb-[clamp(8px,1.6dvh,16px)]"
+          className="mt-auto flex flex-col gap-2 px-4 pb-[clamp(8px,1.2dvh,12px)]"
           data-testid="exercise-extras"
         >
           {exercise &&
@@ -4018,6 +3898,122 @@ function ExerciseSpotlight({
             )}
           </div>
         </div>
+        {(lastState || nudge || directThis) && (
+          <div
+            className="flex flex-col gap-2 px-4 pt-1"
+            data-testid="set-result"
+          >
+            {lastState && lastWorking && (
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={cn(
+                    "num inline-flex h-5 items-center rounded-xs px-2 text-2xs font-semibold",
+                    lastState.kind === "over"
+                      ? "bg-accent-soft text-accent-ink"
+                      : "bg-hover text-soft",
+                  )}
+                  data-testid="range-chip"
+                >
+                  {lastState.label}
+                </span>
+                {lastWorkingE1rm?.kind === "value" && (
+                  <span className="num text-2xs text-soft">
+                    e1RM {toDisplayWeight(lastWorkingE1rm.kg, blockUnit)}{" "}
+                    {unitLabel(blockUnit)}
+                  </span>
+                )}
+                {lastWorkingE1rm?.kind === "not_estimable" && (
+                  <span className="text-2xs text-soft">
+                    Over 10 reps in total: no strength estimate for this set
+                  </span>
+                )}
+                {(() => {
+                  const g = ghostFor(ghost, lastWorking[0].setNo);
+                  const w = lastWorking[0].weightKg;
+                  if (g.weightKg == null || w == null) return null;
+                  const d = toDisplayWeight(w - g.weightKg, blockUnit);
+                  if (Math.abs(d) < 0.1) return null;
+                  return (
+                    <DeltaChip
+                      delta={d}
+                      unit={` ${unitLabel(blockUnit)}`}
+                      basis="vs last time"
+                    />
+                  );
+                })()}
+                <SaveDot
+                  state={lastWorking.reduce<SaveState>(
+                    (acc, r) =>
+                      acc === "failed" || saveStateOf(r.id) === "failed"
+                        ? "failed"
+                        : acc === "queued" || saveStateOf(r.id) === "queued"
+                          ? "queued"
+                          : "saved",
+                    "saved",
+                  )}
+                  onRetry={onRetrySets}
+                />
+              </div>
+            )}
+            {nudge && (
+              <p className="text-xs text-soft" data-testid="coach-nudge">
+                {nudge}
+              </p>
+            )}
+            {directThis && (
+              <p className="text-xs text-soft" data-testid="direct-sets-note">
+                {directThis.direct} direct sets for{" "}
+                {muscleLabel(directThis.muscle)} in one session: a planning
+                range is 2-5.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* 3. Set band: the last block above the entry panel; the live Now
+            row is the panel's own header (SetRows variant="tab"). */}
+        <div className="pt-2">
+          {(() => {
+            // Where this exercise stands: set N of M and how many are left,
+            // so the top of the screen says more than one row.
+            const offered = offeredSets({
+              planned: plannedSetCount(seedSets.length),
+              added: addedSets,
+              committed: committedGroups.length,
+            });
+            const left = Math.max(0, offered - committedGroups.length);
+            return (
+              <div className="flex items-center gap-2 px-4 pb-2">
+                <p
+                  className="num flex min-w-0 flex-1 items-center gap-2 text-xs font-semibold text-soft"
+                  data-testid="exercise-progress"
+                >
+                  <span className="text-ink">
+                    {committedGroups.length} of {offered}{" "}
+                    {offered === 1 ? "set" : "sets"} done
+                  </span>
+                  <span aria-hidden="true">·</span>
+                  <span>{left === 0 ? "all logged" : `${left} to go`}</span>
+                </p>
+                {/* Sits above the list so the Now row can stay the last row,
+                  attached to the entry panel. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    onAddSet();
+                    focusLive();
+                  }}
+                  className="flex min-h-11 shrink-0 items-center gap-1 rounded-md bg-surface-2 px-3 text-sm font-medium text-ink press duration-100 hover:bg-surface-hover"
+                  data-testid="add-set"
+                >
+                  <Plus className="size-4" />
+                  Add a set
+                </button>
+              </div>
+            );
+          })()}
+          <SetRows {...setRowProps} />
+        </div>
         <MachinePickerDialog
           open={machineOpen}
           onOpenChange={setMachineOpen}
@@ -4074,7 +4070,7 @@ function ExerciseSpotlight({
           {/* What was done, where the weight and reps normally sit: one tile
               per set, a per-side set split into its two sides. */}
           <div
-            className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-2 pb-3"
+            className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-2 pb-3"
             data-testid="sets-done-summary"
           >
             {committedGroups.map((g, i) => {
@@ -4105,16 +4101,14 @@ function ExerciseSpotlight({
                     {warm ? "Warm-up" : `Set ${i + 1}`}
                   </span>
                   {g.length === 2 ? (
-                    <>
-                      <span className="flex items-center gap-1">
-                        <SideTag side="left" className="bg-surface" />
-                        {one(g[0])}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <SideTag side="right" className="bg-surface" />
-                        {one(g[1])}
-                      </span>
-                    </>
+                    // Same two outlined side cells as the set list above.
+                    <span
+                      className="flex flex-col items-start gap-1"
+                      data-testid={`sets-done-${i}-sides`}
+                    >
+                      <SideCell side="left">{one(g[0])}</SideCell>
+                      <SideCell side="right">{one(g[1])}</SideCell>
+                    </span>
                   ) : (
                     <span>{one(g[0]) || "—"}</span>
                   )}
@@ -4161,6 +4155,11 @@ function ExerciseSpotlight({
           key={`${block.seId}-${focusedIndex}-${seedNonce}-${
             committedGroups[focusedIndex]?.map((r) => r.id).join(",") ?? "live"
           }-${manualFocus != null ? (focusSide ?? "") : ""}`}
+          tab={
+            marks[setRowProps.selectedIndex]?.kind === "current" ? (
+              <SetRows {...setRowProps} variant="tab" />
+            ) : undefined
+          }
           initialSide={manualFocus != null ? focusSide : null}
           rulerEnabled={block.committed.length > 0}
           seId={block.seId}
@@ -4309,7 +4308,10 @@ function Spotlight({
   enabledMetrics,
   initialSide,
   rulerEnabled,
+  tab,
 }: {
+  /** The live Now row, drawn as the panel's own top band (SetRows "tab"). */
+  tab?: ReactNode;
   /** The ruler is for fine-tuning: shown once this exercise has a logged set
    * in this session; before that the values are plain keyboard inputs. */
   rulerEnabled: boolean;
@@ -5899,11 +5901,24 @@ function Spotlight({
   })();
 
   const rulerHeader = (
-    <div className="flex min-h-[clamp(36px,5.2dvh,44px)] items-center gap-2">
+    <div
+      className={cn(
+        "flex min-h-[clamp(36px,5.2dvh,44px)] items-center gap-2",
+        // Live set: the Now row is this header, one accent band across the
+        // panel's top edge (item 6, docs/ux-audit/2026-11-25/fix-6-8).
+        tab &&
+          "-mx-4 -mt-2 mb-1 min-h-[clamp(48px,6.4dvh,56px)] rounded-t-lg bg-accent-soft py-1 pr-4 pl-7",
+      )}
+      data-testid={tab ? "now-tab" : undefined}
+    >
+      {tab}
       {/* Same numbered badge as the highlighted set row above, so the panel
-          reads as that set opened up. */}
+          reads as that set opened up. With the Now tab it is the tab. */}
       <span
-        className="num flex items-center gap-2 text-sm font-semibold text-ink"
+        className={cn(
+          "num flex items-center gap-2 text-sm font-semibold text-ink",
+          tab && "sr-only",
+        )}
         data-testid="set-number"
       >
         <span
@@ -6048,6 +6063,14 @@ function Spotlight({
       className="flex max-h-[72dvh] shrink-0 flex-col gap-3 overflow-y-auto rounded-t-lg bg-surface px-4 pt-2 pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]"
       data-testid="entry-panel"
     >
+      {tab && (
+        <div
+          className="-mx-4 -mt-2 -mb-1 flex min-h-12 items-center rounded-t-lg bg-accent-soft pr-4 pl-7"
+          data-testid="now-tab"
+        >
+          {tab}
+        </div>
+      )}
       <div className="flex min-h-11 items-center gap-2">
         <span
           className="num text-sm font-semibold text-soft"

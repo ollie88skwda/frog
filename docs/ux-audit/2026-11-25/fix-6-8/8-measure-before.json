@@ -1,0 +1,82 @@
+{
+  "list-day": [
+    {
+      "chipBg": "#f7f1e8",
+      "rowBg": "#fffefb",
+      "border": "none",
+      "tagBg": "#fffefb",
+      "tagText": "#5d4f4a",
+      "tagFont": "11px",
+      "valueText": "#211816"
+    },
+    {
+      "chipBg": "#f7f1e8",
+      "rowBg": "#fffefb",
+      "border": "none",
+      "tagBg": "#fffefb",
+      "tagText": "#5d4f4a",
+      "tagFont": "11px",
+      "valueText": "#211816"
+    }
+  ],
+  "summary-day": [
+    {
+      "chipBg": "#f7f1e8",
+      "rowBg": "#f7f1e8",
+      "border": "none",
+      "tagBg": "#fffefb",
+      "tagText": "#5d4f4a",
+      "tagFont": "11px",
+      "valueText": "#211816"
+    },
+    {
+      "chipBg": "#f7f1e8",
+      "rowBg": "#f7f1e8",
+      "border": "none",
+      "tagBg": "#fffefb",
+      "tagText": "#5d4f4a",
+      "tagFont": "11px",
+      "valueText": "#211816"
+    }
+  ],
+  "list-night": [
+    {
+      "chipBg": "#1f1b18",
+      "rowBg": "#fffefb",
+      "border": "none",
+      "tagBg": "#221e1c",
+      "tagText": "#c4bcb4",
+      "tagFont": "11px",
+      "valueText": "#211816"
+    },
+    {
+      "chipBg": "#1f1b18",
+      "rowBg": "#fffefb",
+      "border": "none",
+      "tagBg": "#221e1c",
+      "tagText": "#c4bcb4",
+      "tagFont": "11px",
+      "valueText": "#211816"
+    }
+  ],
+  "summary-night": [
+    {
+      "chipBg": "#f7f1e8",
+      "rowBg": "#f7f1e8",
+      "border": "none",
+      "tagBg": "#221e1c",
+      "tagText": "#c4bcb4",
+      "tagFont": "11px",
+      "valueText": "#211816"
+    },
+    {
+      "chipBg": "#f7f1e8",
+      "rowBg": "#f7f1e8",
+      "border": "none",
+      "tagBg": "#221e1c",
+      "tagText": "#c4bcb4",
+      "tagFont": "11px",
+      "valueText": "#211816"
+    }
+  ]
+}
