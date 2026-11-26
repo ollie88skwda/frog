@@ -1,0 +1,15 @@
+✓ 6206 modules transformed.
+✓ built in 6.85s
+  ✘  1 e2e/session-ux3.spec.ts:28:5 › note 1: switching exercises slides the new one in from the direction of travel (10.1s)
+  ✘  2 e2e/session-ux3.spec.ts:70:5 › note 2: set 1 with last time's numbers shows the ruler, on screen (11.3s)
+  ✘  3 e2e/session-ux3.spec.ts:95:5 › notes 3 + 4: setup sheet has no preset icons; a position is typed on the number keypad (8.9s)
+    Error: expect(locator).not.toHaveAttribute(expected) failed
+    Expected pattern: not /./
+    Error: element(s) not found
+    Error: expect(locator).toBeInViewport() failed
+    Expected: in viewport
+    Error: element(s) not found
+    Error: expect(locator).toHaveCount(expected) failed
+    Expected: 0
+    Received: 1
+  3 failed

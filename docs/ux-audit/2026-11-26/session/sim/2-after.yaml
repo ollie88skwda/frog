@@ -1,0 +1,19 @@
+appId: com.apple.mobilesafari
+---
+- openLink: http://127.0.0.1:4642/__simauth
+- extendedWaitUntil:
+    visible: "Resume session"
+    timeout: 20000
+- tapOn: "Resume session"
+- extendedWaitUntil:
+    visible: "Log .*"
+    timeout: 20000
+- waitForAnimationToEnd
+- tapOn: "Weight"
+- waitForAnimationToEnd
+- takeScreenshot: ./2-sim-set1-keyboard-after
+- tapOn:
+    text: "Reps"
+    index: 0
+- waitForAnimationToEnd
+- takeScreenshot: ./2-sim-set1-reps-keyboard-after

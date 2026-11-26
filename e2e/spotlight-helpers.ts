@@ -58,8 +58,9 @@ export async function fillSide(
   await page.getByTestId(`reps-field-${side}`).fill(reps);
 }
 
-/** The ruler only shows once the exercise has a logged set this session
- * (2026-11-25), so a ruler spec logs a throwaway first set and opens set 2. */
+/** A bare first set (nothing typed, no last time) has no ruler; it shows once
+ * the value has something to tune or the exercise has a logged set (2026-11-26).
+ * A ruler spec logs a throwaway first set and opens set 2. */
 export async function openRulerSet(page: Page, weight = "20", reps = "5") {
   await fillSet(page, weight, reps);
   await logSet(page);

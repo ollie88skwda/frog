@@ -73,29 +73,25 @@ import {
   weightLabel,
 } from "@frog/core";
 import {
-  Armchair,
   Calculator,
   CaretDown,
   CaretLeft,
   CaretRight,
-  Chair,
   Check,
   Clock,
   ClockCounterClockwise,
   DotsThree,
   Flame,
-  HandGrabbing,
   LinkSimple,
   MagnifyingGlass,
   Medal,
   Microphone,
+  Minus,
   Notebook,
   Notepad,
   Pause,
   Play,
   Plus,
-  PushPin,
-  Rectangle,
   SlidersHorizontal,
   Square,
   Trash,
@@ -188,6 +184,8 @@ import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
 import {
   AnimatePresence,
   COLLAPSED,
+  DUR_BASE,
+  EASE_OUT,
   EXPANDED,
   FADE_OUT,
   m as motionEl,
@@ -603,6 +601,12 @@ export default function SessionScreen() {
   const [conditionsOpen, setConditionsOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [activeSeId, setActiveSeId] = useState<string | null>(null);
+  const slideRef = useRef<{
+    seId: string | null;
+    idx: number;
+    dir: 1 | -1 | null;
+  }>({ seId: null, idx: 0, dir: null });
+  const motionReady = useMotionReady();
   const viewportHeight = useVisualViewportHeight();
   const copySeed = (location.state as { seed?: Record<string, SeedSet[]> })
     ?.seed;
@@ -639,6 +643,34 @@ export default function SessionScreen() {
     userPrefs?.previousValuesScope === "routine"
       ? (session?.routineId ?? null)
       : null;
+
+  // Warm last time's numbers for the exercises either side of the current
+  // one, so a switch slides straight onto a filled entry panel instead of a
+  // "Loading…" frame (the panel waits on useGhost; same key, cached forever).
+  const neighbourSig = (() => {
+    if (!blocks) return "";
+    const i = blocks.findIndex((b) => b.seId === activeSeId);
+    return [blocks[i - 1], blocks[i + 1]]
+      .filter((b): b is BlockState => b != null)
+      .map((b) => `${b.ghostExerciseId ?? b.exerciseId}:${b.seId}`)
+      .join("|");
+  })();
+  useEffect(() => {
+    if (!neighbourSig) return;
+    for (const pair of neighbourSig.split("|")) {
+      const [exerciseId, seId] = pair.split(":");
+      void qc.prefetchQuery({
+        queryKey: ["ghost", exerciseId, seId, previousRoutineId ?? null],
+        queryFn: () =>
+          repo.lastSetsForExercise(
+            exerciseId,
+            seId,
+            previousRoutineId ?? undefined,
+          ),
+        staleTime: Number.POSITIVE_INFINITY,
+      });
+    }
+  }, [neighbourSig, previousRoutineId, qc, repo]);
 
   useEffect(() => {
     if (!keepAwake || session?.endedAt != null) return;
@@ -1629,6 +1661,18 @@ export default function SessionScreen() {
     blocks.findIndex((b) => b.seId === activeSeId),
   );
   const activeBlock = blocks[activeIdx] ?? null;
+  // Direction of the last exercise switch (swipe, prev/next, the picker, or
+  // the auto-advance after a last set): the new exercise slides in from that
+  // side (boss 2026-11-26 note 1). Null on first paint: no slide on open.
+  if (activeBlock && activeBlock.seId !== slideRef.current.seId) {
+    const prev = slideRef.current;
+    slideRef.current = {
+      seId: activeBlock.seId,
+      idx: activeIdx,
+      dir: prev.seId == null ? null : activeIdx >= prev.idx ? 1 : -1,
+    };
+  }
+  const slideDir = slideRef.current.dir;
 
   function gotoOffset(delta: -1 | 1) {
     const next = blocks?.[activeIdx + delta];
@@ -1800,60 +1844,83 @@ export default function SessionScreen() {
         }
       >
         {activeBlock ? (
-          <ExerciseSpotlight
+          // Exercise switch: the new exercise (name, sets, entry panel)
+          // slides in from the direction of travel and settles from 40%
+          // opacity, BASE on the one ease. No exit: the old exercise leaves at
+          // once, so there is never a blank frame or two exercises at once,
+          // and input is never delayed. Reduced motion keeps only the fade
+          // (MotionConfig reducedMotion="user"). The column clips the offset.
+          <motionEl.div
             key={activeBlock.seId}
-            block={activeBlock}
-            sessionMuscles={live.byMuscle}
-            position={activeIdx + 1}
-            total={blocks.length}
-            unit={unit}
-            previousRoutineId={previousRoutineId}
-            seedSets={seedOverride[activeBlock.seId] ?? seedFor(activeBlock)}
-            seedNonce={blockNonce[activeBlock.seId] ?? 0}
-            plateConfig={plateConfig}
-            onSavePlateConfig={(cfg) =>
-              updatePrefs.mutate({ plateConfig: cfg })
+            className="flex min-h-0 flex-1 flex-col"
+            initial={
+              motionReady && slideDir != null
+                ? { x: slideDir * 56, opacity: 0.4 }
+                : false
             }
-            restStartedAt={
-              rest?.seId === activeBlock.seId ? rest.state.startedAt : null
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: DUR_BASE, ease: EASE_OUT }}
+            data-testid="exercise-slide"
+            data-dir={
+              slideDir == null ? undefined : slideDir > 0 ? "next" : "prev"
             }
-            onStopRest={dismissRest}
-            onAddWarmup={(w) => addWarmup(activeBlock.seId, w)}
-            onRemoveBlock={() => removeBlock(activeBlock.seId)}
-            onOpenSwitcher={() => setSwitcherOpen(true)}
-            onSwipe={gotoOffset}
-            addedSets={addedSets[activeBlock.seId] ?? 0}
-            onAddSet={() =>
-              addSetTo(
-                activeBlock.seId,
-                countSets(activeBlock.committed),
-                plannedSetCount(
-                  (seedOverride[activeBlock.seId] ?? seedFor(activeBlock))
-                    .length,
-                ),
-              )
-            }
-            prevName={blocks[activeIdx - 1]?.name ?? null}
-            nextName={blocks[activeIdx + 1]?.name ?? null}
-            prSetIds={prSetIds}
-            prSnapshot={prSnapshot}
-            voiceFill={voiceFill?.seId === activeBlock.seId ? voiceFill : null}
-            onVoiceFillConsumed={clearVoiceFill}
-            timerRunning={timer?.seId === activeBlock.seId}
-            timerStartedAt={
-              timer?.seId === activeBlock.seId ? timer.startedAt : null
-            }
-            onToggleTimer={() => toggleTimer(activeBlock.seId)}
-            onCommit={(set, ctx) => commitSet(activeBlock.seId, set, ctx)}
-            onSaveSet={(setId, patch) =>
-              saveSet(activeBlock.seId, setId, patch)
-            }
-            onRemoveSet={(setId) => removeSet(activeBlock.seId, setId)}
-            onSetLaterality={setCommittedLaterality}
-            onSwapExercise={swapBlockExercise}
-            saveStateOf={saveStateOf}
-            onRetrySets={retryFailedSets}
-          />
+          >
+            <ExerciseSpotlight
+              block={activeBlock}
+              sessionMuscles={live.byMuscle}
+              position={activeIdx + 1}
+              total={blocks.length}
+              unit={unit}
+              previousRoutineId={previousRoutineId}
+              seedSets={seedOverride[activeBlock.seId] ?? seedFor(activeBlock)}
+              seedNonce={blockNonce[activeBlock.seId] ?? 0}
+              plateConfig={plateConfig}
+              onSavePlateConfig={(cfg) =>
+                updatePrefs.mutate({ plateConfig: cfg })
+              }
+              restStartedAt={
+                rest?.seId === activeBlock.seId ? rest.state.startedAt : null
+              }
+              onStopRest={dismissRest}
+              onAddWarmup={(w) => addWarmup(activeBlock.seId, w)}
+              onRemoveBlock={() => removeBlock(activeBlock.seId)}
+              onOpenSwitcher={() => setSwitcherOpen(true)}
+              onSwipe={gotoOffset}
+              addedSets={addedSets[activeBlock.seId] ?? 0}
+              onAddSet={() =>
+                addSetTo(
+                  activeBlock.seId,
+                  countSets(activeBlock.committed),
+                  plannedSetCount(
+                    (seedOverride[activeBlock.seId] ?? seedFor(activeBlock))
+                      .length,
+                  ),
+                )
+              }
+              prevName={blocks[activeIdx - 1]?.name ?? null}
+              nextName={blocks[activeIdx + 1]?.name ?? null}
+              prSetIds={prSetIds}
+              prSnapshot={prSnapshot}
+              voiceFill={
+                voiceFill?.seId === activeBlock.seId ? voiceFill : null
+              }
+              onVoiceFillConsumed={clearVoiceFill}
+              timerRunning={timer?.seId === activeBlock.seId}
+              timerStartedAt={
+                timer?.seId === activeBlock.seId ? timer.startedAt : null
+              }
+              onToggleTimer={() => toggleTimer(activeBlock.seId)}
+              onCommit={(set, ctx) => commitSet(activeBlock.seId, set, ctx)}
+              onSaveSet={(setId, patch) =>
+                saveSet(activeBlock.seId, setId, patch)
+              }
+              onRemoveSet={(setId) => removeSet(activeBlock.seId, setId)}
+              onSetLaterality={setCommittedLaterality}
+              onSwapExercise={swapBlockExercise}
+              saveStateOf={saveStateOf}
+              onRetrySets={retryFailedSets}
+            />
+          </motionEl.div>
         ) : (
           <div className="flex flex-col items-center gap-3 px-4 py-16">
             <p className="text-center text-sm text-soft">No exercises yet.</p>
@@ -2893,16 +2960,9 @@ function SetRows({
   );
 }
 
-// ── Setup presets: one tap writes "Seat 4" into the setup note ───────────
+// ── Setup positions: type a number, it writes "Seat 4" into the setup note ──
 
-const SETUP_SETTINGS = [
-  { label: "Seat", Icon: Chair },
-  { label: "Pad", Icon: Rectangle },
-  { label: "Back", Icon: Armchair },
-  { label: "Handles", Icon: HandGrabbing },
-  { label: "Pin", Icon: PushPin },
-] as const;
-const SETUP_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+const SETUP_SETTINGS = ["Seat", "Pad", "Back", "Handles", "Pin"] as const;
 
 /** One grouped card in the Setup & form sheet. The sections read apart by
  * tone and spacing, never a rule line (brand: no borders). */
@@ -2931,80 +2991,89 @@ function SetupPresets({
   onChange: (next: string) => void;
 }) {
   const [label, setLabel] = useState<string>("Seat");
-  const [custom, setCustom] = useState("");
-  const current = draft.match(
-    new RegExp(`\\b${label}\\s+(\\d+(?:\\.\\d+)?)`, "i"),
-  )?.[1];
+  // The position is read straight from the note ("Seat 4" -> 4), so the
+  // field always shows what will be saved and typing replaces it in place.
+  const current =
+    draft.match(new RegExp(`\\b${label}\\s+(\\d+(?:\\.\\d+)?)`, "i"))?.[1] ??
+    "";
+  // While typing, the field holds its own text so it can be emptied to
+  // retype; every non-empty value is written to the note as it's typed.
+  const [typing, setTyping] = useState<string | null>(null);
+  const write = (v: string) => onChange(applySetupSetting(draft, label, v));
+  const step = (d: number) => {
+    setTyping(null);
+    const n = Number.parseFloat(current);
+    const next = Math.max(0, (Number.isFinite(n) ? n : 0) + d);
+    write(String(Math.round(next * 10) / 10));
+  };
   return (
     <div className="mb-3 flex flex-col gap-3" data-testid="setup-presets">
-      {/* Boss r2 note 2: one icon per preset, grouped cards. */}
+      {/* Boss 2026-11-26 notes 3/4: no per-setting icons (they were
+          inaccurate), and the position is typed on the number keypad with a
+          small stepper instead of picked from 1-12 chips. */}
       <SetupSection title="Setting">
         <ChipGroup
           value={label}
           onValueChange={(v) => {
-            if (v) setLabel(v);
+            if (v) {
+              setLabel(v);
+              setTyping(null);
+            }
           }}
           className="grid grid-cols-5 gap-1"
           aria-label="Machine setting"
         >
-          {SETUP_SETTINGS.map(({ label: l, Icon }) => (
+          {SETUP_SETTINGS.map((l) => (
             <ChipItem
               key={l}
               value={l}
-              className="flex h-14 min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-2xs"
+              className="h-11 min-w-0 px-1 text-xs md:h-8"
               data-testid={`setup-setting-${l.toLowerCase()}`}
             >
-              <Icon className="size-5" data-testid="setup-setting-icon" />
               {l}
             </ChipItem>
           ))}
         </ChipGroup>
       </SetupSection>
       <SetupSection title={`${label} position`}>
-        <div className="grid grid-cols-6 gap-1">
-          {SETUP_VALUES.map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() =>
-                onChange(applySetupSetting(draft, label, String(n)))
-              }
-              aria-pressed={current === String(n)}
-              className={cn(
-                "num h-11 rounded-sm text-sm font-semibold transition-colors duration-100 md:h-8",
-                current === String(n)
-                  ? "bg-action text-on-action"
-                  : "bg-surface text-ink hover:bg-active",
-              )}
-              data-testid={`setup-value-${n}`}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <Input
-            inputMode="decimal"
-            placeholder={`Other ${label.toLowerCase()} number`}
-            value={custom}
-            onChange={(e) =>
-              setCustom(sanitizeNumeric(e.target.value, { decimal: true }))
-            }
-            className="num h-11 min-w-0 flex-1"
-            data-testid="setup-value-custom"
-          />
-          <Button
-            variant="outline"
-            className="h-11 md:h-11"
-            disabled={custom.trim() === ""}
-            onClick={() => {
-              onChange(applySetupSetting(draft, label, custom.trim()));
-              setCustom("");
-            }}
-            data-testid="setup-value-add"
+        <div className="flex items-center gap-2">
+          <IconButton
+            title={`Lower ${label.toLowerCase()} position`}
+            disabled={current === "" || Number.parseFloat(current) <= 0}
+            onClick={() => step(-1)}
+            className="size-11 shrink-0 bg-surface md:size-11"
+            data-testid="setup-position-minus"
           >
-            Set {label.toLowerCase()}
-          </Button>
+            <Minus className="size-5" weight="bold" />
+          </IconButton>
+          <Input
+            type="text"
+            inputMode="decimal"
+            pattern="[0-9]*[.]?[0-9]*"
+            enterKeyHint="done"
+            autoComplete="off"
+            aria-label={`${label} position`}
+            placeholder="–"
+            value={typing ?? current}
+            onChange={(e) => {
+              const v = sanitizeNumeric(e.target.value, { decimal: true });
+              setTyping(v);
+              // Emptying the field leaves the note alone; the next digit
+              // replaces the old number in place.
+              if (v !== "") write(v);
+            }}
+            onBlur={() => setTyping(null)}
+            className="num h-11 min-w-0 flex-1 text-center text-lg font-semibold md:h-11"
+            data-testid="setup-position"
+          />
+          <IconButton
+            title={`Raise ${label.toLowerCase()} position`}
+            onClick={() => step(1)}
+            className="size-11 shrink-0 bg-surface md:size-11"
+            data-testid="setup-position-plus"
+          >
+            <Plus className="size-5" weight="bold" />
+          </IconButton>
         </div>
       </SetupSection>
     </div>
@@ -5964,11 +6033,29 @@ function Spotlight({
     );
   }
 
-  /** The ruler for the active value: fine-tuning only, so it appears once
-   * this exercise has a logged set in this session (until then the values
-   * are plain inputs with the keyboard). */
+  /** The ruler for the active value: fine-tuning, so it appears once the
+   * value has something to tune (typed, or last time's / the previous set's
+   * grey ghost) or this exercise has a logged set in this session. A bare
+   * first set stays plain keyboard entry. Boss 2026-11-26 note 2: gated on a
+   * logged set alone, a set 1 with last time's numbers in it never showed
+   * the ruler, which read as the ruler having gone. */
+  const activeHasValue = (() => {
+    const col = activeCol as EntryKey;
+    if (col === "weight" || col === "weightR") {
+      const sideR = col === "weightR";
+      return (sideR ? weight2 : weight) !== "" || !!ghostText("weight", sideR);
+    }
+    if (col === "rir" || col === "rirR") {
+      const r =
+        col === "rirR" ? rirOf(rirMin2, rirMax2) : rirOf(rirMin, rirMax);
+      return r.value != null || rirHintValue != null;
+    }
+    const sideR = col === "repsR";
+    return (sideR ? rightReps : reps) !== "" || !!ghostText("reps", sideR);
+  })();
+  const showRuler = rulerEnabled || activeHasValue;
   function entryRuler() {
-    if (!rulerEnabled) return null;
+    if (!showRuler) return null;
     const stopRest = () => {
       if (restStartedAt != null) onStopRest();
     };
@@ -6206,7 +6293,7 @@ function Spotlight({
           className="sticky bottom-0 z-10 -mx-4 bg-surface px-4"
           data-entry-footer
         >
-          {rulerEnabled && (
+          {showRuler && (
             // Keyboard-short screens drop the ruler's readout: it repeats
             // the focused field just above, and its 32px is what lets the
             // whole weight row clear the Now row and the footer (iPhone with

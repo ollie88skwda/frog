@@ -1,0 +1,30 @@
+{
+  "1-prev-samples": [
+    "9ms SlideB 17957 t=none o=1",
+    "21ms SlideB 17957 t=none o=1",
+    "35ms SlideA 17957 t=none o=1",
+    "48ms SlideA 17957 t=none o=1",
+    "63ms SlideA 17957 t=none o=1",
+    "75ms SlideA 17957 t=none o=1",
+    "88ms SlideA 17957 t=none o=1",
+    "104ms SlideA 17957 t=none o=1",
+    "114ms SlideA 17957 t=none o=1",
+    "128ms SlideA 17957 t=none o=1",
+    "142ms SlideA 17957 t=none o=1",
+    "154ms SlideA 17957 t=none o=1",
+    "169ms SlideA 17957 t=none o=1",
+    "182ms SlideA 17957 t=none o=1",
+    "197ms SlideA 17957 t=none o=1",
+    "209ms SlideA 17957 t=none o=1",
+    "221ms SlideA 17957 t=none o=1",
+    "235ms SlideA 17957 t=none o=1",
+    "248ms SlideA 17957 t=none o=1",
+    "262ms SlideA 17957 t=none o=1"
+  ],
+  "2-new-s1-typed-ruler": 0,
+  "2-s2-perside-ruler": 1,
+  "2-next-session-s1-ghost": null,
+  "2-next-session-s1-ruler": 0,
+  "3-icons": 5,
+  "4-number-chips": 12
+}

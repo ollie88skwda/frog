@@ -1,0 +1,30 @@
+{
+  "1-prev-samples": [
+    "8ms SlideB 17957 t=none o=1",
+    "21ms SlideB 17957 t=none o=1",
+    "35ms SlideA 17957 t=matrix(1, 0, 0, 1, -55.5505, 0) o=0.404816",
+    "48ms SlideA 17957 t=matrix(1, 0, 0, 1, -48.1746, 0) o=0.483843",
+    "60ms SlideA 17957 t=matrix(1, 0, 0, 1, -35.0121, 0) o=0.624871",
+    "74ms SlideA 17957 t=matrix(1, 0, 0, 1, -24.3555, 0) o=0.739048",
+    "88ms SlideA 17957 t=matrix(1, 0, 0, 1, -17.8709, 0) o=0.808526",
+    "101ms SlideA 17957 t=matrix(1, 0, 0, 1, -13.1812, 0) o=0.858773",
+    "114ms SlideA 17957 t=matrix(1, 0, 0, 1, -9.69223, 0) o=0.896155",
+    "128ms SlideA 17957 t=matrix(1, 0, 0, 1, -6.9984, 0) o=0.925017",
+    "141ms SlideA 17957 t=matrix(1, 0, 0, 1, -4.96036, 0) o=0.946853",
+    "154ms SlideA 17957 t=matrix(1, 0, 0, 1, -3.41469, 0) o=0.963414",
+    "194ms SlideA 17957 t=matrix(1, 0, 0, 1, -0.607439, 0) o=0.993492",
+    "234ms SlideA 17957 t=none o=1",
+    "247ms SlideA 17957 t=none o=1",
+    "261ms SlideA 17957 t=none o=1"
+  ],
+  "1-settled-inline-style": "opacity: 1; transform: none;",
+  "2-new-s1-typed-ruler": 1,
+  "2-s2-perside-ruler": 1,
+  "2-next-session-s1-ghost": null,
+  "2-next-session-s1-ruler": 1,
+  "3-icons": 0,
+  "4-number-chips": 0,
+  "4-inputmode": "decimal",
+  "4-notes-after-typing": "Seat 7",
+  "4-notes-after-plus": "Seat 8"
+}
