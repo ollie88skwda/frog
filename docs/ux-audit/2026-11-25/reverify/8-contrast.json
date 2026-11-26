@@ -1,0 +1,146 @@
+{
+  "390 day list left": {
+    "outline": "#8a8276",
+    "bg": "#fffefb",
+    "tag": "#5d4f4a",
+    "letter": "#fcf9f4",
+    "outline_vs_bg": 3.76,
+    "tag_vs_bg": 7.76,
+    "letter_vs_tag": 7.45
+  },
+  "390 day list right": {
+    "outline": "#8a8276",
+    "bg": "#fffefb",
+    "tag": "#5d4f4a",
+    "letter": "#fcf9f4",
+    "outline_vs_bg": 3.76,
+    "tag_vs_bg": 7.76,
+    "letter_vs_tag": 7.45
+  },
+  "390 day summary left": {
+    "outline": "#8a8276",
+    "bg": "#f7f1e8",
+    "tag": "#5d4f4a",
+    "letter": "#fcf9f4",
+    "outline_vs_bg": 3.38,
+    "tag_vs_bg": 6.97,
+    "letter_vs_tag": 7.45
+  },
+  "390 day summary right": {
+    "outline": "#8a8276",
+    "bg": "#f7f1e8",
+    "tag": "#5d4f4a",
+    "letter": "#fcf9f4",
+    "outline_vs_bg": 3.38,
+    "tag_vs_bg": 6.97,
+    "letter_vs_tag": 7.45
+  },
+  "390 night list left": {
+    "outline": "#867f79",
+    "bg": "#221e1c",
+    "tag": "#c4bcb4",
+    "letter": "#191513",
+    "outline_vs_bg": 4.19,
+    "tag_vs_bg": 8.82,
+    "letter_vs_tag": 9.67
+  },
+  "390 night list right": {
+    "outline": "#867f79",
+    "bg": "#221e1c",
+    "tag": "#c4bcb4",
+    "letter": "#191513",
+    "outline_vs_bg": 4.19,
+    "tag_vs_bg": 8.82,
+    "letter_vs_tag": 9.67
+  },
+  "390 night summary left": {
+    "outline": "#867f79",
+    "bg": "#1f1b18",
+    "tag": "#c4bcb4",
+    "letter": "#191513",
+    "outline_vs_bg": 4.34,
+    "tag_vs_bg": 9.12,
+    "letter_vs_tag": 9.67
+  },
+  "390 night summary right": {
+    "outline": "#867f79",
+    "bg": "#1f1b18",
+    "tag": "#c4bcb4",
+    "letter": "#191513",
+    "outline_vs_bg": 4.34,
+    "tag_vs_bg": 9.12,
+    "letter_vs_tag": 9.67
+  },
+  "360 day list left": {
+    "outline": "#8a8276",
+    "bg": "#fffefb",
+    "tag": "#5d4f4a",
+    "letter": "#fcf9f4",
+    "outline_vs_bg": 3.76,
+    "tag_vs_bg": 7.76,
+    "letter_vs_tag": 7.45
+  },
+  "360 day list right": {
+    "outline": "#8a8276",
+    "bg": "#fffefb",
+    "tag": "#5d4f4a",
+    "letter": "#fcf9f4",
+    "outline_vs_bg": 3.76,
+    "tag_vs_bg": 7.76,
+    "letter_vs_tag": 7.45
+  },
+  "360 day summary left": {
+    "outline": "#8a8276",
+    "bg": "#f7f1e8",
+    "tag": "#5d4f4a",
+    "letter": "#fcf9f4",
+    "outline_vs_bg": 3.38,
+    "tag_vs_bg": 6.97,
+    "letter_vs_tag": 7.45
+  },
+  "360 day summary right": {
+    "outline": "#8a8276",
+    "bg": "#f7f1e8",
+    "tag": "#5d4f4a",
+    "letter": "#fcf9f4",
+    "outline_vs_bg": 3.38,
+    "tag_vs_bg": 6.97,
+    "letter_vs_tag": 7.45
+  },
+  "360 night list left": {
+    "outline": "#867f79",
+    "bg": "#221e1c",
+    "tag": "#c4bcb4",
+    "letter": "#191513",
+    "outline_vs_bg": 4.19,
+    "tag_vs_bg": 8.82,
+    "letter_vs_tag": 9.67
+  },
+  "360 night list right": {
+    "outline": "#867f79",
+    "bg": "#221e1c",
+    "tag": "#c4bcb4",
+    "letter": "#191513",
+    "outline_vs_bg": 4.19,
+    "tag_vs_bg": 8.82,
+    "letter_vs_tag": 9.67
+  },
+  "360 night summary left": {
+    "outline": "#867f79",
+    "bg": "#1f1b18",
+    "tag": "#c4bcb4",
+    "letter": "#191513",
+    "outline_vs_bg": 4.34,
+    "tag_vs_bg": 9.12,
+    "letter_vs_tag": 9.67
+  },
+  "360 night summary right": {
+    "outline": "#867f79",
+    "bg": "#1f1b18",
+    "tag": "#c4bcb4",
+    "letter": "#191513",
+    "outline_vs_bg": 4.34,
+    "tag_vs_bg": 9.12,
+    "letter_vs_tag": 9.67
+  }
+}
