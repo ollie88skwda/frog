@@ -1,0 +1,224 @@
+{
+  "set2-day": {
+    "scroll": {
+      "top": 52,
+      "bottom": 343,
+      "x": 0,
+      "w": 360,
+      "scrollTop": 0,
+      "scrollHeight": 291,
+      "clientHeight": 291
+    },
+    "panelContainsScroll": false,
+    "titleBottom": 91,
+    "maxEmptyInScrollPx": 23,
+    "viewport": "360x640",
+    "panel": {
+      "top": 343,
+      "bottom": 640,
+      "x": 0,
+      "w": 360
+    },
+    "nowRow": {
+      "top": 349,
+      "bottom": 389,
+      "x": 28,
+      "w": 212
+    },
+    "nowRowInsidePanel": true,
+    "lastLoggedRow": {
+      "top": 295,
+      "bottom": 335,
+      "x": 16,
+      "w": 328
+    },
+    "lastLoggedTestId": "set-mark-0",
+    "gapLastRowToPanelPx": 8,
+    "progress": "1 of 2 sets done·1 to go"
+  },
+  "set2-night": {
+    "scroll": {
+      "top": 52,
+      "bottom": 343,
+      "x": 0,
+      "w": 360,
+      "scrollTop": 0,
+      "scrollHeight": 291,
+      "clientHeight": 291
+    },
+    "panelContainsScroll": false,
+    "titleBottom": 91,
+    "maxEmptyInScrollPx": 23,
+    "viewport": "360x640",
+    "panel": {
+      "top": 343,
+      "bottom": 640,
+      "x": 0,
+      "w": 360
+    },
+    "nowRow": {
+      "top": 349,
+      "bottom": 389,
+      "x": 28,
+      "w": 212
+    },
+    "nowRowInsidePanel": true,
+    "lastLoggedRow": {
+      "top": 295,
+      "bottom": 335,
+      "x": 16,
+      "w": 328
+    },
+    "lastLoggedTestId": "set-mark-0",
+    "gapLastRowToPanelPx": 8,
+    "progress": "1 of 2 sets done·1 to go"
+  },
+  "set3-day": {
+    "scroll": {
+      "top": 52,
+      "bottom": 343,
+      "x": 0,
+      "w": 360,
+      "scrollTop": 0,
+      "scrollHeight": 312,
+      "clientHeight": 291
+    },
+    "panelContainsScroll": false,
+    "titleBottom": 91,
+    "maxEmptyInScrollPx": 0,
+    "viewport": "360x640",
+    "panel": {
+      "top": 343,
+      "bottom": 640,
+      "x": 0,
+      "w": 360
+    },
+    "nowRow": {
+      "top": 349,
+      "bottom": 389,
+      "x": 28,
+      "w": 212
+    },
+    "nowRowInsidePanel": true,
+    "lastLoggedRow": {
+      "top": 316,
+      "bottom": 356,
+      "x": 16,
+      "w": 328
+    },
+    "lastLoggedTestId": "set-mark-1",
+    "gapLastRowToPanelPx": -13,
+    "progress": "2 of 3 sets done·1 to go"
+  },
+  "set3-night": {
+    "scroll": {
+      "top": 52,
+      "bottom": 343,
+      "x": 0,
+      "w": 360,
+      "scrollTop": 0,
+      "scrollHeight": 312,
+      "clientHeight": 291
+    },
+    "panelContainsScroll": false,
+    "titleBottom": 91,
+    "maxEmptyInScrollPx": 0,
+    "viewport": "360x640",
+    "panel": {
+      "top": 343,
+      "bottom": 640,
+      "x": 0,
+      "w": 360
+    },
+    "nowRow": {
+      "top": 349,
+      "bottom": 389,
+      "x": 28,
+      "w": 212
+    },
+    "nowRowInsidePanel": true,
+    "lastLoggedRow": {
+      "top": 316,
+      "bottom": 356,
+      "x": 16,
+      "w": 328
+    },
+    "lastLoggedTestId": "set-mark-1",
+    "gapLastRowToPanelPx": -13,
+    "progress": "2 of 3 sets done·1 to go"
+  },
+  "perside-day": {
+    "scroll": {
+      "top": 52,
+      "bottom": 192,
+      "x": 0,
+      "w": 360,
+      "scrollTop": 0,
+      "scrollHeight": 312,
+      "clientHeight": 140
+    },
+    "panelContainsScroll": false,
+    "titleBottom": 91,
+    "maxEmptyInScrollPx": 0,
+    "viewport": "360x640",
+    "panel": {
+      "top": 192,
+      "bottom": 640,
+      "x": 0,
+      "w": 360
+    },
+    "nowRow": {
+      "top": 198,
+      "bottom": 238,
+      "x": 28,
+      "w": 212
+    },
+    "nowRowInsidePanel": true,
+    "lastLoggedRow": {
+      "top": 316,
+      "bottom": 356,
+      "x": 16,
+      "w": 328
+    },
+    "lastLoggedTestId": "set-mark-1",
+    "gapLastRowToPanelPx": -164,
+    "progress": "2 of 3 sets done·1 to go"
+  },
+  "perside-night": {
+    "scroll": {
+      "top": 52,
+      "bottom": 192,
+      "x": 0,
+      "w": 360,
+      "scrollTop": 0,
+      "scrollHeight": 312,
+      "clientHeight": 140
+    },
+    "panelContainsScroll": false,
+    "titleBottom": 91,
+    "maxEmptyInScrollPx": 0,
+    "viewport": "360x640",
+    "panel": {
+      "top": 192,
+      "bottom": 640,
+      "x": 0,
+      "w": 360
+    },
+    "nowRow": {
+      "top": 198,
+      "bottom": 238,
+      "x": 28,
+      "w": 212
+    },
+    "nowRowInsidePanel": true,
+    "lastLoggedRow": {
+      "top": 316,
+      "bottom": 356,
+      "x": 16,
+      "w": 328
+    },
+    "lastLoggedTestId": "set-mark-1",
+    "gapLastRowToPanelPx": -164,
+    "progress": "2 of 3 sets done·1 to go"
+  }
+}
