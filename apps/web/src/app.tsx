@@ -1,16 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
-import {
-  BrowserRouter,
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-} from "react-router";
+import { Navigate, Route, Routes, useLocation } from "react-router";
 import { AppShell } from "@/components/app-shell";
 import { AppErrorBoundary } from "@/components/error-boundary";
 import { AuthProvider, RequireAuth } from "@/lib/auth";
 import { lazyRoute } from "@/lib/lazy-route";
+import { PageRouter } from "@/lib/page-router";
 import { RepoProvider } from "@/lib/repo";
 
 // Home is lazy like every route: the shell paints instantly and the findings
@@ -86,7 +81,8 @@ export function App() {
       <AppErrorBoundary>
         <AuthProvider>
           <RepoProvider>
-            <BrowserRouter>
+            {/* BrowserRouter + page transitions (lib/page-router.tsx). */}
+            <PageRouter>
               <Suspense fallback={null}>
                 <Routes>
                   <Route path="/auth" element={<AuthScreen />} />
@@ -179,7 +175,7 @@ export function App() {
                   </Route>
                 </Routes>
               </Suspense>
-            </BrowserRouter>
+            </PageRouter>
           </RepoProvider>
         </AuthProvider>
       </AppErrorBoundary>

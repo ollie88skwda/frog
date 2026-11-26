@@ -6,6 +6,7 @@ import { MotionProvider } from "./lib/motion";
 import "./lib/test-hooks";
 import { registerServiceWorker } from "./lib/pwa";
 import "./styles/theme.css";
+import "./styles/page-transitions.css";
 import "./components/ui/input-focus.css";
 import { installSelectOnFocus } from "./components/ui/select-on-focus";
 

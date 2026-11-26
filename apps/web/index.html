@@ -15,7 +15,12 @@
          but older iOS reads only that one — ship both. -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- "default", not "black-translucent": translucent lets the page run
+         under the status bar and Dynamic Island, and the app has no top
+         safe-area padding (the viewport has no viewport-fit=cover). Going
+         edge-to-edge later means viewport-fit=cover plus
+         env(safe-area-inset-top) on the shell AND the workout header. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Frog" />
     <!-- og:title/og:site_name/twitter:title are checked against APP_NAME by
          scripts/gen-og-image.ts (packages/core/src/config.ts is the source of

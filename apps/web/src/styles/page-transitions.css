@@ -1,0 +1,112 @@
+/* Page-to-page transitions (lib/page-router.tsx sets html[data-nav]).
+   The page area (<main>, view-transition-name: page) is the only thing that
+   moves; the tab bar, resume pill and desktop sidebar hold still. Durations
+   are the motion scale (theme.css / lib/motion.tsx): push and back use
+   --dur-base, tab cross-fades --dur-fast (old page out in --dur-instant), all on --ease.
+   Reduced motion never gets here: page-router skips the transition. */
+
+/* Named only while a transition runs (html[data-nav]): a permanent
+   view-transition-name would make <main> a stacking context and trap its
+   fixed overlays under the tab bar. */
+html[data-nav] #main { view-transition-name: page; }
+html[data-nav] [data-vt="tab-bar"] { view-transition-name: tab-bar; }
+html[data-nav] [data-vt="resume-pill"] { view-transition-name: resume-pill; }
+
+/* Taps during the 150-200 ms land on the real (new) page, never on the
+   snapshot overlay. */
+::view-transition {
+  pointer-events: none;
+}
+
+/* Everything outside the page (sidebar, body) stays put: no root cross-fade. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* Tab bar and resume pill: still when they stay; quick fade when the workout
+   takeover hides or restores them. */
+::view-transition-group(tab-bar),
+::view-transition-group(resume-pill) {
+  animation-duration: var(--dur-fast);
+  animation-timing-function: var(--ease);
+}
+::view-transition-old(tab-bar),
+::view-transition-new(tab-bar),
+::view-transition-old(resume-pill),
+::view-transition-new(resume-pill) {
+  animation-duration: var(--dur-fast);
+  animation-timing-function: var(--ease);
+}
+
+/* The page: both snapshots are full, opaque pages (main has bg-bg), so there
+   is never a blank frame between them. */
+::view-transition-group(page) {
+  animation-duration: var(--dur-base);
+  animation-timing-function: var(--ease);
+}
+::view-transition-image-pair(page) {
+  isolation: auto;
+}
+::view-transition-old(page),
+::view-transition-new(page) {
+  mix-blend-mode: normal;
+  animation-duration: var(--dur-base);
+  animation-timing-function: var(--ease);
+  animation-fill-mode: both;
+}
+
+/* Push (list -> detail, Today -> workout): the new page slides in from the
+   right over the old one, which drifts left and dims, like an iOS stack. */
+html[data-nav="push"]::view-transition-old(page) {
+  animation-name: page-push-out;
+}
+html[data-nav="push"]::view-transition-new(page) {
+  animation-name: page-push-in;
+  box-shadow: -8px 0 24px rgb(0 0 0 / 0.08);
+}
+
+/* Back: the current page slides out to the right, uncovering the one below. */
+html[data-nav="back"]::view-transition-old(page) {
+  animation-name: page-back-out;
+  z-index: 1;
+  box-shadow: -8px 0 24px rgb(0 0 0 / 0.08);
+}
+html[data-nav="back"]::view-transition-new(page) {
+  animation-name: page-back-in;
+}
+
+/* Tab switch: a quick cross-fade with a 6px rise. The old section leaves
+   faster (--dur-instant) than the new one arrives (--dur-fast), so the two
+   never sit on top of each other legibly, and the page tone behind them keeps
+   any frame from going blank. */
+html[data-nav="tab"]::view-transition-group(page),
+html[data-nav="tab"]::view-transition-new(page) {
+  animation-duration: var(--dur-fast);
+}
+html[data-nav="tab"]::view-transition-old(page) {
+  animation-name: page-tab-out;
+  animation-duration: var(--dur-instant);
+}
+html[data-nav="tab"]::view-transition-new(page) {
+  animation-name: page-tab-in;
+}
+
+@keyframes page-push-in {
+  from { transform: translateX(100%); }
+}
+@keyframes page-push-out {
+  to { transform: translateX(-25%); filter: brightness(0.92); }
+}
+@keyframes page-back-out {
+  to { transform: translateX(100%); }
+}
+@keyframes page-back-in {
+  from { transform: translateX(-25%); filter: brightness(0.92); }
+}
+@keyframes page-tab-out {
+  to { opacity: 0; }
+}
+@keyframes page-tab-in {
+  from { opacity: 0; transform: translateY(6px); }
+}

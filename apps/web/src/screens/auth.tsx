@@ -1,5 +1,6 @@
 import { SignIn } from "@clerk/react";
 import { APP_NAME } from "@frog/core";
+import { type RefObject, useEffect, useRef } from "react";
 import { Navigate } from "react-router";
 import { FrogMark } from "@/components/frog-mark";
 import { useSignedIn } from "@/lib/auth";
@@ -10,13 +11,62 @@ import { useVoice } from "@/lib/voice";
 // Clerk dashboard). Hash routing keeps Clerk's multi-step flow off
 // react-router. Redirect targets stay relative — never user-supplied.
 
+/** Room kept above the keyboard: iOS 26's floating accessory bar (~48pt) plus a gap. */
+const KEYBOARD_CLEARANCE = 72;
+
+/**
+ * Keeps Clerk's primary button (Continue) above the on-screen keyboard. iOS
+ * doesn't shrink the layout viewport for the keyboard, so a centred card sat
+ * under it with the accessory bar over Continue (iOS sim report #5). While
+ * the visual viewport is shorter than the window, pad the page by the
+ * keyboard's height (so it can scroll that far) and scroll the button clear.
+ */
+function useKeyboardClearance(ref: RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const vv = window.visualViewport;
+    const el = ref.current;
+    if (!vv || !el) return;
+    let frame = 0;
+    const fit = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const keyboard = Math.max(0, window.innerHeight - vv.height);
+        el.style.paddingBottom = keyboard > 0 ? `${keyboard}px` : "";
+        const focused = document.activeElement;
+        if (!keyboard || !(focused instanceof HTMLInputElement)) return;
+        if (!el.contains(focused)) return;
+        const button = el.querySelector<HTMLElement>(".cl-formButtonPrimary");
+        const target = button ?? focused;
+        const bottom = target.getBoundingClientRect().bottom - vv.offsetTop;
+        const over = bottom - (vv.height - KEYBOARD_CLEARANCE);
+        if (over > 0) window.scrollBy({ top: over });
+      });
+    };
+    vv.addEventListener("resize", fit);
+    el.addEventListener("focusin", fit);
+    return () => {
+      cancelAnimationFrame(frame);
+      vv.removeEventListener("resize", fit);
+      el.removeEventListener("focusin", fit);
+      el.style.paddingBottom = "";
+    };
+  }, [ref]);
+}
+
 function ClerkAuthScreen() {
   const signedIn = useSignedIn();
   const { t } = useVoice();
+  const pageRef = useRef<HTMLDivElement>(null);
+  useKeyboardClearance(pageRef);
   if (signedIn) return <Navigate to="/" replace />;
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-bg px-4 py-8">
+    // Top-aligned on phones (centred from md:) so the email field and
+    // Continue sit in the top half, clear of the keyboard on most phones.
+    <div
+      ref={pageRef}
+      className="flex min-h-dvh items-start justify-center bg-bg px-4 pt-[max(2rem,env(safe-area-inset-top))] pb-8 md:items-center md:py-8"
+    >
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <div className="flex flex-col items-center gap-3">
           {/* Frog mark — quiet chrome, never the expressive mascot. */}
