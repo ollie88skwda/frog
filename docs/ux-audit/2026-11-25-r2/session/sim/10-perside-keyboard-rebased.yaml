@@ -1,0 +1,14 @@
+appId: com.apple.mobilesafari
+---
+- tapOn:
+    text: "Add a set"
+    index: 1
+- extendedWaitUntil:
+    visible: "Log .*"
+    timeout: 15000
+- tapOn: "Set options"
+- tapOn: "Log left and right separately"
+- waitForAnimationToEnd
+- tapOn: "Weight, both sides"
+- waitForAnimationToEnd
+- takeScreenshot: /tmp/ux2-maestro/10-after

@@ -1,0 +1,14 @@
+appId: com.apple.mobilesafari
+---
+- openLink: http://127.0.0.1:4592/
+- extendedWaitUntil:
+    visible: "Resume session"
+    timeout: 15000
+- tapOn: "Resume session"
+- extendedWaitUntil:
+    visible: "Add a set"
+    timeout: 15000
+- tapOn: "Session menu"
+- tapOn: "Finish workout"
+- waitForAnimationToEnd
+- takeScreenshot: /tmp/ux2-maestro/C-after

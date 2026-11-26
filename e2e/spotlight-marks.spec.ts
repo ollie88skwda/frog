@@ -116,12 +116,11 @@ test("an uneven per-side set shows both sides in the set list, not just the left
   // Both sides are shown, so the generic L+R tag is not.
   await expect(page.getByTestId("set-mark-0-side-tag")).toHaveCount(0);
 
-  // Next time, the Now row's "last" hint shows both sides too.
+  // Next time there is no "last" text on the Now row: last time lives in
+  // the fields as ghosts (boss r2 note 9).
   await finishSession(page);
   await startSessionWith(page, EX);
-  const last = page.getByTestId("set-mark-last-sides");
-  await expect(last).toContainText(/30 × 10/);
-  await expect(last).toContainText(/30 × 8/);
+  await expect(page.getByTestId("set-mark-last-sides")).toHaveCount(0);
 });
 
 test("tapping a done mark reopens that finished set for editing", async ({

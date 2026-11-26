@@ -23,7 +23,6 @@ import {
   creditsFor,
   type Exercise,
   type ExercisePatch,
-  type ExercisePref,
   type ExerciseRecords,
   type ExerciseType,
   formatPreviousSides,
@@ -74,25 +73,29 @@ import {
   weightLabel,
 } from "@frog/core";
 import {
-  ArrowCounterClockwise,
+  Armchair,
   Calculator,
   CaretDown,
   CaretLeft,
   CaretRight,
+  Chair,
   Check,
   Clock,
   ClockCounterClockwise,
   DotsThree,
   Flame,
+  HandGrabbing,
   LinkSimple,
   MagnifyingGlass,
   Medal,
   Microphone,
   Notebook,
+  Notepad,
   Pause,
-  PencilSimple,
   Play,
   Plus,
+  PushPin,
+  Rectangle,
   SlidersHorizontal,
   Square,
   Trash,
@@ -100,6 +103,7 @@ import {
 } from "@phosphor-icons/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  type CSSProperties,
   type Dispatch,
   type ReactNode,
   type TouchEvent as ReactTouchEvent,
@@ -175,12 +179,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { IconButton } from "@/components/ui/icon-button";
 import { Input, Textarea } from "@/components/ui/input";
-import { PreviousSets, SideTag } from "@/components/ui/side-tag";
+import { SideTag } from "@/components/ui/side-tag";
 import { formatDurationSeconds, formatMMSS, parseDuration } from "@/lib/format";
 import {
   AnimatePresence,
@@ -196,7 +199,6 @@ import {
   copyExerciseOpts,
   useCreateExercise,
   useDeleteExercise,
-  useExercisePrefs,
   useExercises,
   useGhost,
   useLastNote,
@@ -205,7 +207,6 @@ import {
   useMetrics,
   useSession,
   useSessionExercises,
-  useSetExerciseWeightUnit,
   useUpdateExercise,
 } from "@/lib/queries";
 import { useRepo } from "@/lib/repo";
@@ -404,22 +405,6 @@ function micErrorMessage(error: string): string {
   return micUnheard();
 }
 
-function weightUnitOverrideFor(
-  prefs: ExercisePref[],
-  exerciseId: string | null,
-): Unit | null {
-  const override = prefs.find((p) => p.exerciseId === exerciseId)?.weightUnit;
-  return override === "kg" || override === "lb" ? override : null;
-}
-
-function blockUnitFor(
-  prefs: ExercisePref[],
-  exerciseId: string | null,
-  sessionUnit: Unit,
-): Unit {
-  return weightUnitOverrideFor(prefs, exerciseId) ?? sessionUnit;
-}
-
 // Compact "100 × 8" / "1:30" string for a stored/ghost value at one field.
 function fieldText(
   key: FieldKey,
@@ -526,6 +511,58 @@ function RirSegmented({
   );
 }
 
+/** Scrolls the entry panel so a focused value input sits between the panel's
+ * sticky Now row and its pinned ruler/Log footer (both overlay the scroll
+ * area, so the browser's own scroll-into-view leaves the field under them). */
+function revealEntryField(el: Element | null) {
+  if (!(el instanceof HTMLInputElement)) return;
+  const panel = el.closest<HTMLElement>('[data-testid="entry-panel"]');
+  if (!panel) return;
+  const top =
+    panel.querySelector('[data-testid="now-tab"]')?.getBoundingClientRect()
+      .bottom ?? panel.getBoundingClientRect().top;
+  const bottom =
+    panel.querySelector("[data-entry-footer]")?.getBoundingClientRect().top ??
+    panel.getBoundingClientRect().bottom;
+  const r = el.getBoundingClientRect();
+  if (r.bottom > bottom) panel.scrollTop += r.bottom - bottom;
+  else if (r.top < top) panel.scrollTop -= top - r.top;
+}
+
+/** The visible height while the iOS keyboard is up. `dvh` and the layout
+ * viewport ignore the keyboard and its accessory bar, so a column sized to
+ * them left the Log button and the ruler underneath (boss r2 note 10; on the
+ * iPhone 17 simulator the per-side Log button sat at y 458 of a 404px visible
+ * area). Null where there is no visualViewport (falls back to 100dvh). */
+function useVisualViewportHeight(): number | null {
+  const [h, setH] = useState<number | null>(() =>
+    typeof window !== "undefined" && window.visualViewport
+      ? Math.round(window.visualViewport.height)
+      : null,
+  );
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const sync = () => {
+      setH(Math.round(vv.height));
+      // The column just shrank or grew: bring the field being typed into
+      // back between the sticky Now row and the pinned ruler/Log footer.
+      requestAnimationFrame(() => revealEntryField(document.activeElement));
+      // iOS pans the page to reveal the focused field; once the column fits
+      // the visible area there is nothing to pan, so pin it back to the top.
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+    };
+    sync();
+    vv.addEventListener("resize", sync);
+    vv.addEventListener("scroll", sync);
+    return () => {
+      vv.removeEventListener("resize", sync);
+      vv.removeEventListener("scroll", sync);
+    };
+  }, []);
+  return h;
+}
+
 export default function SessionScreen() {
   const { id: sessionId = "" } = useParams();
   const repo = useRepo();
@@ -559,6 +596,7 @@ export default function SessionScreen() {
   const [conditionsOpen, setConditionsOpen] = useState(false);
   const [finishOpen, setFinishOpen] = useState(false);
   const [activeSeId, setActiveSeId] = useState<string | null>(null);
+  const viewportHeight = useVisualViewportHeight();
   const copySeed = (location.state as { seed?: Record<string, SeedSet[]> })
     ?.seed;
 
@@ -588,7 +626,6 @@ export default function SessionScreen() {
   const [livePrEnabled] = useLivePrBanner();
   const [keepAwake] = useKeepAwake();
   const { data: userPrefs } = useUserPrefs();
-  const { data: exercisePrefs = [] } = useExercisePrefs();
   const updatePrefs = useUpdateUserPrefs();
   const plateConfig = userPrefs?.plateConfig ?? null;
   const previousRoutineId =
@@ -672,9 +709,16 @@ export default function SessionScreen() {
   // an exercise offers its planned sets (at least one) plus these, nothing
   // else (log-nav.ts).
   const [addedSets, setAddedSets] = useState<Record<string, number>>({});
+  // `addedSets` is device-local and starts at 0 after a reload, while the
+  // logged sets come back from the server: with 3 logged on a 1-set plan,
+  // "Add a set" had to be pressed 3 times before anything opened. Always open
+  // exactly one set past what is already logged.
   const addSetTo = useCallback(
-    (seId: string) =>
-      setAddedSets((prev) => ({ ...prev, [seId]: (prev[seId] ?? 0) + 1 })),
+    (seId: string, logged: number, planned: number) =>
+      setAddedSets((prev) => ({
+        ...prev,
+        [seId]: Math.max((prev[seId] ?? 0) + 1, logged + 1 - planned),
+      })),
     [],
   );
 
@@ -733,9 +777,9 @@ export default function SessionScreen() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const micMessageTimer = useRef<number | null>(null);
 
-  const voiceCtx = useRef({ blocks, unit, exercisePrefs });
+  const voiceCtx = useRef({ blocks, unit });
   useEffect(() => {
-    voiceCtx.current = { blocks, unit, exercisePrefs };
+    voiceCtx.current = { blocks, unit };
   });
 
   useEffect(() => {
@@ -756,15 +800,11 @@ export default function SessionScreen() {
     }, 2500);
   }
 
-  function voiceWeightKg(
-    parsed: ParsedSetUtterance,
-    exerciseId: string | null,
-  ): number | null {
+  function voiceWeightKg(parsed: ParsedSetUtterance): number | null {
     if (parsed.weightDisplay == null) return null;
-    const { unit: sessionUnit, exercisePrefs: prefs } = voiceCtx.current;
-    const effectiveUnit = parsed.unitExplicit
-      ? parsed.unit
-      : blockUnitFor(prefs, exerciseId, sessionUnit);
+    const { unit: sessionUnit } = voiceCtx.current;
+    // Settings' unit is the only unit (boss r2 note 7).
+    const effectiveUnit = parsed.unitExplicit ? parsed.unit : sessionUnit;
     return effectiveUnit === "lb"
       ? lbToKg(parsed.weightDisplay)
       : parsed.weightDisplay;
@@ -775,9 +815,7 @@ export default function SessionScreen() {
     const exercise = exercises.find((e) => e.id === block?.exerciseId);
     const type = (exercise?.exerciseType as ExerciseType) ?? "weight_reps";
     const f = TYPE_FIELDS[type];
-    const weightKg = f.weight
-      ? voiceWeightKg(parsed, block?.exerciseId ?? null)
-      : null;
+    const weightKg = f.weight ? voiceWeightKg(parsed) : null;
     const reps = f.reps ? parsed.reps : null;
     const applied = weightKg != null || reps != null;
     setActiveSeId(seId);
@@ -1379,20 +1417,50 @@ export default function SessionScreen() {
     }
   }, [activeSeId, sessionId]);
 
-  const structuralChange = useMemo(() => {
-    if (!session?.routineId || !routineDetail || !blocks) return false;
-    if (blocks.some((b) => !b.routineExerciseId)) return true;
+  // How today's workout differs from its routine, one plain line per change
+  // (boss r2 note 8): asked once at Finish; yes writes the structure back,
+  // no keeps it for this session only.
+  const templateChanges = useMemo((): string[] => {
+    if (!session?.routineId || !routineDetail || !blocks) return [];
+    const out: string[] = [];
+    for (const b of blocks)
+      if (!b.routineExerciseId) out.push(`Added ${b.name}`);
     const present = new Set(
       blocks.map((b) => b.routineExerciseId).filter(Boolean),
     );
-    if (routineDetail.exercises.some((e) => !present.has(e.id))) return true;
+    for (const e of routineDetail.exercises)
+      if (!present.has(e.id)) out.push(`Removed ${e.exerciseName}`);
+    const keptOrder = blocks
+      .map((b) => b.routineExerciseId)
+      .filter((id): id is string => id != null && routineByReId.has(id));
+    const planned = [...routineDetail.exercises]
+      .sort((x, y) => x.orderIndex - y.orderIndex)
+      .map((e) => e.id)
+      .filter((id) => keptOrder.includes(id));
+    if (keptOrder.some((id, i) => id !== planned[i]))
+      out.push("Changed the exercise order");
     for (const b of blocks) {
       if (!b.routineExerciseId) continue;
       const t = routineByReId.get(b.routineExerciseId);
-      if (t && countSets(b.committed) > t.sets.length) return true;
+      if (!t) continue;
+      const groups = groupSetsBySetNo(b.committed);
+      if (groups.length > t.sets.length)
+        out.push(
+          `${b.name}: ${groups.length} sets instead of ${t.sets.length}`,
+        );
+      const sideSwitch = groups.some((rows, i) => {
+        const was = t.sets[i]?.laterality === "unilateral";
+        const now = rows.length === 2;
+        return t.sets[i] != null && was !== now;
+      });
+      if (sideSwitch) {
+        const now = groups.some((rows) => rows.length === 2);
+        out.push(`${b.name}: ${now ? "per side" : "both sides"}`);
+      }
     }
-    return false;
+    return out;
   }, [session?.routineId, routineDetail, blocks, routineByReId]);
+  const structuralChange = templateChanges.length > 0;
 
   function structureInput(): NewRoutineInput | null {
     if (!routineDetail || !blocks) return null;
@@ -1710,7 +1778,15 @@ export default function SessionScreen() {
         </div>
       </header>
 
-      <div className="mx-auto flex h-[calc(100dvh-clamp(52px,6.6dvh,56px))] max-w-2xl flex-col overflow-hidden">
+      <div
+        className="mx-auto flex h-[calc(var(--session-vvh,100dvh)-clamp(52px,6.6dvh,56px))] max-w-2xl flex-col overflow-hidden"
+        style={
+          viewportHeight != null
+            ? ({ "--session-vvh": `${viewportHeight}px` } as CSSProperties)
+            : undefined
+        }
+        data-testid="session-column"
+      >
         {activeBlock ? (
           <ExerciseSpotlight
             key={activeBlock.seId}
@@ -1735,7 +1811,16 @@ export default function SessionScreen() {
             onOpenSwitcher={() => setSwitcherOpen(true)}
             onSwipe={gotoOffset}
             addedSets={addedSets[activeBlock.seId] ?? 0}
-            onAddSet={() => addSetTo(activeBlock.seId)}
+            onAddSet={() =>
+              addSetTo(
+                activeBlock.seId,
+                countSets(activeBlock.committed),
+                plannedSetCount(
+                  (seedOverride[activeBlock.seId] ?? seedFor(activeBlock))
+                    .length,
+                ),
+              )
+            }
             prevName={blocks[activeIdx - 1]?.name ?? null}
             nextName={blocks[activeIdx + 1]?.name ?? null}
             prSetIds={prSetIds}
@@ -1822,6 +1907,7 @@ export default function SessionScreen() {
           unit={unit}
           isRoutine={session.routineId != null}
           structuralChange={structuralChange}
+          templateChanges={templateChanges}
           failedSetCount={failedSetCount}
           unsavedSetCount={Object.keys(queuedSets).length}
           onRetryFailed={retryFailedSets}
@@ -1848,6 +1934,7 @@ function FinishOverlay({
   unit,
   isRoutine,
   structuralChange,
+  templateChanges,
   failedSetCount,
   unsavedSetCount,
   onRetryFailed,
@@ -1870,6 +1957,7 @@ function FinishOverlay({
   unit: Unit;
   isRoutine: boolean;
   structuralChange: boolean;
+  templateChanges: string[];
   onFinish: (opts: {
     title: string;
     notes: string;
@@ -1956,7 +2044,9 @@ function FinishOverlay({
             <span className={labelCls}>Start</span>
             <Input
               type="datetime-local"
-              className="num"
+              // iOS gives date inputs an intrinsic min width wider than the
+              // sheet (iOS sim report issue 6); let it shrink to the column.
+              className="num w-full max-w-full min-w-0 appearance-none"
               value={toLocalInput(startedDraft)}
               onChange={(e) => {
                 const ms = new Date(e.target.value).getTime();
@@ -2002,10 +2092,17 @@ function FinishOverlay({
 
           {isRoutine && structuralChange && (
             <div className="rounded-sm bg-surface-2 p-2">
-              <p className="text-xs text-soft">
-                You changed this workout's structure. Update the routine to
-                match, or keep the original?
+              <p className="text-xs font-medium text-ink">
+                Save these changes to the routine?
               </p>
+              <ul
+                className="mt-1 list-disc pl-4 text-xs text-soft"
+                data-testid="finish-template-changes"
+              >
+                {templateChanges.map((c) => (
+                  <li key={c}>{c}</li>
+                ))}
+              </ul>
               <div className="mt-2 flex gap-2">
                 <Button
                   variant={updateStructure ? "primary" : "outline"}
@@ -2014,7 +2111,7 @@ function FinishOverlay({
                   onClick={() => setUpdateStructure(true)}
                   data-testid="finish-update-structure"
                 >
-                  Update routine
+                  Yes, update routine
                 </Button>
                 <Button
                   variant={!updateStructure ? "primary" : "outline"}
@@ -2023,7 +2120,7 @@ function FinishOverlay({
                   onClick={() => setUpdateStructure(false)}
                   data-testid="finish-keep-original"
                 >
-                  Keep original
+                  No, just today
                 </Button>
               </div>
             </div>
@@ -2608,13 +2705,10 @@ function SetRows({
   variant?: "list" | "tab";
   rows: {
     text: string;
-    lastText: string;
     rirText: string;
     hasNote: boolean;
     /** A per-side pair, both sides labelled (PreviousSets). */
     pair?: GhostSet | null;
-    /** Last time's values when that set was a per-side pair. */
-    lastPair?: GhostSet | null;
   }[];
   fmtWeight: (kg: number) => string;
 }) {
@@ -2742,23 +2836,9 @@ function SetRows({
             tab && "min-w-0 overflow-hidden whitespace-nowrap",
           )}
         >
-          {now ? (
-            r.lastPair ? (
-              <span
-                className="inline-flex items-center gap-1"
-                data-testid="set-mark-last-sides"
-              >
-                last
-                <PreviousSets ghost={r.lastPair} formatWeight={fmtWeight} />
-              </span>
-            ) : r.lastText ? (
-              `last ${r.lastText}`
-            ) : (
-              ""
-            )
-          ) : (
-            r.rirText
-          )}
+          {/* No "last X × Y" on the Now row: last time lives in the
+              fields as grey ghosts (boss r2 note 9). */}
+          {now ? "" : r.rirText}
           {r.hasNote && (
             <Notebook className="size-4 shrink-0 text-accent-ink" />
           )}
@@ -2803,8 +2883,33 @@ function SetRows({
 
 // ── Setup presets: one tap writes "Seat 4" into the setup note ───────────
 
-const SETUP_SETTINGS = ["Seat", "Pad", "Back", "Handles", "Pin"] as const;
+const SETUP_SETTINGS = [
+  { label: "Seat", Icon: Chair },
+  { label: "Pad", Icon: Rectangle },
+  { label: "Back", Icon: Armchair },
+  { label: "Handles", Icon: HandGrabbing },
+  { label: "Pin", Icon: PushPin },
+] as const;
 const SETUP_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+
+/** One grouped card in the Setup & form sheet. The sections read apart by
+ * tone and spacing, never a rule line (brand: no borders). */
+function SetupSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-2 rounded-md bg-surface-2 p-3 dark:bg-bg">
+      <h3 className="text-2xs font-bold tracking-widest text-soft uppercase">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
 
 function SetupPresets({
   draft,
@@ -2819,69 +2924,77 @@ function SetupPresets({
     new RegExp(`\\b${label}\\s+(\\d+(?:\\.\\d+)?)`, "i"),
   )?.[1];
   return (
-    <div className="mb-3 flex flex-col gap-2" data-testid="setup-presets">
-      <ChipGroup
-        value={label}
-        onValueChange={(v) => {
-          if (v) setLabel(v);
-        }}
-        className="flex-nowrap gap-1 overflow-x-auto"
-        aria-label="Machine setting"
-      >
-        {SETUP_SETTINGS.map((l) => (
-          <ChipItem
-            key={l}
-            value={l}
-            className="h-11 md:h-8"
-            data-testid={`setup-setting-${l.toLowerCase()}`}
-          >
-            {l}
-          </ChipItem>
-        ))}
-      </ChipGroup>
-      <div className="grid grid-cols-6 gap-1">
-        {SETUP_VALUES.map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => onChange(applySetupSetting(draft, label, String(n)))}
-            aria-pressed={current === String(n)}
-            className={cn(
-              "num h-11 rounded-sm text-sm font-semibold transition-colors duration-100 md:h-8",
-              current === String(n)
-                ? "bg-action text-on-action"
-                : "bg-secondary text-ink hover:bg-active",
-            )}
-            data-testid={`setup-value-${n}`}
-          >
-            {n}
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <Input
-          inputMode="decimal"
-          placeholder={`${label} number`}
-          value={custom}
-          onChange={(e) =>
-            setCustom(sanitizeNumeric(e.target.value, { decimal: true }))
-          }
-          className="num h-11 min-w-0 flex-1"
-          data-testid="setup-value-custom"
-        />
-        <Button
-          variant="outline"
-          className="h-11 md:h-11"
-          disabled={custom.trim() === ""}
-          onClick={() => {
-            onChange(applySetupSetting(draft, label, custom.trim()));
-            setCustom("");
+    <div className="mb-3 flex flex-col gap-3" data-testid="setup-presets">
+      {/* Boss r2 note 2: one icon per preset, grouped cards. */}
+      <SetupSection title="Setting">
+        <ChipGroup
+          value={label}
+          onValueChange={(v) => {
+            if (v) setLabel(v);
           }}
-          data-testid="setup-value-add"
+          className="grid grid-cols-5 gap-1"
+          aria-label="Machine setting"
         >
-          Set {label.toLowerCase()}
-        </Button>
-      </div>
+          {SETUP_SETTINGS.map(({ label: l, Icon }) => (
+            <ChipItem
+              key={l}
+              value={l}
+              className="flex h-14 min-w-0 flex-col items-center justify-center gap-0.5 px-1 text-2xs"
+              data-testid={`setup-setting-${l.toLowerCase()}`}
+            >
+              <Icon className="size-5" data-testid="setup-setting-icon" />
+              {l}
+            </ChipItem>
+          ))}
+        </ChipGroup>
+      </SetupSection>
+      <SetupSection title={`${label} position`}>
+        <div className="grid grid-cols-6 gap-1">
+          {SETUP_VALUES.map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() =>
+                onChange(applySetupSetting(draft, label, String(n)))
+              }
+              aria-pressed={current === String(n)}
+              className={cn(
+                "num h-11 rounded-sm text-sm font-semibold transition-colors duration-100 md:h-8",
+                current === String(n)
+                  ? "bg-action text-on-action"
+                  : "bg-surface text-ink hover:bg-active",
+              )}
+              data-testid={`setup-value-${n}`}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Input
+            inputMode="decimal"
+            placeholder={`Other ${label.toLowerCase()} number`}
+            value={custom}
+            onChange={(e) =>
+              setCustom(sanitizeNumeric(e.target.value, { decimal: true }))
+            }
+            className="num h-11 min-w-0 flex-1"
+            data-testid="setup-value-custom"
+          />
+          <Button
+            variant="outline"
+            className="h-11 md:h-11"
+            disabled={custom.trim() === ""}
+            onClick={() => {
+              onChange(applySetupSetting(draft, label, custom.trim()));
+              setCustom("");
+            }}
+            data-testid="setup-value-add"
+          >
+            Set {label.toLowerCase()}
+          </Button>
+        </div>
+      </SetupSection>
     </div>
   );
 }
@@ -2892,10 +3005,6 @@ function SetupPresets({
 function ExerciseSettingsMenu({
   blockName,
   unit,
-  showUnitOverride,
-  unitOverride,
-  globalUnit,
-  onSetUnitOverride,
   warmupEligible,
   heaviestDisplay,
   onRemoveBlock,
@@ -2908,10 +3017,6 @@ function ExerciseSettingsMenu({
   onPickMachine: () => void;
   blockName: string;
   unit: Unit;
-  showUnitOverride: boolean;
-  unitOverride: Unit | null;
-  globalUnit: Unit;
-  onSetUnitOverride: (u: Unit | null) => void;
   warmupEligible: boolean;
   heaviestDisplay: number | null;
   onRemoveBlock: () => void;
@@ -2953,30 +3058,6 @@ function ExerciseSettingsMenu({
               <Flame className="size-4 shrink-0 text-warn" />
               Add warm-up sets
             </DropdownMenuItem>
-          )}
-          {showUnitOverride && (
-            <>
-              <DropdownMenuLabel className="pt-3 font-semibold tracking-widest text-soft uppercase">
-                Weight unit
-              </DropdownMenuLabel>
-              {[
-                { value: "kg" as const, label: "kg" },
-                { value: "lb" as const, label: "lbs" },
-                { value: null, label: `Default (${unitLabel(globalUnit)})` },
-              ].map((o) => (
-                <DropdownMenuItem
-                  key={o.label}
-                  className="min-h-11 justify-between"
-                  onSelect={() => onSetUnitOverride(o.value)}
-                  data-testid={`block-${blockName}-unit-${o.value ?? "default"}`}
-                >
-                  {o.label}
-                  {unitOverride === o.value && (
-                    <Check className="size-4 shrink-0 text-accent-ink" />
-                  )}
-                </DropdownMenuItem>
-              ))}
-            </>
           )}
           <DropdownMenuItem
             danger
@@ -3250,7 +3331,6 @@ function ExerciseSpotlight({
   );
   useLastNote(block.ghostExerciseId ?? block.exerciseId, block.seId);
   const { data: exercises = [] } = useExercises();
-  const { data: prefs = [] } = useExercisePrefs();
   // Set-scope custom metrics enabled for this exercise (Library owns
   // enabling them; the set details sheet is the only place their per-set
   // values are entered). Lives on the metric, not the exercise, so a seed
@@ -3263,7 +3343,6 @@ function ExerciseSpotlight({
       ),
     [metrics, block.exerciseId],
   );
-  const setWeightUnit = useSetExerciseWeightUnit();
   const createExercise = useCreateExercise();
   const updateExercise = useUpdateExercise();
   const deleteExercise = useDeleteExercise();
@@ -3526,8 +3605,8 @@ function ExerciseSpotlight({
   const machines = useMachines().data ?? [];
   const machine = machines.find((m) => m.id === exercise?.machineId);
   const type = (exercise?.exerciseType as ExerciseType) ?? "weight_reps";
-  const override = weightUnitOverrideFor(prefs, block.exerciseId);
-  const blockUnit = blockUnitFor(prefs, block.exerciseId, unit);
+  // One unit everywhere: the global Settings one (boss r2 note 7).
+  const blockUnit = unit;
   const distUnit = distanceUnitFor(blockUnit);
   const barLoaded =
     TYPE_FIELDS[type].weight && isBarLoaded(exercise?.equipment);
@@ -3624,8 +3703,6 @@ function ExerciseSpotlight({
     fmtWeight: (kg: number) => String(toDisplayWeight(kg, blockUnit)),
     rows: marks.map((_m, i) => {
       const g = committedGroups[i];
-      // ghostFor is typed on DraftSet; useGhost rows are GhostSets.
-      const lastGhost = ghostFor(ghost, i) as GhostSet;
       // A per-side pair shows both sides (PreviousSets: one value when
       // they match, L and R when they differ), never just the left.
       const pair: GhostSet | null =
@@ -3647,10 +3724,6 @@ function ExerciseSpotlight({
             .filter((t) => t !== "—")
             .join(" × ")
         : "";
-      const lastText = fieldsFor(type)
-        .map((k) => fieldText(k, lastGhost, blockUnit, distUnit))
-        .filter((t) => t !== "—")
-        .join(" × ");
       const rirL = g ? rirLabel(g[0]) : "";
       const rirR = g && g.length === 2 ? rirLabel(g[1]) : "";
       const rirText =
@@ -3659,11 +3732,9 @@ function ExerciseSpotlight({
           : rirL;
       return {
         text,
-        lastText,
         rirText,
         hasNote: !!g?.some((r) => r.note),
         pair,
-        lastPair: lastGhost.otherSide ? lastGhost : null,
       };
     }),
   };
@@ -3737,12 +3808,6 @@ function ExerciseSpotlight({
             <ExerciseSettingsMenu
               blockName={block.name}
               unit={blockUnit}
-              showUnitOverride={TYPE_FIELDS[type].weight}
-              unitOverride={override}
-              globalUnit={unit}
-              onSetUnitOverride={(u) =>
-                setWeightUnit.mutate({ exerciseId: block.exerciseId, unit: u })
-              }
               warmupEligible={warmupEligible}
               heaviestDisplay={
                 heaviestKg > 0 ? toDisplayWeight(heaviestKg, blockUnit) : null
@@ -3935,22 +4000,6 @@ function ExerciseSpotlight({
               </button>
             ))}
           <div className="flex min-h-[clamp(40px,5.2dvh,44px)] flex-wrap items-center gap-2">
-            {override && (
-              <button
-                type="button"
-                onClick={() =>
-                  setWeightUnit.mutate({
-                    exerciseId: block.exerciseId,
-                    unit: null,
-                  })
-                }
-                className="num flex h-11 shrink-0 items-center rounded-sm bg-secondary px-3 text-xs font-semibold text-ink transition-colors duration-100 hover:bg-active"
-                title="Using a per-exercise weight unit override — tap to clear"
-                data-testid={`block-${block.name}-unit-clear`}
-              >
-                {unitLabel(override)} only
-              </button>
-            )}
             {avgRestSec != null && (
               <span
                 className="num shrink-0 text-xs text-soft"
@@ -4087,14 +4136,16 @@ function ExerciseSpotlight({
         <Dialog open={setupOpen} onOpenChange={setSetupOpen}>
           <DialogContent title="Setup & form">
             <SetupPresets draft={setupDraft} onChange={setSetupDraft} />
-            <Textarea
-              rows={4}
-              placeholder="Seat height, grip, cues, left knee…"
-              value={setupDraft}
-              onChange={(e) => setSetupDraft(e.target.value)}
-              data-testid="setup-notes"
-              className="w-full resize-y border border-field bg-surface-2 px-3 py-2 text-sm text-ink placeholder:text-faint"
-            />
+            <SetupSection title="Notes">
+              <Textarea
+                rows={4}
+                placeholder="Seat height, grip, cues, left knee…"
+                value={setupDraft}
+                onChange={(e) => setSetupDraft(e.target.value)}
+                data-testid="setup-notes"
+                className="w-full resize-y border border-field bg-surface px-3 py-2 text-sm text-ink placeholder:text-faint"
+              />
+            </SetupSection>
             <Button
               className="mt-3 h-11 w-full md:h-11"
               onClick={() => {
@@ -4127,14 +4178,24 @@ function ExerciseSpotlight({
           className="z-10 shrink-0 rounded-t-lg bg-surface px-4 pt-3 pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]"
           data-testid="sets-done"
         >
-          <p className="pb-2 text-sm font-semibold text-soft">
+          {/* Centered confirmation, not a left-hung caption (boss r2 note 1). */}
+          <p
+            className="num flex items-center justify-center gap-2 pb-3 text-sm font-semibold text-ink"
+            data-testid="sets-done-label"
+          >
+            <span
+              aria-hidden="true"
+              className="flex size-6 items-center justify-center rounded-full bg-accent-soft text-accent-ink"
+            >
+              <Check className="size-3.5" weight="bold" />
+            </span>
             {countSets(block.committed)}{" "}
             {countSets(block.committed) === 1 ? "set" : "sets"} logged
           </p>
           {/* What was done, where the weight and reps normally sit: one tile
               per set, a per-side set split into its two sides. */}
           <div
-            className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-2 pb-3"
+            className="flex flex-wrap justify-center gap-2 pb-3"
             data-testid="sets-done-summary"
           >
             {committedGroups.map((g, i) => {
@@ -4153,7 +4214,7 @@ function ExerciseSpotlight({
                     setManualFocus(i);
                     setFocusSide(null);
                   }}
-                  className="num flex min-h-11 flex-col items-start gap-0.5 rounded-sm bg-surface-2 px-2 py-1.5 text-left text-sm font-semibold text-ink transition-colors duration-100 hover:bg-surface-hover"
+                  className="num flex min-h-11 min-w-[8.5rem] flex-col items-center gap-0.5 rounded-sm bg-surface-2 px-3 py-1.5 text-center text-sm font-semibold text-ink transition-colors duration-100 hover:bg-surface-hover"
                   data-testid={`sets-done-${i}`}
                 >
                   <span
@@ -4167,7 +4228,7 @@ function ExerciseSpotlight({
                   {g.length === 2 ? (
                     // Same two outlined side cells as the set list above.
                     <span
-                      className="flex flex-col items-start gap-1"
+                      className="flex flex-col items-center gap-1"
                       data-testid={`sets-done-${i}-sides`}
                     >
                       <SideCell side="left">{one(g[0])}</SideCell>
@@ -4242,7 +4303,6 @@ function ExerciseSpotlight({
           }
           nextSeedType={seedSets[focusedIndex + 1]?.setType ?? null}
           ghost={ghostFor(ghost, focusedIndex)}
-          hasGhost={ghost.length > 0}
           enabledMetrics={enabledMetrics}
           committedGroup={committedGroups[focusedIndex] ?? null}
           barLoaded={barLoaded}
@@ -4347,7 +4407,6 @@ function Spotlight({
   topSet,
   nextSeedType,
   ghost,
-  hasGhost,
   committedGroup,
   barLoaded,
   weightRequired,
@@ -4395,7 +4454,6 @@ function Spotlight({
   topSet: boolean;
   nextSeedType: string | null;
   ghost: GhostSet;
-  hasGhost: boolean;
   /** The physical set's stored rows when this index is already logged —
    * present = editing mode, using the SAME fields/ids as live logging. */
   committedGroup: LoggedSet[] | null;
@@ -4457,28 +4515,13 @@ function Spotlight({
         ? String(toDisplayDistance(left.distanceM, distUnit))
         : "";
     }
-    // Contract: a value FILLS the field only from an uncommitted draft or
-    // last time's own performance (ghost) — never from the routine target.
-    if (kind === "weight") {
-      if (draft?.weight) return draft.weight;
-      if (ghost.weightKg != null)
-        return String(toDisplayWeight(ghost.weightKg, unit));
-      return "";
-    }
-    if (kind === "reps") {
-      if (draft?.reps) return draft.reps;
-      if (ghost.reps != null) return String(ghost.reps);
-      return "";
-    }
-    if (kind === "duration") {
-      if (draft?.duration) return draft.duration;
-      if (ghost.durationSec != null) return formatMMSS(ghost.durationSec);
-      return "";
-    }
-    if (draft?.distance) return draft.distance;
-    if (ghost.distanceM != null)
-      return String(toDisplayDistance(ghost.distanceM, distUnit));
-    return "";
+    // Contract (boss r2 note 9): a value FILLS the field only from an
+    // uncommitted draft. Last time (ghost) is a grey placeholder the user
+    // taps to take (`ghostText`); an untouched ghost is never logged.
+    if (kind === "weight") return draft?.weight ?? "";
+    if (kind === "reps") return draft?.reps ?? "";
+    if (kind === "duration") return draft?.duration ?? "";
+    return draft?.distance ?? "";
   };
   // The right side is its own set of values: seeded once from ITS last-time
   // numbers (else the left's, as a starting point only), then never tied to
@@ -4486,17 +4529,29 @@ function Spotlight({
   const ghostRight = ghost.otherSide ?? ghost;
   const seedRightReps = () => {
     if (isEditing) return right?.reps != null ? String(right.reps) : "";
-    if (draft?.rReps) return draft.rReps;
-    return ghostRight.reps != null ? String(ghostRight.reps) : "";
+    return draft?.rReps ?? "";
   };
   const seedRightWeight = () => {
     if (isEditing)
       return right?.weightKg != null
         ? String(toDisplayWeight(right.weightKg, unit))
         : "";
-    if (draft?.rWeight) return draft.rWeight;
-    return ghostRight.weightKg != null
-      ? String(toDisplayWeight(ghostRight.weightKg, unit))
+    return draft?.rWeight ?? "";
+  };
+  // Last time's value for one field, as the grey placeholder text ("" = no
+  // last time). Right-side keys read the other limb's values.
+  const ghostText = (kind: FieldKey, sideR = false): string => {
+    if (isEditing) return "";
+    const g = sideR ? ghostRight : ghost;
+    if (kind === "weight")
+      return g.weightKg != null
+        ? String(toDisplayWeight(g.weightKg, unit))
+        : "";
+    if (kind === "reps") return g.reps != null ? String(g.reps) : "";
+    if (kind === "duration")
+      return g.durationSec != null ? formatMMSS(g.durationSec) : "";
+    return g.distanceM != null
+      ? String(toDisplayDistance(g.distanceM, distUnit))
       : "";
   };
 
@@ -4547,27 +4602,19 @@ function Spotlight({
   const [reps2, setReps2Raw] = useState(() => seedRightReps());
   const setReps2 = (v: string) => setReps2Raw(sanitizeNumeric(v));
   const rightReps = !f.weight && reps2.trim() === "" ? reps : reps2;
-  const [rDuration, setRDuration] = useState(
+  const [rDuration] = useState(
     () =>
       draft?.rDuration ??
-      (isEditing
-        ? right?.durationSec != null
-          ? formatMMSS(right.durationSec)
-          : ""
-        : ghostRight.durationSec != null
-          ? formatMMSS(ghostRight.durationSec)
-          : ""),
+      (isEditing && right?.durationSec != null
+        ? formatMMSS(right.durationSec)
+        : ""),
   );
-  const [rDistance, setRDistance] = useState(
+  const [rDistance] = useState(
     () =>
       draft?.rDistance ??
-      (isEditing
-        ? right?.distanceM != null
-          ? String(toDisplayDistance(right.distanceM, distUnit))
-          : ""
-        : ghostRight.distanceM != null
-          ? String(toDisplayDistance(ghostRight.distanceM, distUnit))
-          : ""),
+      (isEditing && right?.distanceM != null
+        ? String(toDisplayDistance(right.distanceM, distUnit))
+        : ""),
   );
   const [rirMin2, setRirMin2] = useState(() =>
     right?.rirMin != null ? String(right.rirMin) : "",
@@ -4587,8 +4634,8 @@ function Spotlight({
   // Per-side weight is shared (one value, both sides) unless the user splits
   // it; opens split only when the stored/last pair actually differed.
   const [splitWeight, setSplitWeight] = useState(() => {
-    const l = seedFrom("weight");
-    const r = seedRightWeight();
+    const l = seedFrom("weight") || ghostText("weight");
+    const r = seedRightWeight() || ghostText("weight", true);
     return initialUnilateral && l !== "" && r !== "" && l !== r;
   });
   // The right side's weight as it will be saved: its own value when split,
@@ -4901,24 +4948,6 @@ function Spotlight({
     else submitLive();
   }
 
-  function resetToLastTime() {
-    if (f.weight && ghost.weightKg != null)
-      setWeight(String(toDisplayWeight(ghost.weightKg, unit)));
-    if (f.reps && ghost.reps != null) setReps(String(ghost.reps));
-    if (f.duration && ghost.durationSec != null)
-      setDuration(formatMMSS(ghost.durationSec));
-    if (f.distance && ghost.distanceM != null)
-      setDistance(String(toDisplayDistance(ghost.distanceM, distUnit)));
-    const other = ghost.otherSide;
-    if (isUnilateral && other) {
-      if (f.reps && other.reps != null) setReps2(String(other.reps));
-      if (f.duration && other.durationSec != null)
-        setRDuration(formatMMSS(other.durationSec));
-      if (f.distance && other.distanceM != null)
-        setRDistance(String(toDisplayDistance(other.distanceM, distUnit)));
-    }
-  }
-
   function bump(
     kind: FieldKey,
     delta: number,
@@ -4930,8 +4959,11 @@ function Spotlight({
       duration: setDuration,
       distance: setDistanceRaw,
     };
+    // An empty field steps from last time's ghost, else (right side) the
+    // left's value.
     const fallback =
-      side === "left" ? "" : { weight, reps, duration, distance }[kind];
+      ghostText(kind, side === "right") ||
+      (side === "left" ? "" : { weight, reps, duration, distance }[kind]);
     if (kind === "weight" && side === "left") setWeightError(false);
     setters[kind]((prev) => {
       const current = prev || fallback;
@@ -5117,6 +5149,7 @@ function Spotlight({
                     : "decimal"
               }
               value={value}
+              placeholder={ghostText(key) || undefined}
               onChange={(e) =>
                 setValue(
                   key === "duration"
@@ -5134,9 +5167,13 @@ function Spotlight({
                 // (R3 locked decision) — manual Stop is the other trigger.
                 if (restStartedAt != null) onStopRest();
               }}
+              // A tap on a ghost takes last time's value (boss r2 note 9).
+              onClick={() => {
+                if (value === "" && ghostText(key)) setValue(ghostText(key));
+              }}
               readOnly={key === "duration" && timerRunning}
               data-big-input
-              className="num min-w-0 flex-1 bg-transparent text-center text-[40px] leading-none font-bold text-ink placeholder:text-3xl placeholder:text-faint sm:text-[52px]"
+              className="num min-w-0 flex-1 bg-transparent text-center text-[40px] leading-none font-bold text-ink placeholder:text-(--color-text-disabled) sm:text-[52px]"
               data-testid={fieldTestId}
               aria-invalid={key === "weight" && weightError ? true : undefined}
               aria-describedby={
@@ -5257,11 +5294,6 @@ function Spotlight({
       </div>
     );
   }
-
-  const lastText = fieldsFor(type)
-    .map((k) => fieldText(k, ghost, unit, distUnit))
-    .filter((t) => t !== "—")
-    .join(" × ");
 
   const primaryFields = fields;
 
@@ -5460,7 +5492,6 @@ function Spotlight({
   const inputRefs = useRef<Partial<Record<EntryKey, HTMLInputElement | null>>>(
     {},
   );
-  const justFocused = useRef<EntryKey | null>(null);
   const activate = (key: EntryKey) => {
     setActiveCol(key);
     if (restStartedAt != null) onStopRest();
@@ -5494,8 +5525,12 @@ function Spotlight({
     hint?: number | null;
     beat?: boolean | null;
     unitSuffix?: string;
+    /** Last time's value: grey placeholder while empty; a tap takes it. */
+    ghost?: string;
   }) {
     const on = activeCol === o.key;
+    const ghosted = o.value === "" && !!o.ghost;
+    const shown = ghosted ? (o.ghost as string) : o.shown;
     return (
       <div
         key={o.cellTestId}
@@ -5523,28 +5558,31 @@ function Spotlight({
             onKeyDown={(e) => {
               if (e.key === "Enter") e.preventDefault();
             }}
+            // The caret goes where the tap lands; nothing selects the value
+            // (boss r2 note 5, reversing the 2026-11-25 select-on-focus).
             onFocus={(e) => {
               activate(o.key);
-              // Tap-to-type replaces the value instead of inserting at a
-              // stray caret: select now (keyboard focus) and again on the
-              // click that follows a tap (mouseup would collapse it).
-              e.currentTarget.select();
-              justFocused.current = o.key;
+              revealEntryField(e.currentTarget);
             }}
-            // An already-focused input fires no focus event, so a tap still
-            // has to move the ruler and the underline back here.
-            onPointerDown={() => setActiveCol(o.key)}
-            onClick={(e) => {
+            // Real focus is the single source of truth for the active value
+            // (iOS sim report issue 1): the old onPointerDown re-rendered the
+            // ruler before iOS moved focus, and WebKit treats a tap that
+            // changes content on press as a hover, so focus and the digits
+            // stayed in the previous field (Weight 105 -> tap Reps -> 5 gave
+            // 1055). An already-focused input fires no focus event, so its
+            // click still moves the ruler and underline back here.
+            onClick={() => {
               setActiveCol(o.key);
-              if (justFocused.current === o.key) e.currentTarget.select();
-              justFocused.current = null;
-            }}
-            onBlur={() => {
-              if (justFocused.current === o.key) justFocused.current = null;
+              // A tap on a ghost takes last time's value (boss r2 note 9).
+              // On the tap, not on focus: focus alone (keyboard, autofill,
+              // a programmatic fill) must not merge the ghost into typing.
+              if (ghosted) o.onValue(o.ghost as string);
             }}
             className="peer num absolute inset-0 size-full min-w-0 bg-transparent p-0 text-center leading-none font-bold tracking-tight outline-none"
-            style={{ fontSize: fontFor(o.value || o.shown, !!o.big) }}
+            style={{ fontSize: fontFor(o.value || shown, !!o.big) }}
             aria-label={o.ariaLabel}
+            placeholder={ghosted ? o.ghost : undefined}
+            data-ghost={ghosted ? o.ghost : undefined}
             aria-invalid={o.tone === "error" ? true : undefined}
             data-testid={o.testId}
           />
@@ -5553,10 +5591,12 @@ function Spotlight({
             className={cn(
               "num leading-none font-bold tracking-tight whitespace-pre peer-focus:invisible",
               o.value !== "" && "invisible",
+              ghosted && "text-(--color-text-disabled)",
             )}
-            style={{ fontSize: fontFor(o.shown, !!o.big) }}
+            style={{ fontSize: fontFor(shown, !!o.big) }}
+            data-testid={ghosted ? `${o.testId}-ghost` : undefined}
           >
-            {o.shown}
+            {shown}
             {o.unitSuffix && (
               <span className="visible inline-block w-0 whitespace-nowrap">
                 <small className="pl-1 text-[13px] font-semibold tracking-normal text-soft">
@@ -5644,6 +5684,7 @@ function Spotlight({
         ),
       value: val,
       shown: val === "" ? "–" : val,
+      ghost: ghostText("weight", sd === "right"),
       onValue: set,
       mode: "decimal",
       big,
@@ -5695,6 +5736,7 @@ function Spotlight({
       label: "Reps",
       value: val,
       shown: val === "" ? placeholder : val,
+      ghost: ghostText("reps", sd === "right"),
       onValue: (v) => {
         setRepsError(null);
         set(v);
@@ -5811,6 +5853,18 @@ function Spotlight({
     }
     const weightLine = f.weight ? (
       <div className="flex items-center gap-2" data-testid="entry-weight-line">
+        {/* Mirror of the Split button so the weight sits on the panel's
+            true center, not pushed left by the control (boss r2 note 3). */}
+        {isUnilateral && (
+          <span
+            aria-hidden="true"
+            className={cn(SPLIT_BTN, "invisible")}
+            data-testid="weight-split-spacer"
+          >
+            <LinkSimple className="size-4" />
+            {splitWeight ? "Same" : "Split"}
+          </span>
+        )}
         <div
           className={cn(
             "grid min-w-0 flex-1",
@@ -5877,7 +5931,8 @@ function Spotlight({
     const col = activeCol as EntryKey;
     if ((col === "weight" || col === "weightR") && f.weight) {
       const sideR = col === "weightR";
-      const val = sideR ? weight2 : weight;
+      // An empty value sits the ruler on last time's ghost.
+      const val = (sideR ? weight2 : weight) || ghostText("weight", sideR);
       const g = sideR ? ghostRight.weightKg : ghost.weightKg;
       const split = isUnilateral && splitWeight;
       return (
@@ -5925,7 +5980,7 @@ function Spotlight({
       );
     }
     const sideR = col === "repsR";
-    const val = sideR ? rightReps : reps;
+    const val = (sideR ? rightReps : reps) || ghostText("reps", sideR);
     return (
       <Ruler
         key={sideR ? "repsR" : "reps"}
@@ -5965,6 +6020,30 @@ function Spotlight({
     return null;
   })();
 
+  // Set note: a labelled note chip beside the set label, not a generic edit
+  // pencil among the header actions (boss r2 note 4). Toned once the set
+  // carries a note.
+  const hasNote = note.trim() !== "";
+  const noteChip = (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => setDetailsOpen(true)}
+      aria-label={hasNote ? "Edit set note and details" : "Add set note"}
+      className={cn(
+        "flex h-9 shrink-0 items-center gap-1 rounded-sm px-2 text-xs font-semibold transition-colors duration-100",
+        hasNote
+          ? "bg-accent-soft text-accent-ink"
+          : "bg-surface-2 text-soft hover:bg-surface-hover",
+      )}
+      data-testid={`set-${index}-more`}
+      data-has-note={hasNote ? "true" : "false"}
+    >
+      <Notepad className="size-4" weight={hasNote ? "fill" : "regular"} />
+      Note
+    </button>
+  );
+
   const rulerHeader = (
     <div
       className={cn(
@@ -5998,6 +6077,7 @@ function Spotlight({
           {isEditing ? "· editing" : "· now"}
         </span>
       </span>
+      {noteChip}
       {topSet && setType !== "warmup" && (
         <span
           className="rounded-xs bg-accent-soft px-2 py-1 text-2xs font-bold tracking-widest text-accent-ink uppercase"
@@ -6020,15 +6100,6 @@ function Spotlight({
         </span>
       )}
       <span className="ml-auto flex items-center gap-2">
-        <IconButton
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => setDetailsOpen(true)}
-          title="Set note and details"
-          className={CHROME_BTN}
-          data-testid={`set-${index}-more`}
-        >
-          <PencilSimple className="size-5" />
-        </IconButton>
         <SetActionsMenu
           isWarmup={setType === "warmup"}
           onToggleWarmup={() => {
@@ -6077,47 +6148,55 @@ function Spotlight({
           </p>
         )}
 
-        {rulerEnabled && (
-          <div className="mt-2 rounded-sm bg-surface-2 dark:bg-bg">
-            {entryRuler()}
-          </div>
-        )}
+        {/* Ruler + Log stay pinned to the panel's bottom edge: when the
+            keyboard leaves little room the values scroll under the sticky
+            Now row instead, never the controls you act with (r2 notes 6/10). */}
+        <div
+          className="sticky bottom-0 z-10 -mx-4 bg-surface px-4"
+          data-entry-footer
+        >
+          {rulerEnabled && (
+            <div className="mt-2 rounded-sm bg-surface-2 dark:bg-bg">
+              {entryRuler()}
+            </div>
+          )}
 
-        <div className="pt-[clamp(8px,1.4dvh,12px)] pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]">
-          <Button
-            size="lg"
-            variant={logQuiet ? "outline" : undefined}
-            className={cn(
-              "h-[clamp(48px,7dvh,60px)] w-full rounded-lg text-[19px] font-bold",
-              logQuiet
-                ? "bg-surface-2 text-soft hover:bg-surface-hover"
-                : "bg-action text-on-action hover:bg-action-hover dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover",
-            )}
-            onClick={submit}
-            data-testid="log-set"
-            data-ready={logQuiet ? "false" : "true"}
-          >
-            {logQuiet ? (
-              <span className="text-base font-semibold">
-                Add {missingSide} to log
-              </span>
-            ) : (
-              <>
-                <Check className="size-5" weight="bold" />
-                {isEditing
-                  ? "Save"
-                  : logLabel({
-                      weight,
-                      reps,
-                      weightUnit: unitLabel(unit),
-                      setNo: index + 1,
-                      unilateral: isUnilateral,
-                      rightWeight,
-                      rightReps: reps2,
-                    })}
-              </>
-            )}
-          </Button>
+          <div className="pt-[clamp(8px,1.4dvh,12px)] pb-[max(clamp(12px,3.2dvh,34px),env(safe-area-inset-bottom))]">
+            <Button
+              size="lg"
+              variant={logQuiet ? "outline" : undefined}
+              className={cn(
+                "h-[clamp(48px,7dvh,60px)] w-full rounded-lg text-[19px] font-bold",
+                logQuiet
+                  ? "bg-surface-2 text-soft hover:bg-surface-hover"
+                  : "bg-action text-on-action hover:bg-action-hover dark:bg-accent dark:text-on-accent dark:hover:bg-accent-hover",
+              )}
+              onClick={submit}
+              data-testid="log-set"
+              data-ready={logQuiet ? "false" : "true"}
+            >
+              {logQuiet ? (
+                <span className="text-base font-semibold">
+                  Add {missingSide} to log
+                </span>
+              ) : (
+                <>
+                  <Check className="size-5" weight="bold" />
+                  {isEditing
+                    ? "Save"
+                    : logLabel({
+                        weight,
+                        reps,
+                        weightUnit: unitLabel(unit),
+                        setNo: index + 1,
+                        unilateral: isUnilateral,
+                        rightWeight,
+                        rightReps: reps2,
+                      })}
+                </>
+              )}
+            </Button>
+          </div>
         </div>
         {detailsDialog}
       </div>
@@ -6144,6 +6223,7 @@ function Spotlight({
         >
           Set {index + 1}
         </span>
+        {noteChip}
         {topSet && setType !== "warmup" && (
           <span
             className="rounded-xs bg-accent-soft px-2 py-1 text-2xs font-bold tracking-widest text-accent-ink uppercase"
@@ -6166,15 +6246,6 @@ function Spotlight({
           </span>
         )}
         <span className="ml-auto flex items-center gap-2">
-          <IconButton
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => setDetailsOpen(true)}
-            title="Set note and details"
-            className={CHROME_BTN}
-            data-testid={`set-${index}-more`}
-          >
-            <PencilSimple className="size-5" />
-          </IconButton>
           <SetActionsMenu
             isWarmup={setType === "warmup"}
             onToggleWarmup={() => {
@@ -6189,32 +6260,6 @@ function Spotlight({
       </div>
 
       {lateralitySwitch}
-
-      {hasGhost && !isEditing && (
-        <div
-          className="flex items-center gap-3 rounded-md bg-bg p-2"
-          data-testid="last-time-row"
-        >
-          <button
-            type="button"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={resetToLastTime}
-            title="Reset to last time's values"
-            className="flex size-11 shrink-0 items-center justify-center rounded-sm bg-surface text-ink transition-colors duration-100 hover:bg-surface-hover"
-            data-testid="last-time-reset"
-          >
-            <ArrowCounterClockwise className="size-5" />
-          </button>
-          <span className="min-w-0 flex-1">
-            <span className="block text-2xs font-bold tracking-widest text-soft uppercase">
-              Last time
-            </span>
-            <span className="num block text-base font-bold">
-              {lastText || "—"}
-            </span>
-          </span>
-        </div>
-      )}
 
       {primaryFields.map((k) => fieldRow(k))}
 
@@ -6414,7 +6459,7 @@ function SessionDurationControl({
               </span>
               <Input
                 type="datetime-local"
-                className="num h-11"
+                className="num h-11 w-full max-w-full min-w-0 appearance-none"
                 value={toLocalInput(startedAt)}
                 onChange={(e) => {
                   const ms = new Date(e.target.value).getTime();

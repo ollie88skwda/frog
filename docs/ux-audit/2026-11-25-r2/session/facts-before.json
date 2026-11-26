@@ -1,0 +1,52 @@
+{
+  "5-selection": {
+    "value": "100",
+    "start": 0,
+    "end": 3
+  },
+  "1-logged-label": null,
+  "6-ruler": {
+    "count": 1,
+    "inViewport": true,
+    "box": {
+      "x": 88,
+      "y": 684,
+      "w": 214,
+      "h": 54,
+      "cx": 195
+    },
+    "panel": {
+      "x": 0,
+      "y": 484,
+      "w": 390,
+      "h": 360,
+      "cx": 195
+    }
+  },
+  "4-note-btn": {
+    "x": 278,
+    "y": 489,
+    "w": 44,
+    "h": 44,
+    "cx": 300
+  },
+  "3-weight": {
+    "weightCx": 154,
+    "panelCx": 195,
+    "offset": 41
+  },
+  "7-unit-in-menu": true,
+  "9-fields": {
+    "weight": "40",
+    "reps": "10",
+    "lastLine": "1\nNow\nlast 40 kg × 10\n1\nSet 1\n· now"
+  },
+  "9-fields-base": {
+    "weight": "40",
+    "reps": "10",
+    "weightGhost": null,
+    "lastLine": "1\nNow\nlast 40 kg × 10\n1\nSet 1\n· now"
+  },
+  "8-template-prompt": false,
+  "8-structure-prompt-base": false
+}
