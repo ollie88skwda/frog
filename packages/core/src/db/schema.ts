@@ -575,6 +575,11 @@ export const userPrefs = pgTable(
     coachRulesOff: jsonb("coach_rules_off").$type<string[]>(),
     showEvidenceLabels: boolean("show_evidence_labels"),
     hardSetRirMax: integer("hard_set_rir_max"),
+    // Display units follow the account (2026-11-25); null distance /
+    // measurement = follow the weight system. Weights stay stored in kg.
+    weightUnit: text("weight_unit").$type<"kg" | "lb">(),
+    distanceUnit: text("distance_unit").$type<"km" | "mi">(),
+    measurementUnit: text("measurement_unit").$type<"cm" | "in">(),
   },
   (t) => [uniqueIndex("user_prefs_owner_idx").on(t.ownerId)],
 );
@@ -718,6 +723,9 @@ export type UserPrefs = Loosen<
   | "coachRulesOff"
   | "showEvidenceLabels"
   | "hardSetRirMax"
+  | "weightUnit"
+  | "distanceUnit"
+  | "measurementUnit"
 >;
 export type CoachEvent = typeof coachEvents.$inferSelect;
 export type SessionMediaRow = typeof sessionMedia.$inferSelect;

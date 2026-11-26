@@ -1,0 +1,35 @@
+Running 1 test using 1 worker
+
+  ✘  1 e2e/unit-account.spec.ts:10:5 › weight unit set in one browser shows in another on the same account (11.2s)
+
+
+  1) e2e/unit-account.spec.ts:10:5 › weight unit set in one browser shows in another on the same account 
+
+    Error: expect(locator).toHaveClass(expected) failed
+
+    Locator: getByTestId('unit-kg')
+    Expected pattern: /bg-accent/
+    Received string:  "press h-11 min-w-11 rounded-sm px-3 text-xs font-medium duration-150 text-soft hover:bg-surface-hover"
+    Timeout: 5000ms
+
+    Call log:
+      - Expect "toHaveClass" with timeout 5000ms
+      - waiting for getByTestId('unit-kg')
+        9 × locator resolved to <button type="button" data-testid="unit-kg" data-frog-cmp="Segmented" data-frog-src="apps/web/src/screens/settings.tsx:142:9" class="press h-11 min-w-11 rounded-sm px-3 text-xs font-medium duration-150 text-soft hover:bg-surface-hover">kg</button>
+          - unexpected value "press h-11 min-w-11 rounded-sm px-3 text-xs font-medium duration-150 text-soft hover:bg-surface-hover"
+
+
+      47 |   await signInAs(pb, token, email);
+      48 |   await pb.goto("/settings");
+    > 49 |   await expect(pb.getByTestId("unit-kg")).toHaveClass(/bg-accent/);
+         |                                           ^
+      50 |   expect(await pb.evaluate(() => localStorage.getItem("unit"))).toBe("kg");
+      51 |
+      52 |   await a.close();
+        at e2e/unit-account.spec.ts:49:43
+
+    Error Context: test-results/unit-account-weight-unit-s-d13b5-another-on-the-same-account/error-context.md
+
+  1 failed
+    e2e/unit-account.spec.ts:10:5 › weight unit set in one browser shows in another on the same account 
+error: script "e2e" exited with code 1

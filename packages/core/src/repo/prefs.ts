@@ -15,6 +15,9 @@ export type ResolvedUserPrefs = Omit<
   | "coachRulesOff"
   | "showEvidenceLabels"
   | "hardSetRirMax"
+  | "weightUnit"
+  | "distanceUnit"
+  | "measurementUnit"
 > & {
   goal: NonNullable<UserPrefs["goal"]> | null;
   trainingStatus: NonNullable<UserPrefs["trainingStatus"]> | null;
@@ -24,6 +27,11 @@ export type ResolvedUserPrefs = Omit<
   showEvidenceLabels: boolean;
   /** R6 hard-set definition: a set counts as hard at this RIR or lower. */
   hardSetRirMax: number;
+  /** Display units (account-level since 2026-11-25). Distance and
+   * measurement follow the weight system unless set explicitly. */
+  weightUnit: "kg" | "lb";
+  distanceUnit: "km" | "mi";
+  measurementUnit: "cm" | "in";
 };
 
 /** Defaults for the §9.2 fields (the new-user values). */
@@ -35,6 +43,7 @@ export const USER_PREF_DEFAULTS = {
   coachRulesOff: [] as string[],
   showEvidenceLabels: true,
   hardSetRirMax: 4,
+  weightUnit: "lb",
   /** R6/R17b: warm-ups are excluded from stats for NEW users. A saved row
    * keeps its stored value; with no row yet the app-wide fallback is this. */
   includeWarmupsInStats: false,
@@ -45,6 +54,7 @@ export function resolveUserPrefs(
   row: UserPrefs | null | undefined,
 ): ResolvedUserPrefs {
   const d = USER_PREF_DEFAULTS;
+  const weightUnit = row?.weightUnit ?? d.weightUnit;
   return {
     id: row?.id ?? "",
     createdAt: row?.createdAt ?? 0,
@@ -66,5 +76,9 @@ export function resolveUserPrefs(
     coachRulesOff: row?.coachRulesOff ?? [...d.coachRulesOff],
     showEvidenceLabels: row?.showEvidenceLabels ?? d.showEvidenceLabels,
     hardSetRirMax: row?.hardSetRirMax ?? d.hardSetRirMax,
+    weightUnit,
+    distanceUnit: row?.distanceUnit ?? (weightUnit === "kg" ? "km" : "mi"),
+    measurementUnit:
+      row?.measurementUnit ?? (weightUnit === "kg" ? "cm" : "in"),
   };
 }

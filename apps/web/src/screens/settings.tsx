@@ -270,8 +270,8 @@ function UnitsSection() {
     <Section
       title="Units"
       hint={t(
-        "Display only — data is stored canonically (kg, meters, cm).",
-        "Display only. Underneath, the frog keeps everything canonical (kg, meters, cm).",
+        "Saved to your account, so every device matches. Display only — data is stored canonically (kg, meters, cm).",
+        "Saved to your account, so every device matches. Display only. Underneath, the frog keeps everything canonical (kg, meters, cm).",
       )}
     >
       <div className="mt-1 [&>*+*]:mt-2">

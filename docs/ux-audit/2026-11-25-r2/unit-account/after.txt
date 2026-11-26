@@ -1,0 +1,7 @@
+Running 3 tests using 1 worker
+
+  ✓  1 e2e/settings.spec.ts:14:5 › unit toggles persist across reload (2.7s)
+  ✓  2 e2e/settings.spec.ts:34:5 › warm-up method editor adds, removes, and resets steps (1.9s)
+  ✓  3 e2e/unit-account.spec.ts:10:5 › weight unit set in one browser shows in another on the same account (2.1s)
+
+  3 passed (7.6s)
