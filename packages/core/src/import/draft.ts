@@ -241,6 +241,7 @@ export function findDuplicateSessions(
  * date are dropped (review blocks confirm until none remain). Sessions that
  * share a placeholder start are nudged a minute apart so the repo's
  * start-time idempotency key never collapses two different workouts.
+ * Every output is finished: a missing end defaults to the start.
  */
 export function draftToImportedSessions(
   draft: ImportDraft,
@@ -257,7 +258,13 @@ export function draftToImportedSessions(
     out.push({
       title: s.title,
       startedAt,
-      endedAt: s.endedAt == null ? null : s.endedAt + (startedAt - s.startedAt),
+      // Imports are past workouts: a null end would make sessions:active
+      // treat this as a live session. With no known duration, record zero
+      // rather than invent one.
+      endedAt:
+        s.endedAt == null || s.endedAt < s.startedAt
+          ? startedAt
+          : s.endedAt + (startedAt - s.startedAt),
       exercises: s.exercises.flatMap((e) => {
         const name = nameFor(e.rawName);
         if (!name) return [];

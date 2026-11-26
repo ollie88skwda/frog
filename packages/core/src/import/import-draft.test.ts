@@ -530,3 +530,41 @@ describe("duplicates + commit", () => {
     expect(out[0].exercises.map((e) => e.name)).toEqual(["Barbell Curl"]);
   });
 });
+
+describe("imported sessions are always finished", () => {
+  // A null endedAt makes sessions:active treat the import as a live workout
+  // (Resume pill, 129-hour clock). Every format must land finished.
+  const drafts = [
+    ...["hevy.csv", "strong.csv", "fitbod.csv", "jefit.csv", "generic.csv"].map(
+      (f) => [f, parseImportFile(fx(f)).draft] as const,
+    ),
+    [
+      "pasted text (no Duration line)",
+      parseWorkoutText(
+        "Push day\nNov 20, 2026\nBench Press\n1  60 kg x 8\n2  60 kg x 7\nOverhead Press\n1  40 kg x 6",
+        { now: NOW },
+      ),
+    ] as const,
+    ...[
+      "text-apple.txt",
+      "text-hevy.txt",
+      "text-strong.txt",
+      "text-notes.txt",
+    ].map((f) => [f, parseWorkoutText(fx(f), { now: NOW })] as const),
+  ];
+  it.each(drafts)("%s", (_name, draft) => {
+    const dated = {
+      ...draft,
+      sessions: draft.sessions.map((s) => ({
+        ...s,
+        startedAt: s.startedAt ?? NOW,
+      })),
+    };
+    const out = draftToImportedSessions(dated, (n) => n);
+    expect(out.length).toBeGreaterThan(0);
+    for (const s of out) {
+      expect(s.endedAt).not.toBeNull();
+      expect(s.endedAt!).toBeGreaterThanOrEqual(s.startedAt);
+    }
+  });
+});
