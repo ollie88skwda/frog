@@ -104,12 +104,9 @@ test("per-side shows both sides, one ruler edits each value, both sides are stor
   // Shared weight, typed; reps and RIR per side through the one ruler.
   await page.getByTestId("weight-field").fill("30");
   await page.getByTestId("reps-field-left").fill("10");
+  // With no last time, the ruler starts on set 1's 5 reps (this session's
+  // previous set is the placeholder), so three steps reach 8.
   await ruler(page, "reps-field-right", "reps-ruler", [
-    "ArrowRight",
-    "ArrowRight",
-    "ArrowRight",
-    "ArrowRight",
-    "ArrowRight",
     "ArrowRight",
     "ArrowRight",
     "ArrowRight",
