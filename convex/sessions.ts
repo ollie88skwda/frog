@@ -513,7 +513,8 @@ export const importBatch = mutation({
         id: sessionId,
         title: s.title,
         startedAt: t,
-        endedAt: s.endedAt,
+        // Imports are always finished; an older client may still send null.
+        endedAt: s.endedAt ?? t,
         createdAt: t,
         updatedAt: t,
       });
