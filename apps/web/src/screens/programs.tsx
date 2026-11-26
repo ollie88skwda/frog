@@ -4,7 +4,7 @@ import {
   PROGRAM_TEMPLATES,
   templateById,
 } from "@frog/core";
-import { Barbell, Info, MagicWand } from "@phosphor-icons/react";
+import { Barbell, Info } from "@phosphor-icons/react";
 import { lazy, Suspense, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { scheduleLabel } from "@/components/builder/logic";
@@ -94,22 +94,9 @@ function ProgramCatalog() {
         </Card>
       )}
 
-      <Link
-        to="/programs/new"
-        data-testid="build-my-program"
-        className="mt-5 flex min-h-16 items-center gap-3 rounded-md bg-action px-4 py-3 text-on-action transition-colors duration-150 hover:bg-action-hover"
-      >
-        <MagicWand
-          aria-hidden="true"
-          weight="fill"
-          className="size-6 shrink-0"
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-bold">Build my program</span>
-          <span className="block text-xs opacity-80">Five quick questions</span>
-        </span>
-      </Link>
-
+      {/* The one "Build my program" call to action is the Plan screen's
+          program card above this catalog (iOS sim report #7: a new user saw
+          two stacked). */}
       <SectionHeader title="Templates" />
       <div className="flex flex-col gap-2" data-testid="template-list">
         {PROGRAM_TEMPLATES.map((tp) => (

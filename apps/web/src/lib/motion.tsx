@@ -32,7 +32,11 @@ export const EASE_OUT = [0.2, 0, 0, 1] as const;
 /** Exits get out of the way a little faster than entrances arrive. */
 export const EASE_IN = [0.4, 0, 1, 1] as const;
 
-/** The duration scale, in seconds (theme.css `--dur-fast` / `--dur-base`). */
+/**
+ * The duration scale, in seconds (theme.css `--dur-fast` / `--dur-base`).
+ * Page transitions (styles/page-transitions.css) use the same two: push/back
+ * slides BASE, tab cross-fades FAST.
+ */
 export const DUR_FAST = 0.15;
 export const DUR_BASE = 0.2;
 
@@ -165,6 +169,9 @@ export function FadeSwap({
   );
 }
 
+const hasViewTransitions = () =>
+  typeof document.startViewTransition === "function";
+
 const reducedMotion = () =>
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
@@ -175,6 +182,10 @@ const reducedMotion = () =>
  * (`/routines/new` -> `/routines/:id/edit` after a save) never remounts the
  * screen or loses its state. Opacity only, never a transform: a transformed
  * ancestor would re-anchor every position:fixed child for the fade's length.
+ *
+ * Fallback only: where the browser has View Transitions, `PageRouter`
+ * (lib/page-router.tsx) slides or cross-fades every route change instead, and
+ * this fade would play over its live new-page image.
  */
 export function useRouteFade(
   ref: RefObject<HTMLElement | null>,
@@ -186,7 +197,7 @@ export function useRouteFade(
     if (prev.current === section) return;
     prev.current = section;
     const el = ref.current;
-    if (!el?.animate || reducedMotion()) return;
+    if (!el?.animate || reducedMotion() || hasViewTransitions()) return;
     el.animate([{ opacity: SETTLE_FROM }, { opacity: 1 }], {
       duration: DUR_FAST * 1000,
       easing: `cubic-bezier(${EASE_OUT.join(", ")})`,

@@ -8,8 +8,15 @@ import {
   Sun,
   User,
 } from "@phosphor-icons/react";
-import { lazy, Suspense, useMemo, useRef } from "react";
-import { NavLink, Outlet, useLocation } from "react-router";
+import {
+  lazy,
+  type RefObject,
+  Suspense,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
+import { NavLink, Outlet, useLocation, useNavigationType } from "react-router";
 import { FrogMark } from "@/components/frog-mark";
 import { IconButton } from "@/components/ui/icon-button";
 import { useChangelogHasUnseen } from "@/lib/changelog-prefs";
@@ -36,9 +43,11 @@ const NAV = [
 export function AppShell() {
   const { theme, toggle } = useTheme();
   const { data: active } = useActiveSession();
-  const { pathname } = useLocation();
+  const { pathname, key } = useLocation();
+  const navType = useNavigationType();
   const mainRef = useRef<HTMLElement>(null);
   useRouteFade(mainRef, pathname);
+  usePageScroll(mainRef, pathname, key, navType);
   // Changelog lives inside Profile → Settings, so its unseen-entry dot
   // surfaces on the Profile nav item instead.
   const hasUnseenChangelog = useChangelogHasUnseen();
@@ -150,7 +159,9 @@ export function AppShell() {
         id="main"
         tabIndex={-1}
         className={cn(
-          "min-w-0 flex-1 outline-none",
+          // Opaque, so a route transition's page snapshot is never see-through
+          // (styles/page-transitions.css names it only while one runs).
+          "min-w-0 flex-1 bg-bg outline-none",
           inSession ? "overflow-hidden" : "overflow-y-auto",
           // Clearance for the floating tab bar; the workout hides the bar, so
           // its entry panel sits flush with the bottom edge instead.
@@ -174,12 +185,14 @@ export function AppShell() {
         <NavLink
           to={`/session/${active?.id}`}
           data-testid="resume-pill"
+          data-vt="resume-pill"
           className="floating fixed inset-x-0 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex h-11 w-fit items-center gap-2 bg-accent px-4 text-sm font-semibold text-on-accent md:hidden"
         >
           <Play className="size-4" weight="fill" /> Resume workout
         </NavLink>
       )}
       <nav
+        data-vt="tab-bar"
         className={cn(
           "floating float-in fixed inset-x-0 bottom-0 z-40 mx-auto mb-[calc(0.75rem+env(safe-area-inset-bottom))] flex w-fit items-center gap-2 p-2 md:hidden",
           inSession && "hidden",
@@ -227,6 +240,38 @@ export function AppShell() {
       </Suspense>
     </div>
   );
+}
+
+/**
+ * One scroller (`<main>`) serves every page, so without this a new page opened
+ * at the old page's scroll offset. A new page (push, tab) starts at the top; a
+ * history back/forward returns to where that entry was left, like a native
+ * stack. Runs in a layout effect, before the page transition captures the new
+ * page, so the slide never jumps mid-flight. Query-only changes (?s=
+ * segments) keep their offset.
+ */
+function usePageScroll(
+  ref: RefObject<HTMLElement | null>,
+  pathname: string,
+  key: string,
+  navType: string,
+) {
+  const saved = useRef(new Map<string, number>());
+  const prevPath = useRef(pathname);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onScroll = () => saved.current.set(key, el.scrollTop);
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, [ref, key]);
+  useLayoutEffect(() => {
+    if (prevPath.current === pathname) return;
+    prevPath.current = pathname;
+    const el = ref.current;
+    if (!el) return;
+    el.scrollTop = navType === "POP" ? (saved.current.get(key) ?? 0) : 0;
+  }, [ref, pathname, key, navType]);
 }
 
 /**
