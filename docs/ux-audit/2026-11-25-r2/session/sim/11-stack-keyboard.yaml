@@ -1,0 +1,6 @@
+appId: com.apple.mobilesafari
+---
+- tapOn:
+    point: "50%,51%"
+- waitForAnimationToEnd
+- takeScreenshot: /tmp/ux2-maestro/stack-after

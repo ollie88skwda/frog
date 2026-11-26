@@ -524,7 +524,14 @@ function revealEntryField(el: Element | null) {
   const bottom =
     panel.querySelector("[data-entry-footer]")?.getBoundingClientRect().top ??
     panel.getBoundingClientRect().bottom;
-  const r = el.getBoundingClientRect();
+  // Reveal the field's whole row (value, label, Split button), not just the
+  // input box: on a 404px iOS keyboard viewport the footer used to cover the
+  // weight label and half the Split button (10-after-rebased.png).
+  const row =
+    el.closest('[data-testid="entry-weight-line"]') ??
+    el.closest('[data-testid^="entry-col"]') ??
+    el;
+  const r = row.getBoundingClientRect();
   if (r.bottom > bottom) panel.scrollTop += r.bottom - bottom;
   else if (r.top < top) panel.scrollTop -= top - r.top;
 }
@@ -1786,6 +1793,11 @@ export default function SessionScreen() {
             : undefined
         }
         data-testid="session-column"
+        // Keyboard-short visible area (iOS keeps media queries on the full
+        // layout height, so a max-height query never sees the keyboard).
+        data-short={
+          viewportHeight != null && viewportHeight < 450 ? "true" : undefined
+        }
       >
         {activeBlock ? (
           <ExerciseSpotlight
@@ -4303,6 +4315,27 @@ function ExerciseSpotlight({
           }
           nextSeedType={seedSets[focusedIndex + 1]?.setType ?? null}
           ghost={ghostFor(ghost, focusedIndex)}
+          prevSet={(() => {
+            // The set before this one in this session (not a warm-up): the
+            // placeholder when there is no last time yet, so set 2 of a new
+            // exercise never opens on a bare 0. Display only, never logged
+            // untouched, and never used for "vs last time" comparisons.
+            const prev = committedGroups
+              .slice(0, focusedIndex)
+              .reverse()
+              .find((grp) => grp[0].setType !== "warmup");
+            if (!prev) return null;
+            const pick = (x: LoggedSet) => ({
+              weightKg: x.weightKg,
+              reps: x.reps,
+              durationSec: x.durationSec,
+              distanceM: x.distanceM,
+            });
+            return {
+              ...pick(prev[0]),
+              otherSide: prev[1] ? pick(prev[1]) : null,
+            };
+          })()}
           enabledMetrics={enabledMetrics}
           committedGroup={committedGroups[focusedIndex] ?? null}
           barLoaded={barLoaded}
@@ -4432,6 +4465,7 @@ function Spotlight({
   enabledMetrics,
   initialSide,
   rulerEnabled,
+  prevSet = null,
   tab,
 }: {
   /** The live Now row, drawn as the panel's own top band (SetRows "tab"). */
@@ -4454,6 +4488,9 @@ function Spotlight({
   topSet: boolean;
   nextSeedType: string | null;
   ghost: GhostSet;
+  /** The previous working set of this session, the placeholder fallback when
+   * `ghost` (last time) is empty. */
+  prevSet?: GhostSet | null;
   /** The physical set's stored rows when this index is already logged —
    * present = editing mode, using the SAME fields/ids as live logging. */
   committedGroup: LoggedSet[] | null;
@@ -4540,9 +4577,17 @@ function Spotlight({
   };
   // Last time's value for one field, as the grey placeholder text ("" = no
   // last time). Right-side keys read the other limb's values.
+  // Placeholder source: last time, else this session's previous set.
+  const hasLast =
+    ghost.weightKg != null ||
+    ghost.reps != null ||
+    ghost.durationSec != null ||
+    ghost.distanceM != null;
+  const hint: GhostSet = hasLast ? ghost : (prevSet ?? ghost);
+  const hintRight = hint.otherSide ?? hint;
   const ghostText = (kind: FieldKey, sideR = false): string => {
     if (isEditing) return "";
-    const g = sideR ? ghostRight : ghost;
+    const g = sideR ? hintRight : hint;
     if (kind === "weight")
       return g.weightKg != null
         ? String(toDisplayWeight(g.weightKg, unit))
@@ -5932,8 +5977,9 @@ function Spotlight({
     if ((col === "weight" || col === "weightR") && f.weight) {
       const sideR = col === "weightR";
       // An empty value sits the ruler on last time's ghost.
-      const val = (sideR ? weight2 : weight) || ghostText("weight", sideR);
-      const g = sideR ? ghostRight.weightKg : ghost.weightKg;
+      const typed = sideR ? weight2 : weight;
+      const val = typed || ghostText("weight", sideR);
+      const g = sideR ? hintRight.weightKg : hint.weightKg;
       const split = isUnilateral && splitWeight;
       return (
         <Ruler
@@ -5947,6 +5993,9 @@ function Spotlight({
           pxPerStep={unit === "lb" ? 8 : 9}
           jump={fieldStep("weight", unit)}
           ghost={g != null ? toDisplayWeight(g, unit) : null}
+          // Empty field: the readout is the grey ghost (or "–"), never an
+          // ink 0 that reads as a value about to be logged.
+          emptyText={typed ? undefined : val || "–"}
           label={split ? `${sideName(sideR)} weight ruler` : "Weight ruler"}
           unit={split ? `${wUnit} · ${sideName(sideR).toLowerCase()}` : wUnit}
           testId="weight-ruler"
@@ -5980,7 +6029,8 @@ function Spotlight({
       );
     }
     const sideR = col === "repsR";
-    const val = (sideR ? rightReps : reps) || ghostText("reps", sideR);
+    const typedReps = sideR ? rightReps : reps;
+    const val = typedReps || ghostText("reps", sideR);
     return (
       <Ruler
         key={sideR ? "repsR" : "reps"}
@@ -5992,7 +6042,8 @@ function Spotlight({
         midEvery={1}
         pxPerStep={18}
         jump={1}
-        ghost={(sideR ? ghostRight.reps : ghost.reps) ?? null}
+        ghost={(sideR ? hintRight.reps : hint.reps) ?? null}
+        emptyText={typedReps ? undefined : val || "–"}
         label={isUnilateral ? `${sideName(sideR)} reps ruler` : "Reps ruler"}
         unit={isUnilateral ? `reps · ${sideName(sideR).toLowerCase()}` : "reps"}
         testId="reps-ruler"
@@ -6156,7 +6207,11 @@ function Spotlight({
           data-entry-footer
         >
           {rulerEnabled && (
-            <div className="mt-2 rounded-sm bg-surface-2 dark:bg-bg">
+            // Keyboard-short screens drop the ruler's readout: it repeats
+            // the focused field just above, and its 32px is what lets the
+            // whole weight row clear the Now row and the footer (iPhone with
+            // the keyboard up, 360x380).
+            <div className="mt-2 rounded-sm bg-surface-2 dark:bg-bg in-data-[short=true]:[&_[data-testid$=-ruler-readout]]:hidden">
               {entryRuler()}
             </div>
           )}

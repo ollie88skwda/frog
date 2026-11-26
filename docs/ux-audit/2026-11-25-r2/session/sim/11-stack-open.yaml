@@ -1,0 +1,21 @@
+appId: com.apple.mobilesafari
+---
+- tapOn: "Resume session"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Add a set"
+    index: 1
+- extendedWaitUntil:
+    visible: "Log .*"
+    timeout: 15000
+- tapOn:
+    text: "Set options"
+    optional: true
+- tapOn:
+    text: "Log left and right separately"
+    optional: true
+- waitForAnimationToEnd
+- tapOn:
+    point: "50%,51%"
+- waitForAnimationToEnd
+- takeScreenshot: /tmp/ux2-maestro/stack-after
