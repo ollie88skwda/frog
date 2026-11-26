@@ -1,0 +1,1 @@
+87 passed: session-ux3, session-{ux2,swipe,error,feedback,picker-create,ux-entry}, perside-entry, bodyweight-perside, spotlight-{history,input,marks,nav,perside,rest,set-menu}, input-focus, core-loop, copy-claims, exercise-types, set-entry-tiles, set-types, live-pr
